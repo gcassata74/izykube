@@ -6,7 +6,6 @@
         <groupId>com.izylife</groupId>
         <artifactId>izykube</artifactId>
         <version>0.0.1-SNAPSHOT</version>
-        <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
     <groupId>com.izylife</groupId>
@@ -15,17 +14,6 @@
     <name>backend</name>
     <description>izykube backend</description>
     <packaging>jar</packaging>
-
-    <properties>
-        <spring-cloud.version>2021.0.3</spring-cloud.version>
-        <spring.boot.version>2.7.2</spring.boot.version>
-        <lombok.version>1.18.24</lombok.version>
-        <spring-rabbit-test.version>2.4.6</spring-rabbit-test.version>
-        <spring-security-test.version>5.7.2</spring-security-test.version>
-        <reactor-test.version>3.4.21</reactor-test.version>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-    </properties>
 
     <dependencies>
         <dependency>
@@ -116,8 +104,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-
     <build>
         <plugins>
             <plugin>
@@ -130,9 +116,6 @@
                         </goals>
                     </execution>
                 </executions>
-                <configuration>
-                    <mainClass>com.izylife.izykube.IzykubeApplication</mainClass>
-                </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
