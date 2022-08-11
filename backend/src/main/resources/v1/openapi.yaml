@@ -1,12 +1,215 @@
 openapi: 3.0.0
 info:
+  title: Link Example
   version: 1.0.0
-  title: Sample API
-  description: A sample API to illustrate OpenAPI concepts
 paths:
-  /list:
+  /v1/users/{username}:
     get:
-      description: Returns a list of stuff
+      tags:
+        - Izy
+      operationId: getUserByName
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
-          description: Successful response
+          description: The User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user'
+          links:
+            userRepositories:
+              $ref: '#/components/links/UserRepositories'
+  /v1/repositories/{username}:
+    get:
+      tags:
+        - Izy
+      operationId: getRepositoriesByOwner
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: repositories owned by the supplied user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/repository'
+          links:
+            userRepository:
+              $ref: '#/components/links/UserRepository'
+  /v1/repositories/{username}/{slug}:
+    get:
+      tags:
+        - Izy
+      operationId: getRepository
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The repository
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/repository'
+          links:
+            repositoryPullRequests:
+              $ref: '#/components/links/RepositoryPullRequests'
+  /v1/repositories/{username}/{slug}/pullrequests:
+    get:
+      tags:
+        - Izy
+      operationId: getPullRequestsByRepository
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum:
+              - open
+              - merged
+              - declined
+      responses:
+        '200':
+          description: an array of pull request objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/pullrequest'
+  /v1/repositories/{username}/{slug}/pullrequests/{pid}:
+    get:
+      tags:
+        - Izy
+      operationId: getPullRequestsById
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: a pull request object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/pullrequest'
+          links:
+            pullRequestMerge:
+              $ref: '#/components/links/PullRequestMerge'
+  /v1/repositories/{username}/{slug}/pullrequests/{pid}/merge:
+    post:
+      tags:
+        - Izy
+      operationId: mergePullRequest
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: the PR was successfully merged
+components:
+  links:
+    UserRepositories:
+      # returns array of '#/components/schemas/repository'
+      operationId: getRepositoriesByOwner
+      parameters:
+        username: $response.body#/username
+    UserRepository:
+      # returns '#/components/schemas/repository'
+      operationId: getRepository
+      parameters:
+        username: $response.body#/owner/username
+        slug: $response.body#/slug
+    RepositoryPullRequests:
+      # returns '#/components/schemas/pullrequest'
+      operationId: getPullRequestsByRepository
+      parameters:
+        username: $response.body#/owner/username
+        slug: $response.body#/slug
+    PullRequestMerge:
+      # executes /v1/repositories/{username}/{slug}/pullrequests/{pid}/merge
+      operationId: mergePullRequest
+      parameters:
+        username: $response.body#/author/username
+        slug: $response.body#/repository/slug
+        pid: $response.body#/id
+  schemas:
+    user:
+      type: object
+      properties:
+        username:
+          type: string
+        uuid:
+          type: string
+    repository:
+      type: object
+      properties:
+        slug:
+          type: string
+        owner:
+          $ref: '#/components/schemas/user'
+    pullrequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        repository:
+          $ref: '#/components/schemas/repository'
+        author:
+          $ref: '#/components/schemas/user'
