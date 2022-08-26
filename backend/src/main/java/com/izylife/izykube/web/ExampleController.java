@@ -4,12 +4,15 @@ import com.izylife.openapi.api.IzyApi;
 import com.izylife.openapi.model.Pullrequest;
 import com.izylife.openapi.model.Repository;
 import com.izylife.openapi.model.User;
+import io.fabric8.kubernetes.api.model.apps.Deployment;
+import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.UUID;
 
 /************************************************************************
  * Created: 10/08/22                                                    *
@@ -17,18 +20,43 @@ import java.util.UUID;
  ************************************************************************/
 @RestController
 public class ExampleController implements IzyApi {
+  @Autowired
+  KubernetesClient client;
+
 
   @Override
   public ResponseEntity<Pullrequest> getPullRequestsById(String username, String slug, String pid) {
 
-    User user = new User();
-    user.setUsername("gcassata");
-    user.setUuid(UUID.randomUUID().toString());
-
     Pullrequest pr = new Pullrequest();
-    pr.setAuthor(user);
-    pr.setId(1);
-    pr.setTitle("Prova");
+
+
+    Deployment deployment = new DeploymentBuilder()
+      .withNewMetadata()
+      .withName("nginx-deployment")
+      .addToLabels("app", "nginx")
+      .endMetadata()
+      .withNewSpec()
+      .withReplicas(1)
+      .withNewSelector()
+      .addToMatchLabels("app", "nginx")
+      .endSelector()
+      .withNewTemplate()
+      .withNewMetadata()
+      .addToLabels("app", "nginx")
+      .endMetadata()
+      .withNewSpec()
+      .addNewContainer()
+      .withName("nginx")
+      .withImage("nginx:1.7.9")
+      .addNewPort().withContainerPort(80).endPort()
+      .endContainer()
+      .endSpec()
+      .endTemplate()
+      .endSpec()
+      .build();
+
+    client.resource(deployment).inNamespace("default").createOrReplace();
+
     return new ResponseEntity<Pullrequest>(pr, HttpStatus.OK);
 
   }
