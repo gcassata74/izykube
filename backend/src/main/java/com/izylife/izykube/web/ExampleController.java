@@ -28,8 +28,6 @@ public class ExampleController implements IzyApi {
   public ResponseEntity<Pullrequest> getPullRequestsById(String username, String slug, String pid) {
 
     Pullrequest pr = new Pullrequest();
-
-
     Deployment deployment = new DeploymentBuilder()
       .withNewMetadata()
       .withName("nginx-deployment")
