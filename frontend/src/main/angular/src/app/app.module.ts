@@ -8,16 +8,13 @@ import {PanelMenuModule} from 'primeng/panelmenu';
 import {MainComponent} from './main/main.component';
 import {HomeComponent} from './home/home.component';
 import {SidemenuComponent} from './sidemenu/sidemenu.component';
-import {ContentComponent} from './content/content.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     MainComponent,
     HomeComponent,
-    SidemenuComponent,
-    ContentComponent
-
+    SidemenuComponent
   ],
   imports: [
     BrowserModule,
