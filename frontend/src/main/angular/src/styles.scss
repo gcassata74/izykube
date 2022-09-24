@@ -1,1 +1,24 @@
-/* You can add global styles to this file, and also import other style files */
+$background-color: #1d1d1b;
+$color: #1dff88;
+
+
+.dark-panel.p-megamenu {
+  background: $background-color !important;
+  border: 0px !important;
+
+  .p-menuitem-text{
+    color: $color !important;
+  }
+
+  .p-menuitem-icon{
+    color: $color !important;
+  }
+
+  .p-submenu-icon{
+    color: $color !important;
+  }
+
+  p.p-submenu-item.pi-angle-down{
+    color: $color !important;
+  }
+}

@@ -8,6 +8,7 @@ import {PanelMenuModule} from 'primeng/panelmenu';
 import {MainComponent} from './main/main.component';
 import {HomeComponent} from './home/home.component';
 import {SidemenuComponent} from './sidemenu/sidemenu.component';
+import {MegaMenu, MegaMenuModule} from 'primeng/megamenu';
 
 @NgModule({
   declarations: [
@@ -20,7 +21,8 @@ import {SidemenuComponent} from './sidemenu/sidemenu.component';
     BrowserModule,
     AppRoutingModule,
     ButtonModule,
-    PanelMenuModule
+    PanelMenuModule,
+    MegaMenuModule
   ],
   providers: [],
   bootstrap: [AppComponent]

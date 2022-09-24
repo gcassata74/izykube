@@ -1,95 +1,20 @@
 $background-color: #1d1d1b;
-$color: #1dff88;
-
 .sidebar {
-  margin: 0;
-  padding: 0;
-  width: 200px;
-  background-color: $background-color;
-  position: fixed;
   height: 100%;
-  font-size: 14px;
-  font-weight: normal;
+  width: 200px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding-top: 40px;
+  background-color: $background-color;
   overflow: auto;
-}
-
-::ng-deep .p-panelmenu {
-
-  .p-menuitem-text {
-    line-height: 1;
-    font-size: 14px;
-    font-weight: 200;
-  }
-
-
- .p-panelmenu-header {
-
-   & > a:focus {
-     outline: 0 none;
-     outline-offset: 0;
-     /* box-shadow: 0 0 0 0.2rem #bfdbfe; */
-   }
-
-   & > a:focus {
-     box-shadow: 0 0 0 0;
-   }
-
-   &:not(.p-highlight):not(.p-disabled) > a:hover,  p-panelmenu-expanded,
-   {
-     background: #ffffff;
-     border-color: #ffffff;
-     color: $color;
-   }
-
-   .p-highlight:not(.p-disabled) > a:hover {
-     background: #ffffff;
-     border-color: #ffffff;
-     color: $color;
-   }
-
- }
-
-
-  .p-component.p-panelmenu-header > a {
-    color: $color;
-    background-color: $background-color;
-    border: 0px;
-    border-radius: 0;
-  }
-
-  .p-menuitem-link {
-    color: $color;
-    background-color: $background-color;
-    border: 0px;
-    border-radius: 0;
-
-  }
-
-  .p-panelmenu-content {
-    border: 0px;
-    background: $background-color;
-
-    .p-menuitem {
-      .p-menuitem-link {
-
-        .p-menuitem-icon, .p-panelmenu-icon {
-          color: $color;
-          margin-right: 0.5rem;
-          font-size: 14px;
-        }
-
-        .p-menuitem-text {
-          color: $color;
-        }
-      }
-    }
-  }
-
-  .p-panelmenu-header.p-highlight > a {
-    border: 0px;
-    background: $background-color;
-  }
 
 }
+
+
+
+
+
+
 
 
