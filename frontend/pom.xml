@@ -31,7 +31,7 @@
                 <configuration>
                     <workingDirectory>src/main/angular</workingDirectory>
                     <nodeVersion>v16.10.0</nodeVersion>
-                    <npmVersion>v7.24.0</npmVersion>
+                    <npmVersion>7.24.0</npmVersion>
                 </configuration>
                 <executions>
                     <execution>

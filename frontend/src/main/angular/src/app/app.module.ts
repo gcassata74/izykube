@@ -9,6 +9,8 @@ import {MainComponent} from './main/main.component';
 import {HomeComponent} from './home/home.component';
 import {SidemenuComponent} from './sidemenu/sidemenu.component';
 import {MegaMenu, MegaMenuModule} from 'primeng/megamenu';
+import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
+import {GojsAngularModule} from 'gojs-angular';
 
 @NgModule({
   declarations: [
@@ -22,7 +24,9 @@ import {MegaMenu, MegaMenuModule} from 'primeng/megamenu';
     AppRoutingModule,
     ButtonModule,
     PanelMenuModule,
-    MegaMenuModule
+    MegaMenuModule,
+    BrowserAnimationsModule,
+    GojsAngularModule
   ],
   providers: [],
   bootstrap: [AppComponent]

@@ -2,9 +2,17 @@ $background-color: #1d1d1b;
 $color: #1dff88;
 
 
-.dark-panel.p-megamenu {
+.dark-panel.p-panelmenu {
   background: $background-color !important;
   border: 0px !important;
+
+  .p-panelmenu-panel{
+    background: $background-color !important;
+  }
+
+  .p-panelmenu-header{
+    background: $background-color !important;
+  }
 
   .p-menuitem-text{
     color: $color !important;
@@ -14,11 +22,17 @@ $color: #1dff88;
     color: $color !important;
   }
 
-  .p-submenu-icon{
+  .p-panelmenu-icon{
     color: $color !important;
   }
 
-  p.p-submenu-item.pi-angle-down{
-    color: $color !important;
+  //p.p-submenu-item.pi-angle-down{
+  //  color: $color !important;
+  //}
+
+  .p-panelmenu.p-panelmenu-header {
+    background-color: $background-color !important;
+    border: 0px !important;
   }
+
 }
