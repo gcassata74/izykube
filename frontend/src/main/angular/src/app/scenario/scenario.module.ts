@@ -1,20 +1,22 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DiagramComponent } from './diagram/diagram.component';
-import { PaletteComponent } from './palette/palette.component';
+import { DiagramEditorComponent } from './diagram-editor/diagram-editor.component';
+import {IconService} from './services/icon.service';
 
 
 
 @NgModule({
   declarations: [
-    DiagramComponent,
-    PaletteComponent
+    DiagramEditorComponent
   ],
   exports: [
-    DiagramComponent
+    DiagramEditorComponent
   ],
   imports: [
     CommonModule
+  ],
+  providers: [
+    IconService
   ]
 })
 export class ScenarioModule { }

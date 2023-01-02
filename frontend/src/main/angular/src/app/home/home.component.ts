@@ -1,114 +1,58 @@
-import {AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild, ViewEncapsulation} from '@angular/core';
+import {Component, ElementRef, ViewChild} from '@angular/core';
 import * as go from 'gojs';
-
-const $ = go.GraphObject.make;
 
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
-  styleUrls: ['./home.component.scss'],
-  encapsulation: ViewEncapsulation.ShadowDom
+  styleUrls: ['./home.component.scss']
 })
-export class HomeComponent implements OnInit, AfterViewInit {
-  themeFontFamily!: 'Roboto, Helvetica Neue, sans-serif';
+export class HomeComponent {
+  title = 'GoJS App in Angular';
 
-  public paletteDivClassName = 'myPaletteDiv';
-  public state = {
-    // Palette state props
-    paletteNodeData: [
-      { name: 'Epsilon', icon:'gateway.svg' },
-      { name: 'Test', icon:'gateway.svg' }
-    ],
-    paletteModelData: { prop: 'val' }
-  };
+  model = new go.GraphLinksModel(
+    [],
+    []);
 
-  constructor(private cdr: ChangeDetectorRef) {
+  @ViewChild('text')
+  private textField: ElementRef;
+
+  data: any;
+  node: go.Node;
+
+  showDetails(node: go.Node | null) {
+    this.node = node;
+    if (node) {
+      // copy the editable properties into a separate Object
+      this.data = {
+        text: node.data.text,
+        color: node.data.color
+      };
+    } else {
+      this.data = null;
+    }
   }
 
-  ngOnInit(): void {
+  onCommitDetails() {
+    if (this.node) {
+      const model = this.node.diagram.model;
+      // copy the edited properties back into the node's model data,
+      // all within a transaction
+      model.startTransaction();
+      model.setDataProperty(this.node.data, "text", this.data.text);
+      /*model.setDataProperty(this.node.data, "name", this.data.name);*/
+      model.setDataProperty(this.node.data, "color", this.data.color);
+      model.commitTransaction("modified properties");
+    }
   }
 
-  ngAfterViewInit() {
-    this.cdr.detectChanges();
+  onCancelChanges() {
+    // wipe out anything the user may have entered
+    this.showDetails(this.node);
   }
 
-  public initPalette(): go.Palette {
-
-    const palette = $(go.Palette,  { // customize the GridLayout to align the centers of the locationObjects
-      layout: $(go.GridLayout, {
-        alignment: go.GridLayout.Location,
-        spacing: new go.Size(0, 10),
-        wrappingColumn: 1
-      }),
-      maxSelectionCount: 1,
-      allowGroup: false,
-      allowHorizontalScroll: false,
-      'animationManager.isEnabled': false,
-      'animationManager.isInitial': false
-    });
-
-    // define the Node template
-    palette.nodeTemplate = this.makeNodeTemplate();
-    return palette;
+  onModelChanged(c: go.ChangedEvent) {
+    // who knows what might have changed in the selected node and data?
+    this.showDetails(this.node);
   }
 
-
-
-  private makeNodeIcon() {
-    return $(go.Panel, 'Viewbox', {
-        width: 60,
-        height: 60,
-        padding: new go.Margin(5, 2, 5, 2),
-        background: 'transparent',
-        defaultAlignment: go.Spot.Center
-      },
-      $(go.Picture, {
-          desiredSize: new go.Size(50, 50),
-          imageAlignment: go.Spot.Center,
-          imageStretch: go.GraphObject.Uniform
-        },
-        new go.Binding('source', 'icon', this.getIconUrl.bind(this))
-      )
-    );
-  }
-
-  private getIconUrl(){
-    return 'assets/images/diagram/gateway.svg';
-  }
-
-  private makeNodeTitle() {
-    return $(go.TextBlock, {
-        font: '13px ' + this.themeFontFamily,
-        verticalAlignment: go.Spot.Top,
-        overflow: go.TextBlock.OverflowClip,
-        isMultiline: true,
-        width: 85,
-        margin: new go.Margin(0, 0, 5, 0)
-      },
-      new go.Binding('text', 'name'));
-  }
-
-  private makeNodeSelectionAdornment() {
-    return {
-      selectionAdornmentTemplate:
-        $(go.Adornment, 'Auto',
-          $(go.Shape, 'Rectangle', {
-            stroke: '#025066',
-            strokeWidth: 3,
-            fill: null
-          }),
-          $(go.Placeholder)
-        )
-    };
-  }
-
-
-  private makeNodeTemplate() {
-    return $(go.Node, 'Vertical',
-        {cursor: 'pointer', locationSpot: go.Spot.Center},
-        this.makeNodeIcon(),
-        this.makeNodeTitle(),
-        this.makeNodeSelectionAdornment()
-      );
-  }
 }

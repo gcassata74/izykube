@@ -30,8 +30,8 @@
                 <version>1.6</version>
                 <configuration>
                     <workingDirectory>src/main/angular</workingDirectory>
-                    <nodeVersion>v16.10.0</nodeVersion>
-                    <npmVersion>7.24.0</npmVersion>
+                    <nodeVersion>v16.18.1</nodeVersion>
+                    <npmVersion>9.1.3</npmVersion>
                 </configuration>
                 <executions>
                     <execution>

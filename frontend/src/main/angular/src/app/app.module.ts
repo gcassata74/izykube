@@ -8,9 +8,11 @@ import {PanelMenuModule} from 'primeng/panelmenu';
 import {MainComponent} from './main/main.component';
 import {HomeComponent} from './home/home.component';
 import {SidemenuComponent} from './sidemenu/sidemenu.component';
-import {MegaMenu, MegaMenuModule} from 'primeng/megamenu';
+import {MegaMenuModule} from 'primeng/megamenu';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {GojsAngularModule} from 'gojs-angular';
+import {ScenarioModule} from './scenario/scenario.module';
+
 
 @NgModule({
   declarations: [
@@ -26,7 +28,8 @@ import {GojsAngularModule} from 'gojs-angular';
     PanelMenuModule,
     MegaMenuModule,
     BrowserAnimationsModule,
-    GojsAngularModule
+    GojsAngularModule,
+    ScenarioModule
   ],
   providers: [],
   bootstrap: [AppComponent]
