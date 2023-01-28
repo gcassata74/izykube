@@ -1,215 +1,80 @@
 openapi: 3.0.0
 info:
-  title: Link Example
+  title: Docker image creation API
   version: 1.0.0
 paths:
-  /v1/users/{username}:
-    get:
-      tags:
-        - Izy
-      operationId: getUserByName
-      parameters:
-        - name: username
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: The User
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/user'
-          links:
-            userRepositories:
-              $ref: '#/components/links/UserRepositories'
-  /v1/repositories/{username}:
-    get:
-      tags:
-        - Izy
-      operationId: getRepositoriesByOwner
-      parameters:
-        - name: username
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: repositories owned by the supplied user
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/repository'
-          links:
-            userRepository:
-              $ref: '#/components/links/UserRepository'
-  /v1/repositories/{username}/{slug}:
-    get:
-      tags:
-        - Izy
-      operationId: getRepository
-      parameters:
-        - name: username
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: The repository
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/repository'
-          links:
-            repositoryPullRequests:
-              $ref: '#/components/links/RepositoryPullRequests'
-  /v1/repositories/{username}/{slug}/pullrequests:
-    get:
-      tags:
-        - Izy
-      operationId: getPullRequestsByRepository
-      parameters:
-        - name: username
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: state
-          in: query
-          schema:
-            type: string
-            enum:
-              - open
-              - merged
-              - declined
-      responses:
-        '200':
-          description: an array of pull request objects
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/pullrequest'
-  /v1/repositories/{username}/{slug}/pullrequests/{pid}:
-    get:
-      tags:
-        - Izy
-      operationId: getPullRequestsById
-      parameters:
-        - name: username
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: pid
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: a pull request object
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/pullrequest'
-          links:
-            pullRequestMerge:
-              $ref: '#/components/links/PullRequestMerge'
-  /v1/repositories/{username}/{slug}/pullrequests/{pid}/merge:
+  /create-image:
     post:
       tags:
-        - Izy
-      operationId: mergePullRequest
+        - Docker
+      summary: Create a new Docker image from a Dockerfile
       parameters:
-        - name: username
-          in: path
-          required: true
+        - in: query
+          name: path
           schema:
             type: string
-        - name: slug
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: pid
-          in: path
-          required: true
-          schema:
-            type: string
+            description: The path to the Dockerfile on the host system
+            example: /path/to/Dockerfile
       responses:
-        '204':
-          description: the PR was successfully merged
+        200:
+          description: Image created successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: sha256:f8c67a3efa3
+        400:
+          description: Invalid input
+        500:
+          description: Internal server error
+  /authenticate:
+    post:
+      tags:
+        - Authentication
+      summary: Creates a new authentication token
+      operationId: createAuthenticationToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JwtRequest"
+      responses:
+        200:
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JwtResponse"
+        401:
+          description: Invalid credentials
+        500:
+          description: Internal server error
 components:
-  links:
-    UserRepositories:
-      # returns array of '#/components/schemas/repository'
-      operationId: getRepositoriesByOwner
-      parameters:
-        username: $response.body#/username
-    UserRepository:
-      # returns '#/components/schemas/repository'
-      operationId: getRepository
-      parameters:
-        username: $response.body#/owner/username
-        slug: $response.body#/slug
-    RepositoryPullRequests:
-      # returns '#/components/schemas/pullrequest'
-      operationId: getPullRequestsByRepository
-      parameters:
-        username: $response.body#/owner/username
-        slug: $response.body#/slug
-    PullRequestMerge:
-      # executes /v1/repositories/{username}/{slug}/pullrequests/{pid}/merge
-      operationId: mergePullRequest
-      parameters:
-        username: $response.body#/author/username
-        slug: $response.body#/repository/slug
-        pid: $response.body#/id
   schemas:
-    user:
+    JwtRequest:
       type: object
+      required:
+        - username
+        - password
       properties:
         username:
           type: string
-        uuid:
+        password:
           type: string
-    repository:
+    JwtResponse:
       type: object
       properties:
-        slug:
+        token:
           type: string
-        owner:
-          $ref: '#/components/schemas/user'
-    pullrequest:
-      type: object
-      properties:
-        id:
-          type: integer
-        title:
+        username:
           type: string
-        repository:
-          $ref: '#/components/schemas/repository'
-        author:
-          $ref: '#/components/schemas/user'
+        authorities:
+          type: array
+          items:
+            type: object
+            properties:
+              authority:
+                type: string
+              role:
+                type: string

@@ -29,14 +29,14 @@
         <reactor-test.version>3.4.21</reactor-test.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
-        <docker.client.version>3.2.13</docker.client.version>
-        <docker.java.core.version>3.2.13</docker.java.core.version>
+        <docker.client.version>3.2.14</docker.client.version>
+        <docker.java.core.version>3.2.14</docker.java.core.version>
         <start-class>com.izylife.izykube.IzykubeApplication</start-class>
     </properties>
 
     <modules>
         <module>backend</module>
-        <module>frontend</module>
+        <module>client</module>
     </modules>
 
     <dependencyManagement>

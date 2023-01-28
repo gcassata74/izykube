@@ -2,11 +2,14 @@ package com.izylife.izykube.services;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
+import com.github.dockerjava.api.command.BuildImageResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
+import com.github.dockerjava.api.model.BuildResponseItem;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.PullResponseItem;
+import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.transport.DockerHttpClient;
@@ -15,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.util.List;
 
 /************************************************************************
@@ -89,6 +93,19 @@ public class DockerService {
     DockerClient dockerClient = DockerClientImpl.getInstance(config, httpClient);
     dockerClient.removeImageCmd(image).exec();
     log.info("Image {} deleted",image);
+  }
+
+  public String createImageFromDockerfile(String path) throws Exception{
+
+    DockerClient dockerClient = DockerClientBuilder.getInstance().build();
+    BuildImageResultCallback callback = new BuildImageResultCallback() {
+      public void onNext(BuildResponseItem item) {
+        System.out.println("" + item);
+      }
+    };
+    File dockerFile = new File(path);
+    return  dockerClient.buildImageCmd(dockerFile).exec(callback).awaitImageId();
+
   }
 
 }
