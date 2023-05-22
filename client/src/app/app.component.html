@@ -1,0 +1,21 @@
+<!--<app-main></app-main>-->
+<app-login *ngIf="!isLoggedIn"></app-login>
+<ng-container *ngIf="isLoggedIn">
+  <!-- Left sidebar -->
+  <p-sidebar [(visible)]="sidebarVisible"></p-sidebar>
+
+  <!-- Topbar -->
+  <p-toolbar>
+    <div class="ui-toolbar-group-left">
+      <button pButton type="button" icon="pi pi-bars" (click)="toggleSidebar()"></button>
+    </div>
+    <div class="ui-toolbar-group-right">
+      <a [routerLink]="['/about']" class="ui-button-text-icon-left">
+        <i class="pi pi-info"></i>
+        <span>About</span>
+      </a>
+    </div>
+  </p-toolbar>
+  <router-outlet></router-outlet>
+
+</ng-container>

@@ -5,7 +5,7 @@ import com.izylife.izykube.utils.JwtTokenUtil;
 import com.izylife.openapi.api.AuthenticationApi;
 import com.izylife.openapi.model.JwtRequest;
 import com.izylife.openapi.model.JwtResponse;
-import com.izylife.openapi.model.JwtResponseAuthorities;
+import com.izylife.openapi.model.JwtResponseAuthoritiesInner;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,10 +44,10 @@ public class AuthenticationController implements AuthenticationApi {
         }
     }
 
-    private List<JwtResponseAuthorities> convertAuthorities(Collection<? extends GrantedAuthority> authorities){
-        List<JwtResponseAuthorities> jwtResponseAuthorities = new ArrayList<>();
+    private List<JwtResponseAuthoritiesInner> convertAuthorities(Collection<? extends GrantedAuthority> authorities){
+        List<JwtResponseAuthoritiesInner> jwtResponseAuthorities = new ArrayList<>();
         for(GrantedAuthority authority : authorities){
-            JwtResponseAuthorities responseAuthorities = new JwtResponseAuthorities();
+            JwtResponseAuthoritiesInner responseAuthorities = new JwtResponseAuthoritiesInner();
             responseAuthorities.setAuthority(authority.getAuthority());
             jwtResponseAuthorities.add(responseAuthorities);
         }

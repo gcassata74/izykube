@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.izylife</groupId>
-    <artifactId>client</artifactId>
+    <artifactId>frontend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
@@ -19,7 +19,10 @@
     <build>
         <resources>
             <resource>
-                <directory>target/client</directory>
+                <directory>target/frontend--++
+
+                +-++
+                +</directory>
                 <targetPath>static</targetPath>
             </resource>
         </resources>

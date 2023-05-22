@@ -18,7 +18,7 @@
     <dependencies>
         <dependency>
             <groupId>com.izylife</groupId>
-            <artifactId>client</artifactId>
+            <artifactId>frontend</artifactId>
             <version>0.0.1-SNAPSHOT</version>
             <scope>runtime</scope>
         </dependency>
@@ -159,7 +159,7 @@
             <plugin>
                 <groupId>org.openapitools</groupId>
                 <artifactId>openapi-generator-maven-plugin</artifactId>
-                <version>5.4.0</version>
+                <version>6.2.1</version>
                 <executions>
                     <execution>
                         <goals>
@@ -170,7 +170,7 @@
                                 ${project.basedir}/src/main/resources/v1/openapi.yaml
                             </inputSpec>
                             <generatorName>spring</generatorName>
-                            <library>spring-mvc</library>
+                            <library>spring-boot</library>
                             <apiPackage>com.izylife.openapi.api</apiPackage>
                             <modelPackage>com.izylife.openapi.model</modelPackage>
                             <configOptions>
@@ -214,7 +214,7 @@
                             <outputDirectory>${basedir}/target/classes/static/</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${basedir}/../frontend/src/main/angular/dist</directory>
+                                    <directory>${basedir}/../client/src/main/angular/dist</directory>
                                 </resource>
                             </resources>
                         </configuration>
