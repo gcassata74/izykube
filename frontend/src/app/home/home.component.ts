@@ -1,6 +1,16 @@
 import {Component, ElementRef, AfterViewInit, OnInit} from '@angular/core';
 import * as go from 'gojs';
 
+const $ = go.GraphObject.make;
+// a collection of colors
+var colors = {
+  blue: "#2a6dc0",
+  orange: "#ea2857",
+  green: "#1cc1bc",
+  gray: "#5b5b5b",
+  white: "#F5F5F5"
+}
+
 @Component({
   selector: 'app-diagram',
   templateUrl: './home.component.html',
@@ -8,6 +18,7 @@ import * as go from 'gojs';
 })
 export class HomeComponent implements OnInit {
 
+  diagram!: go.Diagram;
 
   ngOnInit() {
 
@@ -20,49 +31,42 @@ export class HomeComponent implements OnInit {
 
 
   private createDiagram() {
-    // create a diagram and palette with drag and drop from the palette to the diagram
-    const $ = go.GraphObject.make;
-    const myDiagram = $(go.Diagram, 'myDiagramDiv', // create a Diagram for the DIV HTML element
+
+    this.diagram = $(go.Diagram, 'myDiagramDiv', // create a Diagram for the DIV HTML element
       { // enable undo & redo and a clipboard
         'undoManager.isEnabled': true,
-        "linkingTool.isEnabled": true  // enable linking operations
+        "linkingTool.isEnabled": true,
+        "relinkingTool.isEnabled": true
       }); // end Diagram initialization
 
-    // define a simple Node template
-    myDiagram.nodeTemplate =  // the default node template
-      $(go.Node, 'Auto',  // the Shape will go around the TextBlock
-        $(go.Shape, 'RoundedRectangle', { strokeWidth: 0},  // stroke a width of zero
-          // Shape.fill is bound to Node.data.color
-          new go.Binding('fill', 'color')),  // end Shape
-        $(go.TextBlock, { margin: 8 },  // some room around the text
-          // TextBlock.text is bound to Node.data.key
-          new go.Binding('text', 'key')));  // end TextBlock and go.Node
-
+    this.diagram.nodeTemplate = this.makeNodeTemplate();
 
     // define the diagram model with nodeDataArray and linkDataArray
-     const model: go.GraphLinksModel = new go.GraphLinksModel( [],[])  as go.GraphLinksModel
-     let graphLinksModel = myDiagram.model as go.GraphLinksModel;
+    const graphLinksModel: go.GraphLinksModel = this.diagram.model as go.GraphLinksModel;
 
-
-    myDiagram.linkTemplate =
+    this.diagram.linkTemplate =
       $(go.Link,
-        { routing: go.Link.AvoidsNodes, curve: go.Link.JumpOver },
-        $(go.Shape, { stroke: 'gray', strokeWidth: 1.5 }),  // Link appearance
-        $(go.Shape, { toArrow: 'Standard', stroke: 'gray' })  // Arrowhead
+        {
+          reshapable: true,
+          resegmentable: true,
+          relinkableFrom: true,
+          relinkableTo: true,
+          adjusting: go.Link.Stretch
+        },
+        new go.Binding("points").makeTwoWay(),
+        new go.Binding("fromSpot", "fromSpot", go.Spot.parse).makeTwoWay(go.Spot.stringify),
+        new go.Binding("toSpot", "toSpot", go.Spot.parse).makeTwoWay(go.Spot.stringify),
+        $(go.Shape, {fill: 'lightblue', strokeWidth: 2}),  // Link appearance
+        $(go.Shape, {fill: 'lightblue', strokeWidth: 2, toArrow: 'Standard'})
       );
 
-
     // Attach event handlers
-    myDiagram.addDiagramListener('LinkDrawn', (e) => {
+    this.diagram.addDiagramListener('LinkDrawn', (e) => {
       const link = e.subject;
       const fromNode = link.fromNode;
       const toNode = link.toNode;
 
       if (fromNode && toNode && fromNode instanceof go.Node && toNode instanceof go.Node) {
-        // Perform any additional customizations on the link if needed
-        // For example, you can modify the link's appearance or add data properties
-
-        // Add the link to the diagram's model
         graphLinksModel.addLinkData(link.data);
       }
     });
@@ -70,30 +74,59 @@ export class HomeComponent implements OnInit {
   }
 
   private createPalette() {
-    // create a palette with four nodes and allow the user to copy them (execute a function) by dragging from the palette to the diagram
-    const $ = go.GraphObject.make;  // for conciseness in defining templates
     const myPalette =
       $(go.Palette, 'myPaletteDiv',  // must name or refer to the DIV HTML element
         { // share the templates with the Palette
           model: new go.GraphLinksModel([  // specify the contents of the Palette
-            { key: 'Alpha', color: 'lightblue' },
-            { key: 'Beta', color: 'orange' },
-            { key: 'Gamma', color: 'lightgreen' },
-            { key: 'Delta', color: 'pink' }
+            {key: 'alpha', color: 'lightblue'},
+            {key: 'Beta', color: 'orange'},
+            {key: 'Gamma', color: 'lightgreen'},
+            {key: 'Delta', color: 'pink', geo: 'F M0 0 L80 0 B-90 90 80 20 20 20 L100 100 20 100 B90 90 20 80 20 20z'}
           ])
         });
     // put all the nodes in column 1 of the palette with rectangles of equal width
-    myPalette.layout =  $(go.GridLayout,          // automatically lay out the palette  grid
-      { wrappingColumn: 1, cellSize: new go.Size(1, 1) }); // no space between rows and columns
+    myPalette.layout = $(go.GridLayout,          // automatically lay out the palette  grid
+      {wrappingColumn: 1, cellSize: new go.Size(1, 1)}); // no space between rows and columns
     // the node template is a simple rectangle
-    myPalette.nodeTemplate =
-      $(go.Node, 'Auto',  // the Shape will go around the TextBlock
-        $(go.Shape, 'RoundedRectangle', { strokeWidth: 0},  // stroke a width of zero
-          // Shape.fill is bound to Node.data.color
-          new go.Binding('fill', 'color')),  // end Shape
-        $(go.TextBlock, { margin: 8 },  // some room around the text
-          // TextBlock.text is bound to Node.data.key
-          new go.Binding('text', 'key')));  // end TextBlock and go.Node
-
+    myPalette.nodeTemplate = this.makeNodeTemplate();
   }
+
+  private makeNodeTemplate() {
+
+    const nodeTemplate = $(go.Node, 'Auto',  // the Shape will go around the TextBlock
+      new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
+      {
+        fromSpot: go.Spot.AllSides, toSpot: go.Spot.AllSides,
+        fromLinkable: true, toLinkable: true,
+        locationSpot: go.Spot.Center
+      },
+      $(go.Shape, 'RoundedRectangle',
+        {
+          width: 80,  // Set the desired width of the node
+          height: 80,  // Set the desired height of the node
+          strokeWidth: 0,
+          fill: 'lightblue'
+        }),
+      $(go.TextBlock, { margin: 10, textAlign: "center"} as go.TextBlock,
+        { fromLinkable: false, toLinkable: false },
+        new go.Binding("text", "key")
+      ),
+      this.makeLinkSelectionAdornment()
+    );
+    return nodeTemplate;
+  }
+
+  private makeLinkSelectionAdornment() {
+    return {
+      selectionAdornmentTemplate:
+        $(go.Adornment,
+          $(go.Shape, {
+            isPanelMain: true,
+            stroke: '#057D9F',
+            strokeWidth: 3
+          })
+        )
+    };
+  }
+
 }

@@ -3,3 +3,10 @@
 @import '~primeng/resources/primeng.min.css';
 @import '~primeicons/primeicons.css';
 @import '~bootstrap/dist/css/bootstrap.min.css';
+
+@font-face {
+  font-family: 'PrimeIcons';
+  src: url('~primeicons/fonts/primeicons.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
