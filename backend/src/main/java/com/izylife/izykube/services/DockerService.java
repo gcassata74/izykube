@@ -3,109 +3,101 @@ package com.izylife.izykube.services;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.BuildImageResultCallback;
-import com.github.dockerjava.api.command.CreateContainerResponse;
-import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.BuildResponseItem;
-import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.PullResponseItem;
 import com.github.dockerjava.core.DockerClientBuilder;
-import com.github.dockerjava.core.DockerClientConfig;
-import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.transport.DockerHttpClient;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.util.List;
+import java.io.FileOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
-/************************************************************************
- * Created: 12/07/22                                                     *
- * Author: Giuseppe Cassata                                              *
- ************************************************************************/
 @Service
-@Slf4j
-@RequiredArgsConstructor
 public class DockerService {
 
-  @NonNull
-  DockerClientConfig config;
+    private DockerClient dockerClient;
+    private static final Logger log = LoggerFactory.getLogger(DockerService.class);
 
-  @NonNull
-  DockerHttpClient httpClient;
-
-  public void pull(String image, String tag) {
-    if (tag == null) tag = "latest";
-    DockerClient dockerClient = DockerClientImpl.getInstance(config, httpClient);
-    try {
-      log.info("Pulling image {}:{}", image, tag);
-      ResultCallback.Adapter<PullResponseItem> pullImage = dockerClient.pullImageCmd(image).withTag(tag).exec(new PullImageResultCallback()).awaitCompletion();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    @Autowired
+    public DockerService(DockerClient dockerClient) {
+        this.dockerClient = dockerClient;
     }
-  }
 
-  public CreateContainerResponse run(String image) {
-    log.info("Creating container for image {}", image);
-    DockerClient dockerClient = DockerClientImpl.getInstance(config, httpClient);
-    CreateContainerResponse container =
-      dockerClient
-        .createContainerCmd(image)
-        .withTty(false)
-        .withStdinOpen(true)
-        .exec();
-    log.info("Staring container {} for image {}", container.getId(), image);
-    dockerClient.startContainerCmd(container.getId()).exec();
-    return container;
-  }
+    public String pullImage(String image, String tag) {
 
-  public InspectContainerResponse inspect(String containerId) {
-    log.info("Inspecting container: {}", containerId);
-    DockerClient dockerClient = DockerClientImpl.getInstance(config, httpClient);
-    InspectContainerResponse inspectContainer = dockerClient.inspectContainerCmd(containerId).exec();
-    return inspectContainer;
-  }
+        if (tag == null) tag = "latest";
+        try {
+            log.info("Pulling image {}:{}", image, tag);
+            ResultCallback.Adapter<PullResponseItem> pullImage = dockerClient.pullImageCmd(image).withTag(tag).exec(new PullImageResultCallback()).awaitCompletion();
+            return String.format("Image %s:$s created successfully!", image, tag);
+        } catch (Exception e) {
+            log.error("Error pulling image {}:{}", image, tag, e);
+            return String.format("Error pulling image %s:%s", image, tag);
+        }
+    }
 
-  public void stop(String containerId) {
-    log.info("Stopping container: {}", containerId);
-    DockerClient dockerClient = DockerClientImpl.getInstance(config, httpClient);
-    dockerClient.stopContainerCmd(containerId).exec();
-    log.info("Container {} stopped!" , containerId );
-  }
+    public String createImage(MultipartFile dockerFile, String imageName, String tag) {
 
-  public List<Container> list() {
-    log.info("Listing containers");
-    DockerClient dockerClient = DockerClientImpl.getInstance(config, httpClient);
-    return dockerClient.listContainersCmd().withShowAll(true).exec();
-  }
+        final String finalTag;
+        if (tag != null && !tag.isEmpty()) {
+            finalTag = tag;
+        } else {
+            finalTag = "latest";
+        }
 
-  public void deleteContainer(String containerId) {
-    log.info("Deleting container: {}",containerId);
-    DockerClient dockerClient = DockerClientImpl.getInstance(config, httpClient);
-    dockerClient.removeContainerCmd(containerId).exec();
-    log.info("container {} deleted",containerId);
-  }
+        try {
+            DockerClient dockerClient = DockerClientBuilder.getInstance().build();
+            BuildImageResultCallback callback = new BuildImageResultCallback() {
+                public void onNext(BuildResponseItem item) {
+                    super.onNext(item);
+                    log.info(String.format("Created image %s:%s", imageName, finalTag));
+                }
+            };
 
-  public void deleteImage(String image) {
-    log.info("Deleting image: {}",image);
-    DockerClient dockerClient = DockerClientImpl.getInstance(config, httpClient);
-    dockerClient.removeImageCmd(image).exec();
-    log.info("Image {} deleted",image);
-  }
+            Path tempDirectory = Files.createTempDirectory("docker-build");
+            File tempFile = File.createTempFile( dockerFile.getOriginalFilename(), ".tmp",tempDirectory.toFile() );
+            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                fos.write(dockerFile.getBytes());
+            }
 
-  public String createImageFromDockerfile(String path) throws Exception{
+            dockerClient.buildImageCmd(tempFile)
+                    .withTag(imageName + ":" + finalTag)
+                    .exec(callback)
+                    .awaitImageId();
 
-    DockerClient dockerClient = DockerClientBuilder.getInstance().build();
-    BuildImageResultCallback callback = new BuildImageResultCallback() {
-      public void onNext(BuildResponseItem item) {
-        System.out.println("" + item);
-      }
-    };
-    File dockerFile = new File(path);
-    return  dockerClient.buildImageCmd(dockerFile).exec(callback).awaitImageId();
+        } catch (Exception e) {
+            log.error("Error creating image {}:{}", imageName, tag, e);
+            return String.format("Error creating image %s:%s", imageName, tag);
+        }
 
-  }
+        return String.format("Created image %s:%s", imageName, finalTag);
+    }
+
+    public String startContainer(String containerId) {
+        dockerClient.startContainerCmd(containerId).exec();
+        return "Container started successfully!";
+    }
+
+    public String stopContainer(String containerId) {
+        dockerClient.stopContainerCmd(containerId).exec();
+        return "Container stopped successfully!";
+    }
+
+    public String removeContainer(String containerId) {
+        dockerClient.removeContainerCmd(containerId).exec();
+        return "Container removed successfully!";
+    }
+
+    public String removeImage(String imageId) {
+        dockerClient.removeImageCmd(imageId).exec();
+        return "Image removed successfully!";
+    }
 
 }
+

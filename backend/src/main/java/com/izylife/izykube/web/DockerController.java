@@ -1,40 +1,47 @@
 package com.izylife.izykube.web;
 
-
 import com.izylife.izykube.services.DockerService;
-import com.izylife.openapi.api.DockerApi;
-import io.fabric8.kubernetes.client.KubernetesClient;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-/************************************************************************
- * Created: 10/08/22                                                    *
- * Author: Giuseppe Cassata                                             *
- ************************************************************************/
 @RestController
-public class DockerController implements DockerApi {
+@RequestMapping("/api/docker")
+public class DockerController {
 
-  @Autowired
-  DockerService dockerService;
+    private final DockerService dockerService;
 
-  @Autowired
-  KubernetesClient client;
-
-  @Override
-  public ResponseEntity<String> createImagePost(@RequestParam("path") String path) {
-
-    String imageId;
-    // Use the Dockerfile to create an image
-    try {
-      imageId = dockerService.createImageFromDockerfile(path);
-    } catch (Exception e) {
-      return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    public DockerController(DockerService dockerService) {
+        this.dockerService = dockerService;
     }
-    return new ResponseEntity<>("Image created successfully", HttpStatus.OK);
-  }
 
+    @PostMapping("/pull")
+    public String pullImage(@RequestParam String imageName,@RequestParam(required = false) String tag) {
+        return dockerService.pullImage(imageName, tag);
+    }
 
+    @PostMapping("/create")
+    public String createImage(@RequestParam MultipartFile dockerFile, @RequestParam String imageName, @RequestParam String tag) {
+        return dockerService.createImage(dockerFile, imageName, tag);
+    }
+
+    @PostMapping("/start")
+    public String startContainer(@RequestParam String containerId) {
+        return dockerService.startContainer(containerId);
+    }
+
+    @PostMapping("/stop")
+    public String stopContainer(@RequestParam String containerId) {
+        return dockerService.stopContainer(containerId);
+    }
+
+    @DeleteMapping("/container")
+    public String removeContainer(@RequestParam String containerId) {
+        return dockerService.removeContainer(containerId);
+    }
+
+    @DeleteMapping("/image")
+    public String removeImage(@RequestParam String imageId) {
+        return dockerService.removeImage(imageId);
+    }
 }
+

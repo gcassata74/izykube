@@ -1,8 +1,8 @@
 package com.izylife.izykube.configuration;
 
+import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
-import com.github.dockerjava.core.DockerClientConfig;
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
+import com.github.dockerjava.core.DockerClientBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -10,36 +10,26 @@ import org.springframework.context.annotation.Configuration;
  * Created: 12/08/22                                                    *
  * Author: Giuseppe Cassata                                             *
  ************************************************************************/
-;import java.time.Duration;
+;
 
 @Configuration
 public class DockerConfiguration {
 
   @Bean
-  public DockerClientConfig dockerConfig() {
-    return DefaultDockerClientConfig.createDefaultConfigBuilder()
-      //.withDockerHost("tcp://docker.somewhere.tld:2376")
-      .withDockerHost("unix:///var/run/docker.sock")
-      .withDockerTlsVerify(false)
-      //.withDockerCertPath("/home/user/.docker")
-      .withRegistryUsername("gcassata")
-      .withRegistryPassword("GCavlc741#")
-      .withRegistryEmail("giuseppe.cassata74@gmail.com")
-      .withRegistryUrl("https://registry.hub.docker.com")
-      .build();
-  }
+  public DockerClient dockerClient() {
+    var config = DefaultDockerClientConfig.createDefaultConfigBuilder()
+            .withDockerHost("unix:///var/run/docker.sock")
+            // If you're using Docker credentials, set them here.
+            //.withDockerTlsVerify(true)
+            //.withDockerCertPath("/path/to/cert")
+            //.withDockerConfig("/path/to/config")
+            //.withRegistryUrl("https://index.docker.io/v1/")
+            //.withRegistryUsername("dockeruser")
+            //.withRegistryPassword("dockerpass")
+            //.withRegistryEmail("dockeremail")
+            .build();
 
-  @Bean
-  public ApacheDockerHttpClient dockerClient(){
-    ApacheDockerHttpClient httpClient =  new ApacheDockerHttpClient.Builder()
-      .dockerHost(dockerConfig().getDockerHost())
-      .sslConfig(dockerConfig().getSSLConfig())
-      .maxConnections(100)
-      .connectionTimeout(Duration.ofSeconds(30))
-      .responseTimeout(Duration.ofSeconds(45))
-      .build();
-
-    return httpClient;
+    return DockerClientBuilder.getInstance(config).build();
   }
 
 }

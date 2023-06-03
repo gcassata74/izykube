@@ -93,7 +93,7 @@ export class HomeComponent implements OnInit {
 
   private makeNodeTemplate() {
 
-    const nodeTemplate = $(go.Node, 'Auto',  // the Shape will go around the TextBlock
+    const nodeTemplate = $(go.Node, 'Vertical',  // the Shape will go around the TextBlock
       new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
       {
         fromSpot: go.Spot.AllSides, toSpot: go.Spot.AllSides,
@@ -108,7 +108,7 @@ export class HomeComponent implements OnInit {
           fill: 'lightblue'
         }),
       $(go.TextBlock, { margin: 10, textAlign: "center"} as go.TextBlock,
-        { fromLinkable: false, toLinkable: false },
+        { fromLinkable: false, toLinkable: false, editable: true },
         new go.Binding("text", "key")
       ),
       this.makeLinkSelectionAdornment()
