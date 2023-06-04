@@ -19,13 +19,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Service
-public class DockerService {
+public class DockerImageService {
 
     private DockerClient dockerClient;
-    private static final Logger log = LoggerFactory.getLogger(DockerService.class);
+    private static final Logger log = LoggerFactory.getLogger(DockerImageService.class);
 
     @Autowired
-    public DockerService(DockerClient dockerClient) {
+    public DockerImageService(DockerClient dockerClient) {
         this.dockerClient = dockerClient;
     }
 
@@ -77,21 +77,6 @@ public class DockerService {
         }
 
         return String.format("Created image %s:%s", imageName, finalTag);
-    }
-
-    public String startContainer(String containerId) {
-        dockerClient.startContainerCmd(containerId).exec();
-        return "Container started successfully!";
-    }
-
-    public String stopContainer(String containerId) {
-        dockerClient.stopContainerCmd(containerId).exec();
-        return "Container stopped successfully!";
-    }
-
-    public String removeContainer(String containerId) {
-        dockerClient.removeContainerCmd(containerId).exec();
-        return "Container removed successfully!";
     }
 
     public String removeImage(String imageId) {
