@@ -10,12 +10,12 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-public class PodService {
+public class K8sPodService {
 
     private final KubernetesClient kubernetesClient;
 
     @Autowired
-    public PodService(KubernetesClient kubernetesClient) {
+    public K8sPodService(KubernetesClient kubernetesClient) {
         this.kubernetesClient = kubernetesClient;
     }
 

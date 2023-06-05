@@ -1,5 +1,5 @@
 package com.izylife.izykube.web;
-import com.izylife.izykube.services.PodService;
+import com.izylife.izykube.services.K8sPodService;
 import io.fabric8.kubernetes.api.model.Pod;
 import org.springframework.web.bind.annotation.*;
 
@@ -7,11 +7,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/pods")
-public class PodController {
+public class K8sPodController {
 
-    private final PodService podService;
+    private final K8sPodService podService;
 
-    public PodController(PodService podService) {
+    public K8sPodController(K8sPodService podService) {
         this.podService = podService;
     }
 

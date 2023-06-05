@@ -1,6 +1,7 @@
 package com.izylife.izykube.services;
 
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.exception.DockerException;
 import com.github.dockerjava.api.model.AuthConfig;
 import com.github.dockerjava.core.command.PushImageResultCallback;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,11 @@ public class DockerRegistryService {
         } catch (Exception e) {
             return "Failed to push the image to the local Docker registry: " + e.getMessage();
         }
+    }
+
+    public String deleteImageFromLocalRegistry(String imageName) throws DockerException, InterruptedException {
+        dockerClient.removeImageCmd(imageName).exec();
+        return String.format("Image %s removed from the local Docker registry",imageName);
     }
 
 }

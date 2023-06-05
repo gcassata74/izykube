@@ -1,6 +1,6 @@
 package com.izylife.izykube.web;
 
-import com.izylife.izykube.services.DeploymentService;
+import com.izylife.izykube.services.K8sDeploymentService;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import org.springframework.web.bind.annotation.*;
 
@@ -8,11 +8,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/deployments")
-public class DeploymentController {
+public class K8sDeploymentController {
 
-    private final DeploymentService deploymentService;
+    private final K8sDeploymentService deploymentService;
 
-    public DeploymentController(DeploymentService deploymentService) {
+    public K8sDeploymentController(K8sDeploymentService deploymentService) {
         this.deploymentService = deploymentService;
     }
 

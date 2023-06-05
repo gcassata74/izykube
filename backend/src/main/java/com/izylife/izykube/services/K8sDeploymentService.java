@@ -12,11 +12,11 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-public class DeploymentService {
+public class K8sDeploymentService {
 
     private final KubernetesClient kubernetesClient;
 
-    public DeploymentService(KubernetesClient kubernetesClient) {
+    public K8sDeploymentService(KubernetesClient kubernetesClient) {
         this.kubernetesClient = kubernetesClient;
     }
 
