@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/pods")
+@RequestMapping("/api/k8s/pods")
 public class K8sPodController {
 
     private final K8sPodService podService;

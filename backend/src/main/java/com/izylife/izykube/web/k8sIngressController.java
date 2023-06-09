@@ -1,10 +1,8 @@
 package com.izylife.izykube.web;
 
-import com.izylife.izykube.model.ServiceInfo;
+import com.izylife.izykube.model.IngressRequest;
 import com.izylife.izykube.services.K8sIngressService;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/k8s/ingress")
@@ -17,9 +15,8 @@ public class k8sIngressController {
     }
 
     @PostMapping
-    public String createIngress(@RequestBody List<ServiceInfo> services,@RequestParam(required = false) String namespace) {
-        kubernetesService.createIngress(services,namespace);
-        return "Ingress created successfully";
+    public String createIngress(@RequestBody IngressRequest ingressRequest, @RequestParam(required = false) String namespace) {
+        return kubernetesService.createIngress(ingressRequest, namespace);
     }
 
 
