@@ -7,6 +7,7 @@ import { AppComponent } from './app.component';
 import { HomeComponent } from './home/home.component';
 import { DiagramComponent } from './diagram/diagram.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import {ToolbarModule} from 'primeng/toolbar';
 
 @NgModule({
   declarations: [
@@ -18,6 +19,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
     BrowserModule,
     AppRoutingModule,
     SidebarModule,
+    ToolbarModule,
     MenuModule,
     BrowserAnimationsModule
   ],

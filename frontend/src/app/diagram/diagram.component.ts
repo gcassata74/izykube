@@ -47,7 +47,6 @@ export class DiagramComponent implements OnInit {
            { gridCellSize: new go.Size(10, 10) },
            $(go.Shape, "LineH", { strokeDashArray: [1, 9] })
        )
-    
      });
  
      this.diagram.nodeTemplate = this.makeNodeTemplate();
@@ -62,15 +61,13 @@ export class DiagramComponent implements OnInit {
            resegmentable: true,
            relinkableFrom: true,
            relinkableTo: true,
-           adjusting: go.Link.Stretch,
-           toShortLength: 50,
-           fromShortLength: 50
+           adjusting: go.Link.Stretch
          },
          new go.Binding("points").makeTwoWay(),
          new go.Binding("fromSpot", "fromSpot", go.Spot.parse).makeTwoWay(go.Spot.stringify),
          new go.Binding("toSpot", "toSpot", go.Spot.parse).makeTwoWay(go.Spot.stringify),
-         $(go.Shape, {fill: 'lightblue', strokeWidth: 2}),  // Link appearance
-         $(go.Shape, {fill: 'lightblue', strokeWidth: 2, toArrow: 'Standard'})
+         $(go.Shape, {fill: 'lightblue', strokeWidth: 3}),  // Link appearance
+         $(go.Shape, {fill: 'lightblue', strokeWidth: 3, toArrow: 'Standard'})
        );
  
      // Attach event handlers
@@ -83,10 +80,7 @@ export class DiagramComponent implements OnInit {
          graphLinksModel.addLinkData(link.data);
        }
      });
- 
    }
-
-
 
  
    private createPalette() {
@@ -94,10 +88,10 @@ export class DiagramComponent implements OnInit {
        $(go.Palette, 'myPaletteDiv',  // must name or refer to the DIV HTML element
          { // share the templates with the Palette
            model: new go.GraphLinksModel([  // specify the contents of the Palette
-             {key: 'alpha', color: 'lightblue'},
-             {key: 'Beta', color: 'orange'},
-             {key: 'Gamma', color: 'lightgreen'},
-             {key: 'Delta', color: 'pink'}
+             {key: 'alpha'},
+             {key: 'Beta'},
+             {key: 'Gamma'},
+             {key: 'Delta'}
            ]),
            grid:
            $(go.Panel, "Grid",
@@ -115,7 +109,7 @@ export class DiagramComponent implements OnInit {
    }
 
   private makeNodeTemplate() {
-    return $(go.Node, "Auto",
+    return $(go.Node, "auto",
       {
         locationSpot: go.Spot.Center,
         movable: true
@@ -125,10 +119,7 @@ export class DiagramComponent implements OnInit {
         {
           width: 80, height: 80, strokeWidth: 0, fill: 'lightblue'
         }),
-        $(go.TextBlock, { margin: 10, textAlign: "center"} as go.TextBlock,
-         { fromLinkable: false, toLinkable: false, editable: true },
-         new go.Binding("text", "key")
-       ),
+      
       $(go.Panel, "Spot", // This panel holds the port
       { background: null },  // Ensure the panel has no background
         $(go.Shape, "Circle", // The port shape
@@ -139,14 +130,15 @@ export class DiagramComponent implements OnInit {
             toSpot: go.Spot.AllSides, // Links come in from all sides
             fromLinkable: true, toLinkable: true,
             cursor: "pointer", // Cursor indication for linking,
-            width: 50, height: 50,  // Small size for the port
-            fill: "transparent", stroke: "transparent"
+            width: 80, height: 80,  // Small size for the port
+            fill: "trnsparent", stroke: "transparent"
           }),
         $(go.TextBlock, { margin: 5 },
           new go.Binding("text", "key"))
       )
     );
   }
+
   
  
    @HostListener('document:mousemove', ['$event'])

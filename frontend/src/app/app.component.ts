@@ -8,23 +8,12 @@ import { MenuItem } from 'primeng/api';
 })
 export class AppComponent implements OnInit{
 
-
-
   title = 'frontend';
-  items!: MenuItem[];
+  displaySidebar = true;
 
 
-  ngOnInit(): void {
-    this.items = [
-      { label: 'Home', icon: 'pi pi-fw pi-home' },
-      { label: 'About', icon: 'pi pi-fw pi-info' },
-      // ... more items
-    ];
-  }
-
-  onSidebarClose() {
-      throw new Error('Method not implemented.');
-    }  
+  ngOnInit(): void {} 
+    
 
 
 
