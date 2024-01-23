@@ -1,6 +1,6 @@
 package com.izylife.izykube.web;
 
-import com.izylife.izykube.model.ServiceRequest;
+import com.izylife.izykube.dto.ServiceRequest;
 import com.izylife.izykube.services.K8sServiceService;
 import org.springframework.web.bind.annotation.*;
 

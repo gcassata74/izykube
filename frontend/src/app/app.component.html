@@ -1,1 +1,13 @@
-<router-outlet></router-outlet>
+<div class="app-container">
+    <p-sidebar class="app-sidebar" [showCloseIcon]="false" [visible]="true" position="left" (onHide)="onSidebarClose()">
+        <ul>
+            <li><a><i class="pi pi-home"></i> Home</a></li>
+            <li><a><i class="pi pi-user"></i> About</a></li>
+            <li><a><i class="pi pi-envelope"></i> Contact</a></li>
+            <!-- more items -->
+        </ul>
+    </p-sidebar>
+    <div class="content-container">
+      <router-outlet></router-outlet>
+    </div>
+  </div>

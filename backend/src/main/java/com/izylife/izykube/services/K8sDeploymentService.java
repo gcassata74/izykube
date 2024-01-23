@@ -1,7 +1,7 @@
 package com.izylife.izykube.services;
 
 
-import com.izylife.izykube.model.DeploymentRequest;
+import com.izylife.izykube.dto.DeploymentRequest;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentList;

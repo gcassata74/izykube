@@ -1,0 +1,7 @@
+<div class="container" #container>
+    <div class="first-column" id="myPaletteDiv" [style.width.px]="firstColumnWidth">
+    </div>
+    <div class="resizer" (mousedown)="startResizing($event)"></div>
+    <div class="second-column" id="myDiagramDiv">
+    </div>
+  </div>
