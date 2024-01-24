@@ -4,28 +4,22 @@ import { Injectable } from '@angular/core';
   providedIn: 'root'
 })
 export class IconService {
+  private icons: { [key: string]: string } = {};
 
-  constructor() { }
+  // Define a configuration object with icon names and file paths
+  private iconConfig = {
+    'ingress': 'assets/images/diagram/ingress.svg',
+    'example2': 'assets/example2.svg',
+    // Add more entries as needed
+  };
 
-  // Function to convert an icon to a Base64 image
+  constructor() {
+    // Initialize the icons map with the configuration object
+    this.icons = { ...this.iconConfig };
+  }
 
-  convertIconToBase64(iconClass: string): string {
-    // Create a canvas element
-    const canvas = document.createElement('canvas');
-    canvas.width = 100;
-    canvas.height = 100;
-  
-    // Draw the icon onto the canvas using the font icon style
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = '#000000';
-      ctx.font = 'normal 24px PrimeIcons';
-      ctx.textBaseline = 'middle';
-      ctx.textAlign = 'center';
-      ctx.fillText(iconClass, canvas.width / 2, canvas.height / 2);
-    }
-  
-    // Convert the canvas to a data URL and return the base64 representation
-    return canvas.toDataURL();
+  // Retrieve the file path for a given image name
+  getIconPath(name: string): string {
+    return this.icons[name] || '';
   }
 }

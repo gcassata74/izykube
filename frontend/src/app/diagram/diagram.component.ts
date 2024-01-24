@@ -93,7 +93,7 @@ export class DiagramComponent implements OnInit {
 
     // Node data array with icon URLs
     var nodeDataArray = [
-        { key: 'Alpha', icon: this.iconService.convertIconToBase64('pippo') }, 
+        { key: 'Ingress', icon: this.iconService.getIconPath('ingress') }, 
         { key: 'Beta', icon: 'path_to_istio_icon' },
         { key: 'Gamma', icon: 'path_to_keycloak_icon' },
         { key: 'Delta', icon: 'path_to_mongodb_icon' }
@@ -137,18 +137,32 @@ private makeNodeTemplate() {
               fromLinkable: true, toLinkable: true, cursor: "pointer"
           }
       ),
-      // Vertical panel to stack the shape and the text block
+      
+      // Panel with a blue border and white background
       $(go.Panel, "Auto",
+          {
+              background: "white",  // Set the background color to white
+              padding: 3,           // Add padding for the blue border
+              defaultStretch: go.GraphObject.Fill
+          },
+          // Blue border around the panel
+          $(go.Shape, "Rectangle",
+              {
+                  stroke: "#4747ff",       // Set the border color to blue
+                  strokeWidth: 3,       // Set the border width to 3 pixels
+                  stretch: go.GraphObject.Fill
+              }
+          ),
           // Inner node visual representation
           $(go.Shape, "Rectangle",
               {
-                  width: 80, height: 80, fill: 'lightblue', strokeWidth: 2
+                  width: 80, height: 80, fill: 'white', strokeWidth: 2
               }
           ),
           // Place the Picture (icon) inside the node shape
           $(go.Picture,
               {
-                  width: 50, height: 50, margin: 10
+                  width: 50, height: 50, margin: 10,
               },
               new go.Binding("source", "icon") // Bind picture source to icon property in the node data
           ),
@@ -162,6 +176,7 @@ private makeNodeTemplate() {
     )
   );
 }
+
 
 
    @HostListener('document:mousemove', ['$event'])
