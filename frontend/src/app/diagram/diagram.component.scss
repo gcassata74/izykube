@@ -3,7 +3,7 @@
 
 .container {
   display: flex; /* This makes it a flex container */
-  height: calc(100% - 50px); /* Full height of the viewport */
+  height: 100%; /* Full height of the viewport */
   width: calc(100% - 256px);   
   margin-left: 0px; 
 
