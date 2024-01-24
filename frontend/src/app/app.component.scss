@@ -10,6 +10,13 @@
   background: #fff; // Optional: for visibility
 }
 
+
+.app-toolbar-content .title{
+  font-size: 20px; 
+  width: 256px;
+}
+
+
 .app-container {
   display: flex;
   flex-direction: column;

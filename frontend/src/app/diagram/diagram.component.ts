@@ -156,7 +156,8 @@ private makeNodeTemplate() {
           // Inner node visual representation
           $(go.Shape, "Rectangle",
               {
-                  width: 80, height: 80, fill: 'white', strokeWidth: 2
+                  width: 80, height: 80, fill: 'white', strokeWidth: 2,
+                  cursor: "hand"
               }
           ),
           // Place the Picture (icon) inside the node shape
