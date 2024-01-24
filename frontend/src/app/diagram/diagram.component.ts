@@ -1,3 +1,4 @@
+import { IconService } from './../services/icon.service';
 import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import * as go from 'gojs';
 
@@ -25,7 +26,10 @@ export class DiagramComponent implements OnInit {
   firstColumnWidth: number = 200; // Initial width in pixels
   minWidth: number = 200; // Minimum width of the first column in pixels
 
+ 
+  constructor(private iconService : IconService) { }
 
+ 
   ngOnInit(): void {
     //write methods to create the gojs diagram
     this.createDiagram();
@@ -83,64 +87,83 @@ export class DiagramComponent implements OnInit {
    }
 
  
+  
    private createPalette() {
-     const myPalette =
-       $(go.Palette, 'myPaletteDiv',  // must name or refer to the DIV HTML element
-         { // share the templates with the Palette
-           model: new go.GraphLinksModel([  // specify the contents of the Palette
-             {key: 'alpha'},
-             {key: 'Beta'},
-             {key: 'Gamma'},
-             {key: 'Delta'}
-           ]),
-           grid:
-           $(go.Panel, "Grid",
-               { gridCellSize: new go.Size(10, 10) },
-               $(go.Shape, "LineH", { strokeDashArray: [1, 9] })
-           )
-         });
-         
- 
-     // put all the nodes in column 1 of the palette with rectangles of equal width
-     myPalette.layout = $(go.GridLayout,          // automatically lay out the palette  grid
-       {wrappingColumn: 1, cellSize: new go.Size(1, 1)}); // no space between rows and columns
-     // the node template is a simple rectangle
-     myPalette.nodeTemplate = this.makeNodeTemplate();
-   }
+    const $ = go.GraphObject.make;
 
-  private makeNodeTemplate() {
-    return $(go.Node, "auto",
+    // Node data array with icon URLs
+    var nodeDataArray = [
+        { key: 'Alpha', icon: this.iconService.convertIconToBase64('pippo') }, 
+        { key: 'Beta', icon: 'path_to_istio_icon' },
+        { key: 'Gamma', icon: 'path_to_keycloak_icon' },
+        { key: 'Delta', icon: 'path_to_mongodb_icon' }
+    ];
+
+    // Initialize the palette
+    const myPalette =
+        $(go.Palette, 'myPaletteDiv',
+            {
+                model: new go.GraphLinksModel(nodeDataArray, ), // Pass the node data array to the model
+                layout: $(go.GridLayout, { wrappingColumn: 1, cellSize: new go.Size(1, 1) }),
+                grid: $(go.Panel, "Grid",
+                    { gridCellSize: new go.Size(10, 10) },
+                    $(go.Shape, "LineH", { strokeDashArray: [1, 9] })
+                )
+            }, 
+        );
+
+        myPalette.nodeTemplate = this.makeNodeTemplate();
+}
+
+
+private makeNodeTemplate() {
+  const $ = go.GraphObject.make; // Define a shorthand variable for GoJS methods
+
+  return $(go.Node, "Spot",  // Use 'Spot' for the main node panel
       {
-        locationSpot: go.Spot.Center,
-        movable: true
+          locationSpot: go.Spot.Center,
+          movable: true
       },
       new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
-      $(go.Shape, 'RoundedRectangle', // This is the main object of the node
-        {
-          width: 80, height: 80, strokeWidth: 0, fill: 'lightblue'
-        }),
       
-      $(go.Panel, "Spot", // This panel holds the port
-      { background: null },  // Ensure the panel has no background
-        $(go.Shape, "Circle", // The port shape
+      // Outer transparent rectangle larger than the node, acts as the linkable area
+      $(go.Shape, "Rectangle",
           {
-            alignment: go.Spot.Center, // Align the port
-            portId: "", // Declare this shape to be a "port"
-            fromSpot: go.Spot.AllSides, // Links go out from all sides
-            toSpot: go.Spot.AllSides, // Links come in from all sides
-            fromLinkable: true, toLinkable: true,
-            cursor: "pointer", // Cursor indication for linking,
-            width: 80, height: 80,  // Small size for the port
-            fill: "trnsparent", stroke: "transparent"
-          }),
-        $(go.TextBlock, { margin: 5 },
-          new go.Binding("text", "key"))
-      )
-    );
-  }
+              fill: "transparent",  // Transparent so it doesn't obscure the node
+              stroke: null,  // No visible stroke
+              strokeWidth: 0,
+              width: 100, height: 100,  // Larger than the node to act as a linkable area
+              portId: "",  // This shape acts as the port
+              fromLinkable: true, toLinkable: true, cursor: "pointer"
+          }
+      ),
+      // Vertical panel to stack the shape and the text block
+      $(go.Panel, "Auto",
+          // Inner node visual representation
+          $(go.Shape, "Rectangle",
+              {
+                  width: 80, height: 80, fill: 'lightblue', strokeWidth: 2
+              }
+          ),
+          // Place the Picture (icon) inside the node shape
+          $(go.Picture,
+              {
+                  width: 50, height: 50, margin: 10
+              },
+              new go.Binding("source", "icon") // Bind picture source to icon property in the node data
+          ),
+          // Node label inside the shape, below the icon
+      ),
+      $(go.TextBlock,
+        {
+            alignment: go.Spot.Bottom, margin: 5, editable: true, textAlign: "center"
+        },
+        new go.Binding("text", "key")
+    )
+  );
+}
 
-  
- 
+
    @HostListener('document:mousemove', ['$event'])
    onMouseMove(event: MouseEvent) {
      if (this.isResizing) {
