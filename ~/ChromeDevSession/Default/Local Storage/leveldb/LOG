@@ -1,3 +1,15 @@
-2024/01/23-23:12:22.359 6 Reusing MANIFEST /home/gcassata/gitrepos/izylife/izykube/~/ChromeDevSession/Default/Local Storage/leveldb/MANIFEST-000001
-2024/01/23-23:12:22.360 6 Recovering log #3
-2024/01/23-23:12:22.360 6 Reusing old log /home/gcassata/gitrepos/izylife/izykube/~/ChromeDevSession/Default/Local Storage/leveldb/000003.log 
+2024/01/24-21:16:36.243 4 Reusing MANIFEST /home/gcassata/gitrepos/izylife/izykube/~/ChromeDevSession/Default/Local Storage/leveldb/MANIFEST-000001
+2024/01/24-21:16:36.244 4 Recovering log #3
+2024/01/24-21:16:36.244 4 Reusing old log /home/gcassata/gitrepos/izylife/izykube/~/ChromeDevSession/Default/Local Storage/leveldb/000003.log 
+2024/01/24-22:59:45.945 6 Level-0 table #5: started
+2024/01/24-22:59:45.947 6 Level-0 table #5: 48075 bytes OK
+2024/01/24-22:59:45.949 6 Delete type=0 #3
+2024/01/24-23:01:21.186 6 Level-0 table #7: started
+2024/01/24-23:01:21.193 6 Level-0 table #7: 78556 bytes OK
+2024/01/24-23:01:21.197 6 Delete type=0 #4
+2024/01/24-23:14:19.150 6 Level-0 table #9: started
+2024/01/24-23:14:19.154 6 Level-0 table #9: 93015 bytes OK
+2024/01/24-23:14:19.157 6 Delete type=0 #6
+2024/01/24-23:28:35.911 4 Level-0 table #11: started
+2024/01/24-23:28:35.914 4 Level-0 table #11: 62727 bytes OK
+2024/01/24-23:28:35.917 4 Delete type=0 #8

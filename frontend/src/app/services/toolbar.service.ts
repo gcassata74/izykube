@@ -1,10 +1,6 @@
 // toolbar.service.ts
 import { BehaviorSubject } from 'rxjs';
-
-export interface Button {
-  name: string;
-  route: string;
-}
+import { Button } from '../model/button.class';
 
 
 

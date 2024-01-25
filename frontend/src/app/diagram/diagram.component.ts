@@ -94,9 +94,9 @@ export class DiagramComponent implements OnInit {
     // Node data array with icon URLs
     var nodeDataArray = [
         { key: 'Ingress', icon: this.iconService.getIconPath('ingress') }, 
-        { key: 'Beta', icon: 'path_to_istio_icon' },
-        { key: 'Gamma', icon: 'path_to_keycloak_icon' },
-        { key: 'Delta', icon: 'path_to_mongodb_icon' }
+        { key: 'Pod', icon: this.iconService.getIconPath('pod')  },
+        { key: 'Service', icon: 'path_to_keycloak_icon' },
+        { key: 'ConfigMap', icon: 'path_to_mongodb_icon' }
     ];
 
     // Initialize the palette

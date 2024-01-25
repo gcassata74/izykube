@@ -77,6 +77,10 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-bootstrap</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-kubernetes-fabric8</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -112,6 +116,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+
         <dependency>
             <groupId>org.springframework.data</groupId>
             <artifactId>spring-data-jpa</artifactId>
@@ -148,21 +153,7 @@
             <artifactId>docker-java-transport-httpclient5</artifactId>
             <version>${docker.java.core.version}</version>
         </dependency>
-        <dependency>
-            <groupId>io.fabric8</groupId>
-            <artifactId>kubernetes-client</artifactId>
-            <version>6.7.1</version>
-        </dependency>
-        <dependency>
-            <groupId>io.fabric8</groupId>
-            <artifactId>kubernetes-model</artifactId>
-            <version>6.7.1</version>
-        </dependency>
-<!--        <dependency>-->
-<!--            <groupId>io.fabric8</groupId>-->
-<!--            <artifactId>kubernetes-model-core</artifactId>-->
-<!--            <version>6.7.1</version>-->
-<!--        </dependency>-->
+
 
     </dependencies>
     <build>
@@ -225,7 +216,7 @@
                             <outputDirectory>${basedir}/target/classes/static/</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${basedir}/../client/src/main/angular/dist</directory>
+                                    <directory>${basedir}/../frontend/dist</directory>
                                 </resource>
                             </resources>
                         </configuration>

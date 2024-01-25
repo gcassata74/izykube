@@ -8,3 +8,6 @@ run-chrome-dev:
 
 run-angular-client:
 	cd frontend && npm start
+
+run-spring-boot-server:
+	cd backend && mvn spring-boot:run

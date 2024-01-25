@@ -59,7 +59,6 @@ public class K8sDeploymentService {
                 .build();
 
         deployment = kubernetesClient.apps().deployments().inNamespace(namespace).create(deployment);
-
         return "Created deployment " + deployment.getMetadata().getName() + " in namespace " + namespace;
     }
 
