@@ -8,7 +8,6 @@ public class FallBackController {
 
     @GetMapping("/")
     public String redirect() {
-        // Forward to home page so that route is preserved.
         return "forward:/index.html";
     }
 

@@ -11,3 +11,6 @@ server:
 
 jwt:
   secret: izykube
+
+mongock:
+  migration-scan-package: com.izylife.izykube.changelogs

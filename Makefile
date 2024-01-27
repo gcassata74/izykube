@@ -10,4 +10,4 @@ run-angular-client:
 	cd frontend && npm start
 
 run-spring-boot-server:
-	cd backend && mvn spring-boot:run
+	cd backend && MAVEN_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005" mvn spring-boot:run
