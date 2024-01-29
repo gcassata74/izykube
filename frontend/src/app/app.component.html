@@ -1,26 +1,32 @@
 <div class="app-container">
   <!-- PrimeNG Toolbar -->
+
   <p-toolbar styleClass="app-toolbar">
     <div class="app-toolbar-content">
-          <!-- Toolbar content -->
-      <div class="title">My Application</div>
-          <!-- Add more elements as needed -->
-      </div>
+      <!-- Toolbar content -->
+      <div class="title" style="margin-left: 256px;">My Application</div>
+      <!-- Dynamically added buttons from ToolbarService -->
+      <ng-container *ngIf="toolBarService.buttons$ | async as buttons">
+        <button *ngFor="let btn of buttons" (click)="performAction(btn.action)">
+          <i [class]="btn.icon"></i> {{ btn.label }}
+        </button>
+      </ng-container>
+    </div>
   </p-toolbar>
 
 
   <!-- Sidebar -->
   <p-sidebar class="app-sidebar" [showCloseIcon]="false" [visible]="true" [modal]="false" position="left">
-      <ul>
-          <li><a><i class="pi pi-home"></i> Home</a></li>
-          <li><a><i class="pi pi-user"></i> About</a></li>
-          <li><a><i class="pi pi-envelope"></i> Contact</a></li>
-          <!-- more items -->
-      </ul>
+    <ul>
+      <li><a (click)="navigate('/home')"><i class="pi pi-home"></i> Home</a></li>
+      <li><a (click)="navigate('/clusters')"><i class="pi pi-fw pi-th-large"></i> Clusters</a></li>
+      <li><a (click)="navigate('/assets')"><i class="pi pi-fw pi-briefcase"></i> Assets</a></li>
+      <!-- more items -->
+    </ul>
   </p-sidebar>
 
   <!-- Main Content -->
   <div class="content-container">
-      <router-outlet></router-outlet>
+    <router-outlet></router-outlet>
   </div>
 </div>

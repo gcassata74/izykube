@@ -1,20 +1,14 @@
-import { Action, createReducer, on } from "@ngrx/store";
-import { MainState, initialState } from "../states/state";
-import * as actions from '../actions/action';
 
-const featureReducer = createReducer(
-    initialState.mainState,
-  
-    on(actions.Init, (state: MainState) => ({
-      ...state,
-    })),
-  
-  );
-  
-  export function reducer(
-    state: MainState | undefined,
-    action: Action,
-  ): MainState {
-    return featureReducer(state, action);
-  }
-  
+import { createReducer, on } from '@ngrx/store';
+import * as actions from '../actions/actions';
+import { MainState, initialState } from '../states/state';
+
+
+export const reducer = createReducer(
+  initialState.mainState,
+
+  on(actions.setCurrentAction, (state: MainState, { action }) => ({
+    ...state,
+    currentAction: action,
+  }))
+);

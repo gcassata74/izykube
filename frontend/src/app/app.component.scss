@@ -41,5 +41,8 @@
   z-index: 1; // Lower than toolbar and sidebar
 }
 
+.app-sidebar li {
+  cursor: pointer;
+}
 
 

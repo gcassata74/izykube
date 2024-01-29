@@ -132,7 +132,7 @@ private makeNodeTemplate() {
               fill: "transparent",  // Transparent so it doesn't obscure the node
               stroke: null,  // No visible stroke
               strokeWidth: 0,
-              width: 100, height: 100,  // Larger than the node to act as a linkable area
+              width: 80, height: 80,  // Larger than the node to act as a linkable area
               portId: "",  // This shape acts as the port
               fromLinkable: true, toLinkable: true, cursor: "pointer"
           }
@@ -156,14 +156,14 @@ private makeNodeTemplate() {
           // Inner node visual representation
           $(go.Shape, "Rectangle",
               {
-                  width: 80, height: 80, fill: 'white', strokeWidth: 2,
+                  width: 60, height: 60, fill: 'white', strokeWidth: 2,
                   cursor: "hand"
               }
           ),
           // Place the Picture (icon) inside the node shape
           $(go.Picture,
               {
-                  width: 50, height: 50, margin: 10,
+                  width: 40, height: 40, margin: 5,
               },
               new go.Binding("source", "icon") // Bind picture source to icon property in the node data
           ),

@@ -1,0 +1,42 @@
+<p-toolbar>
+  <div class="p-toolbar-group-right">
+    <button pButton label="Refresh" icon="pi pi-refresh" (click)="refreshTable()"></button>
+    <button pButton label="Add" icon="pi pi-plus" (click)="addCluster()" styleClass="p-button-success"></button>
+  </div>
+</p-toolbar>
+
+<p-table [value]="clusters">
+  <ng-template pTemplate="header">
+    <tr>
+      <th>Name</th>
+      <th>Version</th>
+      <th>Created</th>
+      <th>Type</th>
+      <th>Owner</th>
+      <th>Resources</th>
+      <th>Scheduled time</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </ng-template>
+  <ng-template pTemplate="body" let-cluster>
+    <tr>
+      <td>{{ cluster.name }}</td>
+      <td>{{ cluster.version }}</td>
+      <td>{{ cluster.created | date: 'short' }}</td>
+      <td>{{ cluster.type }}</td>
+      <td>{{ cluster.owner }}</td>
+      <td>CPU {{ cluster.resources.cpu }} cores <br> RAM {{ cluster.resources.ram }} GB</td>
+      <td>—</td>
+      <td>
+        <p-dropdown [options]="['CREATING', 'OTHER_STATUS']" [(ngModel)]="cluster.status"></p-dropdown>
+      </td>
+      <td>
+        <!-- Actions like edit or delete -->
+        <button pButton icon="pi pi-pencil"></button>
+        <button pButton icon="pi pi-trash"></button>
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+

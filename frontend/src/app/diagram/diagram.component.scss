@@ -4,8 +4,10 @@
 .container {
   display: flex; /* This makes it a flex container */
   height: 100%; /* Full height of the viewport */
-  width: calc(100% - 256px);   
+  width: 100%; /* Full width of the viewport */
   margin-left: 0px; 
+  padding-left: 0px;
+  padding-right: 0px;
 
 }
 

@@ -1,13 +1,18 @@
+import { createReducer, on } from '@ngrx/store';
+import * as actions from '../actions/actions';
+
+
 export interface MainState {
-   buttons: any;
+ currentAction: string | null;
+}
+
+export interface State {
+  mainState: MainState;
+}
+
+export const initialState: State = {
+  mainState: {
+    currentAction: null
   }
-  
-  export interface State {
-    mainState: MainState;
-  }
-  
-  export const initialState: State = {
-    mainState: {
-        buttons: [],
-    }
-  }
+}
+

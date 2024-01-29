@@ -1,5 +1,7 @@
+
 export interface Button {
- id: number;
  label: string;
- onClick: string;
+ icon: string;
+ action: string;
+ styleClass: string;
 }
