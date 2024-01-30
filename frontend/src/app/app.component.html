@@ -1,16 +1,15 @@
 <div class="app-container">
   <!-- PrimeNG Toolbar -->
-
   <p-toolbar styleClass="app-toolbar">
     <div class="app-toolbar-content">
-      <!-- Toolbar content -->
-      <div class="title" style="margin-left: 256px;">My Application</div>
-      <!-- Dynamically added buttons from ToolbarService -->
-      <ng-container *ngIf="toolBarService.buttons$ | async as buttons">
-        <button *ngFor="let btn of buttons" (click)="performAction(btn.action)">
-          <i [class]="btn.icon"></i> {{ btn.label }}
-        </button>
-      </ng-container>
+      <div class="title">My Application</div>
+      <div class="button-container"> <!-- Container for buttons -->
+        <ng-container *ngIf="toolBarService.buttons$ | async as buttons">
+          <button *ngFor="let btn of buttons" (click)="performAction(btn.action)">
+            <i [class]="btn.icon"></i> {{ btn.label }}
+          </button>
+        </ng-container>
+      </div>
     </div>
   </p-toolbar>
 

@@ -4,6 +4,7 @@ import * as actions from '../actions/actions';
 
 export interface MainState {
  currentAction: string | null;
+ diagramModel: go.Model | null;
 }
 
 export interface State {
@@ -12,7 +13,8 @@ export interface State {
 
 export const initialState: State = {
   mainState: {
-    currentAction: null
+    currentAction: null,
+    diagramModel: null,
   }
 }
 

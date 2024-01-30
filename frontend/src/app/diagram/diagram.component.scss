@@ -12,7 +12,7 @@
 }
 
 .first-column {
-  flex: 0 0 20%; 
+  flex: 0 0 10%; 
   height: 100%; /* Full height */
   /* Additional styles for the first column (e.g., background, padding) */
   border: 1px solid black;
@@ -25,9 +25,9 @@
   border: 1px solid black;
 }
 
-.resizer {
-  cursor: col-resize;
-  width: 5px; /* Resizer width */
-  height: 100%;
-  background-color: #000; /* Resizer color */
-}
+// .resizer {
+//   cursor: col-resize;
+//   width: 5px; /* Resizer width */
+//   height: 100%;
+//   background-color: #000; /* Resizer color */
+// }

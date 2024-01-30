@@ -1,22 +1,3 @@
-.app-toolbar {
-  display: flex;
-  flex-direction: row;
-  height: 50px;
-  position: fixed; // Ensures z-index is effective
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000; // High z-index to stay on top
-  background: #fff; // Optional: for visibility
-}
-
-
-.app-toolbar-content .title{
-  font-size: 20px; 
-  width: 256px;
-}
-
-
 .app-container {
   display: flex;
   flex-direction: column;
@@ -46,3 +27,33 @@
 }
 
 
+.app-toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between; /* Aligns title to left and buttons to right */
+  height: 50px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #fff;
+}
+
+.app-toolbar-content {
+  display: flex;
+  flex-grow: 1; /* Allows the content to grow and push buttons to the end */
+  align-items: center;
+}
+
+.title {
+  font-size: 20px;
+}
+
+/* This will make sure that your button aligns to the right */
+.button-container {
+  margin-left: 256px;
+  display: flex;
+  justify-content: flex-end; /* Aligns buttons to the right */
+}

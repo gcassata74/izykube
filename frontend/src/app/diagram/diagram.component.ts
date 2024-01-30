@@ -1,6 +1,8 @@
 import { IconService } from './../services/icon.service';
-import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
 import * as go from 'gojs';
+import { Store } from '@ngrx/store';
+import { v4 as uuidv4 } from 'uuid';
 
 const $ = go.GraphObject.make;
 // a collection of colors
@@ -27,13 +29,16 @@ export class DiagramComponent implements OnInit {
   minWidth: number = 200; // Minimum width of the first column in pixels
 
  
-  constructor(private iconService : IconService) { }
+  constructor(
+    private iconService : IconService,
+    private store: Store
+    ) { }
+
 
  
   ngOnInit(): void {
     //write methods to create the gojs diagram
     this.createDiagram();
-
     //write a metohd to create the palette
     this.createPalette();
   }
@@ -86,17 +91,16 @@ export class DiagramComponent implements OnInit {
      });
    }
 
- 
   
    private createPalette() {
     const $ = go.GraphObject.make;
 
     // Node data array with icon URLs
     var nodeDataArray = [
-        { key: 'Ingress', icon: this.iconService.getIconPath('ingress') }, 
-        { key: 'Pod', icon: this.iconService.getIconPath('pod')  },
-        { key: 'Service', icon: 'path_to_keycloak_icon' },
-        { key: 'ConfigMap', icon: 'path_to_mongodb_icon' }
+        { key:uuidv4(), type: 'Ingress', icon: this.iconService.getIconPath('ingress') }, 
+        { key:uuidv4(), type: 'Pod', icon: this.iconService.getIconPath('pod')  },
+        { key:uuidv4(), type: 'Service', icon: 'path_to_keycloak_icon' },
+        { key:uuidv4(), type: 'ConfigMap', icon: 'path_to_mongodb_icon' }
     ];
 
     // Initialize the palette
@@ -173,7 +177,7 @@ private makeNodeTemplate() {
         {
             alignment: go.Spot.Bottom, margin: 5, editable: true, textAlign: "center"
         },
-        new go.Binding("text", "key")
+        new go.Binding("text", "type")
     )
   );
 }

@@ -20,6 +20,7 @@ import { ClusterListComponent } from './cluster/cluster-list/cluster-list.compon
 import { FormsModule } from '@angular/forms';
 import { AssetsListComponent } from './assets/assets-list/assets-list.component';
 import { ToolbarService } from './services/toolbar.service';
+import { InitEffect } from './store/effects/init-effects';
 
 @NgModule({
   declarations: [
@@ -27,7 +28,7 @@ import { ToolbarService } from './services/toolbar.service';
     HomeComponent,
     DiagramComponent,
     ClusterListComponent,
-    AssetsListComponent,
+    AssetsListComponent
   ],
   imports: [
     BrowserModule,
@@ -40,7 +41,7 @@ import { ToolbarService } from './services/toolbar.service';
     BrowserAnimationsModule,
     FormsModule,
     StoreModule.forRoot(reducers, {initialState}),
-    EffectsModule.forRoot([]),
+    EffectsModule.forRoot([InitEffect]),
     StoreDevtoolsModule.instrument({ maxAge: 25, logOnly: !isDevMode() }),
     StoreRouterConnectingModule.forRoot()
   ],
