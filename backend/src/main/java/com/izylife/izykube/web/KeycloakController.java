@@ -1,6 +1,6 @@
 package com.izylife.izykube.web;
 
-import com.izylife.izykube.services.K8sPodService;
+import com.izylife.izykube.services.k8s.K8sPodService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController

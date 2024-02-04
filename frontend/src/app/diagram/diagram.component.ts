@@ -1,8 +1,10 @@
+import { DiagramService } from './../services/diagram.service';
 import { IconService } from './../services/icon.service';
 import { Component, ElementRef, HostListener, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
 import * as go from 'gojs';
 import { Store } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
+import { BehaviorSubject } from 'rxjs';
 
 const $ = go.GraphObject.make;
 // a collection of colors
@@ -25,17 +27,17 @@ export class DiagramComponent implements OnInit {
   @ViewChild('container', { static: true }) container!: ElementRef;
   diagram!: go.Diagram;
   isResizing: boolean = false;
-  firstColumnWidth: number = 200; // Initial width in pixels
+  firstColumnWidth: number = 200;
   minWidth: number = 200; // Minimum width of the first column in pixels
 
- 
+
+
   constructor(
     private iconService : IconService,
-    private store: Store
+    private store: Store,
+    private diagramService : DiagramService
     ) { }
 
-
- 
   ngOnInit(): void {
     //write methods to create the gojs diagram
     this.createDiagram();
@@ -57,12 +59,12 @@ export class DiagramComponent implements OnInit {
            $(go.Shape, "LineH", { strokeDashArray: [1, 9] })
        )
      });
- 
+
      this.diagram.nodeTemplate = this.makeNodeTemplate();
- 
+
      // define the diagram model with nodeDataArray and linkDataArray
      const graphLinksModel: go.GraphLinksModel = this.diagram.model as go.GraphLinksModel;
- 
+
      this.diagram.linkTemplate =
        $(go.Link,
          {
@@ -78,29 +80,34 @@ export class DiagramComponent implements OnInit {
          $(go.Shape, {fill: 'lightblue', strokeWidth: 3}),  // Link appearance
          $(go.Shape, {fill: 'lightblue', strokeWidth: 3, toArrow: 'Standard'})
        );
- 
+
      // Attach event handlers
      this.diagram.addDiagramListener('LinkDrawn', (e) => {
        const link = e.subject;
        const fromNode = link.fromNode;
        const toNode = link.toNode;
- 
+
        if (fromNode && toNode && fromNode instanceof go.Node && toNode instanceof go.Node) {
          graphLinksModel.addLinkData(link.data);
        }
      });
+     this.diagram.addDiagramListener('ChangedSelection', e => this.diagramService.onSelectionChanged(e));
    }
 
-  
+
+
+
    private createPalette() {
     const $ = go.GraphObject.make;
 
     // Node data array with icon URLs
     var nodeDataArray = [
-        { key:uuidv4(), type: 'Ingress', icon: this.iconService.getIconPath('ingress') }, 
-        { key:uuidv4(), type: 'Pod', icon: this.iconService.getIconPath('pod')  },
-        { key:uuidv4(), type: 'Service', icon: 'path_to_keycloak_icon' },
-        { key:uuidv4(), type: 'ConfigMap', icon: 'path_to_mongodb_icon' }
+        { key:uuidv4(), name: 'Ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress')},
+        { key:uuidv4(), name: 'Container', type: 'container', icon: this.iconService.getIconPath('container')  },
+        { key:uuidv4(), name: 'Pod', type: 'pod', icon: this.iconService.getIconPath('pod')  },
+        { key:uuidv4(), name: 'Deployment', type: 'deployment', icon:  this.iconService.getIconPath('deployment')},
+        { key:uuidv4(), name: 'Service', type: 'service', icon: this.iconService.getIconPath('service')},
+        { key:uuidv4(), name: 'ConfigMap', type: 'configMap', icon:  this.iconService.getIconPath('configMap')}
     ];
 
     // Initialize the palette
@@ -113,11 +120,12 @@ export class DiagramComponent implements OnInit {
                     { gridCellSize: new go.Size(10, 10) },
                     $(go.Shape, "LineH", { strokeDashArray: [1, 9] })
                 )
-            }, 
+            },
         );
 
         myPalette.nodeTemplate = this.makeNodeTemplate();
 }
+
 
 
 private makeNodeTemplate() {
@@ -129,7 +137,7 @@ private makeNodeTemplate() {
           movable: true
       },
       new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
-      
+
       // Outer transparent rectangle larger than the node, acts as the linkable area
       $(go.Shape, "Rectangle",
           {
@@ -141,7 +149,7 @@ private makeNodeTemplate() {
               fromLinkable: true, toLinkable: true, cursor: "pointer"
           }
       ),
-      
+
       // Panel with a blue border and white background
       $(go.Panel, "Auto",
           {
@@ -177,36 +185,9 @@ private makeNodeTemplate() {
         {
             alignment: go.Spot.Bottom, margin: 5, editable: true, textAlign: "center"
         },
-        new go.Binding("text", "type")
+        new go.Binding("text", "name")
     )
   );
 }
-
-
-
-   @HostListener('document:mousemove', ['$event'])
-   onMouseMove(event: MouseEvent) {
-     if (this.isResizing) {
-       const containerRect = this.container.nativeElement.getBoundingClientRect();
-       const newWidth = event.clientX - containerRect.left;
-       
-       // Ensure the width does not go below the minimum width
-       this.firstColumnWidth = newWidth > this.minWidth ? newWidth : this.minWidth;
-     }
-   }
-   @HostListener('document:mouseup', ['$event'])
-   onMouseUp(event: MouseEvent) {
-     if (this.isResizing) {
-       this.isResizing = false;
-     }
-   }
- 
-   startResizing(event: MouseEvent) {
-     event.preventDefault();
-     this.isResizing = true;
-   }
-
-
-
 
 }

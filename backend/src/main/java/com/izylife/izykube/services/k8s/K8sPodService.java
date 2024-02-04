@@ -1,4 +1,4 @@
-package com.izylife.izykube.services;
+package com.izylife.izykube.services.k8s;
 
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodBuilder;

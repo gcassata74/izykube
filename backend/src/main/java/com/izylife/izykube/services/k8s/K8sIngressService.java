@@ -1,4 +1,4 @@
-package com.izylife.izykube.services;
+package com.izylife.izykube.services.k8s;
 
 import com.izylife.izykube.dto.IngressRequest;
 import io.fabric8.kubernetes.client.KubernetesClient;

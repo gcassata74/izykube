@@ -1,4 +1,4 @@
-package com.izylife.izykube.services;
+package com.izylife.izykube.services.k8s;
 
 
 import com.izylife.izykube.dto.DeploymentRequest;

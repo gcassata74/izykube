@@ -1,4 +1,4 @@
-package com.izylife.izykube.services;
+package com.izylife.izykube.services.docker;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerCmd;

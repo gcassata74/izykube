@@ -21,6 +21,9 @@ import { FormsModule } from '@angular/forms';
 import { AssetsListComponent } from './assets/assets-list/assets-list.component';
 import { ToolbarService } from './services/toolbar.service';
 import { InitEffect } from './store/effects/init-effects';
+import { AssetSelectComponent } from './assets/asset-select/asset-select.component';
+import { HttpClientModule } from '@angular/common/http';
+import { DiagramService } from './services/diagram.service';
 
 @NgModule({
   declarations: [
@@ -28,7 +31,8 @@ import { InitEffect } from './store/effects/init-effects';
     HomeComponent,
     DiagramComponent,
     ClusterListComponent,
-    AssetsListComponent
+    AssetsListComponent,
+    AssetSelectComponent
   ],
   imports: [
     BrowserModule,
@@ -40,13 +44,16 @@ import { InitEffect } from './store/effects/init-effects';
     MenuModule,
     BrowserAnimationsModule,
     FormsModule,
+    HttpClientModule,
     StoreModule.forRoot(reducers, {initialState}),
     EffectsModule.forRoot([InitEffect]),
     StoreDevtoolsModule.instrument({ maxAge: 25, logOnly: !isDevMode() }),
     StoreRouterConnectingModule.forRoot()
   ],
   providers: [
-    ToolbarService
+    ToolbarService,
+    DiagramService
+    
   ],
   bootstrap: [AppComponent]
 })

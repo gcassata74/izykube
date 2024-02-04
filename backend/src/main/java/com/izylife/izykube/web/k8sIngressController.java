@@ -1,7 +1,7 @@
 package com.izylife.izykube.web;
 
 import com.izylife.izykube.dto.IngressRequest;
-import com.izylife.izykube.services.K8sIngressService;
+import com.izylife.izykube.services.k8s.K8sIngressService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController

@@ -1,6 +1,6 @@
 package com.izylife.izykube.web;
 
-import com.izylife.izykube.services.DockerRegistryService;
+import com.izylife.izykube.services.docker.DockerRegistryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

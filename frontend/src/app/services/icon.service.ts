@@ -10,6 +10,10 @@ export class IconService {
   private iconConfig = {
     'ingress': 'assets/images/diagram/ingress.svg',
     'pod': 'assets/images/diagram/pod.svg',
+    'service': 'assets/images/diagram/service.svg',
+    'configMap': 'assets/images/diagram/config-map.svg',
+    'container': 'assets/images/diagram/container.svg',
+    'deployment': 'assets/images/diagram/deployment.svg',
     // Add more entries as needed
   };
 

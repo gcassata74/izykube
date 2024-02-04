@@ -1,7 +1,7 @@
 package com.izylife.izykube.web;
 
 import com.izylife.izykube.dto.DeploymentRequest;
-import com.izylife.izykube.services.K8sDeploymentService;
+import com.izylife.izykube.services.k8s.K8sDeploymentService;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import org.springframework.web.bind.annotation.*;
 

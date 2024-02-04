@@ -1,4 +1,4 @@
-package com.izylife.izykube.services;
+package com.izylife.izykube.services.k8s;
 
 import com.izylife.izykube.constants.K8sConstants;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
