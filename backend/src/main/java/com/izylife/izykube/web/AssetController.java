@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/assets") // Base URL per tutti gli endpoint in questo controller
+@RequestMapping("/api/asset")
 public class AssetController {
 
     private final AssetRepository assetRepository;

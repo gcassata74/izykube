@@ -80,21 +80,70 @@ export class DiagramComponent implements OnInit {
          $(go.Shape, {fill: 'lightblue', strokeWidth: 3}),  // Link appearance
          $(go.Shape, {fill: 'lightblue', strokeWidth: 3, toArrow: 'Standard'})
        );
-
+  
      // Attach event handlers
-     this.diagram.addDiagramListener('LinkDrawn', (e) => {
-       const link = e.subject;
-       const fromNode = link.fromNode;
-       const toNode = link.toNode;
-
-       if (fromNode && toNode && fromNode instanceof go.Node && toNode instanceof go.Node) {
-         graphLinksModel.addLinkData(link.data);
-       }
-     });
-     this.diagram.addDiagramListener('ChangedSelection', e => this.diagramService.onSelectionChanged(e));
+     this.addEventHanlders(graphLinksModel);
    }
+   
 
+  private addEventHanlders(graphLinksModel: go.GraphLinksModel) {
+    this.diagram.addDiagramListener('LinkDrawn', (e) => {
+      const link = e.subject;
+      const fromNode = link.fromNode;
+      const toNode = link.toNode;
 
+      if (fromNode && toNode && fromNode instanceof go.Node && toNode instanceof go.Node) {
+        graphLinksModel.addLinkData(link.data);
+      }
+    });
+
+    this.diagram.addDiagramListener('ChangedSelection', e => this.diagramService.onSelectionChanged(e));
+    this.diagram.addDiagramListener("ExternalObjectsDropped", e => {
+      this.chooseUniqueNameForNode(e);
+      this.diagram.clearSelection();
+    });
+  }
+
+  chooseUniqueNameForNode(e: go.DiagramEvent) {
+    e.subject.each((part: any) => {
+      if (part instanceof go.Node) {
+        const baseName = part.data.name;
+  
+        // Filter existing nodes in the diagram to find those with the same base name
+        const similarNodes = this.diagram.model.nodeDataArray.filter((node: any) =>
+          node.name && node.name.startsWith(baseName)
+        );
+  
+        // Initialize the name with the base name
+        let newName = baseName;
+  
+        if (similarNodes.length > 0) {
+          // Extract and sort the suffix numbers of similar nodes, ensuring all are numbers
+          const suffixNumbers = similarNodes.map(node => {
+            const match = node['name'].match(new RegExp(`^${baseName}(\\d+)$`));
+            return match ? parseInt(match[1], 10) : null;
+          }).filter((number): number is number => number !== null).sort((a, b) => a - b);
+  
+          let nextSuffix = 1;
+          if (suffixNumbers.length > 0) {
+            for (let i = 0; i < suffixNumbers.length; i++) {
+              if (nextSuffix < suffixNumbers[i]) {
+                break; // Found a gap in the sequence
+              }
+              nextSuffix = suffixNumbers[i] + 1;
+            }
+          }
+          newName = `${baseName}${nextSuffix}`;
+        }
+  
+        this.diagram.model.startTransaction("rename node");
+        this.diagram.model.setDataProperty(part.data, "name", newName);
+        this.diagram.model.commitTransaction("rename node");
+      }
+    });
+  }
+  
+ 
 
 
    private createPalette() {
