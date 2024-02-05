@@ -23,7 +23,7 @@ export class AssetSelectComponent implements OnInit {
     this.filteredAssets$ = this.diagramService.selectedNode$.pipe(
       switchMap((selectedNode: go.Node | null) => {
         if (selectedNode) {
-          return this.dataService.get<Asset[]>('assets/all').pipe(
+          return this.dataService.get<Asset[]>('asset/all').pipe(
             map(assets => assets.filter(asset => asset.type === selectedNode.data.type)),
             map(assets => assets.map(asset => ({
               ...asset,
