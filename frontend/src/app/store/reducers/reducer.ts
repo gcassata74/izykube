@@ -1,4 +1,5 @@
 
+//reducer.ts
 import { createReducer, on } from '@ngrx/store';
 import * as actions from '../actions/actions';
 import { MainState, initialState } from '../states/state';
@@ -10,6 +11,11 @@ export const reducer = createReducer(
   on(actions.setCurrentAction, (state: MainState, { action }) => ({
     ...state,
     currentAction: action,
+  })),
+
+  on(actions.resetCurrentAction, (state: MainState) => ({
+    ...state,
+    currentAction: null,
   }))
 
 

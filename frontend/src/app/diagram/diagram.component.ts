@@ -53,6 +53,7 @@ export class DiagramComponent implements OnInit {
        "linkingTool.isEnabled": true,
        "relinkingTool.isEnabled": true,
        "allowMove": true,
+       
        grid:
        $(go.Panel, "Grid",
            { gridCellSize: new go.Size(10, 10) },
@@ -61,6 +62,9 @@ export class DiagramComponent implements OnInit {
      });
 
      this.diagram.nodeTemplate = this.makeNodeTemplate();
+
+     this.diagram.commandHandler.deletesTree = true; 
+     this.diagram.commandHandler.canDeleteSelection = () => true; 
 
      // define the diagram model with nodeDataArray and linkDataArray
      const graphLinksModel: go.GraphLinksModel = this.diagram.model as go.GraphLinksModel;
@@ -100,8 +104,15 @@ export class DiagramComponent implements OnInit {
     this.diagram.addDiagramListener('ChangedSelection', e => this.diagramService.onSelectionChanged(e));
     this.diagram.addDiagramListener("ExternalObjectsDropped", e => {
       this.chooseUniqueNameForNode(e);
+      this.diagramService.onNodeDropped(e);
       this.diagram.clearSelection();
     });
+    this.diagram.addDiagramListener("SelectionDeleted", e => {
+      this.diagramService.onNodeDeleted(e);
+      this.diagram.clearSelection();
+    });
+
+    this.diagram.addDiagramListener('SelectionDeleting', e => this.diagramService.onNodeDeleted(e));
   }
 
   chooseUniqueNameForNode(e: go.DiagramEvent) {
@@ -143,9 +154,6 @@ export class DiagramComponent implements OnInit {
     });
   }
   
- 
-
-
    private createPalette() {
     const $ = go.GraphObject.make;
 

@@ -3,10 +3,15 @@ import { ToolbarService } from './../services/toolbar.service';
 import {Component, ElementRef, AfterViewInit, OnInit, HostListener, ViewChild} from '@angular/core';
 import{Button} from '../model/button.class';
 import { Store, select } from '@ngrx/store';
-import { getCurrentAction } from '../store/selectors/selectors';
+import { getCurrentAction, getClusterData } from '../store/selectors/selectors';
 import { filter, first, tap } from 'rxjs';
 import * as actions from '../store/actions/actions';
 import * as go from 'gojs';
+import { Cluster } from '../model/cluster.class';
+
+import { DiagramService } from '../services/diagram.service';
+import { ConfigMap, Container, Deployment, Ingress, Pod, Service } from '../model/node.class';
+import { addNode, removeNode } from '../store/actions/cluster.actions';
 
 
 @Component({
@@ -21,7 +26,8 @@ export class HomeComponent implements OnInit,AfterViewInit {
 
  constructor(
   private toolbarService:ToolbarService,
-  private store:Store
+  private store:Store,
+  private diagramService: DiagramService
  ){}
 
 
@@ -33,10 +39,11 @@ export class HomeComponent implements OnInit,AfterViewInit {
           this.saveDiagram();
           setTimeout(() => {
             //reset the current action
-            this.store.dispatch(actions.setCurrentAction({ action: 'none' }));
+            this.store.dispatch(actions.resetCurrentAction());
           }, 1000);
         }),
       ).subscribe();
+   
   }
 
   ngAfterViewInit(): void {
@@ -68,8 +75,11 @@ export class HomeComponent implements OnInit,AfterViewInit {
 
   saveDiagram(): void {
    
-    this.model = this.diagramComponent.diagram.model;
-    this.model.nodeDataArray[0];
+   const cluster$ = this.store.select(getClusterData).pipe(
+    tap((cluster) => {
+      console.log('Cluster', cluster);
+    })
+   ).subscribe();
 
    alert('Diagram saved');
   }

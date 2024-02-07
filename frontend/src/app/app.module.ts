@@ -45,7 +45,7 @@ import { DiagramService } from './services/diagram.service';
     BrowserAnimationsModule,
     FormsModule,
     HttpClientModule,
-    StoreModule.forRoot(reducers, {initialState}),
+    StoreModule.forRoot(reducers),
     EffectsModule.forRoot([InitEffect]),
     StoreDevtoolsModule.instrument({ maxAge: 25, logOnly: !isDevMode() }),
     StoreRouterConnectingModule.forRoot()
@@ -53,7 +53,7 @@ import { DiagramService } from './services/diagram.service';
   providers: [
     ToolbarService,
     DiagramService
-    
+
   ],
   bootstrap: [AppComponent]
 })
