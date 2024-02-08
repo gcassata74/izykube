@@ -69,6 +69,15 @@ export class DiagramService {
       this.store.dispatch(removeNode({ nodeId: selectedNode.data.key }));
     }
   }
+
+  onLinkDrawn(e: go.DiagramEvent): void {
+    const link = e.subject;
+    if (link instanceof go.Link) {
+      console.log('Link drawn', link);
+    }
+  }
+
+
 }
 
 

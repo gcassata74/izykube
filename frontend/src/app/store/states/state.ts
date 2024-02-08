@@ -27,6 +27,7 @@ export const initialState: State = {
     clusterData: {
       name: 'Cluster1',
       nodes: [],
+      links:[],
       diagram: '',
       id: '',
       creationDate: new Date(),

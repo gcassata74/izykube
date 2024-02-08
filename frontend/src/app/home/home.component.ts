@@ -19,68 +19,10 @@ import { addNode, removeNode } from '../store/actions/cluster.actions';
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss']
 })
-export class HomeComponent implements OnInit,AfterViewInit {
-
-  model!: go.Model | null;
-  @ViewChild('diagram') diagramComponent!: DiagramComponent;
-
- constructor(
-  private toolbarService:ToolbarService,
-  private store:Store,
-  private diagramService: DiagramService
- ){}
-
-
-  ngOnInit() {
-    this.createButtons();
-      this.store.pipe(select(getCurrentAction)).pipe(
-        filter(action => action === 'save-diagram'),
-        tap(() => {
-          this.saveDiagram();
-          setTimeout(() => {
-            //reset the current action
-            this.store.dispatch(actions.resetCurrentAction());
-          }, 1000);
-        }),
-      ).subscribe();
-   
+export class HomeComponent implements OnInit {
+  ngOnInit(): void {
+    throw new Error('Method not implemented.');
   }
 
-  ngAfterViewInit(): void {
-    this.diagramComponent.diagram.addDiagramListener('ChangedSelection', (e) => {
-      const node = e.diagram.selection.first();
-      if (node instanceof go.Node) {
-        this.showAssetSelectionForm(node);
-      }
-    });
-  }
-
-
-  showAssetSelectionForm(node: go.Node) {
-     
-
-
-  }
-  
-
-  createButtons() {
-    let button: Button =  {
-        label:"Save",
-        icon:"pi pi-save",
-        action:"save-diagram",
-        styleClass:"p-button-success"
-    };
-    this.toolbarService.setButtons([button]);
-  }
-
-  saveDiagram(): void {
-   
-   const cluster$ = this.store.select(getClusterData).pipe(
-    tap((cluster) => {
-      console.log('Cluster', cluster);
-    })
-   ).subscribe();
-
-   alert('Diagram saved');
-  }
+ 
 }

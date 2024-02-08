@@ -1,0 +1,9 @@
+<div class="pod-form-container">
+  <p-dropdown *ngIf="filteredAssets$ | async as filteredAssets"
+              [options]="filteredAssets"
+              (onChange)="onAssetSelected($event.value)"
+              optionLabel="label"
+              placeholder="Select an Asset"
+  >
+  </p-dropdown>
+</div>

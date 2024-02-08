@@ -21,9 +21,12 @@ import { FormsModule } from '@angular/forms';
 import { AssetsListComponent } from './assets/assets-list/assets-list.component';
 import { ToolbarService } from './services/toolbar.service';
 import { InitEffect } from './store/effects/init-effects';
-import { AssetSelectComponent } from './assets/asset-select/asset-select.component';
 import { HttpClientModule } from '@angular/common/http';
 import { DiagramService } from './services/diagram.service';
+import { ClusterEditorComponent } from './cluster/cluster-editor/cluster-editor.component';
+import { NodeFormComponent } from './cluster/node-form/node-form.component';
+import { PodFormComponent } from './cluster/pod-form/pod-form.component';
+import { DeploymentFormComponent } from './cluster/deployment-form/deployment-form.component';
 
 @NgModule({
   declarations: [
@@ -32,7 +35,10 @@ import { DiagramService } from './services/diagram.service';
     DiagramComponent,
     ClusterListComponent,
     AssetsListComponent,
-    AssetSelectComponent
+    ClusterEditorComponent,
+    NodeFormComponent,
+    PodFormComponent,
+    DeploymentFormComponent
   ],
   imports: [
     BrowserModule,

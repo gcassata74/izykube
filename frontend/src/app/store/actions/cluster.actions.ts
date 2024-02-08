@@ -5,6 +5,7 @@ import { ClusterNode } from '../../model/node.class'; // Import your node model
 export const ADD_NODE = '[Cluster] Add Node';
 export const REMOVE_NODE = '[Cluster] Remove Node';
 export const UPDATE_DIAGRAM = '[Cluster] Update Diagram';
+export const UPDATE_NODE_ASSET = '[Cluster] Update Node Asset';
 
 export const addNode = createAction(
   ADD_NODE,
@@ -19,4 +20,9 @@ export const removeNode = createAction(
 export const updateDiagram = createAction(
   UPDATE_DIAGRAM,
   props<{ diagramData: string }>()
+);
+
+export const updateNodeAsset = createAction(
+  UPDATE_NODE_ASSET,
+  props<{ nodeId: string, assetId: string }>()
 );

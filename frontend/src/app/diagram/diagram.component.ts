@@ -62,9 +62,9 @@ export class DiagramComponent implements OnInit {
      });
 
      this.diagram.nodeTemplate = this.makeNodeTemplate();
-
      this.diagram.commandHandler.deletesTree = true; 
      this.diagram.commandHandler.canDeleteSelection = () => true; 
+  
 
      // define the diagram model with nodeDataArray and linkDataArray
      const graphLinksModel: go.GraphLinksModel = this.diagram.model as go.GraphLinksModel;
@@ -99,6 +99,7 @@ export class DiagramComponent implements OnInit {
       if (fromNode && toNode && fromNode instanceof go.Node && toNode instanceof go.Node) {
         graphLinksModel.addLinkData(link.data);
       }
+      this.diagramService.onLinkDrawn(e)
     });
 
     this.diagram.addDiagramListener('ChangedSelection', e => this.diagramService.onSelectionChanged(e));
@@ -158,14 +159,7 @@ export class DiagramComponent implements OnInit {
     const $ = go.GraphObject.make;
 
     // Node data array with icon URLs
-    var nodeDataArray = [
-        { key:uuidv4(), name: 'Ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress')},
-        { key:uuidv4(), name: 'Container', type: 'container', icon: this.iconService.getIconPath('container')  },
-        { key:uuidv4(), name: 'Pod', type: 'pod', icon: this.iconService.getIconPath('pod')  },
-        { key:uuidv4(), name: 'Deployment', type: 'deployment', icon:  this.iconService.getIconPath('deployment')},
-        { key:uuidv4(), name: 'Service', type: 'service', icon: this.iconService.getIconPath('service')},
-        { key:uuidv4(), name: 'ConfigMap', type: 'configMap', icon:  this.iconService.getIconPath('configMap')}
-    ];
+    var nodeDataArray = this.createNodes();
 
     // Initialize the palette
     const myPalette =
@@ -184,6 +178,17 @@ export class DiagramComponent implements OnInit {
 }
 
 
+
+  private createNodes() {
+    return [
+      { key: uuidv4(), name: 'Ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress') },
+      { key: uuidv4(), name: 'Container', type: 'container', icon: this.iconService.getIconPath('container') },
+      { key: uuidv4(), name: 'Pod', type: 'pod', icon: this.iconService.getIconPath('pod') },
+      { key: uuidv4(), name: 'Deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
+      { key: uuidv4(), name: 'Service', type: 'service', icon: this.iconService.getIconPath('service') },
+      { key: uuidv4(), name: 'ConfigMap', type: 'configMap', icon: this.iconService.getIconPath('configMap') }
+    ];
+  }
 
 private makeNodeTemplate() {
   const $ = go.GraphObject.make; // Define a shorthand variable for GoJS methods
