@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Observable, map, of } from 'rxjs';
-import { Asset } from 'src/app/model/asset.class';
-import { DataService } from 'src/app/services/data.service';
-import { DiagramService } from 'src/app/services/diagram.service';
-import { updateNodeAsset } from 'src/app/store/actions/cluster.actions';
+import { Asset } from '../../model/asset.interface';
+import { DataService } from '../../services/data.service';
+import { DiagramService } from '../../services/diagram.service';
+import { updateNodeAsset } from '../../store/actions/cluster.actions';
 
 @Component({
   selector: 'app-pod-form',
@@ -49,7 +49,7 @@ export class PodFormComponent implements OnInit{
       })),
       map(assets => assets.map(asset => ({
         ...asset,
-        label: `${asset.name} - ${asset.version}`
+        label: `${asset.label} - ${asset.version}`
       })))
     ) : of([]);
   }

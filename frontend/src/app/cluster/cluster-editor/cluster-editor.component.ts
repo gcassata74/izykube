@@ -1,12 +1,12 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Store, select } from '@ngrx/store';
 import * as go from 'gojs';
 import{Button} from '../../model/button.class';
-import { filter, tap } from 'rxjs';
-import { DiagramComponent } from 'src/app/diagram/diagram.component';
-import { DiagramService } from 'src/app/services/diagram.service';
-import { ToolbarService } from 'src/app/services/toolbar.service';
-import { getCurrentAction, getClusterData } from 'src/app/store/selectors/selectors';
+import { Subscription, filter, first, tap } from 'rxjs';
+import { DiagramComponent } from '../../diagram/diagram.component';
+import { DiagramService } from '../../services/diagram.service';
+import { ToolbarService } from '../../services/toolbar.service';
+import { getCurrentAction, getClusterData } from '../../store/selectors/selectors';
 import * as actions from '../../store/actions/actions';
 
 @Component({
@@ -14,10 +14,11 @@ import * as actions from '../../store/actions/actions';
   templateUrl: './cluster-editor.component.html',
   styleUrls: ['./cluster-editor.component.scss']
 })
-export class ClusterEditorComponent implements OnInit{
+export class ClusterEditorComponent implements OnInit, OnDestroy{
 
   model!: go.Model | null;
   @ViewChild('diagram') diagramComponent!: DiagramComponent;
+  subscription: Subscription = new Subscription();
 
  constructor(
   private toolbarService:ToolbarService,
@@ -26,15 +27,16 @@ export class ClusterEditorComponent implements OnInit{
  ){}
 
 
+
   ngOnInit() {
     this.createButtons();
-      this.store.pipe(select(getCurrentAction)).pipe(
+      this.subscription.add (this.store.pipe(select(getCurrentAction)).pipe(
         filter(action => action === 'save-diagram'),
         tap(() => {
           this.saveDiagram();
             this.store.dispatch(actions.resetCurrentAction());
         }),
-      ).subscribe();
+      ).subscribe());
   }
 
   createButtons() {
@@ -56,5 +58,9 @@ export class ClusterEditorComponent implements OnInit{
    ).subscribe();
 
    alert('Diagram saved');
+  }
+
+  ngOnDestroy(): void {
+    this.subscription.unsubscribe();
   }
 }

@@ -27,7 +27,7 @@ public class AssetChangeLog {
         long count = db.getCollection("assets").countDocuments(new Document("name", "Keycloak"));
         if (count == 0) {
             Document keycloakAsset = new Document()
-                    .append("name", "Keycloak")
+                    .append("label", "keycloak")
                     .append("type", "container")
                     .append("version", "1.0.0")
                     .append("description", "Open Source Identity and Access Management")

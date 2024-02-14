@@ -27,6 +27,9 @@ import { ClusterEditorComponent } from './cluster/cluster-editor/cluster-editor.
 import { NodeFormComponent } from './cluster/node-form/node-form.component';
 import { PodFormComponent } from './cluster/pod-form/pod-form.component';
 import { DeploymentFormComponent } from './cluster/deployment-form/deployment-form.component';
+import { ReactiveFormsModule } from '@angular/forms';
+import { InputTextModule } from 'primeng/inputtext';
+import { InputNumber, InputNumberModule } from 'primeng/inputnumber';
 
 @NgModule({
   declarations: [
@@ -41,11 +44,14 @@ import { DeploymentFormComponent } from './cluster/deployment-form/deployment-fo
     DeploymentFormComponent
   ],
   imports: [
+    ReactiveFormsModule,
     BrowserModule,
     AppRoutingModule,
     SidebarModule,
     ToolbarModule,
     DropdownModule,
+    InputTextModule,
+    InputNumberModule,
     TableModule,
     MenuModule,
     BrowserAnimationsModule,

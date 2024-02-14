@@ -1,1 +1,14 @@
-<p>deployment-form works!</p>
+<form [formGroup]="deploymentForm" (ngSubmit)="saveDeployment()">
+  <div class="form-row">
+    <label for="replicas">Replicas:</label>
+    <p-inputNumber [inputId]="'replicas'" formControlName="replicas" [min]="1"></p-inputNumber>
+  </div>
+  <div class="form-row">
+    <label for="strategy">Update Strategy:</label>
+    <p-dropdown [options]="strategies" formControlName="strategy" placeholder="Select a Strategy"
+                optionLabel="label"></p-dropdown>
+  </div>
+  <div class="save-button-container">
+    <button pButton type="submit" label="Save" icon="pi pi-save"></button>
+  </div>
+</form>

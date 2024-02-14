@@ -44,10 +44,11 @@ export class DiagramComponent implements OnInit {
     //write a metohd to create the palette
     this.createPalette();
   }
+  
 
   private createDiagram() {
 
-    this.diagram = $(go.Diagram, 'myDiagramDiv',
+     this.diagram = $(go.Diagram, 'myDiagramDiv',
      {
        'undoManager.isEnabled': true,
        "linkingTool.isEnabled": true,
@@ -186,9 +187,12 @@ export class DiagramComponent implements OnInit {
       { key: uuidv4(), name: 'Pod', type: 'pod', icon: this.iconService.getIconPath('pod') },
       { key: uuidv4(), name: 'Deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
       { key: uuidv4(), name: 'Service', type: 'service', icon: this.iconService.getIconPath('service') },
-      { key: uuidv4(), name: 'ConfigMap', type: 'configMap', icon: this.iconService.getIconPath('configMap') }
+      { key: uuidv4(), name: 'ConfigMap', type: 'configMap', icon: this.iconService.getIconPath('configMap') },
+      { key: uuidv4(), name: 'Volume', type: 'volume', icon: this.iconService.getIconPath('volume') }
     ];
   }
+
+  
 
 private makeNodeTemplate() {
   const $ = go.GraphObject.make; // Define a shorthand variable for GoJS methods

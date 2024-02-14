@@ -14,6 +14,7 @@ export class IconService {
     'configMap': 'assets/images/diagram/config-map.svg',
     'container': 'assets/images/diagram/container.svg',
     'deployment': 'assets/images/diagram/deployment.svg',
+    'volume': 'assets/images/diagram/volume.svg',
     // Add more entries as needed
   };
 

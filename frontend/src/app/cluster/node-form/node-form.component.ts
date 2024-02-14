@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { Observable, switchMap, map, of } from 'rxjs';
-import { Asset } from 'src/app/model/asset.class';
+import { Asset } from '../../model/asset.interface';
 import { DataService } from 'src/app/services/data.service';
 import { DiagramService } from 'src/app/services/diagram.service';
 

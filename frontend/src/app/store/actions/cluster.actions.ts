@@ -1,20 +1,33 @@
 import { createAction, props } from '@ngrx/store';
-import { ClusterNode } from '../../model/node.class'; // Import your node model
+import { Base } from '../../model/base.interface';
+import { Link } from 'src/app/model/link.interface';
 
 
 export const ADD_NODE = '[Cluster] Add Node';
 export const REMOVE_NODE = '[Cluster] Remove Node';
+export const ADD_LINK = '[Cluster] Add Link';
+export const REMOVE_LINK = '[Cluster] Remove Link';
 export const UPDATE_DIAGRAM = '[Cluster] Update Diagram';
 export const UPDATE_NODE_ASSET = '[Cluster] Update Node Asset';
 
 export const addNode = createAction(
   ADD_NODE,
-  props<{ node: ClusterNode }>()
+  props<{ node: Base }>()
 );
 
 export const removeNode = createAction(
   REMOVE_NODE,
   props<{ nodeId: string }>()
+);
+
+export const addLink = createAction(
+  ADD_LINK,
+  props<{ link: Link }>()
+);
+
+export const removeLink = createAction(
+  REMOVE_LINK,
+  props<{ source: string, target:string }>()
 );
 
 export const updateDiagram = createAction(

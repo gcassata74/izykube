@@ -9,8 +9,10 @@
   }
   
   .config-panel {
-    flex-grow: 1; /* Adjust the ratio as needed for your design */
-    
-    overflow: auto; /* Adds scrollbars if the content is larger than the container */
+    flex-basis: 400px; 
+    flex-grow: 0; /* Adjust the ratio as needed for your design */
+    overflow-x: hidden; /* Adds scrollbars if the content is larger than the container */
+    overflow-y: auto;
     border-left: 1px solid  rgba(0, 0, 0, 0.2);
   }
+
