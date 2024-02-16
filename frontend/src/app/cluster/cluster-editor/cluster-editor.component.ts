@@ -27,7 +27,6 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
  ){}
 
 
-
   ngOnInit() {
     this.createButtons();
       this.subscription.add (this.store.pipe(select(getCurrentAction)).pipe(
@@ -50,14 +49,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
   }
 
   saveDiagram(): void {
-   
-   const cluster$ = this.store.select(getClusterData).pipe(
-    tap((cluster) => {
-      console.log('Cluster', cluster);
-    })
-   ).subscribe();
-
-   alert('Diagram saved');
+    this.diagramService.saveDiagram();
   }
 
   ngOnDestroy(): void {

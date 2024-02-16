@@ -49,7 +49,7 @@ export class PodFormComponent implements OnInit{
       })),
       map(assets => assets.map(asset => ({
         ...asset,
-        label: `${asset.label} - ${asset.version}`
+        label: `${asset.name} - ${asset.version}`
       })))
     ) : of([]);
   }

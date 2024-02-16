@@ -7,10 +7,11 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "assets")
 public class Asset extends BaseEntity {
 
-    private String label;
+    private String name;
     private String type;
     private String version;
     private String description;
     private String image;
+    private int port;
 
 }

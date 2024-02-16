@@ -1,6 +1,7 @@
 import { Base } from "./base.interface";
 
 export interface Volume extends Base{
+    kind: "volume";
     name: string;
     persistentVolumeClaim?: {
       claimName: string;

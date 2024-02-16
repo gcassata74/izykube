@@ -1,6 +1,7 @@
 import { Base } from "./base.interface";
 
 export interface Ingress extends Base {
+    kind: "ingress";
     name: string;
     annotations?: { [key: string]: string };
     rules: IngressRule[];

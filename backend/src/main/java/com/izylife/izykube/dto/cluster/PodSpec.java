@@ -1,5 +1,7 @@
 package com.izylife.izykube.dto.cluster;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.List;
@@ -7,11 +9,15 @@ import java.util.List;
 @Data
 public class PodSpec extends Base {
     private List<Container> containers;
-    private List<Volume> volumes; // This can be optional in your application logic
+    private List<Volume> volumes;
 
-
-    public PodSpec(String id, String name, List<Container> containers, List<Volume> volumes) {
-        super(id, name); // Initialize Base class fields
+    @JsonCreator
+    public PodSpec(
+            @JsonProperty("id") String id,
+            @JsonProperty("name") String name,
+            @JsonProperty("containers") List<Container> containers,
+            @JsonProperty("volumes") List<Volume> volumes) {
+        super(id, name, "Pod");
         this.containers = containers;
         this.volumes = volumes;
     }

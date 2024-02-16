@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class K8sPodService {
@@ -19,7 +20,7 @@ public class K8sPodService {
         this.kubernetesClient = kubernetesClient;
     }
 
-    public String createPod(String podName, String imageName, String namespace) {
+    public void createPod(String podName, String imageName, String namespace, Map<String, String> labels, int containerPort) throws KubernetesClientException {
 
         if (namespace == null || namespace.isEmpty()) {
             namespace = "default";
@@ -29,20 +30,23 @@ public class K8sPodService {
             Pod pod = new PodBuilder()
                     .withNewMetadata()
                     .withName(podName)
+                    .addToLabels(labels) // Add labels to the pod
                     .endMetadata()
                     .withNewSpec()
                     .addNewContainer()
                     .withName(podName)
                     .withImage(imageName)
+                    .addNewPort() // Add a container port
+                    .withContainerPort(containerPort)
+                    .endPort()
                     .endContainer()
                     .endSpec()
                     .build();
 
-            pod = kubernetesClient.pods().inNamespace(namespace).create(pod);
+            kubernetesClient.pods().inNamespace(namespace).create(pod);
 
-            return "Pod created: " + podName;
-        } catch (KubernetesClientException e) {
-            return "Failed to create pod: " + e.getMessage();
+        } catch (Exception e) {
+            throw new KubernetesClientException("Failed to create pod: " + e.getMessage(), e);
         }
     }
 

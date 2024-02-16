@@ -17,6 +17,7 @@ public class KeycloakService {
     public String deployKeycloak(String podName, String namespace) {
         String imageName = "jboss/keycloak";
         dockerImageService.pullImage(imageName, null);  // assumes latest tag if not provided
-        return k8sPodService.createPod(podName, imageName, namespace);
+        // return k8sPodService.createPod(podName, imageName, namespace);
+        return "done";
     }
 }

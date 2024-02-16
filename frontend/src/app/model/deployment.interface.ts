@@ -2,6 +2,7 @@ import { Base } from "./base.interface";
 import { PodSpec } from "./pod.interface";
 
 export interface Deployment extends Base {
+    kind: "deployment";
     replicas: number;
     selector: Selector;
     template: PodTemplate;

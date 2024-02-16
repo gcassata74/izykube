@@ -6,8 +6,8 @@ import { AssetsListComponent } from './assets/assets-list/assets-list.component'
 import { ClusterEditorComponent } from './cluster/cluster-editor/cluster-editor.component';
 
 const routes: Routes = [
-  { path: '', redirectTo: '/cluster', pathMatch: 'full' },
-  { path: 'cluster', component: ClusterEditorComponent },
+  { path: '', redirectTo: '/cluster-editor', pathMatch: 'full' },
+  { path: 'cluster-editor', component: ClusterEditorComponent },
   { path: 'clusters', component: ClusterListComponent },
   { path: 'assets', component: AssetsListComponent }
   // Add more routes here if needed
