@@ -3,8 +3,8 @@
   <p-toolbar styleClass="app-toolbar">
     <div class="app-toolbar-content">
       <div class="title">My Application</div>
-      <div class="button-container"> <!-- Container for buttons -->
-        <ng-container *ngIf="toolBarService.buttons$ | async as buttons">
+      <div class="button-container">
+        <ng-container *ngIf="toolBarService.buttons$| async as buttons">
           <button *ngFor="let btn of buttons" (click)="performAction(btn.action)">
             <i [class]="btn.icon"></i> {{ btn.label }}
           </button>

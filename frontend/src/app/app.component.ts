@@ -1,10 +1,12 @@
 import { ToolbarModule } from 'primeng/toolbar';
 import { ToolbarService } from './services/toolbar.service';
-import { Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { Store } from '@ngrx/store';
 import * as actions from './store/actions/actions';
+import { Observable, filter, of, startWith, switchMap } from 'rxjs';
+import { Button } from './model/button.interface';
 
 @Component({
   selector: 'app-root',
@@ -24,7 +26,9 @@ export class AppComponent implements OnInit{
               ) {}
 
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+  }            
+
 
   navigate(route: string) {
     this.router.navigate([route]);

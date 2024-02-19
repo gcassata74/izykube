@@ -1,8 +1,8 @@
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Store, select } from '@ngrx/store';
 import * as go from 'gojs';
-import{Button} from '../../model/button.class';
-import { Subscription, filter, first, tap } from 'rxjs';
+import{Button} from '../../model/button.interface';
+import { Subscription, distinctUntilChanged, filter, first, switchMap, take, tap } from 'rxjs';
 import { DiagramComponent } from '../../diagram/diagram.component';
 import { DiagramService } from '../../services/diagram.service';
 import { ToolbarService } from '../../services/toolbar.service';
@@ -26,16 +26,22 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
   private diagramService: DiagramService
  ){}
 
-
-  ngOnInit() {
+  ngOnInit(): void {
     this.createButtons();
-      this.subscription.add (this.store.pipe(select(getCurrentAction)).pipe(
-        filter(action => action === 'save-diagram'),
-        tap(() => {
-          this.saveDiagram();
-            this.store.dispatch(actions.resetCurrentAction());
-        }),
-      ).subscribe());
+    
+
+      this.subscription.add(
+        this.store.pipe(
+          select(getCurrentAction),
+          distinctUntilChanged(),
+          filter(action => action === 'save-diagram'),
+          switchMap(() => this.store.select(getClusterData).pipe(take(1)))
+        ).subscribe(clusterData => {
+          this.diagramService.saveDiagram(clusterData);
+          this.store.dispatch(actions.resetCurrentAction());
+        })
+      );
+
   }
 
   createButtons() {
@@ -45,12 +51,12 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
         action:"save-diagram",
         styleClass:"p-button-success"
     };
-    this.toolbarService.setButtons([button]);
+
+    setTimeout(() => {
+      this.toolbarService.setButtons([button]);
+    });
   }
 
-  saveDiagram(): void {
-    this.diagramService.saveDiagram();
-  }
 
   ngOnDestroy(): void {
     this.subscription.unsubscribe();

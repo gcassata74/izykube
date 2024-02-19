@@ -1,6 +1,6 @@
 // toolbar.service.ts
-import { BehaviorSubject } from 'rxjs';
-import { Button } from '../model/button.class';
+import { BehaviorSubject, Subject } from 'rxjs';
+import { Button } from '../model/button.interface';
 
 
 

@@ -28,30 +28,29 @@ public class K8sDeploymentService {
     }
 
 
-    public String createDeployment(DeploymentRequest request) {
-        String namespace = request.getNamespace();
+    public String createDeployment(String namespace, String deploymentName, String imageName, int replicas) {
+
         if (namespace == null || namespace.isEmpty()) {
             namespace = "default";
         }
-        int replicas = request.getReplicas() != null ? request.getReplicas() : 1;
         Deployment deployment = new DeploymentBuilder()
                 .withNewMetadata()
-                .withName(request.getDeploymentName())
+                .withName(deploymentName)
                 .withNamespace(namespace)
                 .endMetadata()
                 .withNewSpec()
                 .withReplicas(replicas)
                 .withNewSelector()
-                .addToMatchLabels("app", request.getDeploymentName())
+                .addToMatchLabels("app", deploymentName)
                 .endSelector()
                 .withNewTemplate()
                 .withNewMetadata()
-                .addToLabels("app", request.getDeploymentName())
+                .addToLabels("app", deploymentName)
                 .endMetadata()
                 .withNewSpec()
                 .addNewContainer()
-                .withName(request.getDeploymentName())
-                .withImage(request.getImageName())
+                .withName(deploymentName)
+                .withImage(imageName)
                 .endContainer()
                 .endSpec()
                 .endTemplate()

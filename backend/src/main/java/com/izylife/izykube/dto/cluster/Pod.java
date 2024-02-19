@@ -1,18 +1,23 @@
 package com.izylife.izykube.dto.cluster;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
-public class Deployment extends Node {
+public class Pod extends Node {
 
-    String assetId;
+    private String assetId;
 
-    public Deployment(
+    @JsonCreator
+    public Pod(
             @JsonProperty("id") String id,
             @JsonProperty("name") String name,
             @JsonProperty("assetId") String assetId
     ) {
-        super(id, name, "deployment");
+        super(id, name, "pod");
+        this.assetId = assetId;
     }
+
+
 }

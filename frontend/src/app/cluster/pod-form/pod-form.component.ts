@@ -1,10 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Observable, map, of } from 'rxjs';
-import { Asset } from '../../model/asset.interface';
+import { Asset } from '../../model/asset.class';
 import { DataService } from '../../services/data.service';
 import { DiagramService } from '../../services/diagram.service';
 import { updateNodeAsset } from '../../store/actions/cluster.actions';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 
 @Component({
   selector: 'app-pod-form',
@@ -13,23 +14,23 @@ import { updateNodeAsset } from '../../store/actions/cluster.actions';
 })
 export class PodFormComponent implements OnInit{
 
-  assets: Asset[] = [];
   filteredAssets$!: Observable<any[] | undefined >;
+  @Output() formReady: EventEmitter<FormGroup> = new EventEmitter<FormGroup>();
+  podForm!: FormGroup;
   selectedNodeType: string | null = null;
   selectedNodeKey!: string;
 
   nodeAssetTypeMapping: { [nodeType: string]: string[] } = {
     'pod': ['container'], 
     'container': ['container']
-  };
+    };
 
   constructor(
     private dataService: DataService,
     private diagramService: DiagramService,
-    private store: Store
-
+    private store: Store,
+    private formBuilder: FormBuilder
   ) {}
-
 
   ngOnInit(): void {
     this.diagramService.selectedNode$.subscribe(node => {
@@ -37,6 +38,14 @@ export class PodFormComponent implements OnInit{
       this.selectedNodeKey = node?.data?.key;
       this.setupFilteredAssets(node);
     });
+
+    this.podForm = this.formBuilder.group({
+      asset: ['', Validators.required]
+    });
+  
+    // Emetti l'evento con il form quando è pronto
+    this.formReady.emit(this.podForm);
+
   }
 
   setupFilteredAssets(selectedNode: go.Node | null): void {
@@ -54,9 +63,11 @@ export class PodFormComponent implements OnInit{
     ) : of([]);
   }
 
-  onAssetSelected(asset: Asset): void {
-    // Dispatch the action to update the node's assetId
-    this.store.dispatch(updateNodeAsset({ nodeId: this.selectedNodeKey, assetId: asset.id }));
-  }
+  // onAssetSelected(asset: Asset): void {
+  //   // Dispatch the action to update the node's assetId
+  //   this.store.dispatch(updateNodeAsset({ nodeId: this.selectedNodeKey, assetId: asset.id }));
+  // }
+
+
 
 }

@@ -1,8 +1,6 @@
-import { Injectable } from '@angular/core';
-import { catchError, exhaustMap, map, Observable, of } from 'rxjs';
-import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { Action } from '@ngrx/store';
-import * as actions from '../actions/actions';
+import { Injectable } from "@angular/core";
+import { Actions, createEffect, ofType } from "@ngrx/effects";
+
 
 @Injectable()
 export class InitEffect {
@@ -11,5 +9,5 @@ export class InitEffect {
     private actions$: Actions,
   ) {}
 
- 
+
 }

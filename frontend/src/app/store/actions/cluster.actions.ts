@@ -1,6 +1,6 @@
 import { createAction, props } from '@ngrx/store';
-import { Base } from '../../model/base.interface';
-import { Link } from 'src/app/model/link.interface';
+import { Link } from '../../model/link.class';
+import { Node } from '../../model/node.class';
 
 
 export const ADD_NODE = '[Cluster] Add Node';
@@ -12,7 +12,7 @@ export const UPDATE_NODE_ASSET = '[Cluster] Update Node Asset';
 
 export const addNode = createAction(
   ADD_NODE,
-  props<{ node: Base }>()
+  props<{ node: Node }>()
 );
 
 export const removeNode = createAction(

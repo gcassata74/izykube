@@ -1,14 +1,17 @@
-<form [formGroup]="deploymentForm" (ngSubmit)="saveDeployment()">
+<!-- Contenitore del form del Deployment -->
+<div class="deployment-form-container" [formGroup]="deploymentForm">
+  <!-- Incorporamento del PodFormComponent per la selezione dell'Asset -->
+  <app-pod-form (formReady)="addChildForm($event)"></app-pod-form>
+
+  <!-- Campo input per il numero di repliche -->
   <div class="form-row">
     <label for="replicas">Replicas:</label>
-    <p-inputNumber [inputId]="'replicas'" formControlName="replicas" [min]="1"></p-inputNumber>
+    <p-inputNumber inputId="replicas" formControlName="replicas" [min]="1"></p-inputNumber>
   </div>
-  <div class="form-row">
-    <label for="strategy">Update Strategy:</label>
-    <p-dropdown [options]="strategies" formControlName="strategy" placeholder="Select a Strategy"
-                optionLabel="label"></p-dropdown>
-  </div>
+
+
+  <!-- Bottone di salvataggio -->
   <div class="save-button-container">
-    <button pButton type="submit" label="Save" icon="pi pi-save"></button>
+    <button type="submit" pButton label="Save" icon="pi pi-save">Save</button>
   </div>
-</form>
+</div>

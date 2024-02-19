@@ -3,19 +3,12 @@ import * as go from 'gojs';
 import { BehaviorSubject, Subject, tap, Subscription, catchError, of } from 'rxjs';
 import { addLink, addNode, removeLink, removeNode } from '../store/actions/cluster.actions';
 import { Store } from '@ngrx/store';
-import { PodSpec } from '../model/pod.interface';
-import { Container } from '../model/container.interface';
-import { Service } from '../model/service.interface';
-import { Volume } from '../model/volume.interface';
-import { Ingress } from '../model/ingress.interface';
-import { ConfigMap } from '../model/config-map.interface';
-import { Link } from '../model/link.interface';
-import { Deployment } from '../model/deployment.interface';
+
+import { Link } from '../model/link.class';
 import { getClusterData } from '../store/selectors/selectors';
-import { Cluster } from '../model/cluster.interface';
+import { Cluster } from '../model/cluster.class';
 import { DataService } from './data.service';
-import { NodeTemplateFunctions, nodeTemplates } from '../config/node-templates.config';
-import { Base } from '../model/base.interface';
+import { NodeFactoryService } from './node.factory.service';
 
 
 @Injectable({
@@ -31,16 +24,10 @@ export class DiagramService implements OnDestroy{
 
   constructor(
     private store: Store,
-    private dataservice: DataService
+    private dataservice: DataService,
+    private nodeFactory: NodeFactoryService
   ) { }
 
-
-  createNode<T extends Base>(type: new () => T, id: string, name: string): T {
-    const node = new type();
-    node.id = id;
-    node.name = name;
-    return node;
-  }
 
   onSelectionChanged(e: go.DiagramEvent): void {
     const selectedNode = e.diagram.selection.first();
@@ -51,23 +38,17 @@ export class DiagramService implements OnDestroy{
 
   onNodeDropped(e: go.DiagramEvent): void {
     const droppedNode = e.subject.first();
+    const type = droppedNode.data.type;
+    const name = droppedNode.data.name;
+    const id = droppedNode.data.key;
 
     if (droppedNode instanceof go.Node) {
-      const type = droppedNode.data.type as keyof NodeTemplateFunctions;
-
-      const templateFn = nodeTemplates[type];
-
-      if (templateFn) {
-        let newNodeData = templateFn();
-        newNodeData.id = droppedNode.data.key;
-        newNodeData.name = droppedNode.data.name;
-        this.store.dispatch(addNode({ node: newNodeData }));
+        const newNode = this.nodeFactory.createNode(type, id, name);
+        this.store.dispatch(addNode({ node: newNode }));
       } else {
         console.warn(`Unhandled node type: ${type}`);
       }
-    }
   }
-
 
 
   onNodeDeleted(e: go.DiagramEvent): void {
@@ -83,28 +64,22 @@ export class DiagramService implements OnDestroy{
   onLinkDrawn(e: go.DiagramEvent): void {
     const link = e.subject;
     if (link instanceof go.Link) {
-      let newLink: Link;
-      newLink = {
-        source: link.data.from,
-        target: link.data.to
-      };
+      let newLink: Link = new Link(link.data.from, link.data.to);
       this.store.dispatch(addLink({ link: newLink }));
     }
   }
 
 
-  saveDiagram() {
-    this.subscription.add(
-      this.store.select(getClusterData).pipe(
-        tap((clusterData) => {
-          this.dataservice.post<Cluster>('cluster', clusterData).pipe(
-            catchError((error) => { console.error('Error saving diagram', error); return of(error); })
-          ).subscribe(() => {
-            alert('Diagram saved successfully')
-          });
-        })
-      ).subscribe()
-    );
+
+  saveDiagram(clusterData: Cluster) {
+    this.dataservice.post<Cluster>('cluster', clusterData).pipe(
+      catchError((error) => {
+        console.error('Error saving diagram', error);
+        return of(error);
+      })
+    ).subscribe(() => {
+      alert('Diagram saved successfully');
+    });
   }
 
   ngOnDestroy(): void {

@@ -1,7 +1,7 @@
 import { clusterReducer } from './../reducers/cluster.reducer';
 import { createReducer, on } from '@ngrx/store';
 import * as actions from '../actions/actions';
-import { Cluster } from 'src/app/model/cluster.interface';
+import { Cluster } from 'src/app/model/cluster.class';
 
 
 export interface MainState {

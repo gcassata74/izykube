@@ -1,2 +1,4 @@
+<form [formGroup]="nodeForm">
 <app-pod-form *ngIf="selectedNodeType === 'pod' || selectedNodeType === 'container'"></app-pod-form>
 <app-deployment-form *ngIf="selectedNodeType === 'deployment'"></app-deployment-form>
+</form>
