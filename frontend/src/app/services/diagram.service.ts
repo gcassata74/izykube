@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import * as go from 'gojs';
-import { BehaviorSubject, Subject, tap, Subscription, catchError, of } from 'rxjs';
+import { BehaviorSubject, Subject, tap, Subscription, catchError, of, throwError } from 'rxjs';
 import { addLink, addNode, removeLink, removeNode } from '../store/actions/cluster.actions';
 import { Store } from '@ngrx/store';
 
@@ -37,6 +37,7 @@ export class DiagramService implements OnDestroy{
   }
 
   onNodeDropped(e: go.DiagramEvent): void {
+    
     const droppedNode = e.subject.first();
     const type = droppedNode.data.type;
     const name = droppedNode.data.name;
@@ -69,13 +70,11 @@ export class DiagramService implements OnDestroy{
     }
   }
 
-
-
   saveDiagram(clusterData: Cluster) {
     this.dataservice.post<Cluster>('cluster', clusterData).pipe(
       catchError((error) => {
         console.error('Error saving diagram', error);
-        return of(error);
+        return throwError(() => error);
       })
     ).subscribe(() => {
       alert('Diagram saved successfully');

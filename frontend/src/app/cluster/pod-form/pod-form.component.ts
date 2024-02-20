@@ -1,3 +1,4 @@
+import { AssetService } from './../../services/asset.service';
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Observable, map, of } from 'rxjs';
@@ -20,14 +21,10 @@ export class PodFormComponent implements OnInit{
   selectedNodeType: string | null = null;
   selectedNodeKey!: string;
 
-  nodeAssetTypeMapping: { [nodeType: string]: string[] } = {
-    'pod': ['container'], 
-    'container': ['container']
-    };
-
   constructor(
     private dataService: DataService,
     private diagramService: DiagramService,
+    private assetService: AssetService,
     private store: Store,
     private formBuilder: FormBuilder
   ) {}
@@ -49,18 +46,7 @@ export class PodFormComponent implements OnInit{
   }
 
   setupFilteredAssets(selectedNode: go.Node | null): void {
-    this.filteredAssets$ = selectedNode ? this.dataService.get<Asset[]>('asset/all').pipe(
-      map(assets => assets.filter(asset => {
-        // Get the asset types allowed for the selected node type from the mapping
-        const allowedAssetTypes = this.nodeAssetTypeMapping[selectedNode.data.type] || [selectedNode.data.type];
-        // Filter assets that match any of the allowed asset types
-        return allowedAssetTypes.includes(asset.type);
-      })),
-      map(assets => assets.map(asset => ({
-        ...asset,
-        label: `${asset.name} - ${asset.version}`
-      })))
-    ) : of([]);
+    this.filteredAssets$ = this.assetService.getFilterdAssets(selectedNode);
   }
 
   // onAssetSelected(asset: Asset): void {

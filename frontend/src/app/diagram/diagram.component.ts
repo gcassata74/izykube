@@ -33,10 +33,10 @@ export class DiagramComponent implements OnInit {
 
 
   constructor(
-    private iconService : IconService,
+    private iconService: IconService,
     private store: Store,
-    private diagramService : DiagramService
-    ) { }
+    private diagramService: DiagramService
+  ) { }
 
   ngOnInit(): void {
     //write methods to create the gojs diagram
@@ -44,52 +44,52 @@ export class DiagramComponent implements OnInit {
     //write a metohd to create the palette
     this.createPalette();
   }
-  
+
 
   private createDiagram() {
 
-     this.diagram = $(go.Diagram, 'myDiagramDiv',
-     {
-       'undoManager.isEnabled': true,
-       "linkingTool.isEnabled": true,
-       "relinkingTool.isEnabled": true,
-       "allowMove": true,
-       
-       grid:
-       $(go.Panel, "Grid",
-           { gridCellSize: new go.Size(10, 10) },
-           $(go.Shape, "LineH", { strokeDashArray: [1, 9] })
-       )
-     });
+    this.diagram = $(go.Diagram, 'myDiagramDiv',
+      {
+        'undoManager.isEnabled': true,
+        "linkingTool.isEnabled": true,
+        "relinkingTool.isEnabled": true,
+        "allowMove": true,
 
-     this.diagram.nodeTemplate = this.makeNodeTemplate();
-     this.diagram.commandHandler.deletesTree = true; 
-     this.diagram.commandHandler.canDeleteSelection = () => true; 
-  
+        grid:
+          $(go.Panel, "Grid",
+            { gridCellSize: new go.Size(10, 10) },
+            $(go.Shape, "LineH", { strokeDashArray: [1, 9] })
+          )
+      });
 
-     // define the diagram model with nodeDataArray and linkDataArray
-     const graphLinksModel: go.GraphLinksModel = this.diagram.model as go.GraphLinksModel;
+    this.diagram.nodeTemplate = this.makeNodeTemplate();
+    this.diagram.commandHandler.deletesTree = true;
+    this.diagram.commandHandler.canDeleteSelection = () => true;
 
-     this.diagram.linkTemplate =
-       $(go.Link,
-         {
-           reshapable: true,
-           resegmentable: true,
-           relinkableFrom: true,
-           relinkableTo: true,
-           adjusting: go.Link.Stretch
-         },
-         new go.Binding("points").makeTwoWay(),
-         new go.Binding("fromSpot", "fromSpot", go.Spot.parse).makeTwoWay(go.Spot.stringify),
-         new go.Binding("toSpot", "toSpot", go.Spot.parse).makeTwoWay(go.Spot.stringify),
-         $(go.Shape, {fill: 'lightblue', strokeWidth: 3}),  // Link appearance
-         $(go.Shape, {fill: 'lightblue', strokeWidth: 3, toArrow: 'Standard'})
-       );
-  
-     // Attach event handlers
-     this.addEventHanlders(graphLinksModel);
-   }
-   
+
+    // define the diagram model with nodeDataArray and linkDataArray
+    const graphLinksModel: go.GraphLinksModel = this.diagram.model as go.GraphLinksModel;
+
+    this.diagram.linkTemplate =
+      $(go.Link,
+        {
+          reshapable: true,
+          resegmentable: true,
+          relinkableFrom: true,
+          relinkableTo: true,
+          adjusting: go.Link.Stretch
+        },
+        new go.Binding("points").makeTwoWay(),
+        new go.Binding("fromSpot", "fromSpot", go.Spot.parse).makeTwoWay(go.Spot.stringify),
+        new go.Binding("toSpot", "toSpot", go.Spot.parse).makeTwoWay(go.Spot.stringify),
+        $(go.Shape, { fill: 'lightblue', strokeWidth: 3 }),  // Link appearance
+        $(go.Shape, { fill: 'lightblue', strokeWidth: 3, toArrow: 'Standard' })
+      );
+
+    // Attach event handlers
+    this.addEventHanlders(graphLinksModel);
+  }
+
 
   private addEventHanlders(graphLinksModel: go.GraphLinksModel) {
     this.diagram.addDiagramListener('LinkDrawn', (e) => {
@@ -105,9 +105,17 @@ export class DiagramComponent implements OnInit {
 
     this.diagram.addDiagramListener('ChangedSelection', e => this.diagramService.onSelectionChanged(e));
     this.diagram.addDiagramListener("ExternalObjectsDropped", e => {
-      this.chooseUniqueNameForNode(e);
-      this.diagramService.onNodeDropped(e);
-      this.diagram.clearSelection();
+      this.diagram.startTransaction("dropExternalObjects");
+
+      try {
+        this.chooseUniqueNameForNode(e);
+        this.diagramService.onNodeDropped(e);
+        this.diagram.clearSelection();
+        this.diagram.commitTransaction("dropExternalObjects");
+      } catch (error) {
+        console.error("Error during external object drop:", error);
+        this.diagram.rollbackTransaction();
+      }
     });
     this.diagram.addDiagramListener("SelectionDeleted", e => {
       this.diagramService.onNodeDeleted(e);
@@ -117,46 +125,46 @@ export class DiagramComponent implements OnInit {
     this.diagram.addDiagramListener('SelectionDeleting', e => this.diagramService.onNodeDeleted(e));
   }
 
+
   chooseUniqueNameForNode(e: go.DiagramEvent) {
     e.subject.each((part: any) => {
       if (part instanceof go.Node) {
         const baseName = part.data.name;
-  
+
         // Filter existing nodes in the diagram to find those with the same base name
         const similarNodes = this.diagram.model.nodeDataArray.filter((node: any) =>
           node.name && node.name.startsWith(baseName)
         );
-  
+
         // Initialize the name with the base name
         let newName = baseName;
-  
-        if (similarNodes.length > 0) {
-          // Extract and sort the suffix numbers of similar nodes, ensuring all are numbers
-          const suffixNumbers = similarNodes.map(node => {
-            const match = node['name'].match(new RegExp(`^${baseName}(\\d+)$`));
-            return match ? parseInt(match[1], 10) : null;
-          }).filter((number): number is number => number !== null).sort((a, b) => a - b);
-  
-          let nextSuffix = 1;
-          if (suffixNumbers.length > 0) {
-            for (let i = 0; i < suffixNumbers.length; i++) {
-              if (nextSuffix < suffixNumbers[i]) {
-                break; // Found a gap in the sequence
-              }
-              nextSuffix = suffixNumbers[i] + 1;
+        let maxSuffix = 0;
+
+        // Extract and find the maximum suffix number used
+        similarNodes.forEach(node => {
+          const result = node['name'].match(/^(\D+)(\d*)$/); // Match non-digits followed by digits
+          if (result) {
+            const suffix = parseInt(result[2], 10);
+            if (!isNaN(suffix)) {
+              maxSuffix = Math.max(maxSuffix, suffix);
             }
           }
-          newName = `${baseName}${nextSuffix}`;
+        });
+
+        // If other nodes with the same base name exist, increment the max suffix
+        if (similarNodes.length > 0) {
+          newName = `${baseName}${maxSuffix + 1}`;
         }
-  
+
+        // Perform the renaming in a transaction
         this.diagram.model.startTransaction("rename node");
         this.diagram.model.setDataProperty(part.data, "name", newName);
         this.diagram.model.commitTransaction("rename node");
       }
     });
   }
-  
-   private createPalette() {
+
+  private createPalette() {
     const $ = go.GraphObject.make;
 
     // Node data array with icon URLs
@@ -164,19 +172,19 @@ export class DiagramComponent implements OnInit {
 
     // Initialize the palette
     const myPalette =
-        $(go.Palette, 'myPaletteDiv',
-            {
-                model: new go.GraphLinksModel(nodeDataArray, ), // Pass the node data array to the model
-                layout: $(go.GridLayout, { wrappingColumn: 1, cellSize: new go.Size(1, 1) }),
-                grid: $(go.Panel, "Grid",
-                    { gridCellSize: new go.Size(10, 10) },
-                    $(go.Shape, "LineH", { strokeDashArray: [1, 9] })
-                )
-            },
-        );
+      $(go.Palette, 'myPaletteDiv',
+        {
+          model: new go.GraphLinksModel(nodeDataArray,), // Pass the node data array to the model
+          layout: $(go.GridLayout, { wrappingColumn: 1, cellSize: new go.Size(1, 1) }),
+          grid: $(go.Panel, "Grid",
+            { gridCellSize: new go.Size(10, 10) },
+            $(go.Shape, "LineH", { strokeDashArray: [1, 9] })
+          )
+        },
+      );
 
-        myPalette.nodeTemplate = this.makeNodeTemplate();
-}
+    myPalette.nodeTemplate = this.makeNodeTemplate();
+  }
 
 
 
@@ -192,68 +200,65 @@ export class DiagramComponent implements OnInit {
     ];
   }
 
-  
 
-private makeNodeTemplate() {
-  const $ = go.GraphObject.make; // Define a shorthand variable for GoJS methods
 
-  return $(go.Node, "Spot",  // Use 'Spot' for the main node panel
+  private makeNodeTemplate() {
+
+    return $(go.Node, "Spot",
       {
-          locationSpot: go.Spot.Center,
-          movable: true
+        locationSpot: go.Spot.Center,
+        movable: true
       },
       new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
 
       // Outer transparent rectangle larger than the node, acts as the linkable area
-      $(go.Shape, "Rectangle",
-          {
-              fill: "transparent",  // Transparent so it doesn't obscure the node
-              stroke: null,  // No visible stroke
-              strokeWidth: 0,
-              width: 80, height: 80,  // Larger than the node to act as a linkable area
-              portId: "",  // This shape acts as the port
-              fromLinkable: true, toLinkable: true, cursor: "pointer"
-          }
-      ),
-
-      // Panel with a blue border and white background
-      $(go.Panel, "Auto",
-          {
-              background: "white",  // Set the background color to white
-              padding: 3,           // Add padding for the blue border
-              defaultStretch: go.GraphObject.Fill
-          },
-          // Blue border around the panel
-          $(go.Shape, "Rectangle",
-              {
-                  stroke: "#4747ff",       // Set the border color to blue
-                  strokeWidth: 3,       // Set the border width to 3 pixels
-                  stretch: go.GraphObject.Fill
-              }
-          ),
-          // Inner node visual representation
-          $(go.Shape, "Rectangle",
-              {
-                  width: 60, height: 60, fill: 'white', strokeWidth: 2,
-                  cursor: "hand"
-              }
-          ),
-          // Place the Picture (icon) inside the node shape
-          $(go.Picture,
-              {
-                  width: 40, height: 40, margin: 5,
-              },
-              new go.Binding("source", "icon") // Bind picture source to icon property in the node data
-          ),
-          // Node label inside the shape, below the icon
-      ),
-      $(go.TextBlock,
+      $(go.Shape, "RoundedRectangle",
         {
-            alignment: go.Spot.Bottom, margin: 5, editable: true, textAlign: "center"
-        },
-        new go.Binding("text", "name")
+          fill: "transparent",  // Transparent so it doesn't obscure the node
+          stroke: null,  // No visible stroke
+          strokeWidth: 0,
+          width: 80, height: 80,  // Larger than the node to act as a linkable area
+          portId: "",  // This shape acts as the port
+          fromLinkable: true, toLinkable: true, cursor: "pointer"
+        }
+      ),
+        // Inner node visual representation
+        $(go.Shape, "RoundedRectangle",
+          {
+            width: 60, height: 60, fill: 'white', strokeWidth: 3,
+            cursor: "hand"
+          }
+        ),
+        // Place the Picture (icon) inside the node shape
+        this.makeNodeIcon(),
+     
+       // Node label inside the shape, below the icon
+      this.makeNodeLabel()
     )
-  );
-}
+  }
 
+
+  makeNodeIcon() {
+    return $(go.Picture,
+      {
+        width: 40, height: 40, margin: 5,
+      },
+      new go.Binding("source", "icon") // Bind picture source to icon property in the node data
+    )
+  }
+
+  makeNodeLabel() {
+
+    return $(go.TextBlock,
+      {
+        alignment: go.Spot.BottomCenter,
+        margin: 5,
+        editable: true,
+        textAlign: "center",
+        wrap: go.TextBlock.WrapFit,
+        overflow: go.TextBlock.OverflowEllipsis
+      },
+      new go.Binding("text", "name")
+    )
+  }
 }
