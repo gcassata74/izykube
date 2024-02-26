@@ -22,9 +22,30 @@ public class WebConfig implements WebMvcConfigurer {
     }
 
 
+//    @Override
+//    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+//
+//        registry.addResourceHandler("/**")
+//                .addResourceLocations("classpath:/static/")
+//                .resourceChain(true)
+//                .addResolver(new PathResourceResolver() {
+//                    @Override
+//                    protected Resource getResource(String resourcePath, Resource location) throws IOException {
+//                        Resource requestedResource = location.createRelative(resourcePath);
+//                        return requestedResource.exists() && requestedResource.isReadable() ? requestedResource
+//                                : new ClassPathResource("/static/index.html");
+//                    }
+//                });
+//    }
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // Serve Swagger UI static resources
+        registry.addResourceHandler("/swagger-ui/**")
+                .addResourceLocations("classpath:/META-INF/resources/webjars/springfox-swagger-ui/")
+                .resourceChain(false);
 
+        // Serve your Angular static resources and configure SPA routing
         registry.addResourceHandler("/**")
                 .addResourceLocations("classpath:/static/")
                 .resourceChain(true)

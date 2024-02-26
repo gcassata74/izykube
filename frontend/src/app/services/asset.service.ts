@@ -9,11 +9,6 @@ import { DataService } from './data.service';
 })
 export class AssetService {
 
- nodeAssetTypeMapping: { [nodeType: string]: string[] } = {
-    'pod': ['container'], 
-    'container': ['container'],
-    'deployment': ['container']
-  };
 
   constructor(
     private dataService: DataService,
@@ -22,10 +17,6 @@ export class AssetService {
 
   getFilterdAssets(selectedNode: go.Node | null): Observable<Asset[]> {
     return selectedNode ? this.dataService.get<Asset[]>('asset/all').pipe(
-      map(assets => assets.filter(asset => {
-        const allowedAssetTypes = this.nodeAssetTypeMapping[selectedNode.data.type] || [selectedNode.data.type];
-        return allowedAssetTypes.includes(asset.type);
-      })),
       map(assets => assets.map(asset => ({
         ...asset,
         label: `${asset.name} - ${asset.version}`

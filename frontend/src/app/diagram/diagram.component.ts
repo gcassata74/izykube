@@ -212,31 +212,39 @@ export class DiagramComponent implements OnInit {
       new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
 
       // Outer transparent rectangle larger than the node, acts as the linkable area
-      $(go.Shape, "RoundedRectangle",
-        {
-          fill: "transparent",  // Transparent so it doesn't obscure the node
-          stroke: null,  // No visible stroke
-          strokeWidth: 0,
-          width: 80, height: 80,  // Larger than the node to act as a linkable area
-          portId: "",  // This shape acts as the port
-          fromLinkable: true, toLinkable: true, cursor: "pointer"
-        }
-      ),
-        // Inner node visual representation
-        $(go.Shape, "RoundedRectangle",
-          {
-            width: 60, height: 60, fill: 'white', strokeWidth: 3,
-            cursor: "hand"
-          }
-        ),
-        // Place the Picture (icon) inside the node shape
-        this.makeNodeIcon(),
-     
-       // Node label inside the shape, below the icon
+      this.makeLinkableArea(),
+      // Inner node visual representation
+      this.makeNodeBorder(),
+      // Place the Picture (icon) inside the node shape
+      this.makeNodeIcon(),
+      // Node label inside the shape, below the icon
       this.makeNodeLabel()
     )
   }
 
+  makeNodeBorder() {
+    return $(go.Shape, "RoundedRectangle",
+      {
+        width: 60, height: 60, fill: 'white', strokeWidth: 3,
+        cursor: "hand"
+      }
+    )
+  }
+
+  makeLinkableArea() {
+    return $(go.Shape, "RoundedRectangle",
+      {
+        fill: "transparent",  // Transparent so it doesn't obscure the node
+        stroke: null,  // No visible stroke
+        strokeWidth: 0,
+        width: 80, height: 80,  // Larger than the node to act as a linkable area
+        portId: "",  // This shape acts as the port
+        fromLinkable: true, 
+        toLinkable: true, 
+        cursor: "pointer"
+      }
+    )
+  }
 
   makeNodeIcon() {
     return $(go.Picture,

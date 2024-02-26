@@ -1,6 +1,6 @@
 // cluster.reducer.ts
 import { createReducer, on } from '@ngrx/store';
-import { addLink, addNode, removeLink, removeNode, updateDiagram, updateNodeAsset } from '../actions/cluster.actions';
+import { addLink, addNode, removeLink, removeNode, updateDiagram, updateNode } from '../actions/cluster.actions';
 import { initialState } from '../states/state';
 
 
@@ -25,12 +25,12 @@ export const clusterReducer = createReducer(
       },
   })),
 
-  on(updateNodeAsset, (state, { nodeId, assetId }) => ({
+  on(updateNode, (state, { nodeId, formValues }) => ({
       ...state,
       clusterData: {
         ...state.clusterData,
         nodes: state.clusterData.nodes.map(node =>
-          node.id === nodeId ? { ...node, assetId: assetId } : node
+          node.id === nodeId ? { ...node, ...formValues } : node
         )
       }
   })),

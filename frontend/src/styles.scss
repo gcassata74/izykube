@@ -41,6 +41,14 @@
   z-index: 3000;
 }
 
+.p-dropdown {
+  width: 100%;
+}
+
+.no-padding > * {
+  padding: 0
+}
+
 // theme 
 .svg-color {
   color: blue; /* Cambia il colore di riempimento (fill) dell'immagine SVG */

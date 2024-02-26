@@ -30,6 +30,8 @@ import { DeploymentFormComponent } from './cluster/deployment-form/deployment-fo
 import { ReactiveFormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumber, InputNumberModule } from 'primeng/inputnumber';
+import { ButtonModule } from 'primeng/button';
+import { ConfigMapFormComponent } from './cluster/config-map-form/config-map-form.component';
 
 @NgModule({
   declarations: [
@@ -41,7 +43,8 @@ import { InputNumber, InputNumberModule } from 'primeng/inputnumber';
     ClusterEditorComponent,
     NodeFormComponent,
     PodFormComponent,
-    DeploymentFormComponent
+    DeploymentFormComponent,
+    ConfigMapFormComponent
   ],
   imports: [
     ReactiveFormsModule,
@@ -52,6 +55,7 @@ import { InputNumber, InputNumberModule } from 'primeng/inputnumber';
     DropdownModule,
     InputTextModule,
     InputNumberModule,
+    ButtonModule,
     TableModule,
     MenuModule,
     BrowserAnimationsModule,

@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import * as go from 'gojs';
 import { BehaviorSubject, Subject, tap, Subscription, catchError, of, throwError } from 'rxjs';
-import { addLink, addNode, removeLink, removeNode } from '../store/actions/cluster.actions';
+import { addLink, addNode, removeLink, removeNode, updateNode } from '../store/actions/cluster.actions';
 import { Store } from '@ngrx/store';
 
 import { Link } from '../model/link.class';
@@ -15,6 +15,7 @@ import { NodeFactoryService } from './node.factory.service';
   providedIn: 'root'
 })
 export class DiagramService implements OnDestroy{
+
 
 
   private subscription = new Subscription();
@@ -85,6 +86,9 @@ export class DiagramService implements OnDestroy{
    this.subscription.unsubscribe();
   }
 
+  updateClusterNodes(nodeId: string, formValues: any) {
+   this.store.dispatch(updateNode({ nodeId, formValues }));
+  }
 
 }
 

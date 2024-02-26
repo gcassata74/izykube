@@ -1,19 +1,31 @@
 package com.izylife.izykube.services.k8s;
 
 
-import com.izylife.izykube.dto.DeploymentRequest;
+import com.izylife.izykube.dto.cluster.ConfigMap;
+import com.izylife.izykube.model.Asset;
+import com.izylife.izykube.services.AssetService;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentList;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
+@Slf4j
 public class K8sDeploymentService {
 
-    private final KubernetesClient kubernetesClient;
+    @Autowired
+    private KubernetesClient kubernetesClient;
+
+    @Autowired
+    private AssetService assetService;
+
+    private List<ConfigMap> configMaps;
+
 
     public K8sDeploymentService(KubernetesClient kubernetesClient) {
         this.kubernetesClient = kubernetesClient;
@@ -28,7 +40,12 @@ public class K8sDeploymentService {
     }
 
 
-    public String createDeployment(String namespace, String deploymentName, String imageName, int replicas) {
+    public Deployment createDeployment(com.izylife.izykube.dto.cluster.Deployment deployment) {
+        Asset asset = assetService.getAsset(deployment.getAssetId());
+        return createDeployment("default", deployment.getName(), asset.getImage(), deployment.getReplicas());
+    }
+
+    public Deployment createDeployment(String namespace, String deploymentName, String imageName, int replicas) {
 
         if (namespace == null || namespace.isEmpty()) {
             namespace = "default";
@@ -56,9 +73,7 @@ public class K8sDeploymentService {
                 .endTemplate()
                 .endSpec()
                 .build();
-
-        deployment = kubernetesClient.apps().deployments().inNamespace(namespace).create(deployment);
-        return "Created deployment " + deployment.getMetadata().getName() + " in namespace " + namespace;
+        return kubernetesClient.apps().deployments().inNamespace(namespace).create(deployment);
     }
 
 
@@ -90,4 +105,15 @@ public class K8sDeploymentService {
         return String.format("Updated replicas of deployment %s, to %s  in namespace  %s" + deployment.getMetadata().getName(), replicas, namespace);
     }
 
+    public void attachConfigMapToDeployment(ConfigMap sourceNode, com.izylife.izykube.dto.cluster.Deployment deployment) {
+    }
+
+    public void addConfigMap(ConfigMap sourceNode) {
+        // check if the configMap already exists in the list
+        // are we sure we can compare the objects like this?
+        if (configMaps.contains(sourceNode)) {
+            return;
+        }
+        configMaps.add(sourceNode);
+    }
 }

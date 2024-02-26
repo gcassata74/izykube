@@ -1,17 +1,11 @@
-<!-- Contenitore del form del Deployment -->
-<div class="deployment-form-container" [formGroup]="deploymentForm">
-  <!-- Incorporamento del PodFormComponent per la selezione dell'Asset -->
-  <app-pod-form (formReady)="addChildForm($event)"></app-pod-form>
-
-  <!-- Campo input per il numero di repliche -->
-  <div class="form-row">
-    <label for="replicas">Replicas:</label>
-    <p-inputNumber inputId="replicas" formControlName="replicas" [min]="1"></p-inputNumber>
+<form [formGroup]="deploymentForm">
+  <div class="deployment-form-container">
+    <!-- Form Row for Replicas Input -->
+    <div class="form-group">
+      <div class="form-floating mb-3">
+        <input type="text" class="form-control" id="floatingInput" formControlName="replicas">
+        <label for="floatingInput">Replicas</label>
+      </div>
+    </div>
   </div>
-
-
-  <!-- Bottone di salvataggio -->
-  <div class="save-button-container">
-    <button type="submit" pButton label="Save" icon="pi pi-save">Save</button>
-  </div>
-</div>
+</form>

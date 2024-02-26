@@ -1,9 +1,14 @@
-<div class="pod-form-container">
-  <p-dropdown *ngIf="filteredAssets$ | async as filteredAssets"
-              [options]="filteredAssets"
-              formControlName="assets"
-              optionLabel="label"
-              placeholder="Select an Asset"
-  >
-  </p-dropdown>
+<div class="pod-form-container mb-2">
+  <form [formGroup]="podForm">
+
+    <div class="grid justify-center">
+      <div class="col-12">
+        <p-dropdown *ngIf="filteredAssets$ | async as filteredAssets" [options]="filteredAssets"
+                    formControlName="assetId" optionValue="id" optionLabel="label" placeholder="Select an Asset">
+        </p-dropdown>
+      </div>
+    </div>
+
+
+  </form>
 </div>

@@ -4,6 +4,7 @@ import { Node } from "./node.class";
 export class Deployment extends Node{
 
     assetId!: string;
+    replicas!: number;
 
 
     constructor(id: string, name: string, kind: string) {

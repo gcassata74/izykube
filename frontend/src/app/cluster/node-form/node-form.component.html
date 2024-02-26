@@ -1,4 +1,20 @@
 <form [formGroup]="nodeForm">
-<app-pod-form *ngIf="selectedNodeType === 'pod' || selectedNodeType === 'container'"></app-pod-form>
-<app-deployment-form *ngIf="selectedNodeType === 'deployment'"></app-deployment-form>
+  <ng-container *ngIf="selectedNodeType === 'pod' || selectedNodeType === 'container'">
+    <app-pod-form (formReady)="addChildForm($event)"></app-pod-form>
+  </ng-container>
+
+  <ng-container *ngIf="selectedNodeType === 'deployment'">
+    <app-pod-form (formReady)="addChildForm($event)"></app-pod-form>
+    <app-deployment-form (formReady)="addChildForm($event)"></app-deployment-form>
+  </ng-container>
+
+  <ng-container *ngIf="selectedNodeType === 'configMap'">
+    <app-config-map-form (formReady)="addChildForm($event)"></app-config-map-form>
+  </ng-container>
+
+  <ng-container *ngIf="!!selectedNodeType">
+    <div class="d-flex justify-content-end mr-2">
+      <p-button label="Save" type="submit" class="primary" (onClick)="updateClusterNodes()"></p-button>
+    </div>
+  </ng-container>
 </form>

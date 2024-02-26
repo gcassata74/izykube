@@ -1,3 +1,11 @@
-FROM alpine:latest
+FROM node:18-alpine
 
-CMD ["echo", "Hello, World!"]
+WORKDIR /app
+
+COPY package*json ./
+
+RUN npm i
+
+COPY ./src ./src
+
+CMD ["npm", "start"]

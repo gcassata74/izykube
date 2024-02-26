@@ -1,11 +1,10 @@
 import { AssetService } from './../../services/asset.service';
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { Store } from '@ngrx/store';
-import { Observable, map, of } from 'rxjs';
+import { Observable, map, of, tap } from 'rxjs';
 import { Asset } from '../../model/asset.class';
 import { DataService } from '../../services/data.service';
 import { DiagramService } from '../../services/diagram.service';
-import { updateNodeAsset } from '../../store/actions/cluster.actions';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 
 @Component({
@@ -37,7 +36,7 @@ export class PodFormComponent implements OnInit{
     });
 
     this.podForm = this.formBuilder.group({
-      asset: ['', Validators.required]
+      assetId: ['', Validators.required]
     });
   
     // Emetti l'evento con il form quando è pronto
@@ -49,10 +48,7 @@ export class PodFormComponent implements OnInit{
     this.filteredAssets$ = this.assetService.getFilterdAssets(selectedNode);
   }
 
-  // onAssetSelected(asset: Asset): void {
-  //   // Dispatch the action to update the node's assetId
-  //   this.store.dispatch(updateNodeAsset({ nodeId: this.selectedNodeKey, assetId: asset.id }));
-  // }
+
 
 
 

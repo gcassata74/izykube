@@ -3,6 +3,5 @@ export class Asset {
     name!: string;
     port!: number;
     image!: string;
-    type!: string;
     version!: string;
   }

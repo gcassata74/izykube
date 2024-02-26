@@ -1,0 +1,21 @@
+package com.izylife.izykube.dto.cluster;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.List;
+import java.util.Map;
+
+public class ConfigMap extends Node {
+
+    private List<Map<String, String>> entries;
+
+    public ConfigMap(
+            @JsonProperty("id") String id,
+            @JsonProperty("name") String name,
+            @JsonProperty("entries") List<Map<String, String>> entries
+    ) {
+        super(id, name, "configmap");
+        this.entries = entries;
+    }
+
+}

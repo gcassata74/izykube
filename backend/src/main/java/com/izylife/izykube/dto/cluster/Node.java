@@ -12,7 +12,8 @@ import lombok.NoArgsConstructor;
         @JsonSubTypes.Type(value = Pod.class, name = "pod"),
         @JsonSubTypes.Type(value = Container.class, name = "container"),
         @JsonSubTypes.Type(value = Deployment.class, name = "deployment"),
-        @JsonSubTypes.Type(value = Service.class, name = "service")
+        @JsonSubTypes.Type(value = Service.class, name = "service"),
+        @JsonSubTypes.Type(value = ConfigMap.class, name = "configMap")
 })
 public class Node {
     String id;

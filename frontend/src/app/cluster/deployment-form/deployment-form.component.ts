@@ -32,23 +32,11 @@ export class DeploymentFormComponent {
     });
 
     this.deploymentForm = this.fb.group({
-      replicas: [1, Validators.required],
+      replicas: ['', Validators.required],
     
     });
 
     this.formReady.emit(this.deploymentForm); 
-  }
-
-  saveDeployment(): void {
-    if (this.deploymentForm.valid) {
-      console.log('Deployment saved', this.deploymentForm.value);
-      // Here you would typically dispatch an action or call a service to save the form values
-    }
-  }
-
-  addChildForm(childForm: FormGroup): void {
-    // Aggiungi il FormGroup del componente figlio al form del componente padre
-    this.deploymentForm.addControl('podForm', childForm);
   }
 
 }

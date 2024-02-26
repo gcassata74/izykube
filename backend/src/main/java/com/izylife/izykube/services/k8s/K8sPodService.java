@@ -1,9 +1,12 @@
 package com.izylife.izykube.services.k8s;
 
+import com.izylife.izykube.model.Asset;
+import com.izylife.izykube.services.AssetService;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -11,16 +14,26 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class K8sPodService {
 
-    private final KubernetesClient kubernetesClient;
+    @Autowired
+    private KubernetesClient kubernetesClient;
+
+    @Autowired
+    private AssetService assetService;
 
     @Autowired
     public K8sPodService(KubernetesClient kubernetesClient) {
         this.kubernetesClient = kubernetesClient;
     }
 
-    public void createPod(String podName, String imageName, String namespace, Map<String, String> labels, int containerPort) throws KubernetesClientException {
+    public Pod createPod(com.izylife.izykube.dto.cluster.Pod pod) {
+        Asset asset = assetService.getAsset(pod.getAssetId());
+        return createPod(pod.getName(), asset.getImage(), "default", Map.of("app", asset.getName()), asset.getPort());
+    }
+
+    public Pod createPod(String namespace, String podName, String imageName, Map<String, String> labels, int containerPort) throws KubernetesClientException {
 
         if (namespace == null || namespace.isEmpty()) {
             namespace = "default";
@@ -43,7 +56,7 @@ public class K8sPodService {
                     .endSpec()
                     .build();
 
-            kubernetesClient.pods().inNamespace(namespace).create(pod);
+            return kubernetesClient.pods().inNamespace(namespace).create(pod);
 
         } catch (Exception e) {
             throw new KubernetesClientException("Failed to create pod: " + e.getMessage(), e);

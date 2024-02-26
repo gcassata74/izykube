@@ -1,3 +1,4 @@
+import { select } from '@ngrx/store';
 import { Component } from '@angular/core';
 import { Observable, switchMap, map, of } from 'rxjs';
 import { Asset } from '../../model/asset.class';
@@ -11,7 +12,9 @@ import { FormBuilder, FormGroup } from '@angular/forms';
   styleUrls: ['./node-form.component.scss']
 })
 export class NodeFormComponent {
-  selectedNodeType: string | null = null;
+
+  selectedNodeType!: string;
+  selectedNodeId!: string;
   nodeForm!: FormGroup;
 
   constructor(
@@ -28,6 +31,7 @@ export class NodeFormComponent {
 
     this.diagramService.selectedNode$.subscribe(node => {
       this.selectedNodeType = node?.data?.type || null;
+      this.selectedNodeId = node?.data?.key;
     });
   }
 
@@ -37,5 +41,12 @@ export class NodeFormComponent {
       this.nodeForm.addControl(key, childForm.get(key));
     });
   }
+
+
+  updateClusterNodes() {
+    const formValue =this. nodeForm.value;  
+    this.diagramService.updateClusterNodes(this.selectedNodeId, formValue);
+  }
+  
 
 }

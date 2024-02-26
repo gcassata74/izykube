@@ -8,9 +8,18 @@ spring:
 
 server:
   port: 8090
+  servlet:
+    context-path: /
 
-jwt:
-  secret: izykube
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  api-docs.path: /api-docs
 
 mongock:
   migration-scan-package: com.izylife.izykube.changelogs
+
+app:
+  docker:
+    local-repository-uri: "localhost:5000"

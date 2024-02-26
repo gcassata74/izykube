@@ -8,7 +8,7 @@ export const REMOVE_NODE = '[Cluster] Remove Node';
 export const ADD_LINK = '[Cluster] Add Link';
 export const REMOVE_LINK = '[Cluster] Remove Link';
 export const UPDATE_DIAGRAM = '[Cluster] Update Diagram';
-export const UPDATE_NODE_ASSET = '[Cluster] Update Node Asset';
+export const UPDATE_NODE = '[Cluster] Update Node';
 
 export const addNode = createAction(
   ADD_NODE,
@@ -35,7 +35,9 @@ export const updateDiagram = createAction(
   props<{ diagramData: string }>()
 );
 
-export const updateNodeAsset = createAction(
-  UPDATE_NODE_ASSET,
-  props<{ nodeId: string, assetId: string }>()
+export const updateNode = createAction(
+  UPDATE_NODE,
+  props<{ nodeId: string, formValues: any }>()
 );
+
+

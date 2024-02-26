@@ -1,18 +1,21 @@
 .page-container {
     display: flex;
-    height: 100vh; /* Adjust the height as needed */
+    height: calc(100vh - 80px); /* Adjust the height as needed */
   }
   
   .diagram {
     flex-grow: 3; /* Allows the diagram to take up twice the space of the config panel */
-    overflow: hidden; /* Adds scrollbars if the content is larger than the container */
+    overflow-x: hidden; /* Adds scrollbars if the content is larger than the container */
+    overflow-y: hidden;
+    height: calc(100vh - 80px); /* Adjust the height as needed */
   }
   
   .config-panel {
     flex-basis: 400px; 
+    height: calc(100vh - 80px); 
     flex-grow: 0; /* Adjust the ratio as needed for your design */
     overflow-x: hidden; /* Adds scrollbars if the content is larger than the container */
-    overflow-y: auto;
+    overflow-y: hidden;
     border-left: 1px solid  rgba(0, 0, 0, 0.2);
   }
 
