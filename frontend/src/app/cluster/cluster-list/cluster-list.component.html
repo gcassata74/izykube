@@ -19,17 +19,17 @@
       <th>Actions</th>
     </tr>
   </ng-template>
-  <ng-template pTemplate="body" let-cluster>
+  <ng-template pTemplate="body" let-clusterDTO>
     <tr>
-      <td>{{ cluster.name }}</td>
-      <td>{{ cluster.version }}</td>
-      <td>{{ cluster.created | date: 'short' }}</td>
-      <td>{{ cluster.type }}</td>
-      <td>{{ cluster.owner }}</td>
-      <td>CPU {{ cluster.resources.cpu }} cores <br> RAM {{ cluster.resources.ram }} GB</td>
+      <td>{{ clusterDTO.name }}</td>
+      <td>{{ clusterDTO.version }}</td>
+      <td>{{ clusterDTO.created | date: 'short' }}</td>
+      <td>{{ clusterDTO.type }}</td>
+      <td>{{ clusterDTO.owner }}</td>
+      <td>CPU {{ clusterDTO.resources.cpu }} cores <br> RAM {{ clusterDTO.resources.ram }} GB</td>
       <td>—</td>
       <td>
-        <p-dropdown [options]="['CREATING', 'OTHER_STATUS']" [(ngModel)]="cluster.status"></p-dropdown>
+        <p-dropdown [options]="['CREATING', 'OTHER_STATUS']" [(ngModel)]="clusterDTO.status"></p-dropdown>
       </td>
       <td>
         <!-- Actions like edit or delete -->

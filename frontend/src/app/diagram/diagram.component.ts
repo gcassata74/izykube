@@ -1,3 +1,4 @@
+import { updateDiagram } from './../store/actions/cluster.actions';
 import { DiagramService } from './../services/diagram.service';
 import { IconService } from './../services/icon.service';
 import { Component, ElementRef, HostListener, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
@@ -5,6 +6,7 @@ import * as go from 'gojs';
 import { Store } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
 import { BehaviorSubject } from 'rxjs';
+import  * as actions from '../store/actions/cluster.actions';
 
 const $ = go.GraphObject.make;
 // a collection of colors
@@ -53,6 +55,7 @@ export class DiagramComponent implements OnInit {
         'undoManager.isEnabled': true,
         "linkingTool.isEnabled": true,
         "relinkingTool.isEnabled": true,
+        "textEditingTool.isEnabled": true,
         "allowMove": true,
 
         grid:
@@ -93,20 +96,20 @@ export class DiagramComponent implements OnInit {
 
   private addEventHanlders(graphLinksModel: go.GraphLinksModel) {
     this.diagram.addDiagramListener('LinkDrawn', (e) => {
-      const link = e.subject;
-      const fromNode = link.fromNode;
-      const toNode = link.toNode;
+      const linkDTO = e.subject;
+      const fromNode = linkDTO.fromNode;
+      const toNode = linkDTO.toNode;
 
       if (fromNode && toNode && fromNode instanceof go.Node && toNode instanceof go.Node) {
-        graphLinksModel.addLinkData(link.data);
+        graphLinksModel.addLinkData(linkDTO.data);
       }
       this.diagramService.onLinkDrawn(e)
     });
 
     this.diagram.addDiagramListener('ChangedSelection', e => this.diagramService.onSelectionChanged(e));
+    this.diagram.addDiagramListener("TextEdited", e => this.diagramService.onNodeEdited(e));
     this.diagram.addDiagramListener("ExternalObjectsDropped", e => {
       this.diagram.startTransaction("dropExternalObjects");
-
       try {
         this.chooseUniqueNameForNode(e);
         this.diagramService.onNodeDropped(e);
@@ -123,46 +126,80 @@ export class DiagramComponent implements OnInit {
     });
 
     this.diagram.addDiagramListener('SelectionDeleting', e => this.diagramService.onNodeDeleted(e));
-  }
 
-
-  chooseUniqueNameForNode(e: go.DiagramEvent) {
-    e.subject.each((part: any) => {
-      if (part instanceof go.Node) {
-        const baseName = part.data.name;
-
-        // Filter existing nodes in the diagram to find those with the same base name
-        const similarNodes = this.diagram.model.nodeDataArray.filter((node: any) =>
-          node.name && node.name.startsWith(baseName)
-        );
-
-        // Initialize the name with the base name
-        let newName = baseName;
-        let maxSuffix = 0;
-
-        // Extract and find the maximum suffix number used
-        similarNodes.forEach(node => {
-          const result = node['name'].match(/^(\D+)(\d*)$/); // Match non-digits followed by digits
-          if (result) {
-            const suffix = parseInt(result[2], 10);
-            if (!isNaN(suffix)) {
-              maxSuffix = Math.max(maxSuffix, suffix);
-            }
+    this.diagram.addModelChangedListener(evt => {
+      // ignore unimportant Transaction events
+      if (!evt.isTransactionFinished) return;
+      var txn = evt.object;  // a Transaction
+      if (txn === null) return;
+      // iterate over all of the actual ChangedEvents of the Transaction
+      txn['changes'].each((e: { modelChange: string; change: go.EnumValue; }) => {
+        // handle node changes
+        if (e.modelChange === "nodeDataArray") {
+          if (e.change === go.ChangedEvent.Insert) {
+            // Dispatch action for node added
+            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
+          } else if (e.change === go.ChangedEvent.Remove) {
+            // Dispatch action for node removed
+            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
           }
-        });
-
-        // If other nodes with the same base name exist, increment the max suffix
-        if (similarNodes.length > 0) {
-          newName = `${baseName}${maxSuffix + 1}`;
         }
-
-        // Perform the renaming in a transaction
-        this.diagram.model.startTransaction("rename node");
-        this.diagram.model.setDataProperty(part.data, "name", newName);
-        this.diagram.model.commitTransaction("rename node");
-      }
+        // handle linkDTO changes
+        else if (e.modelChange === "linkDataArray") {
+          if (e.change === go.ChangedEvent.Insert) {
+            // Dispatch action for linkDTO added
+            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
+          } else if (e.change === go.ChangedEvent.Remove) {
+            // Dispatch action for linkDTO removed
+            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
+          }
+        }
+      });
     });
+
   }
+
+
+
+chooseUniqueNameForNode(e: go.DiagramEvent) {
+  e.subject.each((part: any) => {
+      if (part instanceof go.Node) {
+          const baseName = part.data.name;
+
+          // Filter existing nodes in the diagram to find those with the same base name
+          const similarNodes = this.diagram.model.nodeDataArray.filter((node: any) =>
+              node.name && node.name.startsWith(baseName)
+          );
+
+          // Initialize the name with the base name
+          let newName = baseName;
+          let maxSuffixCharCode = 'a'.charCodeAt(0) - 1; // Start before 'a'
+
+          // Extract and find the maximum suffix character used
+          similarNodes.forEach(node => {
+              const result = node['name'].match(/^(.*?)-([a-zA-Z])$/); // Match the pattern with the suffix as a letter
+              if (result && result[2]) {
+                  const charCode = result[2].charCodeAt(0);
+                  if (charCode > maxSuffixCharCode) {
+                      maxSuffixCharCode = charCode; // Update to the maximum suffix char code found
+                  }
+              }
+          });
+
+          // Determine the new name based on the maximum suffix found
+          if (similarNodes.length > 0) {
+              const newSuffixChar = String.fromCharCode(maxSuffixCharCode + 1); // Increment to the next character
+              newName = `${baseName}-${newSuffixChar}`;
+          }
+
+          // Perform the renaming in a transaction
+          this.diagram.model.startTransaction("rename node");
+          this.diagram.model.setDataProperty(part.data, "name", newName);
+          this.diagram.model.commitTransaction("rename node");
+      }
+  });
+}
+
 
   private createPalette() {
     const $ = go.GraphObject.make;
@@ -190,13 +227,13 @@ export class DiagramComponent implements OnInit {
 
   private createNodes() {
     return [
-      { key: uuidv4(), name: 'Ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress') },
-      { key: uuidv4(), name: 'Container', type: 'container', icon: this.iconService.getIconPath('container') },
-      { key: uuidv4(), name: 'Pod', type: 'pod', icon: this.iconService.getIconPath('pod') },
-      { key: uuidv4(), name: 'Deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
-      { key: uuidv4(), name: 'Service', type: 'service', icon: this.iconService.getIconPath('service') },
-      { key: uuidv4(), name: 'ConfigMap', type: 'configMap', icon: this.iconService.getIconPath('configMap') },
-      { key: uuidv4(), name: 'Volume', type: 'volume', icon: this.iconService.getIconPath('volume') }
+      { key: uuidv4(), name: 'ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress') },
+      { key: uuidv4(), name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },
+      { key: uuidv4(), name: 'pod', type: 'pod', icon: this.iconService.getIconPath('pod') },
+      { key: uuidv4(), name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
+      { key: uuidv4(), name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
+      { key: uuidv4(), name: 'configMap', type: 'configMap', icon: this.iconService.getIconPath('configMap') },
+      { key: uuidv4(), name: 'volume', type: 'volume', icon: this.iconService.getIconPath('volume') }
     ];
   }
 
@@ -239,8 +276,8 @@ export class DiagramComponent implements OnInit {
         strokeWidth: 0,
         width: 80, height: 80,  // Larger than the node to act as a linkable area
         portId: "",  // This shape acts as the port
-        fromLinkable: true, 
-        toLinkable: true, 
+        fromLinkable: true,
+        toLinkable: true,
         cursor: "pointer"
       }
     )

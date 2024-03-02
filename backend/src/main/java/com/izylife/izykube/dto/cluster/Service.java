@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
-public class Service extends Node {
+public class Service extends NodeDTO {
 
     @JsonCreator
     public Service(

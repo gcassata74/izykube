@@ -2,12 +2,14 @@ package com.izylife.izykube.services.k8s;
 
 
 import com.izylife.izykube.dto.cluster.ConfigMap;
+import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.services.AssetService;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentList;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -39,41 +41,41 @@ public class K8sDeploymentService {
         return deploymentList.getItems();
     }
 
+    public Deployment createDeployment(DeploymentDTO deploymentDto) throws KubernetesClientException {
+        Asset asset = assetService.getAsset(deploymentDto.getAssetId());
 
-    public Deployment createDeployment(com.izylife.izykube.dto.cluster.Deployment deployment) {
-        Asset asset = assetService.getAsset(deployment.getAssetId());
-        return createDeployment("default", deployment.getName(), asset.getImage(), deployment.getReplicas());
-    }
+        try {
+            Deployment deployment = new DeploymentBuilder()
+                    .withNewMetadata()
+                    .withName(deploymentDto.getName())
+                    .withNamespace(deploymentDto.getNamespace())
+                    .endMetadata()
+                    .withNewSpec()
+                    .withReplicas(deploymentDto.getReplicas())
+                    .withNewSelector()
+                    .addToMatchLabels("app", deploymentDto.getName())
+                    .endSelector()
+                    .withNewTemplate()
+                    .withNewMetadata()
+                    .addToLabels("app", deploymentDto.getName())
+                    .endMetadata()
+                    .withNewSpec()
+                    .addNewContainer()
+                    .withName(asset.getName())
+                    .withImage(asset.getImage())
+                    .endContainer()
+                    .endSpec()
+                    .endTemplate()
+                    .endSpec()
+                    .build();
 
-    public Deployment createDeployment(String namespace, String deploymentName, String imageName, int replicas) {
+            return kubernetesClient.apps().deployments().inNamespace(deploymentDto.getNamespace()).create(deployment);
 
-        if (namespace == null || namespace.isEmpty()) {
-            namespace = "default";
+        } catch (KubernetesClientException e) {
+            log.error("Error creating deployment: " + e.getMessage());
+            throw new KubernetesClientException("Error creating deployment: " + e.getMessage());
         }
-        Deployment deployment = new DeploymentBuilder()
-                .withNewMetadata()
-                .withName(deploymentName)
-                .withNamespace(namespace)
-                .endMetadata()
-                .withNewSpec()
-                .withReplicas(replicas)
-                .withNewSelector()
-                .addToMatchLabels("app", deploymentName)
-                .endSelector()
-                .withNewTemplate()
-                .withNewMetadata()
-                .addToLabels("app", deploymentName)
-                .endMetadata()
-                .withNewSpec()
-                .addNewContainer()
-                .withName(deploymentName)
-                .withImage(imageName)
-                .endContainer()
-                .endSpec()
-                .endTemplate()
-                .endSpec()
-                .build();
-        return kubernetesClient.apps().deployments().inNamespace(namespace).create(deployment);
+
     }
 
 
@@ -105,7 +107,7 @@ public class K8sDeploymentService {
         return String.format("Updated replicas of deployment %s, to %s  in namespace  %s" + deployment.getMetadata().getName(), replicas, namespace);
     }
 
-    public void attachConfigMapToDeployment(ConfigMap sourceNode, com.izylife.izykube.dto.cluster.Deployment deployment) {
+    public void attachConfigMapToDeployment(ConfigMap sourceNode, DeploymentDTO deployment) {
     }
 
     public void addConfigMap(ConfigMap sourceNode) {

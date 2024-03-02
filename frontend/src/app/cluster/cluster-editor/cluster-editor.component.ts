@@ -28,7 +28,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
 
   ngOnInit(): void {
     this.createButtons();
-    
+
 
       this.subscription.add(
         this.store.pipe(

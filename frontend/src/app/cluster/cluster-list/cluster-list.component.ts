@@ -10,11 +10,11 @@ export class ClusterListComponent {
     clusters = [
       { name: 'testcluster', version: 'A1', created: new Date('2024-01-29T14:00:00'), type: 'TRAINING', owner: 'gcassata', resources: { cpu: 0, ram: 0 }, status: 'CREATING' }
     ];
-  
+
     addCluster() {
-      // Logic to add a new cluster
+      // Logic to add a new clusterDTO
     }
-  
+
     refreshTable() {
       // Logic to refresh the table
     }

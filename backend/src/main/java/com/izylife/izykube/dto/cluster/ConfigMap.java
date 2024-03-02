@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
 
-public class ConfigMap extends Node {
+public class ConfigMap extends NodeDTO {
 
     private List<Map<String, String>> entries;
 

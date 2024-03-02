@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ClusterEditorComponent } from './cluster-editor.component';
+import { ClusterEditorComponent } from './clusterDTO-editor.component';
 
 describe('ClusterEditorComponent', () => {
   let component: ClusterEditorComponent;

@@ -24,35 +24,12 @@ delete-docker-registry:
 delete-k3d-registry:
 	k3d registry delete test-app-registry
 
-create-k3d-cluster: create-k3d-registry
-	k3d cluster create -p "9000:80@loadbalancer" --registry-use k3d-test-app-registry:5000
+create-k3d-clusterDTO:
+	k3d clusterDTO create -p "9000:80@loadbalancer" --registry-use k3d-test-app-registry:5000
 
-delete-k3d-cluster:
-	k3d cluster delete
+delete-k3d-clusterDTO:
+	k3d clusterDTO delete
 
-start-k3d-cluster: create-k3d-registry create-k3d-cluster
+start-k3d-clusterDTO: create-k3d-registry create-k3d-clusterDTO
 
-restart-k3d-cluster: delete-k3d-cluster create-k3d-registry create-k3d-cluster
-
-
-build-and-register-image:
-	@echo "Building Docker image from directory: $(DIR) with image name: $(IMG_NAME)"
-	# Build the Docker image and tag it
-	docker build $(DIR) -t $(IMG_NAME):latest
-	# Tag the image for the local registry
-	docker tag $(IMG_NAME):latest localhost:5000/$(IMG_NAME):latest
-	# Push the image to the local registry
-	docker push localhost:5000/$(IMG_NAME):latest
-	# Call the asset API to register the image in the asset collection
-	curl -X POST -H "Content-Type: application/json" \
-	-d '{ \
-		"id": "$(ID)", \
-		"name": "$(NAME)", \
-		"description": "$(DESCRIPTION)", \
-		"port": $(PORT), \
-		"image": "localhost:5000/$(IMG_NAME):latest", \
-		"version": "latest" \
-	}' \
-	http://localhost:8090/api/asset
-
-# Usage: make build-and-register-image DIR=./path/to/dockerfile-directory IMG_NAME=custom-image-name ID=asset-id NAME=asset-name DESCRIPTION="asset description" PORT=1234
+restart-k3d-clusterDTO: delete-k3d-clusterDTO create-k3d-registry create-k3d-clusterDTO

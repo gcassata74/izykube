@@ -1,6 +1,6 @@
-// cluster.reducer.ts
+// clusterDTO.reducer.ts
 import { createReducer, on } from '@ngrx/store';
-import { addLink, addNode, removeLink, removeNode, updateDiagram, updateNode } from '../actions/cluster.actions';
+import { addLink, addNode, removeLink, removeNode, updateCluster, updateDiagram, updateNode } from '../actions/cluster.actions';
 import { initialState } from '../states/state';
 
 
@@ -14,7 +14,7 @@ export const clusterReducer = createReducer(
         ...state.clusterData,
         nodes: [...state.clusterData.nodes, node]
       }
-    
+
   })),
 
   on(removeNode, (state, { nodeId }) => ({
@@ -29,7 +29,7 @@ export const clusterReducer = createReducer(
       ...state,
       clusterData: {
         ...state.clusterData,
-        nodes: state.clusterData.nodes.map(node =>
+        nodes: state.clusterData.nodes.map((node: { id: string; }) =>
           node.id === nodeId ? { ...node, ...formValues } : node
         )
       }
@@ -47,13 +47,23 @@ export const clusterReducer = createReducer(
     ...state,
     clusterData: {
       ...state.clusterData,
-      links: state.clusterData.links.filter(link => link.source !== source || link.target !== target)
+      links: state.clusterData.links.filter((link: { source: string; target: string; }) => link.source !== source || link.target !== target)
     }
   })),
 
 
   on(updateDiagram, (state, { diagramData }) => ({
     ...state,
-    diagram: diagramData
+    clusterData: {
+      ...state.clusterData,
+      diagram: diagramData
+      }
+  })),
+
+  on(updateCluster, (state, { cluster }) => ({
+    ...state,
+    clusterData: cluster
   }))
-);
+  
+  
+  );

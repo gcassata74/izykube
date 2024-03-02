@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -34,23 +35,29 @@ public class AssetController {
         return assetRepository.findAll();
     }
 
-    @PostMapping()
+    @PostMapping(consumes = {"multipart/form-data"})
     @Operation(summary = "Create or Update an Asset",
-            description = "Creates a new asset or updates an existing one. If a Dockerfile is provided, a new image will be built.",
+            description = "Creates a new asset or updates an existing one. If a Dockerfile is provided along with the asset data, a new image will be built.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Asset created/updated successfully",
                             content = @Content(schema = @Schema(implementation = Asset.class))),
                     @ApiResponse(responseCode = "400", description = "Invalid input"),
                     @ApiResponse(responseCode = "500", description = "Server error")
             })
-    public ResponseEntity<Asset> createOrUpdateAsset(@RequestBody AssetDTO assetDTO) throws Exception {
+    public ResponseEntity<Asset> createOrUpdateAsset(
+            @RequestPart("assetDTO") AssetDTO assetDTO,
+            @RequestParam(value = "dockerfile", required = false) MultipartFile dockerfileZip) throws Exception {
+
+        // Process the AssetDTO as before
         Asset asset = new Asset();
         asset.setName(assetDTO.getName());
         asset.setVersion(assetDTO.getVersion());
         asset.setPort(assetDTO.getPort());
         asset.setDescription(assetDTO.getDescription());
         asset.setImage(assetDTO.getImage());
-        Asset savedAsset = assetService.createAsset(asset);
+
+
+        Asset savedAsset = assetService.createAsset(asset,dockerfileZip);
         return ResponseEntity.ok(savedAsset);
     }
 

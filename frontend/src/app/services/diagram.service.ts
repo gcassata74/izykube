@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import * as go from 'gojs';
 import { BehaviorSubject, Subject, tap, Subscription, catchError, of, throwError } from 'rxjs';
-import { addLink, addNode, removeLink, removeNode, updateNode } from '../store/actions/cluster.actions';
+import { addLink, addNode, removeLink, removeNode, updateCluster, updateNode } from '../store/actions/cluster.actions';
 import { Store } from '@ngrx/store';
 
 import { Link } from '../model/link.class';
@@ -15,6 +15,7 @@ import { NodeFactoryService } from './node.factory.service';
   providedIn: 'root'
 })
 export class DiagramService implements OnDestroy{
+
 
 
 
@@ -38,7 +39,7 @@ export class DiagramService implements OnDestroy{
   }
 
   onNodeDropped(e: go.DiagramEvent): void {
-    
+
     const droppedNode = e.subject.first();
     const type = droppedNode.data.type;
     const name = droppedNode.data.name;
@@ -50,6 +51,17 @@ export class DiagramService implements OnDestroy{
       } else {
         console.warn(`Unhandled node type: ${type}`);
       }
+  }
+
+  onNodeEdited(e: go.DiagramEvent): void {
+
+    const textBlock = e.subject;
+    const node = textBlock.part;
+    if (node instanceof go.Node && node.data) {
+      const newName = textBlock.text;
+      const nodeId = node.data.key;
+      this.store.dispatch(updateNode({ nodeId, formValues: {name: newName} }));
+    }
   }
 
 
@@ -64,9 +76,9 @@ export class DiagramService implements OnDestroy{
   }
 
   onLinkDrawn(e: go.DiagramEvent): void {
-    const link = e.subject;
-    if (link instanceof go.Link) {
-      let newLink: Link = new Link(link.data.from, link.data.to);
+    const linkDTO = e.subject;
+    if (linkDTO instanceof go.Link) {
+      let newLink: Link = new Link(linkDTO.data.from, linkDTO.data.to);
       this.store.dispatch(addLink({ link: newLink }));
     }
   }
@@ -77,8 +89,8 @@ export class DiagramService implements OnDestroy{
         console.error('Error saving diagram', error);
         return throwError(() => error);
       })
-    ).subscribe(() => {
-      alert('Diagram saved successfully');
+    ).subscribe((savedCluster) => {
+      this.store.dispatch(updateCluster({ cluster: savedCluster }));
     });
   }
 

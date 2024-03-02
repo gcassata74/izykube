@@ -1,11 +1,14 @@
 package com.izylife.izykube.services;
 
 import com.izylife.izykube.dto.cluster.*;
+import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.repositories.AssetRepository;
+import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.services.k8s.K8sDeploymentService;
 import com.izylife.izykube.services.k8s.K8sPodService;
 import com.izylife.izykube.services.k8s.K8sServiceService;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import javassist.tools.rmi.ObjectNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,27 +32,60 @@ public class ClusterService {
     @Autowired
     private AssetRepository assetRepository;
 
+    @Autowired
+    private ClusterRepository clusterRepository;
 
-    public void createCluster(Cluster cluster) throws KubernetesClientException {
+
+    public ClusterDTO createCluster(ClusterDTO clusterDTO) {
+
+        try {
+            Cluster cluster = new Cluster();
+            cluster.setName(clusterDTO.getName());
+            cluster.setCreationDate(clusterDTO.getCreationDate());
+            cluster.setLastUpdated(clusterDTO.getLastUpdated());
+            cluster.setNodes(clusterDTO.getNodes());
+            cluster.setLinks(clusterDTO.getLinks());
+            cluster.setDiagram(clusterDTO.getDiagram());
+            Cluster savedCluster = clusterRepository.save(cluster);
+
+            ClusterDTO savedClusterDTO = new ClusterDTO();
+            savedClusterDTO.setId(savedCluster.getId());
+            savedClusterDTO.setName(savedCluster.getName());
+            savedClusterDTO.setCreationDate(savedCluster.getCreationDate());
+            savedClusterDTO.setLastUpdated(savedCluster.getLastUpdated());
+            savedClusterDTO.setNodes(savedCluster.getNodes());
+            savedClusterDTO.setLinks(savedCluster.getLinks());
+            savedClusterDTO.setDiagram(savedCluster.getDiagram());
+
+            return savedClusterDTO;
+
+        } catch (Exception e) {
+            log.error("Error saving cluster: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public void deployCluster(ClusterDTO clusterDTO) throws KubernetesClientException {
         // Iterate over each node in the cluster
-        cluster.getNodes().stream().filter(node -> node.getKind().equals("pod") || node.getKind().equals("deployment")).forEach(node -> {
+        clusterDTO.getNodes().stream().filter(node -> node.getKind().equals("pod") || node.getKind().equals("deployment")).forEach(node -> {
             if (node.getKind().equals("pod")) {
-                handlePod(cluster, (Pod) node);
+                handlePod(clusterDTO, (Pod) node);
             } else {
-                handleDeployment(cluster, (Deployment) node);
+                handleDeployment(clusterDTO, (DeploymentDTO) node);
             }
         });
     }
 
-    private void handlePod(Cluster cluster, Pod pod) {
+    private void handlePod(ClusterDTO clusterDTO, Pod pod) {
         k8sPodService.createPod(pod);
         // Handle connections from this Pod to other resources
     }
 
-    private void handleDeployment(Cluster cluster, Deployment deployment) {
+    private void handleDeployment(ClusterDTO clusterDTO, DeploymentDTO deployment) throws KubernetesClientException {
+
         // Find all config maps or other resources connected to this deployment
-        List<Node> sourceNodes = cluster.findSourceNodesOf(deployment.getId());
-        for (Node sourceNode : sourceNodes) {
+        List<NodeDTO> sourceNodes = clusterDTO.findSourceNodesOf(deployment.getId());
+        for (NodeDTO sourceNode : sourceNodes) {
             // Process source nodes, e.g., ConfigMaps
             if (sourceNode instanceof ConfigMap) {
                 k8sDeploymentService.addConfigMap((ConfigMap) sourceNode);
@@ -59,4 +95,32 @@ public class ClusterService {
     }
 
 
+    public ClusterDTO updateCluster(ClusterDTO clusterDTO) throws Exception {
+        try {
+            Cluster cluster = clusterRepository.findById(clusterDTO.getId()).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
+            cluster.setId(clusterDTO.getId());
+            cluster.setName(clusterDTO.getName());
+            cluster.setCreationDate(clusterDTO.getCreationDate());
+            cluster.setLastUpdated(clusterDTO.getLastUpdated());
+            cluster.setNodes(clusterDTO.getNodes());
+            cluster.setLinks(clusterDTO.getLinks());
+            cluster.setDiagram(clusterDTO.getDiagram());
+            Cluster updatedCluster = clusterRepository.save(cluster);
+
+            ClusterDTO updatedClusterDTO = new ClusterDTO();
+            updatedClusterDTO.setId(updatedCluster.getId());
+            updatedClusterDTO.setName(updatedCluster.getName());
+            updatedClusterDTO.setCreationDate(updatedCluster.getCreationDate());
+            updatedClusterDTO.setLastUpdated(updatedCluster.getLastUpdated());
+            updatedClusterDTO.setNodes(updatedCluster.getNodes());
+            updatedClusterDTO.setLinks(updatedCluster.getLinks());
+            updatedClusterDTO.setDiagram(updatedCluster.getDiagram());
+
+            return updatedClusterDTO;
+
+        } catch (Exception e) {
+            log.error("Error updating cluster: " + e.getMessage());
+            return null;
+        }
+    }
 }

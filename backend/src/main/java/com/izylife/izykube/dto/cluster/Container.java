@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
-public class Container extends Node {
+public class Container extends NodeDTO {
     private String assetId;
 
     @JsonCreator

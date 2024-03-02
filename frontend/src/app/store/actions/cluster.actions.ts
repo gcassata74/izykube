@@ -1,6 +1,7 @@
 import { createAction, props } from '@ngrx/store';
 import { Link } from '../../model/link.class';
 import { Node } from '../../model/node.class';
+import { Cluster } from 'src/app/model/cluster.class';
 
 
 export const ADD_NODE = '[Cluster] Add Node';
@@ -9,6 +10,8 @@ export const ADD_LINK = '[Cluster] Add Link';
 export const REMOVE_LINK = '[Cluster] Remove Link';
 export const UPDATE_DIAGRAM = '[Cluster] Update Diagram';
 export const UPDATE_NODE = '[Cluster] Update Node';
+export const UPDATE_CLUSTER = '[Cluster] Update Cluster';
+
 
 export const addNode = createAction(
   ADD_NODE,
@@ -38,6 +41,11 @@ export const updateDiagram = createAction(
 export const updateNode = createAction(
   UPDATE_NODE,
   props<{ nodeId: string, formValues: any }>()
+);
+
+export const updateCluster = createAction(
+  UPDATE_CLUSTER,
+  props<{ cluster: Cluster }>()
 );
 
 
