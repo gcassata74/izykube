@@ -19,6 +19,13 @@ export const getClusterData = createSelector(
     (state: ClusterState) => state?.clusterData
   );  
 
+// Selector to get a node by ID from within the cluster data
+export const getNodeById = (nodeId: string) => createSelector(
+  getClusterData,
+  (clusterData) => {
+    return clusterData?.nodes.find(node => node.id === nodeId);
+  });
+
 
 
 

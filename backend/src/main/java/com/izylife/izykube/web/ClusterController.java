@@ -53,6 +53,16 @@ public class ClusterController {
         }
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllClusters() {
+        try {
+            return ResponseEntity.ok(clusterService.getAllClusters());
+        } catch (Exception e) {
+            log.error("Error getting all clusters: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Error getting all clusters: " + e.getMessage());
+        }
+    }
+
 
 
 }

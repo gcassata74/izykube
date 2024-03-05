@@ -1,4 +1,4 @@
-<form [formGroup]="configMapForm" class="mb-3 mt-3">
+<form [formGroup]="form" class="mb-3 mt-3">
   <div formArrayName="entries">
     <div *ngFor="let entry of entries.controls; let i = index" class="container">
       <div [formGroupName]="i">

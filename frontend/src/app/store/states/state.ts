@@ -29,6 +29,7 @@ export const initialState: State = {
       nodes: [],
       links:[],
       diagram: '',
+      nameSpace: 'default',
       id: null,
       creationDate: new Date(),
       lastUpdated: new Date()

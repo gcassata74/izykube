@@ -1,3 +1,4 @@
+import { MenubarModule } from 'primeng/menubar';
 import { NgModule, isDevMode } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { SidebarModule } from 'primeng/sidebar';
@@ -30,8 +31,10 @@ import { DeploymentFormComponent } from './cluster/deployment-form/deployment-fo
 import { ReactiveFormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumber, InputNumberModule } from 'primeng/inputnumber';
+import { ContextMenuModule } from 'primeng/contextmenu';
 import { ButtonModule } from 'primeng/button';
 import { ConfigMapFormComponent } from './cluster/config-map-form/config-map-form.component';
+import { ClusterService } from './services/cluster.service';
 
 @NgModule({
   declarations: [
@@ -55,6 +58,9 @@ import { ConfigMapFormComponent } from './cluster/config-map-form/config-map-for
     DropdownModule,
     InputTextModule,
     InputNumberModule,
+    ContextMenuModule,
+    MenuModule,
+    MenubarModule,
     ButtonModule,
     TableModule,
     MenuModule,
@@ -68,7 +74,8 @@ import { ConfigMapFormComponent } from './cluster/config-map-form/config-map-for
   ],
   providers: [
     ToolbarService,
-    DiagramService
+    DiagramService,
+    ClusterService
 
   ],
   bootstrap: [AppComponent]

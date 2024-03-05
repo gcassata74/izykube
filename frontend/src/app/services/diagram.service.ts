@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import * as go from 'gojs';
-import { BehaviorSubject, Subject, tap, Subscription, catchError, of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, tap, Subscription, catchError, of, throwError, Observable } from 'rxjs';
 import { addLink, addNode, removeLink, removeNode, updateCluster, updateNode } from '../store/actions/cluster.actions';
 import { Store } from '@ngrx/store';
 
@@ -76,23 +76,35 @@ export class DiagramService implements OnDestroy{
   }
 
   onLinkDrawn(e: go.DiagramEvent): void {
-    const linkDTO = e.subject;
-    if (linkDTO instanceof go.Link) {
-      let newLink: Link = new Link(linkDTO.data.from, linkDTO.data.to);
+    const link = e.subject;
+    if (link instanceof go.Link) {
+      let newLink: Link = new Link(link.data.from, link.data.to);
       this.store.dispatch(addLink({ link: newLink }));
     }
   }
 
   saveDiagram(clusterData: Cluster) {
-    this.dataservice.post<Cluster>('cluster', clusterData).pipe(
+    let saveObservable: Observable<Cluster>;
+  
+    if (clusterData.id) {
+      // If the ID is present, use PUT to update
+      saveObservable = this.dataservice.put<Cluster>('cluster/' + clusterData.id, clusterData);
+    } else {
+      // If the ID is not present, use POST to create
+      saveObservable = this.dataservice.post<Cluster>('cluster', clusterData);
+    }
+  
+    saveObservable.pipe(
       catchError((error) => {
         console.error('Error saving diagram', error);
         return throwError(() => error);
       })
-    ).subscribe((savedCluster) => {
+    ).subscribe((savedCluster:Cluster) => {
+      // Dispatch the update action with the saved cluster data
       this.store.dispatch(updateCluster({ cluster: savedCluster }));
     });
   }
+  
 
   ngOnDestroy(): void {
    this.subscription.unsubscribe();

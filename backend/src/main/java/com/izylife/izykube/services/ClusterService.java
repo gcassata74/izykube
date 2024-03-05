@@ -123,4 +123,13 @@ public class ClusterService {
             return null;
         }
     }
+
+    public Object getAllClusters() throws Exception {
+        try {
+            return clusterRepository.findAll();
+        } catch (Exception e) {
+            log.error("Error getting all clusters: " + e.getMessage());
+            return null;
+        }
+    }
 }

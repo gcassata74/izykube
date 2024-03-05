@@ -1,15 +1,15 @@
 <form [formGroup]="nodeForm">
   <ng-container *ngIf="selectedNodeType === 'pod' || selectedNodeType === 'container'">
-    <app-pod-form (formReady)="addChildForm($event)"></app-pod-form>
+    <app-pod-form></app-pod-form>
   </ng-container>
 
   <ng-container *ngIf="selectedNodeType === 'deployment'">
-    <app-pod-form (formReady)="addChildForm($event)"></app-pod-form>
-    <app-deployment-form (formReady)="addChildForm($event)"></app-deployment-form>
+    <app-pod-form></app-pod-form>
+    <app-deployment-form></app-deployment-form>
   </ng-container>
 
   <ng-container *ngIf="selectedNodeType === 'configMap'">
-    <app-config-map-form (formReady)="addChildForm($event)"></app-config-map-form>
+    <app-config-map-form></app-config-map-form>
   </ng-container>
 
   <ng-container *ngIf="!!selectedNodeType">

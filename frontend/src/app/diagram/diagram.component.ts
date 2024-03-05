@@ -96,12 +96,12 @@ export class DiagramComponent implements OnInit {
 
   private addEventHanlders(graphLinksModel: go.GraphLinksModel) {
     this.diagram.addDiagramListener('LinkDrawn', (e) => {
-      const linkDTO = e.subject;
-      const fromNode = linkDTO.fromNode;
-      const toNode = linkDTO.toNode;
+      const link = e.subject;
+      const fromNode = link.fromNode;
+      const toNode = link.toNode;
 
       if (fromNode && toNode && fromNode instanceof go.Node && toNode instanceof go.Node) {
-        graphLinksModel.addLinkData(linkDTO.data);
+        graphLinksModel.addLinkData(link.data);
       }
       this.diagramService.onLinkDrawn(e)
     });
@@ -111,6 +111,7 @@ export class DiagramComponent implements OnInit {
     this.diagram.addDiagramListener("ExternalObjectsDropped", e => {
       this.diagram.startTransaction("dropExternalObjects");
       try {
+        this.generateUUID(e);
         this.chooseUniqueNameForNode(e);
         this.diagramService.onNodeDropped(e);
         this.diagram.clearSelection();
@@ -156,9 +157,22 @@ export class DiagramComponent implements OnInit {
         }
       });
     });
-
   }
 
+
+  generateUUID(e: go.DiagramEvent) {
+    const diagram = e.diagram;
+    const droppedNode = e.subject.first();
+    if (droppedNode instanceof go.Node) {
+      // Start a transaction to modify the model
+      diagram.startTransaction("assignUUID");
+      const data = droppedNode.data;
+      // Modify the model data within the transaction
+      diagram.model.setDataProperty(data, "key", uuidv4());
+      // Commit the transaction after making changes
+      diagram.commitTransaction("assignUUID");
+    }
+  }
 
 
 chooseUniqueNameForNode(e: go.DiagramEvent) {
@@ -227,16 +241,15 @@ chooseUniqueNameForNode(e: go.DiagramEvent) {
 
   private createNodes() {
     return [
-      { key: uuidv4(), name: 'ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress') },
-      { key: uuidv4(), name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },
-      { key: uuidv4(), name: 'pod', type: 'pod', icon: this.iconService.getIconPath('pod') },
-      { key: uuidv4(), name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
-      { key: uuidv4(), name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
-      { key: uuidv4(), name: 'configMap', type: 'configMap', icon: this.iconService.getIconPath('configMap') },
-      { key: uuidv4(), name: 'volume', type: 'volume', icon: this.iconService.getIconPath('volume') }
+      { name: 'ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress') },
+      { name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },
+      { name: 'pod', type: 'pod', icon: this.iconService.getIconPath('pod') },
+      { name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
+      { name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
+      { name: 'configMap', type: 'configMap', icon: this.iconService.getIconPath('configMap') },
+      { name: 'volume', type: 'volume', icon: this.iconService.getIconPath('volume') }
     ];
   }
-
 
 
   private makeNodeTemplate() {

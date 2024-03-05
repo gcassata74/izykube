@@ -6,6 +6,7 @@ export class Cluster {
      name!: string;
      nodes!: Node[]
      links!: Link[];
+     nameSpace!: string;
      diagram!: string;
      creationDate!: Date;
      lastUpdated!: Date;

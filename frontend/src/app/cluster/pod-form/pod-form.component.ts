@@ -5,18 +5,18 @@ import { Observable, map, of, tap } from 'rxjs';
 import { Asset } from '../../model/asset.class';
 import { DataService } from '../../services/data.service';
 import { DiagramService } from '../../services/diagram.service';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ControlContainer, FormBuilder, FormGroup, FormGroupDirective, Validators } from '@angular/forms';
 
 @Component({
   selector: 'app-pod-form',
   templateUrl: './pod-form.component.html',
-  styleUrls: ['./pod-form.component.scss']
+  styleUrls: ['./pod-form.component.scss'],
+  viewProviders: [{ provide: ControlContainer, useExisting: FormGroupDirective }]
 })
 export class PodFormComponent implements OnInit{
 
   filteredAssets$!: Observable<any[] | undefined >;
-  @Output() formReady: EventEmitter<FormGroup> = new EventEmitter<FormGroup>();
-  podForm!: FormGroup;
+  form!: FormGroup;
   selectedNodeType: string | null = null;
   selectedNodeKey!: string;
 
@@ -25,31 +25,28 @@ export class PodFormComponent implements OnInit{
     private diagramService: DiagramService,
     private assetService: AssetService,
     private store: Store,
-    private formBuilder: FormBuilder
+    private fb: FormBuilder,
+    private parentForm: FormGroupDirective
   ) {}
 
   ngOnInit(): void {
+
+    this.form = this.fb.group({
+      assetId: ['', Validators.required]
+    });
+
     this.diagramService.selectedNode$.subscribe(node => {
       this.selectedNodeType = node?.data?.type || null;
       this.selectedNodeKey = node?.data?.key;
+      this.form.addControl('id', this.fb.control( this.selectedNodeKey));
+      this.parentForm.form.addControl('podForm', this.form);
       this.setupFilteredAssets(node);
     });
-
-    this.podForm = this.formBuilder.group({
-      assetId: ['', Validators.required]
-    });
-  
-    // Emetti l'evento con il form quando è pronto
-    this.formReady.emit(this.podForm);
-
+ 
   }
 
   setupFilteredAssets(selectedNode: go.Node | null): void {
     this.filteredAssets$ = this.assetService.getFilterdAssets(selectedNode);
   }
-
-
-
-
 
 }
