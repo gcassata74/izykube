@@ -9,6 +9,8 @@ import { getClusterData } from '../store/selectors/selectors';
 import { Cluster } from '../model/cluster.class';
 import { DataService } from './data.service';
 import { NodeFactoryService } from './node.factory.service';
+import { FormGroup } from '@angular/forms';
+import { Node } from '../model/node.class';
 
 
 @Injectable({
@@ -16,20 +18,15 @@ import { NodeFactoryService } from './node.factory.service';
 })
 export class DiagramService implements OnDestroy{
 
-
-
-
   private subscription = new Subscription();
-  private _selectedNode = new BehaviorSubject<go.Node | null>(null);
+  private _selectedNode = new Subject<go.Node>();
   readonly selectedNode$ = this._selectedNode.asObservable();
-
 
   constructor(
     private store: Store,
     private dataservice: DataService,
     private nodeFactory: NodeFactoryService
   ) { }
-
 
   onSelectionChanged(e: go.DiagramEvent): void {
     const selectedNode = e.diagram.selection.first();

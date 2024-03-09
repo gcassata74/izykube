@@ -1,20 +1,12 @@
-<form [formGroup]="nodeForm">
   <ng-container *ngIf="selectedNodeType === 'pod' || selectedNodeType === 'container'">
-    <app-pod-form></app-pod-form>
+    <app-pod-form [selectedNode]="node"></app-pod-form>
   </ng-container>
 
   <ng-container *ngIf="selectedNodeType === 'deployment'">
-    <app-pod-form></app-pod-form>
-    <app-deployment-form></app-deployment-form>
+    <app-pod-form [selectedNode]="node"></app-pod-form>
+    <app-deployment-form [selectedNode]="node"></app-deployment-form>
   </ng-container>
 
-  <ng-container *ngIf="selectedNodeType === 'configMap'">
-    <app-config-map-form></app-config-map-form>
-  </ng-container>
-
-  <ng-container *ngIf="!!selectedNodeType">
-    <div class="d-flex justify-content-end mr-2">
-      <p-button label="Save" type="submit" class="primary" (onClick)="updateClusterNodes()"></p-button>
-    </div>
-  </ng-container>
-</form>
+  <!-- <ng-container *ngIf="selectedNodeType === 'configMap'">
+    <app-config-map-form [selectedNode]="node"></app-config-map-form>
+  </ng-container> -->

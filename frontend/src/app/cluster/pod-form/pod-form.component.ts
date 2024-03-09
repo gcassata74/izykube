@@ -1,52 +1,53 @@
+import { DropdownChangeEvent, DropdownModule } from 'primeng/dropdown';
+import { Dropdown } from 'primeng/dropdown';
+import { AutoSaveService } from './../../services/auto-save.service';
+import { DynamicFormService } from './../../services/dynamic-form.service';
+import { Pod } from './../../model/pod.class';
 import { AssetService } from './../../services/asset.service';
-import { Component, EventEmitter, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
 import { Store } from '@ngrx/store';
-import { Observable, map, of, tap } from 'rxjs';
+import { Observable, map, of, tap, Subscription, switchMap, Subject, distinctUntilChanged } from 'rxjs';
 import { Asset } from '../../model/asset.class';
 import { DataService } from '../../services/data.service';
 import { DiagramService } from '../../services/diagram.service';
 import { ControlContainer, FormBuilder, FormGroup, FormGroupDirective, Validators } from '@angular/forms';
+import { Node } from '../../model/node.class';
+import { Deployment } from 'src/app/model/deployment.class';
 
 @Component({
   selector: 'app-pod-form',
   templateUrl: './pod-form.component.html',
   styleUrls: ['./pod-form.component.scss'],
-  viewProviders: [{ provide: ControlContainer, useExisting: FormGroupDirective }]
 })
-export class PodFormComponent implements OnInit{
+export class PodFormComponent implements OnInit {
 
-  filteredAssets$!: Observable<any[] | undefined >;
+
+  filteredAssets$!: Observable<any[] | undefined>;
   form!: FormGroup;
-  selectedNodeType: string | null = null;
-  selectedNodeKey!: string;
+  @Input() selectedNode!: Node
+  @ViewChild("assets") dropDown!: Dropdown;
+  _change: Subject<any> = new Subject<any>();
+  change$ = this._change.asObservable();
+  
 
   constructor(
-    private dataService: DataService,
-    private diagramService: DiagramService,
     private assetService: AssetService,
-    private store: Store,
+    private autoSaveService: AutoSaveService,
     private fb: FormBuilder,
-    private parentForm: FormGroupDirective
-  ) {}
+  ) { }
 
   ngOnInit(): void {
-
+    const pod = this.selectedNode as Pod;
+    this.filteredAssets$ = this.assetService.getAssets();
     this.form = this.fb.group({
-      assetId: ['', Validators.required]
+      assetId: [pod.assetId, Validators.required]
     });
-
-    this.diagramService.selectedNode$.subscribe(node => {
-      this.selectedNodeType = node?.data?.type || null;
-      this.selectedNodeKey = node?.data?.key;
-      this.form.addControl('id', this.fb.control( this.selectedNodeKey));
-      this.parentForm.form.addControl('podForm', this.form);
-      this.setupFilteredAssets(node);
-    });
- 
+    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.change$.pipe(distinctUntilChanged()));
   }
 
-  setupFilteredAssets(selectedNode: go.Node | null): void {
-    this.filteredAssets$ = this.assetService.getFilterdAssets(selectedNode);
+
+  emitChange(event: DropdownChangeEvent) {
+    this._change.next({assetId:event.value});
   }
 
 }

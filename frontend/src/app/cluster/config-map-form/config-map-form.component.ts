@@ -30,7 +30,6 @@ export class ConfigMapFormComponent implements OnInit{
     this.addEntry(); 
   }
 
-
   get entries(): FormArray {
     return this.form.get('entries') as FormArray;
   }

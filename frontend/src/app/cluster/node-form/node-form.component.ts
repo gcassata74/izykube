@@ -2,61 +2,54 @@ import { Node } from './../../model/node.class';
 import { Deployment } from './../../model/deployment.class';
 import { ConfigMap } from './../../model/config-map';
 import { Store, select } from '@ngrx/store';
-import { Component, AfterViewInit } from '@angular/core';
-import { Observable, switchMap, map, of, filter } from 'rxjs';
+import { Component, AfterViewInit, OnDestroy } from '@angular/core';
+import { Observable, switchMap, map, of, filter, tap, Subject, Subscription } from 'rxjs';
 import { Asset } from '../../model/asset.class';
 import { DataService } from 'src/app/services/data.service';
 import { DiagramService } from 'src/app/services/diagram.service';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { getNodeById } from 'src/app/store/selectors/selectors';
+import { Pod } from 'src/app/model/pod.class';
 
 @Component({
   selector: 'app-node-form',
   templateUrl: './node-form.component.html',
   styleUrls: ['./node-form.component.scss']
 })
-export class NodeFormComponent {
+export class NodeFormComponent implements OnDestroy {
 
   selectedNodeType!: string;
-  selectedNodeId!: string;
-  nodeForm!: FormGroup;
+  node!: Node;
+  subscription: Subscription = new Subscription();
 
   constructor(
-    private fb: FormBuilder,
-    private dataService: DataService,
-    private store: Store,
-    private diagramService: DiagramService
+    private diagramService: DiagramService,
+    private store: Store
 
   ) { }
 
   ngOnInit(): void {
-    this.nodeForm = this.fb.group({
-    });
 
-    this.diagramService.selectedNode$.subscribe(node => {
-      this.selectedNodeType = node?.data?.type || null;
-      this.selectedNodeId = node?.data?.key;
-    });
-
+    this.subscription.add(
+      this.diagramService.selectedNode$.pipe(
+        filter((node: go.Node) => node !== null && node !== undefined),
+        tap((node: go.Node) => this.selectedNodeType = node?.data?.type || null),
+        switchMap((node: go.Node) => {
+          const nodeId = node?.data?.key;
+          if (nodeId) {
+            return this.store.select(getNodeById(nodeId));
+          } else {
+            return of(null);
+          }
+        }),
+        filter((node): node is Node => node !== null && node !== undefined)
+      ).subscribe((node: Node) => {
+        this.node = node;
+      }));
   }
-  
 
-  updateClusterNodes() {
-    const formValue = {};
-  
-    // Iterate over each control in the nodeForm
-    Object.keys(this.nodeForm.controls).forEach(key => {
-      const subForm = this.nodeForm.get(key) as FormGroup; // Get the subform
-  
-      // Check if the subform has a 'nodeId' control and if its value matches this.selectedNodeId
-      if (subForm.controls['id'] && subForm.controls['id'].value === this.selectedNodeId) {
-        // Include this subform's values in the formValue object
-        Object.assign(formValue, subForm.value);
-      }
-    });
-  
-    // formValue now contains the values from the subforms where 'nodeId' matches this.selectedNodeId
-    this.diagramService.updateClusterNodes(this.selectedNodeId, formValue);
+  ngOnDestroy(): void {
+    this.subscription.unsubscribe();
   }
 
 }

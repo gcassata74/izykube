@@ -3,6 +3,7 @@ import { Observable, map, of } from 'rxjs';
 import { Asset } from '../model/asset.class';
 import { DiagramService } from './diagram.service';
 import { DataService } from './data.service';
+import { Node } from '../model/node.class';
 
 @Injectable({
   providedIn: 'root'
@@ -15,16 +16,13 @@ export class AssetService {
     private diagramService: DiagramService,
   ) {}
 
-  getFilterdAssets(selectedNode: go.Node | null): Observable<Asset[]> {
-    return selectedNode ? this.dataService.get<Asset[]>('asset/all').pipe(
+  getAssets(): Observable<Asset[]> {
+    return this.dataService.get<Asset[]>('asset/all').pipe(
       map(assets => assets.map(asset => ({
         ...asset,
         label: `${asset.name} - ${asset.version}`
       })))
-    ) : of([]);
+    ) 
   }
-
-
-
 
 }

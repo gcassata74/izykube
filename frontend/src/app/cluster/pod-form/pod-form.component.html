@@ -3,8 +3,9 @@
 
     <div class="grid justify-center">
       <div class="col-12">
-        <p-dropdown *ngIf="filteredAssets$ | async as filteredAssets" [options]="filteredAssets"
-                    formControlName="assetId" optionValue="id" optionLabel="label" placeholder="Select an Asset">
+        <p-dropdown #assets *ngIf="filteredAssets$ | async as filteredAssets" [options]="filteredAssets"
+                    formControlName="assetId" optionValue="id" optionLabel="label" (onChange)="emitChange($event)"
+                    placeholder="Select an Asset">
         </p-dropdown>
       </div>
     </div>

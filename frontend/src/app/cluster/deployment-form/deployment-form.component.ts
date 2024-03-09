@@ -1,43 +1,42 @@
-import { DiagramService } from './../../services/diagram.service';
+import { PodFormComponent } from './../pod-form/pod-form.component';
+import { DiagramService } from 'src/app/services/diagram.service';
+import { initialState } from './../../store/states/state';
+import { AutoSaveService } from './../../services/auto-save.service';
+import { DynamicFormService } from './../../services/dynamic-form.service';
+import { Deployment } from './../../model/deployment.class';
 import { DiagramComponent } from './../../diagram/diagram.component';
-import { Component, EventEmitter, Output } from '@angular/core';
-import { FormGroup, FormBuilder, Validators, ControlContainer, FormGroupDirective } from '@angular/forms';
+import { Component, EventEmitter, OnDestroy, Output, OnInit, Input, ViewChild } from '@angular/core';
+import { FormGroup, FormBuilder, Validators, ControlContainer } from '@angular/forms';
 import { SelectItem } from 'primeng/api/selectitem';
-import { Observable } from 'rxjs';
+import { Observable, Subscription, Subject, switchMap, takeUntil, tap, merge } from 'rxjs';
 import { AssetService } from 'src/app/services/asset.service';
 import { Node } from '../../model/node.class';
+import { getNodeById } from 'src/app/store/selectors/selectors';
+import { Store } from '@ngrx/store';
 
 @Component({
   selector: 'app-deployment-form',
   templateUrl: './deployment-form.component.html',
   styleUrls: ['./deployment-form.component.scss'],
-  viewProviders: [{ provide: ControlContainer, useExisting: FormGroupDirective }]
 })
-export class DeploymentFormComponent {
+export class DeploymentFormComponent implements OnInit {
   form!: FormGroup;
-  filteredAssets$!: Observable<any[] | undefined >;
-  selectedNodeType: string | null = null;
-  selectedNodeKey!: string;
+  @Input() selectedNode!: Node;
+  subscription: Subscription = new Subscription();
 
   constructor(
-    private diagramService: DiagramService,
     private fb: FormBuilder,
-    private assetService: AssetService,
-    private parentForm: FormGroupDirective
-    ) {}
+    private autoSaveService: AutoSaveService,
+  ) { }
+
 
   ngOnInit(): void {
+   
 
+    const deployment = this.selectedNode as Deployment;
     this.form = this.fb.group({
-      replicas: ['', Validators.required],
+      replicas: [deployment.replicas, Validators.required]
     });
-
-    this.diagramService.selectedNode$.subscribe((node: any) => {
-      this.selectedNodeType = node?.data?.type || null;
-      this.selectedNodeKey = node?.data?.key;
-      this.filteredAssets$ = this.assetService.getFilterdAssets(node);
-      this.form.addControl('id', this.fb.control( this.selectedNodeKey));
-      this.parentForm.form.addControl('deploymentForm', this.form);
-    });
+    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.form.valueChanges);
   }
 }

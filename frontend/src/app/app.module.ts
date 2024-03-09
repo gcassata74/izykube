@@ -35,6 +35,8 @@ import { ContextMenuModule } from 'primeng/contextmenu';
 import { ButtonModule } from 'primeng/button';
 import { ConfigMapFormComponent } from './cluster/config-map-form/config-map-form.component';
 import { ClusterService } from './services/cluster.service';
+import { AutoSaveService } from './services/auto-save.service';
+
 
 @NgModule({
   declarations: [
@@ -47,7 +49,7 @@ import { ClusterService } from './services/cluster.service';
     NodeFormComponent,
     PodFormComponent,
     DeploymentFormComponent,
-    ConfigMapFormComponent
+    ConfigMapFormComponent,
   ],
   imports: [
     ReactiveFormsModule,
@@ -66,6 +68,7 @@ import { ClusterService } from './services/cluster.service';
     MenuModule,
     BrowserAnimationsModule,
     FormsModule,
+    ReactiveFormsModule,
     HttpClientModule,
     StoreModule.forRoot(reducers),
     EffectsModule.forRoot([InitEffect]),
@@ -75,7 +78,8 @@ import { ClusterService } from './services/cluster.service';
   providers: [
     ToolbarService,
     DiagramService,
-    ClusterService
+    ClusterService,
+    AutoSaveService
 
   ],
   bootstrap: [AppComponent]

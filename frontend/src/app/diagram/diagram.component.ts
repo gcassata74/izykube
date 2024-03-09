@@ -126,6 +126,7 @@ export class DiagramComponent implements OnInit {
       this.diagram.clearSelection();
     });
 
+ 
     this.diagram.addDiagramListener('SelectionDeleting', e => this.diagramService.onNodeDeleted(e));
 
     this.diagram.addModelChangedListener(evt => {
