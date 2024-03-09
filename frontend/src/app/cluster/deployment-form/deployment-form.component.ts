@@ -2,7 +2,6 @@ import { PodFormComponent } from './../pod-form/pod-form.component';
 import { DiagramService } from 'src/app/services/diagram.service';
 import { initialState } from './../../store/states/state';
 import { AutoSaveService } from './../../services/auto-save.service';
-import { DynamicFormService } from './../../services/dynamic-form.service';
 import { Deployment } from './../../model/deployment.class';
 import { DiagramComponent } from './../../diagram/diagram.component';
 import { Component, EventEmitter, OnDestroy, Output, OnInit, Input, ViewChild } from '@angular/core';

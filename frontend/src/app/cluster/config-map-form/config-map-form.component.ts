@@ -1,56 +1,68 @@
+import { AutoSaveService } from './../../services/auto-save.service';
 import { DiagramService } from './../../services/diagram.service';
-import { distinctUntilChanged } from 'rxjs';
-import { Component, EventEmitter, OnInit, Output } from '@angular/core';
-import { ControlContainer, FormArray, FormBuilder, FormGroup, FormGroupDirective, Validators } from '@angular/forms';
+import { Component, Input, OnInit, Output } from '@angular/core';
+import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Node } from '../../model/node.class';
+import { ConfigMap } from '../../model/config-map';
 
 @Component({
   selector: 'app-config-map-form',
   templateUrl: './config-map-form.component.html',
   styleUrls: ['./config-map-form.component.scss'],
-  viewProviders: [{ provide: ControlContainer, useExisting: FormGroupDirective }]
+  providers: [AutoSaveService]
 })
-export class ConfigMapFormComponent implements OnInit{
+export class ConfigMapFormComponent implements OnInit {
+
 
   form!: FormGroup;
-  
+  @Input() selectedNode!: Node;
+
   constructor(private fb: FormBuilder,
-    private diagramService: DiagramService,
-    private parentForm: FormGroupDirective) {}
+    private autoSaveService: AutoSaveService,
+    private diagramService: DiagramService) { }
 
   ngOnInit() {
     this.form = this.fb.group({
       entries: this.fb.array([])
     });
 
-    this.diagramService.selectedNode$.subscribe((node:any) => {
-      this.form.addControl('nodeId', this.fb.control(node?.data?.key));
-      this.parentForm.form.addControl('configMapForm', this.form);
-     });
+    const configMap = this.selectedNode as ConfigMap
+    if (Object.entries(configMap.entries).length > 0) {
 
-    this.addEntry(); 
+      Object.entries(configMap.entries).forEach(([key, value]: [string, any]) => {
+        this.addEntry(value.key, value.value);
+      });
+
+    } else {
+      this.addEntry();
+    }
+
+    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.form.valueChanges);
   }
 
   get entries(): FormArray {
     return this.form.get('entries') as FormArray;
   }
 
-  newEntry(): FormGroup {
+  newEntry(key: string, value: string): FormGroup {
+
     return this.fb.group({
-      key: ['', Validators.required],
-      value: ['', Validators.required]
+      key: [key, Validators.required],
+      value: [value, Validators.required]
     });
 
   }
 
-  addEntry(): void {
-    this.entries.push(this.newEntry());
+  addEntry(key?: string, value?: string): void {
+    this.entries.push(this.newEntry(key ? key : '', value ? value : ''));
   }
+
 
   removeEntry(index: number): void {
     this.entries.removeAt(index);
     // Check if all entries have been removed
     if (this.entries.length === 0) {
-      this.addEntry(); // Add an empty entry if the last one is removed
+      this.addEntry();
     }
   }
 

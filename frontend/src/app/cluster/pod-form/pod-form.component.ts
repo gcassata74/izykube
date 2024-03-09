@@ -1,7 +1,6 @@
 import { DropdownChangeEvent, DropdownModule } from 'primeng/dropdown';
 import { Dropdown } from 'primeng/dropdown';
 import { AutoSaveService } from './../../services/auto-save.service';
-import { DynamicFormService } from './../../services/dynamic-form.service';
 import { Pod } from './../../model/pod.class';
 import { AssetService } from './../../services/asset.service';
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
@@ -10,7 +9,7 @@ import { Observable, map, of, tap, Subscription, switchMap, Subject, distinctUnt
 import { Asset } from '../../model/asset.class';
 import { DataService } from '../../services/data.service';
 import { DiagramService } from '../../services/diagram.service';
-import { ControlContainer, FormBuilder, FormGroup, FormGroupDirective, Validators } from '@angular/forms';
+import { ControlContainer, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Node } from '../../model/node.class';
 import { Deployment } from 'src/app/model/deployment.class';
 

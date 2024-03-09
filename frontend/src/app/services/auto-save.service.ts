@@ -17,7 +17,7 @@ export class AutoSaveService {
     this.subscription.unsubscribe();
     this.subscription = new Subscription();
     this.subscription.add(change$.pipe(
-      debounceTime(1000),
+      debounceTime(500),
       distinctUntilChanged(),
     ).subscribe(formValue => {
       this.diagramService.updateClusterNodes(nodeId, formValue);

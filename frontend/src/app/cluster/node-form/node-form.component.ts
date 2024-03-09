@@ -1,54 +1,67 @@
 import { Node } from './../../model/node.class';
-import { Deployment } from './../../model/deployment.class';
-import { ConfigMap } from './../../model/config-map';
-import { Store, select } from '@ngrx/store';
-import { Component, AfterViewInit, OnDestroy } from '@angular/core';
-import { Observable, switchMap, map, of, filter, tap, Subject, Subscription } from 'rxjs';
-import { Asset } from '../../model/asset.class';
-import { DataService } from 'src/app/services/data.service';
+import { Store } from '@ngrx/store';
+import { Component, OnDestroy, ViewContainerRef, ComponentRef } from '@angular/core';
+import { switchMap, of, filter, tap, Subscription } from 'rxjs';
 import { DiagramService } from 'src/app/services/diagram.service';
-import { FormBuilder, FormGroup } from '@angular/forms';
 import { getNodeById } from 'src/app/store/selectors/selectors';
-import { Pod } from 'src/app/model/pod.class';
+import { DeploymentFormComponent } from '../deployment-form/deployment-form.component';
+import { ConfigMapFormComponent } from '../config-map-form/config-map-form.component';
+import { PodFormComponent } from '../pod-form/pod-form.component';
+
 
 @Component({
   selector: 'app-node-form',
-  templateUrl: './node-form.component.html',
-  styleUrls: ['./node-form.component.scss']
+  template: '',
 })
 export class NodeFormComponent implements OnDestroy {
 
   selectedNodeType!: string;
   node!: Node;
   subscription: Subscription = new Subscription();
+  formMapper: any = {
+    'deployment': DeploymentFormComponent,
+    'configMap': ConfigMapFormComponent,
+    'pod': PodFormComponent
+  };
+
+  componentRef!: ComponentRef<any>;
 
   constructor(
     private diagramService: DiagramService,
-    private store: Store
-
+    private store: Store,
+    public viewContainerRef: ViewContainerRef
   ) { }
 
   ngOnInit(): void {
 
-    this.subscription.add(
-      this.diagramService.selectedNode$.pipe(
-        filter((node: go.Node) => node !== null && node !== undefined),
-        tap((node: go.Node) => this.selectedNodeType = node?.data?.type || null),
-        switchMap((node: go.Node) => {
-          const nodeId = node?.data?.key;
-          if (nodeId) {
-            return this.store.select(getNodeById(nodeId));
-          } else {
-            return of(null);
-          }
-        }),
-        filter((node): node is Node => node !== null && node !== undefined)
-      ).subscribe((node: Node) => {
-        this.node = node;
-      }));
+
+    this.subscription.add(this.diagramService.selectedNode$.pipe(
+      filter((node: go.Node) => node !== null && node !== undefined),
+      tap((node: go.Node) => {
+        this.selectedNodeType = node?.data?.type || null
+        this.viewContainerRef.clear();
+        this.componentRef = this.viewContainerRef.createComponent(this.formMapper[this.selectedNodeType]);
+      }),
+      switchMap((node: go.Node) => {
+        const nodeId = node?.data?.key;
+        if (nodeId) {
+          return this.store.select(getNodeById(nodeId));
+        } else {
+          return of(null);
+        }
+      }),
+      filter((node): node is Node => node !== null && node !== undefined)
+    ).subscribe((node: Node) => {
+      this.node = node;
+      this.componentRef.instance.selectedNode = node;
+    }));
   }
 
+
+
+
   ngOnDestroy(): void {
+    this.componentRef.destroy();
     this.subscription.unsubscribe();
   }
 
