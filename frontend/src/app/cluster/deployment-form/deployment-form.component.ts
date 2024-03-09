@@ -18,6 +18,7 @@ import { Store } from '@ngrx/store';
   selector: 'app-deployment-form',
   templateUrl: './deployment-form.component.html',
   styleUrls: ['./deployment-form.component.scss'],
+  providers: [AutoSaveService]
 })
 export class DeploymentFormComponent implements OnInit {
   form!: FormGroup;

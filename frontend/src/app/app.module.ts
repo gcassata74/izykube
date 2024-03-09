@@ -78,8 +78,7 @@ import { AutoSaveService } from './services/auto-save.service';
   providers: [
     ToolbarService,
     DiagramService,
-    ClusterService,
-    AutoSaveService
+    ClusterService
 
   ],
   bootstrap: [AppComponent]

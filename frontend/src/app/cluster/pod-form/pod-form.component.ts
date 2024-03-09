@@ -18,6 +18,7 @@ import { Deployment } from 'src/app/model/deployment.class';
   selector: 'app-pod-form',
   templateUrl: './pod-form.component.html',
   styleUrls: ['./pod-form.component.scss'],
+  providers: [AutoSaveService]
 })
 export class PodFormComponent implements OnInit {
 
@@ -42,7 +43,7 @@ export class PodFormComponent implements OnInit {
     this.form = this.fb.group({
       assetId: [pod.assetId, Validators.required]
     });
-    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.change$.pipe(distinctUntilChanged()));
+    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.change$);
   }
 
 

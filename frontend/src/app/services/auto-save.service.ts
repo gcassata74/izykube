@@ -20,7 +20,6 @@ export class AutoSaveService {
       debounceTime(1000),
       distinctUntilChanged(),
     ).subscribe(formValue => {
-      alert('saved');
       this.diagramService.updateClusterNodes(nodeId, formValue);
     }));
   }
