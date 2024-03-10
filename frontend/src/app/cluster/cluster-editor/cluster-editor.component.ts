@@ -1,3 +1,4 @@
+import { ClusterService } from 'src/app/services/cluster.service';
 import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Store, select } from '@ngrx/store';
 import * as go from 'gojs';
@@ -8,6 +9,7 @@ import { DiagramService } from '../../services/diagram.service';
 import { ToolbarService } from '../../services/toolbar.service';
 import { getCurrentAction, getClusterData } from '../../store/selectors/selectors';
 import * as actions from '../../store/actions/actions';
+import { provideAnimations } from '@angular/platform-browser/animations';
 
 @Component({
   selector: 'app-cluster-editor',
@@ -23,12 +25,12 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
  constructor(
   private toolbarService:ToolbarService,
   private store:Store,
-  private diagramService: DiagramService
+  private diagramService: DiagramService,
+  private clusterService: ClusterService
  ){}
 
   ngOnInit(): void {
     this.createButtons();
-
 
       this.subscription.add(
         this.store.pipe(
@@ -37,7 +39,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
           filter(action => action === 'save-diagram'),
           switchMap(() => this.store.select(getClusterData).pipe(take(1)))
         ).subscribe(clusterData => {
-          this.diagramService.saveDiagram(clusterData);
+          this.clusterService.saveCluster(clusterData);
           this.store.dispatch(actions.resetCurrentAction());
         })
       );

@@ -30,12 +30,14 @@ import { PodFormComponent } from './cluster/pod-form/pod-form.component';
 import { DeploymentFormComponent } from './cluster/deployment-form/deployment-form.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
-import { InputNumber, InputNumberModule } from 'primeng/inputnumber';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { ContextMenuModule } from 'primeng/contextmenu';
 import { ButtonModule } from 'primeng/button';
+import { ToastModule } from 'primeng/toast';
 import { ConfigMapFormComponent } from './cluster/config-map-form/config-map-form.component';
 import { ClusterService } from './services/cluster.service';
 import { AutoSaveService } from './services/auto-save.service';
+import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.component';
 
 
 @NgModule({
@@ -50,6 +52,7 @@ import { AutoSaveService } from './services/auto-save.service';
     PodFormComponent,
     DeploymentFormComponent,
     ConfigMapFormComponent,
+    ClusterFormComponent,
   ],
   imports: [
     ReactiveFormsModule,
@@ -61,6 +64,7 @@ import { AutoSaveService } from './services/auto-save.service';
     InputTextModule,
     InputNumberModule,
     ContextMenuModule,
+    ToastModule,
     MenuModule,
     MenubarModule,
     ButtonModule,
@@ -78,8 +82,8 @@ import { AutoSaveService } from './services/auto-save.service';
   providers: [
     ToolbarService,
     DiagramService,
-    ClusterService
-
+    ClusterService,
+    
   ],
   bootstrap: [AppComponent]
 })

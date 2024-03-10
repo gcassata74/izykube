@@ -6,18 +6,9 @@ import * as go from 'gojs';
 import { Store } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
 import { BehaviorSubject } from 'rxjs';
-import  * as actions from '../store/actions/cluster.actions';
+import * as actions from '../store/actions/cluster.actions';
 
 const $ = go.GraphObject.make;
-// a collection of colors
-var colors = {
-  blue: "#2a6dc0",
-  orange: "#ea2857",
-  green: "#1cc1bc",
-  gray: "#5b5b5b",
-  white: "#F5F5F5"
-}
-
 
 @Component({
   selector: 'app-diagram',
@@ -31,7 +22,6 @@ export class DiagramComponent implements OnInit {
   isResizing: boolean = false;
   firstColumnWidth: number = 200;
   minWidth: number = 200; // Minimum width of the first column in pixels
-
 
 
   constructor(
@@ -126,7 +116,7 @@ export class DiagramComponent implements OnInit {
       this.diagram.clearSelection();
     });
 
- 
+
     this.diagram.addDiagramListener('SelectionDeleting', e => this.diagramService.onNodeDeleted(e));
 
     this.diagram.addModelChangedListener(evt => {
@@ -160,7 +150,6 @@ export class DiagramComponent implements OnInit {
     });
   }
 
-
   generateUUID(e: go.DiagramEvent) {
     const diagram = e.diagram;
     const droppedNode = e.subject.first();
@@ -175,52 +164,51 @@ export class DiagramComponent implements OnInit {
     }
   }
 
-
-chooseUniqueNameForNode(e: go.DiagramEvent) {
-  e.subject.each((part: any) => {
+  chooseUniqueNameForNode(e: go.DiagramEvent) {
+    e.subject.each((part: any) => {
       if (part instanceof go.Node) {
-          const baseName = part.data.name;
+        const baseName = part.data.name;
 
-          // Filter existing nodes in the diagram to find those with the same base name
-          const similarNodes = this.diagram.model.nodeDataArray.filter((node: any) =>
-              node.name && node.name.startsWith(baseName)
-          );
+        // Filter existing nodes in the diagram to find those with the same base name
+        const similarNodes = this.diagram.model.nodeDataArray.filter((node: any) =>
+          node.name && node.name.startsWith(baseName)
+        );
 
-          // Initialize the name with the base name
-          let newName = baseName;
-          let maxSuffixCharCode = 'a'.charCodeAt(0) - 1; // Start before 'a'
+        // Initialize the name with the base name
+        let newName = baseName;
+        let maxSuffixCharCode = 'a'.charCodeAt(0) - 1; // Start before 'a'
 
-          // Extract and find the maximum suffix character used
-          similarNodes.forEach(node => {
-              const result = node['name'].match(/^(.*?)-([a-zA-Z])$/); // Match the pattern with the suffix as a letter
-              if (result && result[2]) {
-                  const charCode = result[2].charCodeAt(0);
-                  if (charCode > maxSuffixCharCode) {
-                      maxSuffixCharCode = charCode; // Update to the maximum suffix char code found
-                  }
-              }
-          });
-
-          // Determine the new name based on the maximum suffix found
-          if (similarNodes.length > 0) {
-              const newSuffixChar = String.fromCharCode(maxSuffixCharCode + 1); // Increment to the next character
-              newName = `${baseName}-${newSuffixChar}`;
+        // Extract and find the maximum suffix character used
+        similarNodes.forEach(node => {
+          const result = node['name'].match(/^(.*?)-([a-zA-Z])$/); // Match the pattern with the suffix as a letter
+          if (result && result[2]) {
+            const charCode = result[2].charCodeAt(0);
+            if (charCode > maxSuffixCharCode) {
+              maxSuffixCharCode = charCode; // Update to the maximum suffix char code found
+            }
           }
+        });
 
-          // Perform the renaming in a transaction
-          this.diagram.model.startTransaction("rename node");
-          this.diagram.model.setDataProperty(part.data, "name", newName);
-          this.diagram.model.commitTransaction("rename node");
+        // Determine the new name based on the maximum suffix found
+        if (similarNodes.length > 0) {
+          const newSuffixChar = String.fromCharCode(maxSuffixCharCode + 1); // Increment to the next character
+          newName = `${baseName}-${newSuffixChar}`;
+        }
+
+        // Perform the renaming in a transaction
+        this.diagram.model.startTransaction("rename node");
+        this.diagram.model.setDataProperty(part.data, "name", newName);
+        this.diagram.model.commitTransaction("rename node");
       }
-  });
-}
-
+    });
+  }
 
   private createPalette() {
     const $ = go.GraphObject.make;
 
     // Node data array with icon URLs
     var nodeDataArray = this.createNodes();
+    this.setLinkingRules();
 
     // Initialize the palette
     const myPalette =
@@ -238,8 +226,6 @@ chooseUniqueNameForNode(e: go.DiagramEvent) {
     myPalette.nodeTemplate = this.makeNodeTemplate();
   }
 
-
-
   private createNodes() {
     return [
       { name: 'ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress') },
@@ -252,6 +238,29 @@ chooseUniqueNameForNode(e: go.DiagramEvent) {
     ];
   }
 
+  private setLinkingRules() {
+    this.diagram.toolManager.linkingTool.linkValidation = (fromNode, fromPort, toNode, toPort) => {
+      const fromType = fromNode.data.type;
+      const toType = toNode.data.type;
+  
+      switch (fromType) {
+        case 'configMap':
+          return toType === 'pod' || toType === 'deployment';
+        case 'service':
+          return toType === 'deployment' || toType === 'pod';
+        case 'ingress':
+          return toType === 'service';
+        case 'pod':
+        case 'deployment':
+          return false;
+        default:
+          return false;
+      }
+    };
+  
+    // Apply the same validation for relinking
+    this.diagram.toolManager.relinkingTool.linkValidation = this.diagram.toolManager.linkingTool.linkValidation;
+  }
 
   private makeNodeTemplate() {
 

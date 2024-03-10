@@ -80,27 +80,27 @@ export class DiagramService implements OnDestroy{
     }
   }
 
-  saveDiagram(clusterData: Cluster) {
-    let saveObservable: Observable<Cluster>;
+  // saveDiagram(clusterData: Cluster) {
+  //   let saveObservable: Observable<Cluster>;
   
-    if (clusterData.id) {
-      // If the ID is present, use PUT to update
-      saveObservable = this.dataservice.put<Cluster>('cluster/' + clusterData.id, clusterData);
-    } else {
-      // If the ID is not present, use POST to create
-      saveObservable = this.dataservice.post<Cluster>('cluster', clusterData);
-    }
+  //   if (clusterData.id) {
+  //     // If the ID is present, use PUT to update
+  //     saveObservable = this.dataservice.put<Cluster>('cluster/' + clusterData.id, clusterData);
+  //   } else {
+  //     // If the ID is not present, use POST to create
+  //     saveObservable = this.dataservice.post<Cluster>('cluster', clusterData);
+  //   }
   
-    saveObservable.pipe(
-      catchError((error) => {
-        console.error('Error saving diagram', error);
-        return throwError(() => error);
-      })
-    ).subscribe((savedCluster:Cluster) => {
-      // Dispatch the update action with the saved cluster data
-      this.store.dispatch(updateCluster({ cluster: savedCluster }));
-    });
-  }
+  //   saveObservable.pipe(
+  //     catchError((error) => {
+  //       console.error('Error saving diagram', error);
+  //       return throwError(() => error);
+  //     })
+  //   ).subscribe((savedCluster:Cluster) => {
+  //     // Dispatch the update action with the saved cluster data
+  //     this.store.dispatch(updateCluster({ cluster: savedCluster }));
+  //   });
+  // }
   
 
   ngOnDestroy(): void {

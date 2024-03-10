@@ -4,6 +4,7 @@ import { MenuItem } from 'primeng/api';
 import { ClusterService } from '../../services/cluster.service';
 import { Cluster } from 'src/app/model/cluster.class';
 import { switchMap } from 'rxjs';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-cluster-list',
@@ -21,7 +22,8 @@ export class ClusterListComponent {
 
   constructor(
     private clusterService: ClusterService,
-    private dataService: DataService
+    private dataService: DataService,
+    private router: Router
     ) {}
 
   ngOnInit() {
@@ -42,12 +44,11 @@ export class ClusterListComponent {
   }
 
   addCluster() {
-    throw new Error('Method not implemented.');
-    }
+    this.router.navigate(['/cluster-form']);
+  }
     
-
   editCluster(id: string) {
-    console.log(`Edit cluster with id: ${id}`);
+    this.router.navigate([`/cluster-form/${id}`]);
   }
 
   deleteCluster(id: string): void {

@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 public class ClusterDTO {
     private String id;
     private String name;
-    private String nameSpace = "default"; //default namespace is "default
+    private String nameSpace;
     private List<NodeDTO> nodes;
     private List<LinkDTO> links;
     private String diagram;
