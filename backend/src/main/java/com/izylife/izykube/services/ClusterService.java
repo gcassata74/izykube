@@ -132,4 +132,12 @@ public class ClusterService {
             return null;
         }
     }
+
+    public void deleteCluster(String id) {
+        try {
+            clusterRepository.deleteById(id);
+        } catch (Exception e) {
+            log.error("Error deleting cluster: " + e.getMessage());
+        }
+    }
 }

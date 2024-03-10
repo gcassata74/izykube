@@ -1,6 +1,9 @@
+import { DataService } from './../../services/data.service';
 import { Component } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { ClusterService } from '../../services/cluster.service';
+import { Cluster } from 'src/app/model/cluster.class';
+import { switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-cluster-list',
@@ -16,7 +19,10 @@ export class ClusterListComponent {
   items!: MenuItem[];
   selectedId!: string;
 
-  constructor(private clusterService: ClusterService) {}
+  constructor(
+    private clusterService: ClusterService,
+    private dataService: DataService
+    ) {}
 
   ngOnInit() {
     this.clusterService.getAllClusters().subscribe(data => {
@@ -41,15 +47,15 @@ export class ClusterListComponent {
     
 
   editCluster(id: string) {
-    // Implement the logic to edit the cluster
     console.log(`Edit cluster with id: ${id}`);
   }
 
-  deleteCluster(id: string) {
-    // Implement the logic to delete the cluster
-    console.log(`Delete cluster with id: ${id}`);
+  deleteCluster(id: string): void {
+    this.clusterService.deleteCluster(id).subscribe(data => {
+      this.clusters = data;
+    });
   }
-
+  
   onContextMenu($event: MouseEvent,id: any) {
       this.selectedId=id;
     }

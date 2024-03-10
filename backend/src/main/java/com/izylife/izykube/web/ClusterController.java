@@ -9,6 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @Slf4j
 @RequestMapping("/api/cluster")
@@ -60,6 +63,22 @@ public class ClusterController {
         } catch (Exception e) {
             log.error("Error getting all clusters: " + e.getMessage());
             return ResponseEntity.badRequest().body("Error getting all clusters: " + e.getMessage());
+        }
+    }
+
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteCluster(@PathVariable String id) {
+        try {
+            clusterService.deleteCluster(id);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Cluster deleted successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error deleting cluster: " + e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error deleting cluster: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 

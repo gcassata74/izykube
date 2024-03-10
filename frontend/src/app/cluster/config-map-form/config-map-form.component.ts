@@ -57,7 +57,6 @@ export class ConfigMapFormComponent implements OnInit {
     this.entries.push(this.newEntry(key ? key : '', value ? value : ''));
   }
 
-
   removeEntry(index: number): void {
     this.entries.removeAt(index);
     // Check if all entries have been removed
@@ -65,6 +64,5 @@ export class ConfigMapFormComponent implements OnInit {
       this.addEntry();
     }
   }
-
 
 }

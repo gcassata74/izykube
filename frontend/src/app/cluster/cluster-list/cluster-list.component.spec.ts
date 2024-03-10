@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ClusterListComponent } from './clusterDTO-list.component';
+import { ClusterListComponent } from './cluster-list.component';
 
 describe('ClusterListComponent', () => {
   let component: ClusterListComponent;

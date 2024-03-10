@@ -22,6 +22,7 @@ export class NodeFormComponent implements OnDestroy {
     'deployment': DeploymentFormComponent,
     'configMap': ConfigMapFormComponent,
     'pod': PodFormComponent
+    //TODO add more forms here
   };
 
   componentRef!: ComponentRef<any>;
@@ -56,9 +57,6 @@ export class NodeFormComponent implements OnDestroy {
       this.componentRef.instance.selectedNode = node;
     }));
   }
-
-
-
 
   ngOnDestroy(): void {
     this.componentRef.destroy();
