@@ -100,6 +100,7 @@ public class ClusterService {
             Cluster cluster = clusterRepository.findById(clusterDTO.getId()).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
             cluster.setId(clusterDTO.getId());
             cluster.setName(clusterDTO.getName());
+            cluster.setNameSpace(clusterDTO.getNameSpace());
             cluster.setCreationDate(clusterDTO.getCreationDate());
             cluster.setLastUpdated(clusterDTO.getLastUpdated());
             cluster.setNodes(clusterDTO.getNodes());
@@ -110,6 +111,7 @@ public class ClusterService {
             ClusterDTO updatedClusterDTO = new ClusterDTO();
             updatedClusterDTO.setId(updatedCluster.getId());
             updatedClusterDTO.setName(updatedCluster.getName());
+            updatedClusterDTO.setNameSpace(updatedCluster.getNameSpace());
             updatedClusterDTO.setCreationDate(updatedCluster.getCreationDate());
             updatedClusterDTO.setLastUpdated(updatedCluster.getLastUpdated());
             updatedClusterDTO.setNodes(updatedCluster.getNodes());
@@ -138,6 +140,15 @@ public class ClusterService {
             clusterRepository.deleteById(id);
         } catch (Exception e) {
             log.error("Error deleting cluster: " + e.getMessage());
+        }
+    }
+
+    public Object getClusterById(String id) {
+        try {
+            return clusterRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
+        } catch (Exception e) {
+            log.error("Error getting cluster with ID " + id + ": " + e.getMessage());
+            return null;
         }
     }
 }

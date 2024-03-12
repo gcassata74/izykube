@@ -2,9 +2,18 @@
 
 # Define default shell to be used
 SHELL := /bin/bash
+LOCALE ?= en
+
+# e.g. make run-i18n-build LOCALE=fr
+run-i18n-build:
+	ng build --configuration=$(LOCALE)
+
+# e.g. make run-i18n-serve LOCALE=fr
+run-i18n-serve:
+	ng serve --configuration=$(LOCALE)
 
 run-i18n-extract:
-    cd frontend && ng xi18n --output-path locale
+	cd frontend && ng extract-i18n --output-path src/locale --format xlf
 
 run-chrome-dev:
 	google-chrome --incognito --new-window "http://127.0.0.1:4200" --remote-debugging-port=9222 --disable-web-security --user-data-dir="~/ChromeDevSession"

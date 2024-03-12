@@ -11,8 +11,8 @@ const routes: Routes = [
   { path: 'cluster-editor', component: ClusterEditorComponent },
   { path: 'clusters', component: ClusterListComponent },
   { path: 'assets', component: AssetsListComponent },
-  { path: 'cluster-form', component: ClusterFormComponent }
-  // Add more routes here if needed
+  { path: 'cluster-form', component: ClusterFormComponent },
+  { path: 'cluster-form/:id', component: ClusterFormComponent }
 ];
 
 @NgModule({

@@ -1,6 +1,6 @@
 import { Subscription } from 'rxjs';
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { FormGroup, FormBuilder } from '@angular/forms';
+import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Cluster } from '../../model/cluster.class';
 import { ClusterService } from '../../services/cluster.service';
@@ -12,7 +12,8 @@ import { NotificationService } from 'src/app/services/notification.service';
   styleUrls: ['./cluster-form.component.scss']
 })
 export class ClusterFormComponent implements OnInit, OnDestroy{
-  clusterForm: FormGroup;
+
+  clusterForm!: FormGroup;
   isEditMode: boolean = false;
   clusterId: string | null = null;
   cluster!: Cluster;
@@ -25,13 +26,17 @@ export class ClusterFormComponent implements OnInit, OnDestroy{
     private route: ActivatedRoute,
     private notificationService: NotificationService
   ) {
-    this.clusterForm = this.formBuilder.group({
-      name: [''],
-      namespace: ['']
-    });
+    
   }
 
   ngOnInit(): void {
+    
+    
+    this.clusterForm = this.formBuilder.group({
+      name: ['', Validators.required],
+      namespace: [this.isEditMode ? '' : 'default', Validators.required]
+    });
+    
     this.route.paramMap.subscribe(params => {
       this.clusterId = params.get('id');
       this.isEditMode = !!this.clusterId;
@@ -66,6 +71,10 @@ export class ClusterFormComponent implements OnInit, OnDestroy{
 
   ngOnDestroy(): void {
    this.subscription.unsubscribe();
+  }
+
+  cancel() {
+    this.router.navigate(['/clusters']);
   }
 
 

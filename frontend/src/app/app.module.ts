@@ -33,11 +33,13 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ContextMenuModule } from 'primeng/contextmenu';
 import { ButtonModule } from 'primeng/button';
+import { MessageModule } from 'primeng/message';
 import { ToastModule } from 'primeng/toast';
 import { ConfigMapFormComponent } from './cluster/config-map-form/config-map-form.component';
 import { ClusterService } from './services/cluster.service';
 import { AutoSaveService } from './services/auto-save.service';
 import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.component';
+import { MessageService } from 'primeng/api';
 
 
 @NgModule({
@@ -70,6 +72,7 @@ import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.compon
     ButtonModule,
     TableModule,
     MenuModule,
+    MessageModule,
     BrowserAnimationsModule,
     FormsModule,
     ReactiveFormsModule,
@@ -83,7 +86,7 @@ import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.compon
     ToolbarService,
     DiagramService,
     ClusterService,
-    
+    MessageService
   ],
   bootstrap: [AppComponent]
 })

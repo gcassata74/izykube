@@ -66,6 +66,19 @@ public class ClusterController {
         }
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getClusterById(@PathVariable String id) {
+        try {
+
+            return ResponseEntity.ok(clusterService.getClusterById(id));
+        } catch (Exception e) {
+            log.error("Error getting cluster with ID " + id + ": " + e.getMessage());
+            return ResponseEntity.badRequest().body("Error getting cluster with ID " + id + ": " + e.getMessage());
+        }
+    }
+
+
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteCluster(@PathVariable String id) {

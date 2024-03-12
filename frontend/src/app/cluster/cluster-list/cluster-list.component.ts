@@ -32,9 +32,9 @@ export class ClusterListComponent {
     });
 
     this.cols = [
-      { field: 'id', header: 'ID' },
+     // { field: 'id', header: 'ID' },
       { field: 'name', header: 'Name' },
-      { field: 'namespace', header: 'Namespace' }
+      { field: 'nameSpace', header: 'Namespace' }
     ];
 
     this.items = [
@@ -44,11 +44,11 @@ export class ClusterListComponent {
   }
 
   addCluster() {
-    this.router.navigate(['/cluster-form']);
+    this.router.navigate(['cluster-form']);
   }
     
   editCluster(id: string) {
-    this.router.navigate([`/cluster-form/${id}`]);
+    this.router.navigate([`cluster-form/${id}`]);
   }
 
   deleteCluster(id: string): void {
