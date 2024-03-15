@@ -21,10 +21,11 @@
         {{rowData[col.field]}}
       </td>
       <td>
-        <button pButton type="button" icon="pi pi-pencil" (click)="editCluster(rowData.id)"
-                class="btn btn-primary btn-sm mr-2"></button>
+        <button pButton type="button" icon="pi pi-pencil" (click)="editDiagram(rowData.id)"
+                class="btn btn-primary btn-sm mr-2 me-2 row-buttons"></button>
         <p-contextMenu [model]="items" [target]="rowContextMenu" appendTo="body" triggerEvent="click"></p-contextMenu>
-        <button pButton icon="pi pi-ellipsis-h" styleClass="p-button-secondary" #rowContextMenu></button>
+        <button class="row-buttons" pButton icon="pi pi-ellipsis-h" styleClass="p-button-secondary"
+                #rowContextMenu></button>
       </td>
     </tr>
   </ng-template>

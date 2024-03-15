@@ -9,6 +9,7 @@ import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.compon
 const routes: Routes = [
   { path: '', redirectTo: '/cluster-editor', pathMatch: 'full' },
   { path: 'cluster-editor', component: ClusterEditorComponent },
+  { path: 'cluster-editor/:id', component: ClusterEditorComponent },
   { path: 'clusters', component: ClusterListComponent },
   { path: 'assets', component: AssetsListComponent },
   { path: 'cluster-form', component: ClusterFormComponent },

@@ -15,6 +15,7 @@ export class ClusterListComponent {
 
 
 
+
   clusters: any[] = [];
   cols!: any[];
   items!: MenuItem[];
@@ -24,7 +25,7 @@ export class ClusterListComponent {
     private clusterService: ClusterService,
     private dataService: DataService,
     private router: Router
-    ) {}
+  ) { }
 
   ngOnInit() {
     this.clusterService.getAllClusters().subscribe(data => {
@@ -32,7 +33,7 @@ export class ClusterListComponent {
     });
 
     this.cols = [
-     // { field: 'id', header: 'ID' },
+      // { field: 'id', header: 'ID' },
       { field: 'name', header: 'Name' },
       { field: 'nameSpace', header: 'Namespace' }
     ];
@@ -46,7 +47,7 @@ export class ClusterListComponent {
   addCluster() {
     this.router.navigate(['cluster-form']);
   }
-    
+
   editCluster(id: string) {
     this.router.navigate([`cluster-form/${id}`]);
   }
@@ -56,9 +57,13 @@ export class ClusterListComponent {
       this.clusters = data;
     });
   }
-  
-  onContextMenu($event: MouseEvent,id: any) {
-      this.selectedId=id;
-    }
+
+  editDiagram(id: string) {
+    this.router.navigate([`cluster-editor/${id}`]);
+  }
+
+  onContextMenu($event: MouseEvent, id: any) {
+    this.selectedId = id;
+  }
 
 }

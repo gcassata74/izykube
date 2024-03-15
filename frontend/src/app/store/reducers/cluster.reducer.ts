@@ -60,10 +60,10 @@ export const clusterReducer = createReducer(
       }
   })),
 
+
   on(updateCluster, (state, { cluster }) => ({
     ...state,
     clusterData: cluster
   }))
-  
-  
-  );
+
+);

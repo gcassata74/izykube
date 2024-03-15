@@ -35,7 +35,7 @@ export class DeploymentFormComponent implements OnInit {
 
     const deployment = this.selectedNode as Deployment;
     this.form = this.fb.group({
-      replicas: [deployment.replicas, Validators.required]
+      replicas: [deployment?.replicas, Validators.required]
     });
     this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.form.valueChanges);
   }

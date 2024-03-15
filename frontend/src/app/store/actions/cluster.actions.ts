@@ -11,7 +11,9 @@ export const REMOVE_LINK = '[Cluster] Remove Link';
 export const UPDATE_DIAGRAM = '[Cluster] Update Diagram';
 export const UPDATE_NODE = '[Cluster] Update Node';
 export const UPDATE_CLUSTER = '[Cluster] Update Cluster';
-
+export const LOAD_CLUSTER = '[Cluster] Load Cluster Request';
+export const LOAD_CLUSTER_SUCCESS = '[Cluster] Load Cluster Success';
+export const LOAD_CLUSTER_ERROR = '[Cluster] Load Cluster Error';
 
 export const addNode = createAction(
   ADD_NODE,
@@ -49,3 +51,21 @@ export const updateCluster = createAction(
 );
 
 
+
+export const loadCluster = createAction(
+  LOAD_CLUSTER,
+  props<{ id: string }>()
+);
+
+
+// Action for successful diagram update
+export const updateDiagramSuccess = createAction(
+  LOAD_CLUSTER_SUCCESS,
+  props<{ clusterData: Cluster }>()
+);
+
+// Action for a failed diagram update
+export const updateDiagramFailure = createAction(
+  LOAD_CLUSTER_ERROR,
+  props<{ error: any }>() 
+);

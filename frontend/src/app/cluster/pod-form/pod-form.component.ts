@@ -40,7 +40,7 @@ export class PodFormComponent implements OnInit {
     const pod = this.selectedNode as Pod;
     this.filteredAssets$ = this.assetService.getAssets();
     this.form = this.fb.group({
-      assetId: [pod.assetId, Validators.required]
+      assetId: [pod?.assetId, Validators.required]
     });
     this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.change$);
   }

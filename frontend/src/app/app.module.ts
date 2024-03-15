@@ -21,7 +21,7 @@ import { ClusterListComponent } from './cluster/cluster-list/cluster-list.compon
 import { FormsModule } from '@angular/forms';
 import { AssetsListComponent } from './assets/assets-list/assets-list.component';
 import { ToolbarService } from './services/toolbar.service';
-import { InitEffect } from './store/effects/init-effects';
+import { InitEffects } from './store/effects/init-effects';
 import { HttpClientModule } from '@angular/common/http';
 import { DiagramService } from './services/diagram.service';
 import { ClusterEditorComponent } from './cluster/cluster-editor/cluster-editor.component';
@@ -78,7 +78,7 @@ import { MessageService } from 'primeng/api';
     ReactiveFormsModule,
     HttpClientModule,
     StoreModule.forRoot(reducers),
-    EffectsModule.forRoot([InitEffect]),
+    EffectsModule.forRoot([InitEffects]),
     StoreDevtoolsModule.instrument({ maxAge: 25, logOnly: !isDevMode() }),
     StoreRouterConnectingModule.forRoot()
   ],

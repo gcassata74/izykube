@@ -45,6 +45,59 @@
   width: 100%;
 }
 
+
+
+/* Style for the overall context menu container */
+.p-contextmenu {
+  padding: 0.5rem 0;
+  background: #ffffff;
+  color: #4b5563;
+  border: 0 none;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  width: 12.5rem;
+
+
+/* Style for individual menu items */
+.p-menuitem-link {
+  color: #4b5563;
+  padding: 0.75rem 1.25rem;
+  user-select: none;
+
+}
+
+/* Style for menu items on hover */
+ .p-menuitem-link:hover {
+  background-color: #ddd; /* Lighter grey on hover */
+  color: #000; /* Black text on hover */
+}
+
+ .p-menuitem-text {
+  line-height: 2;
+  margin-left: 10px;
+}
+
+}
+
+.pi:before {
+  --webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  margin-left: 5px;
+}
+
+
+.p-sidebar{
+background: #ffffff;
+color: #495057;
+border: 0 none;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+a {
+margin-top: 10px;
+
+}
+}
+
 .no-padding > * {
   padding: 0
 }

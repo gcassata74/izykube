@@ -9,7 +9,9 @@ import { DiagramService } from '../../services/diagram.service';
 import { ToolbarService } from '../../services/toolbar.service';
 import { getCurrentAction, getClusterData } from '../../store/selectors/selectors';
 import * as actions from '../../store/actions/actions';
+import *  as clusterActions from '../../store/actions/cluster.actions';
 import { provideAnimations } from '@angular/platform-browser/animations';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-cluster-editor',
@@ -26,11 +28,20 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
   private toolbarService:ToolbarService,
   private store:Store,
   private diagramService: DiagramService,
-  private clusterService: ClusterService
+  private clusterService: ClusterService,
+  private activatedRoute: ActivatedRoute
  ){}
 
   ngOnInit(): void {
     this.createButtons();
+
+    this.subscription.add(
+      this.activatedRoute.params.subscribe(params => {
+        const id = params['id'];
+        if (id) {
+          this.loadCluster(id);
+        }
+      }));
 
       this.subscription.add(
         this.store.pipe(
@@ -43,6 +54,10 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
           this.store.dispatch(actions.resetCurrentAction());
         })
       );
+  }
+
+  loadCluster(clusterId: any) {
+    this.store.dispatch(clusterActions.loadCluster({id:clusterId}));
 
   }
 
@@ -58,7 +73,6 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
       this.toolbarService.setButtons([button]);
     });
   }
-
 
   ngOnDestroy(): void {
     this.subscription.unsubscribe();

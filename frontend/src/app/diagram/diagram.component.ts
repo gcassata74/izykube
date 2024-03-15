@@ -1,12 +1,16 @@
+import { ClusterState } from './../store/states/state';
 import { updateDiagram } from './../store/actions/cluster.actions';
 import { DiagramService } from './../services/diagram.service';
 import { IconService } from './../services/icon.service';
-import { Component, ElementRef, HostListener, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild } from '@angular/core';
 import * as go from 'gojs';
-import { Store } from '@ngrx/store';
+import { Store, select } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
-import { BehaviorSubject } from 'rxjs';
-import * as actions from '../store/actions/cluster.actions';
+import { BehaviorSubject, Subscription, distinctUntilChanged, filter, tap } from 'rxjs';
+import * as actions from '../store/actions/actions';
+import * as clusterActions from '../store/actions/cluster.actions';
+import { getClusterData, selectClusterDiagram } from '../store/selectors/selectors';
+import { Cluster } from '../model/cluster.class';
 
 const $ = go.GraphObject.make;
 
@@ -15,14 +19,14 @@ const $ = go.GraphObject.make;
   templateUrl: './diagram.component.html',
   styleUrls: ['./diagram.component.scss']
 })
-export class DiagramComponent implements OnInit {
+export class DiagramComponent implements OnInit, OnDestroy,AfterViewInit {
 
   @ViewChild('container', { static: true }) container!: ElementRef;
   diagram!: go.Diagram;
   isResizing: boolean = false;
   firstColumnWidth: number = 200;
   minWidth: number = 200; // Minimum width of the first column in pixels
-
+  subscription: Subscription = new Subscription();
 
   constructor(
     private iconService: IconService,
@@ -30,13 +34,26 @@ export class DiagramComponent implements OnInit {
     private diagramService: DiagramService
   ) { }
 
+
+ 
   ngOnInit(): void {
     //write methods to create the gojs diagram
     this.createDiagram();
     //write a metohd to create the palette
     this.createPalette();
+  
   }
 
+  ngAfterViewInit(): void {
+    this.subscription.add(this.store.pipe(
+      select(selectClusterDiagram), // Use the new selector to get just the diagram data
+      distinctUntilChanged(), // Ensures we only react to actual changes in the diagram data
+      filter(diagramData => !!diagramData), // Ensure diagramData is not null or undefined
+      tap(diagramData => {
+        this.diagram.model = go.Model.fromJson(diagramData); // Update the diagram model
+      })
+    ).subscribe());
+  }
 
   private createDiagram() {
 
@@ -130,20 +147,20 @@ export class DiagramComponent implements OnInit {
         if (e.modelChange === "nodeDataArray") {
           if (e.change === go.ChangedEvent.Insert) {
             // Dispatch action for node added
-            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
+            this.store.dispatch(clusterActions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
           } else if (e.change === go.ChangedEvent.Remove) {
             // Dispatch action for node removed
-            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
+            this.store.dispatch(clusterActions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
           }
         }
         // handle linkDTO changes
         else if (e.modelChange === "linkDataArray") {
           if (e.change === go.ChangedEvent.Insert) {
             // Dispatch action for linkDTO added
-            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
+            this.store.dispatch(clusterActions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
           } else if (e.change === go.ChangedEvent.Remove) {
             // Dispatch action for linkDTO removed
-            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
+            this.store.dispatch(clusterActions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
           }
         }
       });
@@ -328,5 +345,9 @@ export class DiagramComponent implements OnInit {
       },
       new go.Binding("text", "name")
     )
+  }
+
+  ngOnDestroy(): void {
+    this.subscription.unsubscribe();
   }
 }
