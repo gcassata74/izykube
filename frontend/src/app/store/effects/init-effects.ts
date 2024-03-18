@@ -18,17 +18,6 @@ export class InitEffects {
     private clusterService: ClusterService
     ) {}
 
-  updateDiagram$ = createEffect(() => this.actions$.pipe(
-    ofType(clusterActions.loadCluster),
-    mergeMap((action) => {
-      return this.clusterService.getCluster(action.id).pipe(
-        map((cluster:Cluster) => clusterActions.updateCluster({cluster:cluster})), 
-        catchError(error => of(clusterActions.updateDiagramFailure({ error }))) 
-      );
-    })
-  ));
-  
-  
-
+ 
 
 }

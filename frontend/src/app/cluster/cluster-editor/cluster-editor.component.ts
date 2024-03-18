@@ -20,7 +20,7 @@ import { ActivatedRoute } from '@angular/router';
 })
 export class ClusterEditorComponent implements OnInit, OnDestroy{
 
-  model!: go.Model | null;
+
   @ViewChild('diagram') diagramComponent!: DiagramComponent;
   subscription: Subscription = new Subscription();
 
@@ -57,9 +57,10 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
   }
 
   loadCluster(clusterId: any) {
-    this.store.dispatch(clusterActions.loadCluster({id:clusterId}));
-
-  }
+    this.clusterService.getCluster(clusterId).subscribe(cluster => {
+      this.store.dispatch(clusterActions.loadCluster({cluster: cluster}));
+    });
+  } 
 
   createButtons() {
     let button: Button =  {

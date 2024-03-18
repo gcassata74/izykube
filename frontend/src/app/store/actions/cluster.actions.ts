@@ -50,22 +50,10 @@ export const updateCluster = createAction(
   props<{ cluster: Cluster }>()
 );
 
-
-
+// this replaces current cluster in the store with the new one
 export const loadCluster = createAction(
   LOAD_CLUSTER,
-  props<{ id: string }>()
+  props<{ cluster: Cluster }>()
 );
 
 
-// Action for successful diagram update
-export const updateDiagramSuccess = createAction(
-  LOAD_CLUSTER_SUCCESS,
-  props<{ clusterData: Cluster }>()
-);
-
-// Action for a failed diagram update
-export const updateDiagramFailure = createAction(
-  LOAD_CLUSTER_ERROR,
-  props<{ error: any }>() 
-);

@@ -1,6 +1,6 @@
 // clusterDTO.reducer.ts
 import { createReducer, on } from '@ngrx/store';
-import { addLink, addNode, removeLink, removeNode, updateCluster, updateDiagram, updateNode } from '../actions/cluster.actions';
+import { addLink, addNode, loadCluster, removeLink, removeNode, updateCluster, updateDiagram, updateNode } from '../actions/cluster.actions';
 import { initialState } from '../states/state';
 
 
@@ -60,10 +60,24 @@ export const clusterReducer = createReducer(
       }
   })),
 
+  // on(updateCluster, (state, { cluster }) => ({
+  //   ...state,
+  //   clusterData: cluster
+  // })),
+
 
   on(updateCluster, (state, { cluster }) => ({
     ...state,
+    clusterData: {
+      ...state.clusterData,
+      ...cluster // Integra i nuovi dati dell'oggetto 'cluster' con quelli esistenti in 'clusterData'
+    }
+  })),
+
+  on(loadCluster, (state, { cluster }) => ({
+    ...state,
     clusterData: cluster
   }))
+
 
 );

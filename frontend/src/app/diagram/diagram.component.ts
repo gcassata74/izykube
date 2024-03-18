@@ -2,11 +2,11 @@ import { ClusterState } from './../store/states/state';
 import { updateDiagram } from './../store/actions/cluster.actions';
 import { DiagramService } from './../services/diagram.service';
 import { IconService } from './../services/icon.service';
-import { AfterViewInit, Component, ElementRef, HostListener, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild } from '@angular/core';
 import * as go from 'gojs';
 import { Store, select } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
-import { BehaviorSubject, Subscription, distinctUntilChanged, filter, tap } from 'rxjs';
+import { BehaviorSubject, Subscription, debounceTime, distinctUntilChanged, filter, startWith, take, tap } from 'rxjs';
 import * as actions from '../store/actions/actions';
 import * as clusterActions from '../store/actions/cluster.actions';
 import { getClusterData, selectClusterDiagram } from '../store/selectors/selectors';
@@ -19,10 +19,11 @@ const $ = go.GraphObject.make;
   templateUrl: './diagram.component.html',
   styleUrls: ['./diagram.component.scss']
 })
-export class DiagramComponent implements OnInit, OnDestroy,AfterViewInit {
+export class DiagramComponent implements OnInit, OnDestroy {
 
   @ViewChild('container', { static: true }) container!: ElementRef;
   diagram!: go.Diagram;
+  model!: go.Model;
   isResizing: boolean = false;
   firstColumnWidth: number = 200;
   minWidth: number = 200; // Minimum width of the first column in pixels
@@ -35,25 +36,23 @@ export class DiagramComponent implements OnInit, OnDestroy,AfterViewInit {
   ) { }
 
 
- 
+
   ngOnInit(): void {
-    //write methods to create the gojs diagram
-    this.createDiagram();
-    //write a metohd to create the palette
+
     this.createPalette();
-  
+    this.store.pipe(
+      select(selectClusterDiagram),
+      debounceTime(1000),
+      tap(diagramData => {
+        if(diagramData!==null && diagramData!==undefined && diagramData!==""){
+        this.model = go.Model.fromJson(diagramData); 
+        }
+        this.createDiagram(); 
+      }),
+     take(1)
+    ).subscribe();
   }
 
-  ngAfterViewInit(): void {
-    this.subscription.add(this.store.pipe(
-      select(selectClusterDiagram), // Use the new selector to get just the diagram data
-      distinctUntilChanged(), // Ensures we only react to actual changes in the diagram data
-      filter(diagramData => !!diagramData), // Ensure diagramData is not null or undefined
-      tap(diagramData => {
-        this.diagram.model = go.Model.fromJson(diagramData); // Update the diagram model
-      })
-    ).subscribe());
-  }
 
   private createDiagram() {
 
@@ -75,9 +74,9 @@ export class DiagramComponent implements OnInit, OnDestroy,AfterViewInit {
     this.diagram.nodeTemplate = this.makeNodeTemplate();
     this.diagram.commandHandler.deletesTree = true;
     this.diagram.commandHandler.canDeleteSelection = () => true;
-
-
-    // define the diagram model with nodeDataArray and linkDataArray
+   
+    //create empty model if not present
+    this.model && (this.diagram.model = this.model);
     const graphLinksModel: go.GraphLinksModel = this.diagram.model as go.GraphLinksModel;
 
     this.diagram.linkTemplate =
@@ -98,6 +97,7 @@ export class DiagramComponent implements OnInit, OnDestroy,AfterViewInit {
 
     // Attach event handlers
     this.addEventHanlders(graphLinksModel);
+    this.setLinkingRules();
   }
 
 
@@ -225,7 +225,7 @@ export class DiagramComponent implements OnInit, OnDestroy,AfterViewInit {
 
     // Node data array with icon URLs
     var nodeDataArray = this.createNodes();
-    this.setLinkingRules();
+
 
     // Initialize the palette
     const myPalette =
@@ -259,7 +259,7 @@ export class DiagramComponent implements OnInit, OnDestroy,AfterViewInit {
     this.diagram.toolManager.linkingTool.linkValidation = (fromNode, fromPort, toNode, toPort) => {
       const fromType = fromNode.data.type;
       const toType = toNode.data.type;
-  
+
       switch (fromType) {
         case 'configMap':
           return toType === 'pod' || toType === 'deployment';
@@ -274,7 +274,7 @@ export class DiagramComponent implements OnInit, OnDestroy,AfterViewInit {
           return false;
       }
     };
-  
+
     // Apply the same validation for relinking
     this.diagram.toolManager.relinkingTool.linkValidation = this.diagram.toolManager.linkingTool.linkValidation;
   }
