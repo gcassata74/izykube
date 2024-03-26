@@ -40,6 +40,7 @@ import { ClusterService } from './services/cluster.service';
 import { AutoSaveService } from './services/auto-save.service';
 import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.component';
 import { MessageService } from 'primeng/api';
+import { CardModule } from 'primeng/card';
 
 
 @NgModule({
@@ -68,6 +69,7 @@ import { MessageService } from 'primeng/api';
     ContextMenuModule,
     ToastModule,
     MenuModule,
+    CardModule,
     MenubarModule,
     ButtonModule,
     TableModule,

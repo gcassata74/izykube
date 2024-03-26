@@ -6,7 +6,7 @@
 }
 
 .app-sidebar {
-  width: 256px;
+  width: 200px;
   height: 100vh; // Full viewport height
   position: fixed; // Ensures z-index is effective
   top: 50px; // Below the toolbar
@@ -14,8 +14,8 @@
 }
 
 .content-container {
-  margin-left: 256px;
-  width: calc(100% - 256px);
+  margin-left: 200px;
+  width: calc(100% - 200px);
   flex-grow: 1;
   overflow: auto;
   position: relative; // Ensures z-index is effective
@@ -26,20 +26,6 @@
   cursor: pointer;
 }
 
-
-.app-toolbar {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between; /* Aligns title to left and buttons to right */
-  height: 50px;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  background: #fff;
-}
 
 .app-toolbar-content {
   display: flex;
@@ -53,7 +39,7 @@
 
 /* This will make sure that your button aligns to the right */
 .button-container {
-  margin-left: 256px;
+  margin-left: 320px;
   display: flex;
   justify-content: flex-end; /* Aligns buttons to the right */
 }

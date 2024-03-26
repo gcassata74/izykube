@@ -11,6 +11,10 @@ export class ToolbarService {
   setButtons(buttons: Button[]) {
     this.buttonsSource.next(buttons);
   }
+
+  clearButtons() {
+    this.buttonsSource.next([]);
+  }
 }
 
 

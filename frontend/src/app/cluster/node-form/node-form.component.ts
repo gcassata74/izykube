@@ -1,6 +1,6 @@
 import { Node } from './../../model/node.class';
 import { Store } from '@ngrx/store';
-import { Component, OnDestroy, ViewContainerRef, ComponentRef } from '@angular/core';
+import { Component, OnDestroy, ViewContainerRef, ComponentRef, ViewChild } from '@angular/core';
 import { switchMap, of, filter, tap, Subscription, mergeMap } from 'rxjs';
 import { DiagramService } from 'src/app/services/diagram.service';
 import { getNodeById } from 'src/app/store/selectors/selectors';
@@ -11,10 +11,12 @@ import { PodFormComponent } from '../pod-form/pod-form.component';
 
 @Component({
   selector: 'app-node-form',
-  template: '',
+  templateUrl: './node-form.component.html',
+  styleUrls: ['./node-form.component.scss']
 })
 export class NodeFormComponent implements OnDestroy {
 
+  @ViewChild('dynamicComponentContainer', { read: ViewContainerRef }) dynamicContainer!: ViewContainerRef;
   selectedNodeType!: string;
   node!: Node;
   subscription: Subscription = new Subscription();
@@ -24,13 +26,12 @@ export class NodeFormComponent implements OnDestroy {
     'pod': PodFormComponent
     //TODO add more forms here
   };
-
+ 
   componentRef!: ComponentRef<any>;
 
   constructor(
     private diagramService: DiagramService,
     private store: Store,
-    public viewContainerRef: ViewContainerRef
   ) { }
 
   ngOnInit(): void {
@@ -40,8 +41,8 @@ export class NodeFormComponent implements OnDestroy {
       filter((node: go.Node) => node !== null && node !== undefined),
       tap((node: go.Node) => {
         this.selectedNodeType = node?.data?.type || null
-        this.viewContainerRef.clear();
-        this.componentRef = this.viewContainerRef.createComponent(this.formMapper[this.selectedNodeType]);
+        this.dynamicContainer.clear();
+        this.componentRef = this.dynamicContainer.createComponent(this.formMapper[this.selectedNodeType]);
       }),
       mergeMap((node: go.Node) => {
         const nodeId = node?.data?.key;

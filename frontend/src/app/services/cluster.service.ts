@@ -1,3 +1,4 @@
+import { NotificationService } from 'src/app/services/notification.service';
 import { Observable, catchError, switchMap, throwError } from 'rxjs';
 import { Cluster } from '../model/cluster.class';
 import { DataService } from './data.service';
@@ -11,6 +12,7 @@ export class ClusterService {
   clusterService: any;
 
   constructor(
+    private notificationService: NotificationService,
     private dataService: DataService,
     private store: Store
     ) { }
@@ -44,12 +46,13 @@ export class ClusterService {
     }
     saveObservable.pipe(
       catchError((error) => {
-        console.error('Error saving cluster', error);
+        this.notificationService.error('Save Failed', 'The cluster could not be saved');
         return throwError(() => error);
       })
     ).subscribe((savedCluster:Cluster) => {
       // Dispatch the update action with the saved cluster data
       this.store.dispatch(updateCluster({ cluster: savedCluster }));
+      this.notificationService.success('Cluster Saved', 'The cluster was saved successfully');
     });
   }
 }

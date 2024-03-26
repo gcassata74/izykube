@@ -70,12 +70,11 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
         styleClass:"p-button-success"
     };
 
-    setTimeout(() => {
       this.toolbarService.setButtons([button]);
-    });
   }
 
   ngOnDestroy(): void {
     this.subscription.unsubscribe();
+    this.toolbarService.clearButtons();
   }
 }
