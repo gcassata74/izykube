@@ -5,7 +5,7 @@
     </div>
   </p-toolbar>
 </div>
-
+<p-card class="ml-2 mr-2" header="Clusters" i18n-header="@@clusters">
 <p-table [value]="clusters" [columns]="cols">
   <ng-template pTemplate="header" let-columns>
     <tr>
@@ -21,13 +21,11 @@
         {{rowData[col.field]}}
       </td>
       <td>
-        <button pButton type="button" icon="pi pi-pencil" (click)="editDiagram(rowData.id)"
-                class="btn btn-primary btn-sm mr-2 me-2 row-buttons"></button>
+        <span><i class="pi pi-pencil btn-icon" (click)="editDiagram(rowData.id)"></i></span>
+        <span class="ml-2"><i class="pi pi-ellipsis-v btn-icon" #rowContextMenu style="cursor: pointer;"></i></span>
         <p-contextMenu [model]="items" [target]="rowContextMenu" appendTo="body" triggerEvent="click"></p-contextMenu>
-        <button class="row-buttons" pButton icon="pi pi-ellipsis-h" styleClass="p-button-secondary"
-                #rowContextMenu></button>
       </td>
     </tr>
   </ng-template>
 </p-table>
-
+</p-card>

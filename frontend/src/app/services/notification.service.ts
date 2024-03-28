@@ -22,6 +22,6 @@ export class NotificationService{
   }
 
   error(summary: string, detail: string) {
-    this.messageService.add({severity:'error', summary, detail});
+    this.messageService.add({severity:'error', summary, detail, sticky: true});
   }
 }

@@ -300,10 +300,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   makeNodeBorder() {
-    return $(go.Shape, "RoundedRectangle",
+    return $(go.Shape, "RoundedRectangle", 
       {
         width: 60, height: 60, fill: 'white', strokeWidth: 3,
-        cursor: "hand"
+        cursor: "hand",
       }
     )
   }
@@ -328,7 +328,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
       {
         width: 40, height: 40, margin: 5,
       },
-      new go.Binding("source", "icon") // Bind picture source to icon property in the node data
+     // new go.Binding("source", "icon") // Bind picture source to icon property in the node data
+      new go.Binding("source", "icon") 
     )
   }
 

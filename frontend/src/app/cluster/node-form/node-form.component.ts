@@ -26,7 +26,7 @@ export class NodeFormComponent implements OnDestroy {
     'pod': PodFormComponent
     //TODO add more forms here
   };
- 
+
   componentRef!: ComponentRef<any>;
 
   constructor(
@@ -42,7 +42,9 @@ export class NodeFormComponent implements OnDestroy {
       tap((node: go.Node) => {
         this.selectedNodeType = node?.data?.type || null
         this.dynamicContainer.clear();
-        this.componentRef = this.dynamicContainer.createComponent(this.formMapper[this.selectedNodeType]);
+        if (this.formMapper[this.selectedNodeType]) {
+          this.componentRef = this.dynamicContainer.createComponent(this.formMapper[this.selectedNodeType]);
+        }
       }),
       mergeMap((node: go.Node) => {
         const nodeId = node?.data?.key;
