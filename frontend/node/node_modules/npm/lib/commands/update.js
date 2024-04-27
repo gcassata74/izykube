@@ -1,10 +1,8 @@
 const path = require('path')
 
-const Arborist = require('@npmcli/arborist')
 const log = require('../utils/log-shim.js')
 
 const reifyFinish = require('../utils/reify-finish.js')
-const completion = require('../utils/completion/installed-deep.js')
 
 const ArboristWorkspaceCmd = require('../arborist-cmd.js')
 class Update extends ArboristWorkspaceCmd {
@@ -18,6 +16,7 @@ class Update extends ArboristWorkspaceCmd {
     'legacy-bundling',
     'global-style',
     'omit',
+    'include',
     'strict-peer-deps',
     'package-lock',
     'foreground-scripts',
@@ -33,16 +32,15 @@ class Update extends ArboristWorkspaceCmd {
 
   // TODO
   /* istanbul ignore next */
-  async completion (opts) {
-    return completion(this.npm, opts)
+  static async completion (opts, npm) {
+    const completion = require('../utils/completion/installed-deep.js')
+    return completion(npm, opts)
   }
 
   async exec (args) {
     const update = args.length === 0 ? true : args
     const global = path.resolve(this.npm.globalDir, '..')
-    const where = this.npm.global
-      ? global
-      : this.npm.prefix
+    const where = this.npm.global ? global : this.npm.prefix
 
     // In the context of `npm update` the save
     // config value should default to `false`
@@ -55,6 +53,7 @@ class Update extends ArboristWorkspaceCmd {
         'https://github.com/npm/rfcs/blob/latest/implemented/0019-remove-update-depth-option.md')
     }
 
+    const Arborist = require('@npmcli/arborist')
     const opts = {
       ...this.npm.flatOptions,
       path: where,

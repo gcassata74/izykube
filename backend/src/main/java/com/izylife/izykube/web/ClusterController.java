@@ -78,8 +78,6 @@ public class ClusterController {
     }
 
 
-
-
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteCluster(@PathVariable String id) {
         try {
@@ -92,6 +90,26 @@ public class ClusterController {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Error deleting cluster: " + e.getMessage());
             return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @PostMapping("/{id}/template")
+    public ResponseEntity<?> createTemplate(@PathVariable String id) {
+        try {
+            clusterService.createTemplate(id);
+            return ResponseEntity.ok().body("The template was created successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("The template could not be created");
+        }
+    }
+
+    @PostMapping("/{id}/deploy")
+    public ResponseEntity<?> deploy(@PathVariable String id) {
+        try {
+            clusterService.deploy(id);
+            return ResponseEntity.ok().body("The deployment was successful");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("The deployment could not be completed");
         }
     }
 

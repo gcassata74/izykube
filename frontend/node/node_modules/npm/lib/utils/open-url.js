@@ -31,7 +31,7 @@ const open = async (npm, url, errMsg, isFile) => {
       if (!/^https?:$/.test(new URL(url).protocol)) {
         throw new Error()
       }
-    } catch (_) {
+    } catch {
       throw new Error('Invalid URL: ' + url)
     }
   }
@@ -39,7 +39,7 @@ const open = async (npm, url, errMsg, isFile) => {
   const command = browser === true ? null : browser
   await promiseSpawn.open(url, { command })
     .catch((err) => {
-      if (err.code !== 'ENOENT') {
+      if (err.code !== 127) {
         throw err
       }
 

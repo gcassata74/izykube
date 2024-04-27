@@ -15,15 +15,15 @@ class Deprecate extends BaseCommand {
     'otp',
   ]
 
-  static ignoreImplicitWorkspace = false
+  static ignoreImplicitWorkspace = true
 
-  async completion (opts) {
+  static async completion (opts, npm) {
     if (opts.conf.argv.remain.length > 1) {
       return []
     }
 
-    const username = await getIdentity(this.npm, this.npm.flatOptions)
-    const packages = await libaccess.getPackages(username, this.npm.flatOptions)
+    const username = await getIdentity(npm, npm.flatOptions)
+    const packages = await libaccess.getPackages(username, npm.flatOptions)
     return Object.keys(packages)
       .filter((name) =>
         packages[name] === 'write' &&
@@ -52,19 +52,21 @@ class Deprecate extends BaseCommand {
       query: { write: true },
     })
 
-    Object.keys(packument.versions)
+    const versions = Object.keys(packument.versions)
       .filter(v => semver.satisfies(v, spec, { includePrerelease: true }))
-      .forEach(v => {
-        packument.versions[v].deprecated = msg
-      })
 
-    return otplease(this.npm, this.npm.flatOptions, opts => fetch(uri, {
-      ...opts,
-      spec: p,
-      method: 'PUT',
-      body: packument,
-      ignoreBody: true,
-    }))
+    if (versions.length) {
+      for (const v of versions) {
+        packument.versions[v].deprecated = msg
+      }
+      return otplease(this.npm, this.npm.flatOptions, opts => fetch(uri, {
+        ...opts,
+        spec: p,
+        method: 'PUT',
+        body: packument,
+        ignoreBody: true,
+      }))
+    }
   }
 }
 

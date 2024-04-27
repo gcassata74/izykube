@@ -8,6 +8,4 @@ export class Cluster {
      links!: Link[];
      nameSpace!: string;
      diagram!: string;
-     creationDate!: Date;
-     lastUpdated!: Date;
 }

@@ -41,8 +41,6 @@ public class ClusterService {
         try {
             Cluster cluster = new Cluster();
             cluster.setName(clusterDTO.getName());
-            cluster.setCreationDate(clusterDTO.getCreationDate());
-            cluster.setLastUpdated(clusterDTO.getLastUpdated());
             cluster.setNodes(clusterDTO.getNodes());
             cluster.setLinks(clusterDTO.getLinks());
             cluster.setDiagram(clusterDTO.getDiagram());
@@ -51,8 +49,6 @@ public class ClusterService {
             ClusterDTO savedClusterDTO = new ClusterDTO();
             savedClusterDTO.setId(savedCluster.getId());
             savedClusterDTO.setName(savedCluster.getName());
-            savedClusterDTO.setCreationDate(savedCluster.getCreationDate());
-            savedClusterDTO.setLastUpdated(savedCluster.getLastUpdated());
             savedClusterDTO.setNodes(savedCluster.getNodes());
             savedClusterDTO.setLinks(savedCluster.getLinks());
             savedClusterDTO.setDiagram(savedCluster.getDiagram());
@@ -69,14 +65,14 @@ public class ClusterService {
         // Iterate over each node in the cluster
         clusterDTO.getNodes().stream().filter(node -> node.getKind().equals("pod") || node.getKind().equals("deployment")).forEach(node -> {
             if (node.getKind().equals("pod")) {
-                handlePod(clusterDTO, (Pod) node);
+                handlePod(clusterDTO, (PodDTO) node);
             } else {
                 handleDeployment(clusterDTO, (DeploymentDTO) node);
             }
         });
     }
 
-    private void handlePod(ClusterDTO clusterDTO, Pod pod) {
+    private void handlePod(ClusterDTO clusterDTO, PodDTO pod) {
         k8sPodService.createPod(pod);
         // Handle connections from this Pod to other resources
     }
@@ -87,9 +83,7 @@ public class ClusterService {
         List<NodeDTO> sourceNodes = clusterDTO.findSourceNodesOf(deployment.getId());
         for (NodeDTO sourceNode : sourceNodes) {
             // Process source nodes, e.g., ConfigMaps
-            if (sourceNode instanceof ConfigMap) {
-                k8sDeploymentService.addConfigMap((ConfigMap) sourceNode);
-            }
+
         }
         k8sDeploymentService.createDeployment(deployment);
     }
@@ -101,8 +95,6 @@ public class ClusterService {
             cluster.setId(clusterDTO.getId());
             cluster.setName(clusterDTO.getName());
             cluster.setNameSpace(clusterDTO.getNameSpace());
-            cluster.setCreationDate(clusterDTO.getCreationDate());
-            cluster.setLastUpdated(clusterDTO.getLastUpdated());
             cluster.setNodes(clusterDTO.getNodes());
             cluster.setLinks(clusterDTO.getLinks());
             cluster.setDiagram(clusterDTO.getDiagram());
@@ -112,8 +104,6 @@ public class ClusterService {
             updatedClusterDTO.setId(updatedCluster.getId());
             updatedClusterDTO.setName(updatedCluster.getName());
             updatedClusterDTO.setNameSpace(updatedCluster.getNameSpace());
-            updatedClusterDTO.setCreationDate(updatedCluster.getCreationDate());
-            updatedClusterDTO.setLastUpdated(updatedCluster.getLastUpdated());
             updatedClusterDTO.setNodes(updatedCluster.getNodes());
             updatedClusterDTO.setLinks(updatedCluster.getLinks());
             updatedClusterDTO.setDiagram(updatedCluster.getDiagram());
@@ -150,5 +140,30 @@ public class ClusterService {
             log.error("Error getting cluster with ID " + id + ": " + e.getMessage());
             return null;
         }
+    }
+
+    public void createTemplate(String id) throws ObjectNotFoundException {
+        Cluster cluster = clusterRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
+        List<NodeDTO> nodes = cluster.getNodes();
+        for (NodeDTO node : nodes) {
+            if (node instanceof DeploymentDTO) {
+                DeploymentDTO deployment = (DeploymentDTO) node;
+                k8sDeploymentService.createDeployment(deployment);
+            } else if (node instanceof PodDTO) {
+                PodDTO pod = (PodDTO) node;
+                k8sPodService.createPod(pod);
+            } else if (node instanceof Service) {
+                Service service = (Service) node;
+                //detect the deployment or pod that this service is connected to
+
+
+              //  k8sServiceService.createService(service);
+            }
+        }
+
+    }
+
+    public void deploy(String id) throws ObjectNotFoundException {
+        Cluster cluster = clusterRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
     }
 }

@@ -1,7 +1,7 @@
 package com.izylife.izykube.services.k8s;
 
 
-import com.izylife.izykube.dto.cluster.ConfigMap;
+import com.izylife.izykube.dto.cluster.ConfigMapDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.services.AssetService;
@@ -26,7 +26,7 @@ public class K8sDeploymentService {
     @Autowired
     private AssetService assetService;
 
-    private List<ConfigMap> configMaps;
+    private List<ConfigMapDTO> configMaps;
 
 
     public K8sDeploymentService(KubernetesClient kubernetesClient) {
@@ -107,10 +107,10 @@ public class K8sDeploymentService {
         return String.format("Updated replicas of deployment %s, to %s  in namespace  %s" + deployment.getMetadata().getName(), replicas, namespace);
     }
 
-    public void attachConfigMapToDeployment(ConfigMap sourceNode, DeploymentDTO deployment) {
+    public void attachConfigMapToDeployment(ConfigMapDTO sourceNode, DeploymentDTO deployment) {
     }
 
-    public void addConfigMap(ConfigMap sourceNode) {
+    public void addConfigMap(ConfigMapDTO sourceNode) {
         // check if the configMap already exists in the list
         // are we sure we can compare the objects like this?
         if (configMaps.contains(sourceNode)) {

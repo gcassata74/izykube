@@ -5,6 +5,7 @@ import { DataService } from './data.service';
 import { Injectable } from '@angular/core';
 import { updateCluster } from '../store/actions/cluster.actions';
 import { Store } from '@ngrx/store';
+import { Router } from '@angular/router';
 
 @Injectable()
 export class ClusterService {
@@ -14,7 +15,8 @@ export class ClusterService {
   constructor(
     private notificationService: NotificationService,
     private dataService: DataService,
-    private store: Store
+    private store: Store,
+    private router: Router
     ) { }
 
 
@@ -36,7 +38,7 @@ export class ClusterService {
 
   saveCluster(clusterData: Cluster) {
     let saveObservable: Observable<Cluster>;
-  
+
     if (clusterData.id) {
       // If the ID is present, use PUT to update
       saveObservable = this.dataService.put<Cluster>('cluster/' + clusterData.id, clusterData);
@@ -53,6 +55,30 @@ export class ClusterService {
       // Dispatch the update action with the saved cluster data
       this.store.dispatch(updateCluster({ cluster: savedCluster }));
       this.notificationService.success('Cluster Saved', 'The cluster was saved successfully');
+       this.router.navigate(['/clusters']);
     });
   }
+
+  createTemplate(selectedId: string) {
+    this.dataService.post('/cluster/'+selectedId+'/template', {}).pipe(
+      catchError((error) => {
+        this.notificationService.error('Template Creation Failed', 'The template could not be created');
+        return throwError(() => error);
+      })
+    ).subscribe(() => {
+      this.notificationService.success('Template Created', 'The template was created successfully');
+    });
+  }
+
+  deploy(selectedId: string) {
+   this.dataService.post('/cluster/'+selectedId+'/deploy', {}).pipe(
+      catchError((error) => {
+        this.notificationService.error('Deployment Failed', 'The deployment could not be completed');
+        return throwError(() => error);
+      })
+    ).subscribe(() => {
+      this.notificationService.success('Deployment Complete', 'The deployment was successful');
+    });
+  }
+
 }

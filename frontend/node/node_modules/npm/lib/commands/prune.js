@@ -1,5 +1,4 @@
 // prune extraneous packages
-const Arborist = require('@npmcli/arborist')
 const reifyFinish = require('../utils/reify-finish.js')
 
 const ArboristWorkspaceCmd = require('../arborist-cmd.js')
@@ -8,6 +7,7 @@ class Prune extends ArboristWorkspaceCmd {
   static name = 'prune'
   static params = [
     'omit',
+    'include',
     'dry-run',
     'json',
     'foreground-scripts',
@@ -19,6 +19,7 @@ class Prune extends ArboristWorkspaceCmd {
 
   async exec () {
     const where = this.npm.prefix
+    const Arborist = require('@npmcli/arborist')
     const opts = {
       ...this.npm.flatOptions,
       path: where,

@@ -11,10 +11,10 @@
     <groupId>com.izylife</groupId>
     <artifactId>frontend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-   <packaging>pom</packaging>
+   <packaging>jar</packaging>
     <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.source>19</maven.compiler.source>
+        <maven.compiler.target>19</maven.compiler.target>
     </properties>
 
     <build>
@@ -28,32 +28,32 @@
           <plugin>
             <groupId>com.github.eirslett</groupId>
             <artifactId>frontend-maven-plugin</artifactId>
-            <version>1.7.6</version>
+            <version>1.15.0</version>
             <configuration>
               <workingDirectory>./</workingDirectory>
-              <nodeVersion>v16.18.1</nodeVersion>
-              <npmVersion>9.1.3</npmVersion>
+              <nodeVersion>v20.12.2</nodeVersion>
+              <yarnVersion>v1.22.22</yarnVersion>
             </configuration>
             <executions>
               <execution>
-                <id>install node and npm</id>
+                <id>install node and yarn</id>
                 <goals>
-                  <goal>install-node-and-npm</goal>
+                  <goal>install-node-and-yarn</goal>
                 </goals>
               </execution>
               <execution>
-                <id>npm install</id>
+                <id>yarn install</id>
                 <goals>
-                  <goal>npm</goal>
+                  <goal>yarn</goal>
                 </goals>
               </execution>
               <execution>
-                <id>npm run build</id>
+                <id>yarn build</id>
                 <goals>
-                  <goal>npm</goal>
+                  <goal>yarn</goal>
                 </goals>
                 <configuration>
-                  <arguments>run build</arguments>
+                  <arguments>build</arguments>
                 </configuration>
               </execution>
             </executions>

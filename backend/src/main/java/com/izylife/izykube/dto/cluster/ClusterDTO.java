@@ -3,7 +3,6 @@ package com.izylife.izykube.dto.cluster;
 import lombok.Data;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,8 +14,6 @@ public class ClusterDTO {
     private List<NodeDTO> nodes = new ArrayList<>();
     private List<LinkDTO> links = new ArrayList<>();
     private String diagram;
-    private Date creationDate;
-    private Date lastUpdated;
 
     // Find node by ID
     public NodeDTO findNodeById(String id) {

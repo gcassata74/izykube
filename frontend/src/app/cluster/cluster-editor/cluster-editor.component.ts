@@ -3,7 +3,7 @@ import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild } from '@angular
 import { Store, select } from '@ngrx/store';
 import * as go from 'gojs';
 import{Button} from '../../model/button.interface';
-import { Subscription, distinctUntilChanged, filter, first, switchMap, take, tap } from 'rxjs';
+import { Subscription, catchError, distinctUntilChanged, filter, first, switchMap, take, tap, throwError } from 'rxjs';
 import { DiagramComponent } from '../../diagram/diagram.component';
 import { DiagramService } from '../../services/diagram.service';
 import { ToolbarService } from '../../services/toolbar.service';
@@ -12,6 +12,8 @@ import * as actions from '../../store/actions/actions';
 import *  as clusterActions from '../../store/actions/cluster.actions';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute } from '@angular/router';
+import { Cluster } from 'src/app/model/cluster.class';
+import { NotificationService } from 'src/app/services/notification.service';
 
 @Component({
   selector: 'app-cluster-editor',
@@ -28,6 +30,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
   private toolbarService:ToolbarService,
   private store:Store,
   private diagramService: DiagramService,
+  protected notificationService: NotificationService,
   private clusterService: ClusterService,
   private activatedRoute: ActivatedRoute
  ){}
@@ -60,7 +63,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
     this.clusterService.getCluster(clusterId).subscribe(cluster => {
       this.store.dispatch(clusterActions.loadCluster({cluster: cluster}));
     });
-  } 
+  }
 
   createButtons() {
     let button: Button =  {

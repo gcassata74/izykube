@@ -40,8 +40,18 @@ export class ClusterListComponent {
 
     this.items = [
       { label: 'Edit', icon: 'pi pi-pencil', command: (event) => this.editCluster(this.selectedId) },
-      { label: 'Delete', icon: 'pi pi-times', command: (event) => this.deleteCluster(this.selectedId) }
+      { label: 'Delete', icon: 'pi pi-times', command: (event) => this.deleteCluster(this.selectedId)},
+      { label: 'Create Template', icon: 'pi pi-th-large', command: (event) => this.createTemplate(this.selectedId)},
+      { label: 'Deploy', icon: 'pi pi-play', command: (event) => this.deploy(this.selectedId)}
     ];
+  }
+
+  deploy(selectedId: string): void {
+    this.clusterService.deploy(selectedId);
+  }
+
+  createTemplate(selectedId: string): void {
+   this.clusterService.createTemplate(selectedId);
   }
 
   addCluster() {

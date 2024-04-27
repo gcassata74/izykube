@@ -26,17 +26,17 @@ export class ClusterFormComponent implements OnInit, OnDestroy{
     private route: ActivatedRoute,
     private notificationService: NotificationService
   ) {
-    
+
   }
 
   ngOnInit(): void {
-    
-    
+
+
     this.clusterForm = this.formBuilder.group({
       name: ['', Validators.required],
-      namespace: [this.isEditMode ? '' : 'default', Validators.required]
+      namespace: ['', Validators.required]
     });
-    
+
     this.route.paramMap.subscribe(params => {
       this.clusterId = params.get('id');
       this.isEditMode = !!this.clusterId;
@@ -65,8 +65,6 @@ export class ClusterFormComponent implements OnInit, OnDestroy{
     this.cluster.name = values.name;
     this.cluster.nameSpace = values.namespace;
     this.clusterService.saveCluster(this.cluster);
-
-    this.router.navigate(['/clusters']);
   }
 
   ngOnDestroy(): void {

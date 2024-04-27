@@ -1,5 +1,6 @@
 package com.izylife.izykube.services.k8s;
 
+import com.izylife.izykube.dto.cluster.PodDTO;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.services.AssetService;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -28,7 +29,7 @@ public class K8sPodService {
         this.kubernetesClient = kubernetesClient;
     }
 
-    public Pod createPod(com.izylife.izykube.dto.cluster.Pod pod) {
+    public Pod createPod(PodDTO pod) {
         Asset asset = assetService.getAsset(pod.getAssetId());
         return createPod(pod.getName(), asset.getImage(), "default", Map.of("app", asset.getName()), asset.getPort());
     }

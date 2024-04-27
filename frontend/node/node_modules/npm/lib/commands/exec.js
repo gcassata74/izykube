@@ -1,4 +1,4 @@
-const path = require('path')
+const { resolve } = require('path')
 const libexec = require('libnpmexec')
 const BaseCommand = require('../base-command.js')
 
@@ -20,26 +20,50 @@ class Exec extends BaseCommand {
     '--package=foo -c \'<cmd> [args...]\'',
   ]
 
+  static workspaces = true
   static ignoreImplicitWorkspace = false
   static isShellout = true
 
-  async exec (_args, { locationMsg, runPath } = {}) {
-    // This is where libnpmexec will look for locally installed packages
+  async exec (args) {
+    return this.callExec(args)
+  }
+
+  async execWorkspaces (args) {
+    await this.setWorkspaces()
+
+    for (const [name, path] of this.workspaces) {
+      const locationMsg =
+        `in workspace ${this.npm.chalk.green(name)} at location:\n${this.npm.chalk.dim(path)}`
+      await this.callExec(args, { name, locationMsg, runPath: path })
+    }
+  }
+
+  async callExec (args, { name, locationMsg, runPath } = {}) {
+    // This is where libnpmexec will look for locally installed packages at the project level
     const localPrefix = this.npm.localPrefix
+    // This is where libnpmexec will look for locally installed packages at the workspace level
+    let localBin = this.npm.localBin
+    let path = localPrefix
 
     // This is where libnpmexec will actually run the scripts from
     if (!runPath) {
       runPath = process.cwd()
+    } else {
+      // We have to consider if the workspace has its own separate versions
+      // libnpmexec will walk up to localDir after looking here
+      localBin = resolve(this.npm.localDir, name, 'node_modules', '.bin')
+      // We also need to look for `bin` entries in the workspace package.json
+      // libnpmexec will NOT look in the project root for the bin entry
+      path = runPath
     }
 
-    const args = [..._args]
     const call = this.npm.config.get('call')
     let globalPath
     const {
       flatOptions,
-      localBin,
       globalBin,
       globalDir,
+      chalk,
     } = this.npm
     const output = this.npm.output.bind(this.npm)
     const scriptShell = this.npm.config.get('script-shell') || undefined
@@ -49,10 +73,10 @@ class Exec extends BaseCommand {
     // is invalid (i.e. no lib/node_modules).  This is not a trivial thing to
     // untangle and fix so we work around it here.
     if (this.npm.localPrefix !== this.npm.globalPrefix) {
-      globalPath = path.resolve(globalDir, '..')
+      globalPath = resolve(globalDir, '..')
     }
 
-    if (call && _args.length) {
+    if (call && args.length) {
       throw this.usageError()
     }
 
@@ -61,29 +85,21 @@ class Exec extends BaseCommand {
       // we explicitly set packageLockOnly to false because if it's true
       // when we try to install a missing package, we won't actually install it
       packageLockOnly: false,
-      args,
+      // copy args so they dont get mutated
+      args: [...args],
       call,
-      localBin,
-      locationMsg,
+      chalk,
       globalBin,
       globalPath,
+      localBin,
+      locationMsg,
       output,
       packages,
-      path: localPrefix,
+      path,
       runPath,
       scriptShell,
       yes,
     })
-  }
-
-  async execWorkspaces (args, filters) {
-    await this.setWorkspaces(filters)
-
-    for (const [name, path] of this.workspaces) {
-      const locationMsg =
-        `in workspace ${this.npm.chalk.green(name)} at location:\n${this.npm.chalk.dim(path)}`
-      await this.exec(args, { locationMsg, runPath: path })
-    }
   }
 }
 

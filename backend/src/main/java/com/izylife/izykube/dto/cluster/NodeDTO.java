@@ -9,11 +9,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "kind")
 @JsonSubTypes({
-        @JsonSubTypes.Type(value = Pod.class, name = "pod"),
+        @JsonSubTypes.Type(value = PodDTO.class, name = "pod"),
         @JsonSubTypes.Type(value = Container.class, name = "container"),
         @JsonSubTypes.Type(value = DeploymentDTO.class, name = "deployment"),
         @JsonSubTypes.Type(value = Service.class, name = "service"),
-        @JsonSubTypes.Type(value = ConfigMap.class, name = "configMap")
+        @JsonSubTypes.Type(value = ConfigMapDTO.class, name = "configMap")
 })
 public class NodeDTO {
     String id;

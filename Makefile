@@ -36,12 +36,12 @@ delete-docker-registry:
 delete-k3d-registry:
 	k3d registry delete test-app-registry
 
-create-k3d-clusterDTO:
-	k3d clusterDTO create -p "9000:80@loadbalancer" --registry-use k3d-test-app-registry:5000
+create-k3d-cluster:
+	k3d cluster create -p "9000:80@loadbalancer" --registry-use k3d-test-app-registry:5000
 
-delete-k3d-clusterDTO:
-	k3d clusterDTO delete
+delete-k3d-cluster:
+	k3d cluster delete
 
-start-k3d-clusterDTO: create-k3d-registry create-k3d-clusterDTO
+start-k3d-cluster: create-k3d-registry create-k3d-cluster
 
-restart-k3d-clusterDTO: delete-k3d-clusterDTO create-k3d-registry create-k3d-clusterDTO
+restart-k3d-cluster: delete-k3d-cluster create-k3d-registry create-k3d-cluster

@@ -33,3 +33,4 @@ build/
 .vscode/
 ~/ChromeDevSession/
 frontend/node_modules/ izytool/node_modules/
+node_modules/*

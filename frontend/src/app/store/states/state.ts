@@ -30,9 +30,7 @@ export const initialState: State = {
       links:[],
       diagram: '',
       nameSpace: 'default',
-      id: null,
-      creationDate: new Date(),
-      lastUpdated: new Date()
+      id: null
     }
   }
 }
