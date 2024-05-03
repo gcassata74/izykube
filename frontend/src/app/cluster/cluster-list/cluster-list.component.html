@@ -20,10 +20,15 @@
       <td *ngFor="let col of columns">
         {{rowData[col.field]}}
       </td>
-      <td>
+      <!--td>
         <span><i class="pi pi-pencil btn-icon" (click)="editDiagram(rowData.id)"></i></span>
         <span class="ml-2"><i class="pi pi-ellipsis-v btn-icon" #rowContextMenu style="cursor: pointer;"></i></span>
         <p-contextMenu [model]="items" [target]="rowContextMenu" appendTo="body" triggerEvent="click"></p-contextMenu>
+      </td-->
+      <td>
+        <span><i class="pi pi-pencil btn-icon" (click)="editDiagram(rowData.id)"></i></span>
+        <span class="ml-2"><i class="pi pi-ellipsis-v btn-icon" #rowContextMenu style="cursor: pointer;" (click)="updateContextMenuItems($event,rowData.id)"></i></span>
+        <p-contextMenu #cm  [model]="items" [target]="rowContextMenu" appendTo="body"></p-contextMenu>
       </td>
     </tr>
   </ng-template>

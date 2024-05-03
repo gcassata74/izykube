@@ -1,10 +1,11 @@
 import { DataService } from './../../services/data.service';
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { ClusterService } from '../../services/cluster.service';
 import { Cluster } from 'src/app/model/cluster.class';
 import { switchMap } from 'rxjs';
 import { Router } from '@angular/router';
+import { ContextMenu } from 'primeng/contextmenu';
 
 @Component({
   selector: 'app-cluster-list',
@@ -13,9 +14,7 @@ import { Router } from '@angular/router';
 })
 export class ClusterListComponent {
 
-
-
-
+  @ViewChild('cm') contextMenu!: ContextMenu; 
   clusters: any[] = [];
   cols!: any[];
   items!: MenuItem[];
@@ -37,13 +36,17 @@ export class ClusterListComponent {
       { field: 'name', header: 'Name' },
       { field: 'nameSpace', header: 'Namespace' }
     ];
+  }
 
+  updateContextMenuItems($event: MouseEvent, id: string) {
+    this.selectedId = id; // Set selectedId to the right-clicked row's ID
     this.items = [
-      { label: 'Edit', icon: 'pi pi-pencil', command: (event) => this.editCluster(this.selectedId) },
-      { label: 'Delete', icon: 'pi pi-times', command: (event) => this.deleteCluster(this.selectedId)},
-      { label: 'Create Template', icon: 'pi pi-th-large', command: (event) => this.createTemplate(this.selectedId)},
-      { label: 'Deploy', icon: 'pi pi-play', command: (event) => this.deploy(this.selectedId)}
+      { label: 'Edit', icon: 'pi pi-pencil', command: () => this.editCluster(this.selectedId) },
+      { label: 'Delete', icon: 'pi pi-times', command: () => this.deleteCluster(this.selectedId) },
+      { label: 'Create Template', icon: 'pi pi-th-large', command: () => this.createTemplate(this.selectedId) },
+      { label: 'Deploy', icon: 'pi pi-play', command: () => this.deploy(this.selectedId) }
     ];
+    this.contextMenu.show($event);
   }
 
   deploy(selectedId: string): void {
@@ -73,7 +76,9 @@ export class ClusterListComponent {
   }
 
   onContextMenu($event: MouseEvent, id: any) {
-    this.selectedId = id;
+    $event.preventDefault();
+    this.updateContextMenuItems($event,id);
   }
+
 
 }
