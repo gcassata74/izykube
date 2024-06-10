@@ -1,39 +1,30 @@
 package com.izylife.izykube.services;
 
-import com.izylife.izykube.dto.cluster.*;
+import com.izylife.izykube.collections.ClusterTemplate;
+import com.izylife.izykube.dto.cluster.ClusterDTO;
+import com.izylife.izykube.dto.cluster.LinkDTO;
+import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.model.Cluster;
-import com.izylife.izykube.repositories.AssetRepository;
 import com.izylife.izykube.repositories.ClusterRepository;
-import com.izylife.izykube.services.k8s.K8sDeploymentService;
-import com.izylife.izykube.services.k8s.K8sPodService;
-import com.izylife.izykube.services.k8s.K8sServiceService;
+import com.izylife.izykube.repositories.ClusterTemplateRepository;
+import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import javassist.tools.rmi.ObjectNotFoundException;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
-
+@AllArgsConstructor
 @Service
 @Slf4j
 public class ClusterService {
 
-    @Autowired
-    private K8sPodService k8sPodService;
-
-    @Autowired
-    private K8sServiceService k8sServiceService;
-
-    @Autowired
-    private K8sDeploymentService k8sDeploymentService;
-
-    @Autowired
-    private AssetRepository assetRepository;
-
-    @Autowired
-    private ClusterRepository clusterRepository;
+    private final KubernetesClient client;
+    private final ClusterRepository clusterRepository;
+    private final ClusterTemplateRepository clusterTemplateRepository;
 
 
     public ClusterDTO createCluster(ClusterDTO clusterDTO) {
@@ -62,31 +53,9 @@ public class ClusterService {
     }
 
     public void deployCluster(ClusterDTO clusterDTO) throws KubernetesClientException {
-        // Iterate over each node in the cluster
-        clusterDTO.getNodes().stream().filter(node -> node.getKind().equals("pod") || node.getKind().equals("deployment")).forEach(node -> {
-            if (node.getKind().equals("pod")) {
-                handlePod(clusterDTO, (PodDTO) node);
-            } else {
-                handleDeployment(clusterDTO, (DeploymentDTO) node);
-            }
-        });
+
     }
 
-    private void handlePod(ClusterDTO clusterDTO, PodDTO pod) {
-        k8sPodService.createPod(pod);
-        // Handle connections from this Pod to other resources
-    }
-
-    private void handleDeployment(ClusterDTO clusterDTO, DeploymentDTO deployment) throws KubernetesClientException {
-
-        // Find all config maps or other resources connected to this deployment
-        List<NodeDTO> sourceNodes = clusterDTO.findSourceNodesOf(deployment.getId());
-        for (NodeDTO sourceNode : sourceNodes) {
-            // Process source nodes, e.g., ConfigMaps
-
-        }
-        k8sDeploymentService.createDeployment(deployment);
-    }
 
 
     public ClusterDTO updateCluster(ClusterDTO clusterDTO) throws Exception {
@@ -145,21 +114,17 @@ public class ClusterService {
     public void createTemplate(String id) throws ObjectNotFoundException {
         Cluster cluster = clusterRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
         List<NodeDTO> nodes = cluster.getNodes();
-        for (NodeDTO node : nodes) {
-            if (node instanceof DeploymentDTO) {
-                DeploymentDTO deployment = (DeploymentDTO) node;
-                k8sDeploymentService.createDeployment(deployment);
-            } else if (node instanceof PodDTO) {
-                PodDTO pod = (PodDTO) node;
-                k8sPodService.createPod(pod);
-            } else if (node instanceof Service) {
-                Service service = (Service) node;
-                //detect the deployment or pod that this service is connected to
+        List<LinkDTO> links = cluster.getLinks();
+        List<String> yamlList = new ArrayList<>();
 
-
-              //  k8sServiceService.createService(service);
-            }
+        for (NodeDTO object : nodes) {
+            yamlList.add(object.create(client));
         }
+
+        ClusterTemplate clusterTemplate = new ClusterTemplate();
+        clusterTemplate.setClusterId(id);
+        clusterTemplate.setYamlList(yamlList);
+        clusterTemplateRepository.save(clusterTemplate);
 
     }
 

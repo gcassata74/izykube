@@ -34,7 +34,7 @@ export class ClusterFormComponent implements OnInit, OnDestroy{
 
     this.clusterForm = this.formBuilder.group({
       name: ['', Validators.required],
-      namespace: ['', Validators.required]
+      namespace: ['default', Validators.required]
     });
 
     this.route.paramMap.subscribe(params => {

@@ -2,6 +2,7 @@ package com.izylife.izykube.dto.cluster;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import io.fabric8.kubernetes.client.KubernetesClient;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -15,7 +16,7 @@ import lombok.NoArgsConstructor;
         @JsonSubTypes.Type(value = Service.class, name = "service"),
         @JsonSubTypes.Type(value = ConfigMapDTO.class, name = "configMap")
 })
-public class NodeDTO {
+public abstract class NodeDTO {
     String id;
     String name;
     String kind;
@@ -26,4 +27,6 @@ public class NodeDTO {
         this.name = name;
         this.kind = kind;
     }
+
+    public abstract String create(KubernetesClient client);
 }

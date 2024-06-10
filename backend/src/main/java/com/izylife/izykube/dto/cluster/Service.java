@@ -2,6 +2,7 @@ package com.izylife.izykube.dto.cluster;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.fabric8.kubernetes.client.KubernetesClient;
 import lombok.Data;
 
 @Data
@@ -13,5 +14,10 @@ public class Service extends NodeDTO {
             @JsonProperty("name") String name
     ) {
         super(id, name, "service");
+    }
+
+    @Override
+    public String create(KubernetesClient client) {
+        return "";
     }
 }
