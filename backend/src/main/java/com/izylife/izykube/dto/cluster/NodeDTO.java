@@ -6,6 +6,9 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "kind")
@@ -21,11 +24,13 @@ public abstract class NodeDTO {
     String name;
     String kind;
     String namespace = "default";
+    List<NodeDTO> linkedNodes;
 
     public NodeDTO(String id, String name, String kind) {
         this.id = id;
         this.name = name;
         this.kind = kind;
+        linkedNodes = new ArrayList<>();
     }
 
     public abstract String create(KubernetesClient client);

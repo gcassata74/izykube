@@ -1,6 +1,6 @@
 package com.izylife.izykube.services;
 
-import com.izylife.izykube.collections.ClusterTemplate;
+import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
@@ -117,8 +117,10 @@ public class ClusterService {
         List<LinkDTO> links = cluster.getLinks();
         List<String> yamlList = new ArrayList<>();
 
-        for (NodeDTO object : nodes) {
-            yamlList.add(object.create(client));
+        for (NodeDTO node : nodes) {
+            List<NodeDTO> linkedNodes = cluster.findSourceNodesOf(node.getId());
+            node.setLinkedNodes(linkedNodes);
+            yamlList.add(node.create(client));
         }
 
         ClusterTemplate clusterTemplate = new ClusterTemplate();

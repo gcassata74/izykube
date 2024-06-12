@@ -1,4 +1,4 @@
-package com.izylife.izykube.collections;
+package com.izylife.izykube.model;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;

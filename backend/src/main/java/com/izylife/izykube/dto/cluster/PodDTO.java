@@ -3,12 +3,15 @@ package com.izylife.izykube.dto.cluster;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.ContainerBuilder;
-import io.fabric8.kubernetes.api.model.Pod;
-import io.fabric8.kubernetes.api.model.PodBuilder;
+import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import lombok.Data;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Data
 public class PodDTO extends NodeDTO {
@@ -27,17 +30,32 @@ public class PodDTO extends NodeDTO {
 
     @Override
     public String create(KubernetesClient client) {
+        ConfigMap configMap = null;
+
+        for (NodeDTO linkedNode : linkedNodes) {
+            if (linkedNode instanceof ConfigMapDTO) {
+                ConfigMapDTO configMapDTO = (ConfigMapDTO) linkedNode;
+                String yaml = configMapDTO.create(client);
+                InputStream yamlStream = new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8));
+                List<HasMetadata> items = client.load(yamlStream).get();
+                if (!items.isEmpty() && items.get(0) instanceof ConfigMap) {
+                    configMap = (ConfigMap) items.get(0);
+                }
+            }
+        }
+
+
         // Define the container
         Container container = new ContainerBuilder()
                 .withName(name)
-                .withImage(assetId)  // Assuming assetId is the image name
+                .withImage(assetId)
                 .addNewPort()
-                .withContainerPort(80)  // Example port, adjust as necessary
+                .withContainerPort(8080)
                 .endPort()
                 .build();
 
         // Build the Pod object
-        Pod pod = new PodBuilder()
+        PodBuilder podBuilder = new PodBuilder()
                 .withNewMetadata()
                 .withName(name)
                 .withNamespace("default")
@@ -45,9 +63,20 @@ public class PodDTO extends NodeDTO {
                 .withNewSpec()
                 .addNewContainerLike(container)
                 .endContainer()
-                .endSpec()
-                .build();
+                .endSpec();
 
+        if (configMap != null) {
+            podBuilder = podBuilder.withNewSpec()
+                    .addNewVolume()
+                    .withName(configMap.getMetadata().getName())
+                    .withNewConfigMap()
+                    .withName(configMap.getMetadata().getName())
+                    .endConfigMap()
+                    .endVolume()
+                    .endSpec();
+        }
+
+        Pod pod = podBuilder.build();
         // Serialize the Pod object to YAML
         return Serialization.asYaml(pod);
     }

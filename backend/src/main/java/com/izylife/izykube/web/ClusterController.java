@@ -1,6 +1,7 @@
 package com.izylife.izykube.web;
 
 
+import com.izylife.izykube.dto.GenericResponseDTO;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.services.ClusterService;
 import lombok.extern.slf4j.Slf4j;
@@ -94,12 +95,16 @@ public class ClusterController {
     }
 
     @PostMapping("/{id}/template")
-    public ResponseEntity<?> createTemplate(@PathVariable String id) {
+    @ResponseBody
+    public ResponseEntity<GenericResponseDTO> createTemplate(@PathVariable String id) {
+        GenericResponseDTO response = new GenericResponseDTO();
         try {
             clusterService.createTemplate(id);
-            return ResponseEntity.ok().body("The template was created successfully");
+            response.setMessage("The template was created successfully");
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("The template could not be created");
+            response.setError("The template could not be created");
+            return ResponseEntity.badRequest().body(response);
         }
     }
 

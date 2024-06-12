@@ -28,7 +28,7 @@ public class ConfigMapDTO extends NodeDTO {
     private Map<String, String> mergeEntries(List<Map<String, String>> entries) {
         Map<String, String> mergedMap = new HashMap<>();
         for (Map<String, String> entry : entries) {
-            mergedMap.putAll(entry);
+            mergedMap.put(entry.get("key"), entry.get("value"));
         }
         return mergedMap;
     }
@@ -49,4 +49,6 @@ public class ConfigMapDTO extends NodeDTO {
 
         return Serialization.asYaml(configMap);
     }
+
+
 }

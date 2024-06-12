@@ -61,12 +61,12 @@ export class ClusterService {
 
   createTemplate(selectedId: string) {
     this.dataService.post('/cluster/'+selectedId+'/template', {}).pipe(
-      catchError((error) => {
-        this.notificationService.error('Template Creation Failed', 'The template could not be created');
+      catchError((error: any) => {
+        this.notificationService.error('Template Creation Failed', error.error.error);
         return throwError(() => error);
       })
-    ).subscribe(() => {
-      this.notificationService.success('Template Created', 'The template was created successfully');
+    ).subscribe((message: any) => {
+      this.notificationService.success('Template Created', message.message as string);
     });
   }
 
