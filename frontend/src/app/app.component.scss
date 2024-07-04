@@ -1,45 +1,140 @@
+// Izylife Color Palette
+$izy-blue: #0047AB;
+$izy-light-blue: #4169E1;
+$izy-white: #FFFFFF;
+$izy-black: #000000;
+$izy-grey: #F0F0F0;
+
+// Layout Variables
+$sidebar-width: 200px;
+$toolbar-height: 60px;
+
+// Mixins
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+}
+
+// Main Container
 .app-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  position: relative; // Position set for z-index in child elements
+  background-color: $izy-white;
+  color: $izy-black;
 }
 
+// Toolbar Styles
+.app-toolbar {
+  height: $toolbar-height;
+  background-color: $izy-blue;
+  color: $izy-white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+
+  &-container {
+    width: 100%;
+    padding: 0 20px;
+  }
+
+  &-content {
+    @include flex-center;
+    justify-content: space-between;
+    height: 100%;
+  }
+
+  .title {
+    font-size: 24px;
+    font-weight: bold;
+  }
+
+  .button-container {
+    button {
+      background-color: $izy-light-blue;
+      color: $izy-white;
+      border: none;
+      padding: 8px 15px;
+      margin-left: 10px;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background-color: darken($izy-light-blue, 10%);
+      }
+    }
+  }
+}
+
+// Sidebar Styles
 .app-sidebar {
-  width: 200px;
-  height: 100vh; // Full viewport height
-  position: fixed; // Ensures z-index is effective
-  top: 50px; // Below the toolbar
-  z-index: 2; // Lower than the toolbar
+  width: $sidebar-width;
+  height: calc(100vh - #{$toolbar-height});
+  position: fixed;
+  top: $toolbar-height;
+  left: 0;
+  background-color: $izy-blue;
+  color: $izy-white;
+  padding: 20px 0;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+
+  ul {
+    padding: 0;
+    list-style-type: none;
+  }
+
+  li {
+    margin-bottom: 10px;
+  }
+
+  a {
+    @include flex-center;
+    padding: 12px 20px;
+    text-decoration: none;
+    color: $izy-white;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background-color: $izy-white;
+      color: $izy-blue;
+    }
+
+    i {
+      margin-right: 15px;
+      font-size: 1.2em;
+    }
+  }
 }
 
+// Main Content Area
 .content-container {
-  margin-left: 200px;
-  width: calc(100% - 200px);
-  flex-grow: 1;
-  overflow: auto;
-  position: relative; // Ensures z-index is effective
-  z-index: 1; // Lower than toolbar and sidebar
+  margin-left: $sidebar-width;
+  padding: 20px;
+  background-color: $izy-grey;
+  min-height: calc(100vh - #{$toolbar-height});
 }
 
-.app-sidebar li {
-  cursor: pointer;
+// Logo Styles
+.logo-div {
+  height: $toolbar-height;
+  background-color: $izy-blue;
+  @include flex-center;
+  justify-content: center;
+  padding: 0 20px;
+
+  img {
+    max-height: 40px;
+  }
 }
 
+// Responsive Adjustments
+@media (max-width: 768px) {
+  .app-sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+  }
 
-.app-toolbar-content {
-  display: flex;
-  flex-grow: 1; /* Allows the content to grow and push buttons to the end */
-  align-items: center;
-}
-
-.title {
-  font-size: 20px;
-}
-
-/* This will make sure that your button aligns to the right */
-.button-container {
-  margin-left: 320px;
-  display: flex;
-  justify-content: flex-end; /* Aligns buttons to the right */
+  .content-container {
+    margin-left: 0;
+    width: 100%;
+  }
 }

@@ -3,6 +3,7 @@ package com.izylife.izykube.services;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
+import com.izylife.izykube.factory.NodeFactory;
 import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.repositories.ClusterRepository;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @Service
@@ -52,10 +54,6 @@ public class ClusterService {
             log.error("Error saving cluster: " + e.getMessage());
             return null;
         }
-    }
-
-    public void deployCluster(ClusterDTO clusterDTO) throws KubernetesClientException {
-
     }
 
 
@@ -104,15 +102,32 @@ public class ClusterService {
         }
     }
 
-    public Object getClusterById(String id) {
+    public ClusterDTO getClusterById(String id) {
+        ClusterDTO dto = new ClusterDTO();
+
         try {
-            return clusterRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
+            Cluster cluster = clusterRepository.findById(id)
+                    .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
+
+            dto.setId(cluster.getId());
+            dto.setName(cluster.getName());
+            dto.setNameSpace(cluster.getNameSpace());
+
+            // Use the factory to create appropriate NodeDTOs
+            List<NodeDTO> nodeDTOs = cluster.getNodes().stream()
+                    .map(NodeFactory::createNodeDTO)
+                    .collect(Collectors.toList());
+
+            dto.setNodes(nodeDTOs);
+            dto.setLinks(cluster.getLinks());
+            dto.setDiagram(cluster.getDiagram());
         } catch (Exception e) {
             log.error("Error getting cluster with ID " + id + ": " + e.getMessage());
             return null;
         }
-    }
 
+        return dto;
+    }
     public void createTemplate(String id) throws ObjectNotFoundException {
         Cluster cluster = clusterRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
         List<NodeDTO> nodes = cluster.getNodes();
