@@ -1,12 +1,13 @@
 package com.izylife.izykube.services;
 
-import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.model.Cluster;
+import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.repositories.ClusterTemplateRepository;
+import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import javassist.tools.rmi.ObjectNotFoundException;
@@ -14,6 +15,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -127,10 +129,29 @@ public class ClusterService {
         clusterTemplate.setClusterId(id);
         clusterTemplate.setYamlList(yamlList);
         clusterTemplateRepository.save(clusterTemplate);
-
     }
 
-    public void deploy(String id) throws ObjectNotFoundException {
-        Cluster cluster = clusterRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
+
+    public void deploy(String clusterId) throws ObjectNotFoundException {
+        // Retrieve the cluster template from the database
+        ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
+                .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
+
+        // Deploy each YAML in the template
+        for (String yaml : template.getYamlList()) {
+            try {
+                // Load the YAML into Kubernetes resources
+                List<HasMetadata> resources = client.load(new ByteArrayInputStream(yaml.getBytes())).get();
+
+                // Create or update each resource
+                for (HasMetadata resource : resources) {
+                    client.resource(resource).createOrReplace();
+                    log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
+                }
+            } catch (KubernetesClientException e) {
+                log.error("Error deploying resource from template: " + e.getMessage());
+                // Optionally, you might want to throw this exception to be handled by the caller
+            }
+        }
     }
 }
