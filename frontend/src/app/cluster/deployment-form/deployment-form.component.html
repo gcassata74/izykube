@@ -1,12 +1,45 @@
-<app-pod-form [selectedNode]="selectedNode"></app-pod-form>
-<form [formGroup]="form">
-  <div class="deployment-form-container">
-    <!-- Form Row for Replicas Input -->
+<form [formGroup]="form" class="deployment-form">
+  <div class="form-group">
+    <label for="name">Name</label>
+    <input id="name" type="text" formControlName="name" class="form-control">
+  </div>
+  <div class="form-group">
+    <label for="replicas">Replicas</label>
+    <input id="replicas" type="number" formControlName="replicas" class="form-control">
+  </div>
+  <div class="form-group">
+    <label for="assetId">Asset</label>
+    <p-dropdown #assets *ngIf="filteredAssets$ | async as filteredAssets"
+                [options]="filteredAssets"
+                formControlName="assetId"
+                optionValue="id"
+                optionLabel="label"
+                (onChange)="emitChange($event)"
+                placeholder="Select an Asset">
+    </p-dropdown>
+  </div>
+  <div class="form-group">
+    <label for="containerPort">Container Port</label>
+    <input id="containerPort" type="number" formControlName="containerPort" class="form-control">
+  </div>
+  <div formGroupName="resources">
+    <h3>Resources</h3>
     <div class="form-group">
-      <div class="form-floating mb-3">
-        <input type="text" class="form-control" pInputText id="replicas" formControlName="replicas">
-        <label i18n for="replicas">Replicas</label>
-      </div>
+      <label for="cpu">CPU</label>
+      <input id="cpu" type="text" formControlName="cpu" class="form-control">
+    </div>
+    <div class="form-group">
+      <label for="memory">Memory</label>
+      <input id="memory" type="text" formControlName="memory" class="form-control">
+    </div>
+  </div>
+  <div formArrayName="envVars">
+    <h3>Environment Variables</h3>
+    <button type="button" (click)="addEnvVar()">Add Environment Variable</button>
+    <div *ngFor="let envVar of envVars.controls; let i=index" [formGroupName]="i">
+      <input type="text" formControlName="name" placeholder="Name">
+      <input type="text" formControlName="value" placeholder="Value">
+      <button type="button" (click)="removeEnvVar(i)">Remove</button>
     </div>
   </div>
 </form>

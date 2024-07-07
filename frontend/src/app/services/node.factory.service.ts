@@ -20,13 +20,12 @@ export class NodeFactoryService {
         return new Pod(id, name, type.toLowerCase());
       case 'container':
         return new Container(id, name,type.toLowerCase());
-      case 'service':
-        return new Service(id, name,type.toLowerCase());  
-      case 'deployment':
-        return new Deployment(id, name,type.toLowerCase());    
+        case 'service':
+          return new Service(id, name, 'ClusterIP', 80, 80);
+        case 'deployment':
+          return new Deployment(id, name, 1, '', 80); 
       case 'configmap':
         return new ConfigMap(id, name,type.toLowerCase());      
-      // Handle other types...
       default:
         throw new Error(`Unhandled node type: ${type}`);
     }

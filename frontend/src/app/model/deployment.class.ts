@@ -1,16 +1,42 @@
-import { Asset } from './asset.class';
-import { Node } from "./node.class";
+import { Node } from './node.class';
 
-export class Deployment extends Node{
+export class Deployment extends Node {
+    replicas: number;
+    assetId: string;
+    containerPort: number;
+    resources: {
+        cpu: string;
+        memory: string;
+    };
+    envVars: { name: string; value: string }[];
 
-    assetId!: string;
-    replicas!: number;
+    constructor(
+        id: string,
+        name: string,
+        replicas: number,
+        assetId: string,
+        containerPort: number,
+        resources: { cpu: string; memory: string } = { cpu: '', memory: '' },
+        envVars: { name: string; value: string }[] = []
+    ) {
+        super(id, name, 'deployment');
+        this.replicas = replicas;
+        this.assetId = assetId;
+        this.containerPort = containerPort;
+        this.resources = resources;
+        this.envVars = envVars;
+    }
 
+    // You can add methods here if needed, for example:
+    addEnvVar(name: string, value: string) {
+        this.envVars.push({ name, value });
+    }
 
-    constructor(id: string, name: string, kind: string) {
-        super(id, name, "deployment");
+    removeEnvVar(index: number) {
+        this.envVars.splice(index, 1);
+    }
+
+    updateResources(cpu: string, memory: string) {
+        this.resources = { cpu, memory };
     }
 }
-
-
-

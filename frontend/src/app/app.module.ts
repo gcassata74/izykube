@@ -41,6 +41,7 @@ import { AutoSaveService } from './services/auto-save.service';
 import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.component';
 import { MessageService } from 'primeng/api';
 import { CardModule } from 'primeng/card';
+import { ServiceFormComponent } from './cluster/cluster-editor/service-form/service-form.component';
 
 
 @NgModule({
@@ -56,6 +57,7 @@ import { CardModule } from 'primeng/card';
     DeploymentFormComponent,
     ConfigMapFormComponent,
     ClusterFormComponent,
+    ServiceFormComponent,
   ],
   imports: [
     ReactiveFormsModule,

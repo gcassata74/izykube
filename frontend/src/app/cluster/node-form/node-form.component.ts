@@ -7,6 +7,7 @@ import { getNodeById } from 'src/app/store/selectors/selectors';
 import { DeploymentFormComponent } from '../deployment-form/deployment-form.component';
 import { ConfigMapFormComponent } from '../config-map-form/config-map-form.component';
 import { PodFormComponent } from '../pod-form/pod-form.component';
+import { ServiceFormComponent } from '../cluster-editor/service-form/service-form.component';
 
 
 @Component({
@@ -23,8 +24,10 @@ export class NodeFormComponent implements OnDestroy {
   formMapper: any = {
     'deployment': DeploymentFormComponent,
     'configMap': ConfigMapFormComponent,
-    'pod': PodFormComponent
-    //TODO add more forms here
+    'pod': PodFormComponent,
+    'service': ServiceFormComponent
+  
+    
   };
 
   componentRef!: ComponentRef<any>;
