@@ -11,7 +11,7 @@ public class NodeFactory {
                 return new ConfigMapDTO(configMap.getId(), configMap.getName(), configMap.getEntries());
             case "pod":
                 PodDTO pod = (PodDTO) node;
-                return new PodDTO(pod.getId(), pod.getName(), pod.getAssetId());
+                return new PodDTO(pod.getId(), pod.getName(), pod.getAssetId(), pod.getContainerPort());
             case "deployment":
                 DeploymentDTO deployment = (DeploymentDTO) node;
                 return new DeploymentDTO(

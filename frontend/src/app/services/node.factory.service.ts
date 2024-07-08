@@ -4,7 +4,8 @@ import { Container } from '../model/container';
 import { Node } from '../model/node.class';
 import { Service } from '../model/service.class';
 import { Deployment } from '../model/deployment.class';
-import { ConfigMap } from '../model/config-map';
+import { ConfigMap } from '../model/config-map.class';
+import { Ingress } from '../model/ingress.class';
 
 @Injectable({
   providedIn: 'root'
@@ -13,19 +14,20 @@ export class NodeFactoryService {
 
   constructor() { }
 
-
   createNode(type: string, id: string, name: string): Node {
     switch (type.toLowerCase()) {
       case 'pod':
         return new Pod(id, name, type.toLowerCase());
       case 'container':
-        return new Container(id, name,type.toLowerCase());
-        case 'service':
-          return new Service(id, name, 'ClusterIP', 80, 80);
-        case 'deployment':
-          return new Deployment(id, name, 1, '', 80); 
+        return new Container(id, name, type.toLowerCase());
+      case 'service':
+        return new Service(id, name, 'ClusterIP', 80, 80);
+      case 'deployment':
+        return new Deployment(id, name, 1, '', 80);
       case 'configmap':
-        return new ConfigMap(id, name,type.toLowerCase());      
+        return new ConfigMap(id, name, type.toLowerCase());
+      case 'ingress':
+        return new Ingress(id, name, 'example.com', '/', 80, 'my-service');
       default:
         throw new Error(`Unhandled node type: ${type}`);
     }

@@ -3,7 +3,7 @@ import { DiagramService } from './../../services/diagram.service';
 import { Component, Input, OnInit, Output } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Node } from '../../model/node.class';
-import { ConfigMap } from '../../model/config-map';
+import { ConfigMap } from '../../model/config-map.class';
 
 @Component({
   selector: 'app-config-map-form',

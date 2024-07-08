@@ -42,6 +42,7 @@ import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.compon
 import { MessageService } from 'primeng/api';
 import { CardModule } from 'primeng/card';
 import { ServiceFormComponent } from './cluster/cluster-editor/service-form/service-form.component';
+import { IngressFormComponent } from './cluster/ingress-form/ingress-form.component';
 
 
 @NgModule({
@@ -58,6 +59,7 @@ import { ServiceFormComponent } from './cluster/cluster-editor/service-form/serv
     ConfigMapFormComponent,
     ClusterFormComponent,
     ServiceFormComponent,
+    IngressFormComponent,
   ],
   imports: [
     ReactiveFormsModule,

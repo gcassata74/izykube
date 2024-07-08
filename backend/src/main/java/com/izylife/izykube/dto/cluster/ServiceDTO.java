@@ -8,7 +8,6 @@ import io.fabric8.kubernetes.client.utils.Serialization;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @Data
@@ -20,6 +19,7 @@ public class ServiceDTO extends NodeDTO {
     private IntOrString targetPort;
     private String protocol;
     private Integer nodePort;
+    private Map<String, String> selector;
 
     @JsonCreator
     public ServiceDTO(
@@ -37,19 +37,11 @@ public class ServiceDTO extends NodeDTO {
         this.targetPort = targetPort;
         this.protocol = protocol;
         this.nodePort = nodePort;
+        this.selector = selector;
     }
 
     @Override
     public String create(KubernetesClient client) {
-        Map<String, String> selector = new HashMap<>();
-
-        for (NodeDTO linkedNode : linkedNodes) {
-            if (linkedNode instanceof DeploymentDTO || linkedNode instanceof PodDTO) {
-                selector.put("app", linkedNode.getName());
-                break;  // Assume we're only linking to one deployment or pod
-            }
-        }
-
         ServicePort servicePort = new ServicePort();
         servicePort.setPort(port);
         servicePort.setTargetPort(targetPort);

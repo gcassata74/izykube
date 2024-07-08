@@ -109,12 +109,29 @@ public class ClusterController {
     }
 
     @PostMapping("/{id}/deploy")
-    public ResponseEntity<?> deploy(@PathVariable String id) {
+    public ResponseEntity<GenericResponseDTO> deploy(@PathVariable String id) {
+        GenericResponseDTO response = new GenericResponseDTO();
         try {
             clusterService.deploy(id);
-            return ResponseEntity.ok().body("The deployment was successful");
+            response.setMessage("The deployment was successful");
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("The deployment could not be completed");
+            response.setError("The deployment could not be completed");
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+
+    @PostMapping("/{id}/undeploy")
+    public ResponseEntity<GenericResponseDTO> undeploy(@PathVariable String id) {
+        GenericResponseDTO response = new GenericResponseDTO();
+        try {
+            clusterService.undeploy(id);
+            response.setMessage("The cluster has been successfully undeployed");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.setError("The cluster could not be undeployed");
+            return ResponseEntity.badRequest().body(response);
         }
     }
 

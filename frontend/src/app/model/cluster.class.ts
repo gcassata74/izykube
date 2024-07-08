@@ -1,4 +1,4 @@
-import { ConfigMap } from "./config-map";
+import { ConfigMap } from "./config-map.class";
 import { Deployment } from "./deployment.class";
 import { Link } from "./link.class";
 import { Node } from "./node.class";

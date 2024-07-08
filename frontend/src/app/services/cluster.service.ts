@@ -9,6 +9,7 @@ import { Router } from '@angular/router';
 
 @Injectable()
 export class ClusterService {
+  
 
   clusterService: any;
 
@@ -78,6 +79,18 @@ export class ClusterService {
       })
     ).subscribe(() => {
       this.notificationService.success('Deployment Complete', 'The deployment was successful');
+    });
+  }
+
+
+  undeploy(selectedId: string) {
+    this.dataService.post('/cluster/'+selectedId+'/undeploy', {}).pipe(
+      catchError((error) => {
+        this.notificationService.error('Undeployment Failed', 'The undeployment could not be completed');
+        return throwError(() => error);
+      })
+    ).subscribe(() => {
+      this.notificationService.success('Undeployment Completed', 'cluster undeployed successfully');
     });
   }
 

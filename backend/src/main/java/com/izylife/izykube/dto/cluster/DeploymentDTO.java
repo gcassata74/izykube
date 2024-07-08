@@ -50,6 +50,7 @@ public class DeploymentDTO extends NodeDTO {
     public String create(KubernetesClient client) {
         List<Volume> volumes = new ArrayList<>();
         List<VolumeMount> volumeMounts = new ArrayList<>();
+        StringBuilder fullYaml = new StringBuilder();
 
         for (NodeDTO linkedNode : linkedNodes) {
             if (linkedNode instanceof ConfigMapDTO) {
@@ -70,6 +71,12 @@ public class DeploymentDTO extends NodeDTO {
                             .withMountPath("/etc/config")
                             .build());
                 }
+                fullYaml.append(yaml).append("\n---\n");
+            } else if (linkedNode instanceof ServiceDTO) {
+                ServiceDTO serviceDTO = (ServiceDTO) linkedNode;
+                serviceDTO.setSelector(Map.of("app", name));
+                String serviceYaml = serviceDTO.create(client);
+                fullYaml.append(serviceYaml).append("\n---\n");
             }
             // Add handling for other types of linked nodes (e.g., volumes) here
         }
@@ -107,7 +114,8 @@ public class DeploymentDTO extends NodeDTO {
                 .endSpec()
                 .build();
 
-        return Serialization.asYaml(deployment);
+        fullYaml.append(Serialization.asYaml(deployment));
+        return fullYaml.toString();
     }
 
     private ResourceRequirements createResourceRequirements() {

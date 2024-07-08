@@ -6,11 +6,11 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import lombok.Data;
 
 @Data
-public class Container extends NodeDTO {
+public class ContainerDTO extends NodeDTO {
     private String assetId;
 
     @JsonCreator
-    public Container(
+    public ContainerDTO(
             @JsonProperty("id") String id,
             @JsonProperty("name") String name,
             @JsonProperty("assetId") String assetId

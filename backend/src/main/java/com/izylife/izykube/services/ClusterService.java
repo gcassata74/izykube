@@ -169,4 +169,30 @@ public class ClusterService {
             }
         }
     }
+
+    public void undeploy(String clusterId) throws ObjectNotFoundException {
+        // Retrieve the cluster template from the database
+        ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
+                .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
+
+        // Undeploy each YAML in the template
+        for (String yaml : template.getYamlList()) {
+            try {
+                // Load the YAML into Kubernetes resources
+                List<HasMetadata> resources = client.load(new ByteArrayInputStream(yaml.getBytes())).get();
+
+                // Delete each resource
+                for (HasMetadata resource : resources) {
+                    boolean deleted = client.resource(resource).delete();
+                    if (deleted) {
+                        log.info("Undeployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
+                    } else {
+                        log.warn("Failed to undeploy resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
+                    }
+                }
+            } catch (KubernetesClientException e) {
+                log.error("Error undeploying resource from template: " + e.getMessage());
+            }
+        }
+    }
 }

@@ -8,6 +8,7 @@ import { DeploymentFormComponent } from '../deployment-form/deployment-form.comp
 import { ConfigMapFormComponent } from '../config-map-form/config-map-form.component';
 import { PodFormComponent } from '../pod-form/pod-form.component';
 import { ServiceFormComponent } from '../cluster-editor/service-form/service-form.component';
+import { IngressFormComponent } from '../ingress-form/ingress-form.component';
 
 
 @Component({
@@ -25,7 +26,8 @@ export class NodeFormComponent implements OnDestroy {
     'deployment': DeploymentFormComponent,
     'configMap': ConfigMapFormComponent,
     'pod': PodFormComponent,
-    'service': ServiceFormComponent
+    'service': ServiceFormComponent,
+    'ingress':IngressFormComponent
   
     
   };

@@ -44,9 +44,14 @@ export class ClusterListComponent {
       { label: 'Edit', icon: 'pi pi-pencil', command: () => this.editCluster(this.selectedId) },
       { label: 'Delete', icon: 'pi pi-times', command: () => this.deleteCluster(this.selectedId) },
       { label: 'Create Template', icon: 'pi pi-th-large', command: () => this.createTemplate(this.selectedId) },
-      { label: 'Deploy', icon: 'pi pi-play', command: () => this.deploy(this.selectedId) }
+      { label: 'Deploy', icon: 'pi pi-play', command: () => this.deploy(this.selectedId) },
+      { label: 'Undeploy', icon: 'pi pi-eraser', command: () => this.undeploy(this.selectedId) }
     ];
     this.contextMenu.show($event);
+  }
+  
+  undeploy(selectedId: string): void {
+    this.clusterService.undeploy(selectedId);
   }
 
   deploy(selectedId: string): void {

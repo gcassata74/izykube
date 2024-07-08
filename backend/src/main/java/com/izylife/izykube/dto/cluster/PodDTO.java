@@ -2,7 +2,6 @@ package com.izylife.izykube.dto.cluster;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.utils.Serialization;
@@ -19,15 +18,18 @@ import java.util.List;
 public class PodDTO extends NodeDTO {
 
     private String assetId;
+    private int containerPort;
 
     @JsonCreator
     public PodDTO(
             @JsonProperty("id") String id,
             @JsonProperty("name") String name,
-            @JsonProperty("assetId") String assetId
+            @JsonProperty("assetId") String assetId,
+            @JsonProperty("containerPort") int containerPort
     ) {
         super(id, name, "pod");
         this.assetId = assetId;
+        this.containerPort = containerPort;
     }
 
     @Override
@@ -46,13 +48,13 @@ public class PodDTO extends NodeDTO {
             }
         }
 
-
         // Define the container
-        Container container = new ContainerBuilder()
+
+        io.fabric8.kubernetes.api.model.Container container = new ContainerBuilder()
                 .withName(name)
                 .withImage(assetId)
                 .addNewPort()
-                .withContainerPort(8080)
+                .withContainerPort(containerPort)
                 .endPort()
                 .build();
 
@@ -68,7 +70,7 @@ public class PodDTO extends NodeDTO {
                 .endSpec();
 
         if (configMap != null) {
-            podBuilder = podBuilder.withNewSpec()
+            podBuilder = podBuilder.editSpec()
                     .addNewVolume()
                     .withName(configMap.getMetadata().getName())
                     .withNewConfigMap()
@@ -82,6 +84,4 @@ public class PodDTO extends NodeDTO {
         // Serialize the Pod object to YAML
         return Serialization.asYaml(pod);
     }
-
-
 }

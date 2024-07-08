@@ -1,0 +1,48 @@
+<form [formGroup]="ingressForm" (ngSubmit)="onSubmit()" class="ingress-form">
+  <div class="form-group">
+    <label for="name">Name:</label>
+    <input type="text" id="name" formControlName="name">
+    <div class="error-message"
+         *ngIf="ingressForm?.get('name')?.invalid && (ingressForm?.get('name')?.dirty || ingressForm?.get('name')?.touched)">
+      <div *ngIf="ingressForm?.get('name')?.errors?.['required']">Name is required.</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="host">Host:</label>
+    <input type="text" id="host" formControlName="host">
+    <div class="error-message"
+         *ngIf="ingressForm?.get('host')?.invalid && (ingressForm?.get('host')?.dirty || ingressForm?.get('host')?.touched)">
+      <div *ngIf="ingressForm?.get('host')?.errors?.['required']">Host is required.</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="path">Path:</label>
+    <input type="text" id="path" formControlName="path">
+    <div class="error-message"
+         *ngIf="ingressForm?.get('path')?.invalid && (ingressForm?.get('path')?.dirty || ingressForm?.get('path')?.touched)">
+      <div *ngIf="ingressForm?.get('path')?.errors?.['required']">Path is required.</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="servicePort">Service Port:</label>
+    <input type="number" id="servicePort" formControlName="servicePort">
+    <div class="error-message"
+         *ngIf="ingressForm?.get('servicePort')?.invalid && (ingressForm?.get('servicePort')?.dirty || ingressForm?.get('servicePort')?.touched)">
+      <div *ngIf="ingressForm?.get('servicePort')?.errors?.['required']">Service Port is required.</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="serviceTarget">Service Target:</label>
+    <input type="text" id="serviceTarget" formControlName="serviceTarget">
+    <div class="error-message"
+         *ngIf="ingressForm?.get('serviceTarget')?.invalid && (ingressForm?.get('serviceTarget')?.dirty || ingressForm?.get('serviceTarget')?.touched)">
+      <div *ngIf="ingressForm?.get('serviceTarget')?.errors?.['required']">Service Target is required.</div>
+    </div>
+  </div>
+
+  <button type="submit" [disabled]="ingressForm.invalid">Submit</button>
+</form>
