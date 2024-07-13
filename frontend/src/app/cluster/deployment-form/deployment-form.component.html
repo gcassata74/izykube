@@ -1,45 +1,63 @@
-<form [formGroup]="form" class="deployment-form">
-  <div class="form-group">
-    <label for="name">Name</label>
-    <input id="name" type="text" formControlName="name" class="form-control">
-  </div>
-  <div class="form-group">
-    <label for="replicas">Replicas</label>
-    <input id="replicas" type="number" formControlName="replicas" class="form-control">
-  </div>
-  <div class="form-group">
-    <label for="assetId">Asset</label>
-    <p-dropdown #assets *ngIf="filteredAssets$ | async as filteredAssets"
-                [options]="filteredAssets"
-                formControlName="assetId"
-                optionValue="id"
-                optionLabel="label"
-                (onChange)="emitChange($event)"
-                placeholder="Select an Asset">
-    </p-dropdown>
-  </div>
-  <div class="form-group">
-    <label for="containerPort">Container Port</label>
-    <input id="containerPort" type="number" formControlName="containerPort" class="form-control">
-  </div>
-  <div formGroupName="resources">
-    <h3>Resources</h3>
-    <div class="form-group">
-      <label for="cpu">CPU</label>
-      <input id="cpu" type="text" formControlName="cpu" class="form-control">
-    </div>
-    <div class="form-group">
-      <label for="memory">Memory</label>
-      <input id="memory" type="text" formControlName="memory" class="form-control">
-    </div>
-  </div>
-  <div formArrayName="envVars">
-    <h3>Environment Variables</h3>
-    <button type="button" (click)="addEnvVar()">Add Environment Variable</button>
-    <div *ngFor="let envVar of envVars.controls; let i=index" [formGroupName]="i">
-      <input type="text" formControlName="name" placeholder="Name">
-      <input type="text" formControlName="value" placeholder="Value">
-      <button type="button" (click)="removeEnvVar(i)">Remove</button>
-    </div>
-  </div>
+<form [formGroup]="form">
+  <p-tabView>
+    <p-tabPanel header="General">
+      <div class="p-fluid">
+        <div class="p-field">
+          <label for="name">Name</label>
+          <input id="name" type="text" pInputText formControlName="name">
+        </div>
+
+        <div class="p-field">
+          <label for="replicas">Replicas</label>
+          <p-inputNumber id="replicas" formControlName="replicas"></p-inputNumber>
+        </div>
+
+        <div class="p-field">
+          <label for="assetId">Asset</label>
+          <p-dropdown id="assetId" [options]="(filteredAssets$ | async) ?? []" formControlName="assetId"
+                      optionLabel="name" optionValue="id" (onChange)="emitChange($event)"></p-dropdown>
+        </div>
+
+        <div class="p-field">
+          <label for="containerPort">Container Port</label>
+          <p-inputNumber id="containerPort" formControlName="containerPort"></p-inputNumber>
+        </div>
+      </div>
+    </p-tabPanel>
+
+    <p-tabPanel header="Resources">
+      <div class="p-fluid" formGroupName="resources">
+        <div class="p-field">
+          <label for="cpu">CPU</label>
+          <p-inputNumber id="cpu" formControlName="cpu"></p-inputNumber>
+        </div>
+        <div class="p-field">
+          <label for="memory">Memory</label>
+          <p-inputNumber id="memory" formControlName="memory"></p-inputNumber>
+        </div>
+      </div>
+    </p-tabPanel>
+
+    <p-tabPanel header="Environment Variables">
+      <div class="p-fluid" formArrayName="envVars">
+        <div class="p-d-flex p-jc-end">
+          <button pButton type="button" icon="pi pi-plus" label="Add" (click)="addEnvVar()"
+                  class="p-button-primary"></button>
+        </div>
+
+        <div *ngFor="let envVar of envVars.controls; let i=index" [formGroupName]="i" class="p-field-group">
+          <div class="p-field">
+            <label [for]="'name' + i">Name</label>
+            <input [id]="'name' + i" type="text" pInputText formControlName="name">
+          </div>
+          <div class="p-field">
+            <label [for]="'value' + i">Value</label>
+            <input [id]="'value' + i" type="text" pInputText formControlName="value">
+          </div>
+          <button pButton type="button" icon="pi pi-trash" (click)="removeEnvVar(i)"
+                  class="p-button-danger p-button-rounded"></button>
+        </div>
+      </div>
+    </p-tabPanel>
+  </p-tabView>
 </form>

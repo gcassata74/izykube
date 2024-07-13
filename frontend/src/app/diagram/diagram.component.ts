@@ -25,7 +25,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   diagram!: go.Diagram;
   model!: go.Model;
   isResizing: boolean = false;
-  firstColumnWidth: number = 200;
+  firstColumnWidth: number = 180;
   minWidth: number = 200; // Minimum width of the first column in pixels
   subscription: Subscription = new Subscription();
 

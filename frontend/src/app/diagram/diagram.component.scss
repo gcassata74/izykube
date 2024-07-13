@@ -1,33 +1,52 @@
-
-
-
 .container {
-  display: flex; /* This makes it a flex container */
-  height: calc(100vh - 80px); /* Full height of the viewport minus the height of the toolbar */
-  width: 100%; /* Full width of the viewport */
-  margin-left: 0px; 
+  display: flex;
+  height: calc(100vh - 80px);
+  width: 100%;
+  margin-left: 0px;
   padding-left: 0px;
   padding-right: 0px;
-
 }
 
 .first-column {
-  flex: 0 0 10%; 
-  height: calc(100vh - 80px); /* Full height */
-  /* Additional styles for the first column (e.g., background, padding) */
+  flex: 0 0 auto;
+  width: 120px; // Set a fixed width
+  min-width: 150px; // Minimum width
+  max-width: 250px; // Maximum width
+  height: calc(100vh - 80px);
   border: 1px solid black;
 }
 
 .second-column {
-  flex: 1; /* This column will take up the remaining space */
-  height: calc(100vh - 80px); /* Full height */
-  /* Additional styles for the second column (e.g., background, padding) */
+  flex: 1 1 auto;
+  min-width: 0; // Allow shrinking below content size
+  height: calc(100vh - 80px);
   border: 1px solid black;
 }
 
-// .resizer {
-//   cursor: col-resize;
-//   width: 5px; /* Resizer width */
-//   height: 100%;
-//   background-color: #000; /* Resizer color */
-// }
+@media (max-width: 1200px) {
+  .first-column {
+    width: 180px;
+  }
+}
+
+@media (max-width: 992px) {
+  .first-column {
+    width: 160px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+  }
+
+  .first-column {
+    width: 100%;
+    height: 200px;
+    max-width: none;
+  }
+
+  .second-column {
+    height: calc(100vh - 280px); // Adjust for first column height
+  }
+}

@@ -4,7 +4,7 @@ import { AutoSaveService } from '../../services/auto-save.service';
 import { Node } from '../../model/node.class';
 import { Deployment } from '../../model/deployment.class';
 import { Observable } from 'rxjs';
-import { AssetService } from '../../services/asset.service';  // Assume you have this service
+import { AssetService } from '../../services/asset.service';
 
 @Component({
   selector: 'app-deployment-form',
@@ -20,7 +20,7 @@ export class DeploymentFormComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private autoSaveService: AutoSaveService,
-    private assetService: AssetService  // Inject AssetService
+    private assetService: AssetService
   ) {}
 
   ngOnInit() {
@@ -34,7 +34,7 @@ export class DeploymentFormComponent implements OnInit {
     this.form = this.fb.group({
       name: [deployment.name, Validators.required],
       replicas: [deployment.replicas, [Validators.required, Validators.min(1)]],
-      assetId: [deployment.assetId, Validators.required],  // Changed from 'image' to 'assetId'
+      assetId: [deployment.assetId, Validators.required],
       containerPort: [deployment.containerPort, Validators.required],
       resources: this.fb.group({
         cpu: [deployment.resources.cpu],
@@ -52,16 +52,13 @@ export class DeploymentFormComponent implements OnInit {
   }
 
   private loadAssets() {
-    this.filteredAssets$ = this.assetService.getAssets();  // Assume this method exists in AssetService
+    this.filteredAssets$ = this.assetService.getAssets();
   }
 
   emitChange(event: any) {
-    // Handle the asset selection change event
     console.log('Selected asset:', event.value);
     // You might want to update other form fields based on the selected asset
   }
-
-  // ... other methods remain the same
 
   get envVars() {
     return this.form.get('envVars') as FormArray;

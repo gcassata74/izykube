@@ -1,21 +1,53 @@
 .page-container {
-    display: flex;
-    height: calc(100vh - 80px); /* Adjust the height as needed */
-  }
-  
+  display: flex;
+  height: calc(100vh - 80px); /* Adjust the height as needed */
+}
+
+.diagram {
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 75%;
+  overflow: auto;
+  height: 100%;
+}
+
+.config-panel {
+  flex-grow: 0;
+  flex-shrink: 0;
+  flex-basis: 25%;
+  max-width: 300px;
+  min-width: 200px;
+  height: 100%;
+  overflow: auto;
+  margin: 10px;
+}
+
+@media (max-width: 1200px) {
   .diagram {
-    flex-grow: 3; /* Allows the diagram to take up twice the space of the config panel */
-    overflow-x: hidden; /* Adds scrollbars if the content is larger than the container */
-    overflow-y: hidden;
-    height: calc(100vh - 80px); /* Adjust the height as needed */
+    flex-basis: 70%;
   }
-  
-  .config-panel {
-    flex-basis: 400px; 
-    height: calc(100vh - 80px); 
-    flex-grow: 0; /* Adjust the ratio as needed for your design */
-    overflow-x: hidden; /* Adds scrollbars if the content is larger than the container */
-    overflow-y: hidden;
-    margin: 10px 10px 10px 10px; /* Adjust the margin as needed */
+}
+
+@media (max-width: 992px) {
+  .diagram {
+    flex-basis: 65%;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-container {
+    flex-direction: column;
   }
 
+  .diagram {
+    height: 70%;
+    flex-basis: auto;
+  }
+
+  .config-panel {
+    flex-basis: auto;
+    width: calc(100% - 20px);
+    max-width: none;
+    height: 30%;
+  }
+}

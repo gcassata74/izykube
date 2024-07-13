@@ -43,7 +43,7 @@ import { MessageService } from 'primeng/api';
 import { CardModule } from 'primeng/card';
 import { ServiceFormComponent } from './cluster/cluster-editor/service-form/service-form.component';
 import { IngressFormComponent } from './cluster/ingress-form/ingress-form.component';
-
+import { TabViewModule } from 'primeng/tabview';
 
 @NgModule({
   declarations: [
@@ -69,6 +69,7 @@ import { IngressFormComponent } from './cluster/ingress-form/ingress-form.compon
     ToolbarModule,
     DropdownModule,
     InputTextModule,
+    TabViewModule,
     InputNumberModule,
     ContextMenuModule,
     ToastModule,
