@@ -35,15 +35,13 @@ public class DeploymentDTO extends NodeDTO {
             @JsonProperty("assetId") String assetId,
             @JsonProperty("replicas") int replicas,
             @JsonProperty("containerPort") int containerPort,
-            @JsonProperty("resources") Map<String, String> resources,
-            @JsonProperty("envVars") List<EnvVarDTO> envVars
+            @JsonProperty("resources") Map<String, String> resources
     ) {
         super(id, name, "deployment");
         this.assetId = assetId;
         this.replicas = replicas;
         this.containerPort = containerPort;
         this.resources = resources;
-        this.envVars = envVars;
     }
 
     @Override
@@ -74,7 +72,6 @@ public class DeploymentDTO extends NodeDTO {
                 fullYaml.append(yaml).append("\n---\n");
             } else if (linkedNode instanceof ServiceDTO) {
                 ServiceDTO serviceDTO = (ServiceDTO) linkedNode;
-                serviceDTO.setSelector(Map.of("app", name));
                 String serviceYaml = serviceDTO.create(client);
                 fullYaml.append(serviceYaml).append("\n---\n");
             }

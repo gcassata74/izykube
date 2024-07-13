@@ -8,7 +8,6 @@ export class Deployment extends Node {
         cpu: string;
         memory: string;
     };
-    envVars: { name: string; value: string }[];
 
     constructor(
         id: string,
@@ -24,18 +23,9 @@ export class Deployment extends Node {
         this.assetId = assetId;
         this.containerPort = containerPort;
         this.resources = resources;
-        this.envVars = envVars;
     }
 
-    // You can add methods here if needed, for example:
-    addEnvVar(name: string, value: string) {
-        this.envVars.push({ name, value });
-    }
-
-    removeEnvVar(index: number) {
-        this.envVars.splice(index, 1);
-    }
-
+ 
     updateResources(cpu: string, memory: string) {
         this.resources = { cpu, memory };
     }

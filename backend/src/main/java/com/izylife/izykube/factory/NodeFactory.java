@@ -20,8 +20,7 @@ public class NodeFactory {
                         deployment.getAssetId(),
                         deployment.getReplicas(),
                         deployment.getContainerPort(),
-                        deployment.getResources(),
-                        deployment.getEnvVars()
+                        deployment.getResources()
                 );
             case "service":
                 ServiceDTO service = (ServiceDTO) node;
@@ -30,9 +29,15 @@ public class NodeFactory {
                         service.getName(),
                         service.getType(),
                         service.getPort(),
-                        service.getTargetPort(),
-                        service.getProtocol(),
                         service.getNodePort()
+                );
+            case "ingress":
+                IngressDTO ingress = (IngressDTO) node;
+                return new IngressDTO(
+                        ingress.getId(),
+                        ingress.getName(),
+                        ingress.getHost(),
+                        ingress.getPath()
                 );
             // Add cases for other node types as needed
             default:
