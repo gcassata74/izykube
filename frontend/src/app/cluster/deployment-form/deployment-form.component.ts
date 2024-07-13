@@ -1,5 +1,5 @@
 import { Component, Input, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AutoSaveService } from '../../services/auto-save.service';
 import { Node } from '../../model/node.class';
 import { Deployment } from '../../model/deployment.class';
@@ -39,15 +39,7 @@ export class DeploymentFormComponent implements OnInit {
       resources: this.fb.group({
         cpu: [deployment.resources.cpu],
         memory: [deployment.resources.memory]
-      }),
-      envVars: this.fb.array(deployment.envVars.map(env => this.createEnvVarGroup(env)))
-    });
-  }
-
-  private createEnvVarGroup(env: {name: string, value: string} = {name: '', value: ''}) {
-    return this.fb.group({
-      name: [env.name, Validators.required],
-      value: [env.value, Validators.required]
+      })
     });
   }
 
@@ -58,18 +50,6 @@ export class DeploymentFormComponent implements OnInit {
   emitChange(event: any) {
     console.log('Selected asset:', event.value);
     // You might want to update other form fields based on the selected asset
-  }
-
-  get envVars() {
-    return this.form.get('envVars') as FormArray;
-  }
-
-  addEnvVar() {
-    this.envVars.push(this.createEnvVarGroup());
-  }
-
-  removeEnvVar(index: number) {
-    this.envVars.removeAt(index);
   }
 
   private setupAutoSave() {

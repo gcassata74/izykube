@@ -27,7 +27,7 @@ export class NodeFactoryService {
       case 'configmap':
         return new ConfigMap(id, name, type.toLowerCase());
       case 'ingress':
-        return new Ingress(id, name, 'example.com', '/', 80, 'my-service');
+        return new Ingress(id, name, 'example.com', '/', 80);
       default:
         throw new Error(`Unhandled node type: ${type}`);
     }

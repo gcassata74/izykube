@@ -3,8 +3,6 @@ import { Node } from './node.class';
 export class Service extends Node {
     type: ServiceType;
     port: number;
-    targetPort: number;
-    protocol: Protocol;
     nodePort?: number;
 
     constructor(
@@ -12,19 +10,15 @@ export class Service extends Node {
         name: string,
         type: ServiceType,
         port: number,
-        targetPort: number,
-        protocol: Protocol = 'TCP',
         nodePort?: number
     ) {
         super(id, name, 'service');
         this.type = type;
         this.port = port;
-        this.targetPort = targetPort;
-        this.protocol = protocol;
         this.nodePort = nodePort;
     }
 
-    // You can add methods here if needed, for example:
+    // You can keep or modify these methods as needed
     setNodePort(port: number) {
         if (this.type === 'NodePort') {
             this.nodePort = port;
@@ -40,4 +34,3 @@ export class Service extends Node {
 }
 
 export type ServiceType = 'ClusterIP' | 'NodePort' | 'LoadBalancer' | 'ExternalName';
-export type Protocol = 'TCP' | 'UDP';

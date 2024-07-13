@@ -13,8 +13,8 @@
         </div>
 
         <div class="p-field">
-          <label for="assetId">Asset</label>
-          <p-dropdown id="assetId" [options]="(filteredAssets$ | async) ?? []" formControlName="assetId"
+          <label for="asset">Asset</label>
+          <p-dropdown id="asset" [options]="(filteredAssets$ | async) ?? []" formControlName="assetId"
                       optionLabel="name" optionValue="id" (onChange)="emitChange($event)"></p-dropdown>
         </div>
 
@@ -34,28 +34,6 @@
         <div class="p-field">
           <label for="memory">Memory</label>
           <p-inputNumber id="memory" formControlName="memory"></p-inputNumber>
-        </div>
-      </div>
-    </p-tabPanel>
-
-    <p-tabPanel header="Environment Variables">
-      <div class="p-fluid" formArrayName="envVars">
-        <div class="p-d-flex p-jc-end">
-          <button pButton type="button" icon="pi pi-plus" label="Add" (click)="addEnvVar()"
-                  class="p-button-primary"></button>
-        </div>
-
-        <div *ngFor="let envVar of envVars.controls; let i=index" [formGroupName]="i" class="p-field-group">
-          <div class="p-field">
-            <label [for]="'name' + i">Name</label>
-            <input [id]="'name' + i" type="text" pInputText formControlName="name">
-          </div>
-          <div class="p-field">
-            <label [for]="'value' + i">Value</label>
-            <input [id]="'value' + i" type="text" pInputText formControlName="value">
-          </div>
-          <button pButton type="button" icon="pi pi-trash" (click)="removeEnvVar(i)"
-                  class="p-button-danger p-button-rounded"></button>
         </div>
       </div>
     </p-tabPanel>

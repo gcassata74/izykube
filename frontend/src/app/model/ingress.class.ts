@@ -4,7 +4,6 @@ export class Ingress extends Node {
   host: string;
   path: string;
   servicePort: number;
-  serviceTarget: string;
 
   constructor(
     id: string,
@@ -12,12 +11,10 @@ export class Ingress extends Node {
     host: string,
     path: string,
     servicePort: number,
-    serviceTarget: string
   ) {
     super(id, name, "ingress");
     this.host = host;
     this.path = path;
     this.servicePort = servicePort;
-    this.serviceTarget = serviceTarget;
   }
 }

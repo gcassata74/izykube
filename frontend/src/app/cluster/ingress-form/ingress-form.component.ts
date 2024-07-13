@@ -35,8 +35,7 @@ export class IngressFormComponent implements OnInit {
       name: [ingress.name, Validators.required],
       host: [ingress.host, Validators.required],
       path: [ingress.path, Validators.required],
-      servicePort: [ingress.servicePort, Validators.required],
-      serviceTarget: [ingress.serviceTarget, Validators.required]
+      servicePort: [ingress.servicePort, Validators.required]
     });
   }
 

@@ -35,12 +35,4 @@
     </small>
   </div>
 
-  <div class="p-field">
-    <label for="serviceTarget">Service Target</label>
-    <input id="serviceTarget" type="text" pInputText formControlName="serviceTarget">
-    <small class="p-error"
-           *ngIf="ingressForm.get('serviceTarget')?.invalid && (ingressForm.get('serviceTarget')?.dirty || ingressForm.get('serviceTarget')?.touched)">
-      Service Target is required.
-    </small>
-  </div>
 </form>

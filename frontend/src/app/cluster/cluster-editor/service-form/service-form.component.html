@@ -1,31 +1,22 @@
-<form [formGroup]="form">
-  <div class="form-group">
+<form [formGroup]="form" class="p-fluid">
+  <div class="p-field">
     <label for="name">Name</label>
-    <input id="name" type="text" formControlName="name" class="form-control">
+    <input id="name" type="text" pInputText formControlName="name">
   </div>
-  <div class="form-group">
+
+  <div class="p-field">
     <label for="type">Type</label>
-    <select id="type" formControlName="type" class="form-control">
-      <option *ngFor="let type of serviceTypes" [value]="type">{{type}}</option>
-    </select>
+    <p-dropdown id="type" [options]="serviceTypes" formControlName="type" optionLabel="name"
+                optionValue="value"></p-dropdown>
   </div>
-  <div class="form-group">
+
+  <div class="p-field">
     <label for="port">Port</label>
-    <input id="port" type="number" formControlName="port" class="form-control">
+    <p-inputNumber id="port" formControlName="port"></p-inputNumber>
   </div>
-  <div class="form-group">
-    <label for="targetPort">Target Port</label>
-    <input id="targetPort" type="number" formControlName="targetPort" class="form-control">
-  </div>
-  <div class="form-group">
-    <label for="protocol">Protocol</label>
-    <select id="protocol" formControlName="protocol" class="form-control">
-      <option value="TCP">TCP</option>
-      <option value="UDP">UDP</option>
-    </select>
-  </div>
-  <div class="form-group" *ngIf="form.get('type')?.value === 'NodePort'">
+
+  <div class="p-field" *ngIf="form.get('type')?.value === 'NodePort'">
     <label for="nodePort">Node Port</label>
-    <input id="nodePort" type="number" formControlName="nodePort" class="form-control">
+    <p-inputNumber id="nodePort" formControlName="nodePort"></p-inputNumber>
   </div>
 </form>
