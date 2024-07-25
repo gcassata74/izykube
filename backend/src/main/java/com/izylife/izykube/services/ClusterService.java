@@ -18,7 +18,9 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
@@ -128,16 +130,25 @@ public class ClusterService {
 
         return dto;
     }
+
     public void createTemplate(String id) throws ObjectNotFoundException {
         Cluster cluster = clusterRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
         List<NodeDTO> nodes = cluster.getNodes();
         List<LinkDTO> links = cluster.getLinks();
         List<String> yamlList = new ArrayList<>();
 
+        Set<String> processedNodes = new HashSet<>();
+
         for (NodeDTO node : nodes) {
-            List<NodeDTO> linkedNodes = cluster.findSourceNodesOf(node.getId());
-            node.setLinkedNodes(linkedNodes);
-            yamlList.add(node.create(client));
+            if (!processedNodes.contains(node.getId())) {
+                List<NodeDTO> linkedNodes = cluster.findSourceNodesOf(node.getId());
+                node.setLinkedNodes(linkedNodes);
+                yamlList.add(node.create(client));
+
+                // Mark this node and all its linked nodes as processed
+                processedNodes.add(node.getId());
+                linkedNodes.forEach(linkedNode -> processedNodes.add(linkedNode.getId()));
+            }
         }
 
         ClusterTemplate clusterTemplate = new ClusterTemplate();

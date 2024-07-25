@@ -4,9 +4,12 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class ContainerDTO extends NodeDTO {
+
     private String assetId;
 
     @JsonCreator
@@ -23,5 +26,4 @@ public class ContainerDTO extends NodeDTO {
     public String create(KubernetesClient client) {
         return "";
     }
-
 }

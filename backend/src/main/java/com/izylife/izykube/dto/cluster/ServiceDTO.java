@@ -2,14 +2,13 @@ package com.izylife.izykube.dto.cluster;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.fabric8.kubernetes.api.model.*;
+import io.fabric8.kubernetes.api.model.Service;
+import io.fabric8.kubernetes.api.model.ServiceBuilder;
+import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -41,16 +40,6 @@ public class ServiceDTO extends NodeDTO {
             servicePort.setNodePort(nodePort);
         }
 
-        Map<String, String> selector = new HashMap<>();
-
-        for (NodeDTO linkedNode : linkedNodes) {
-            if (linkedNode instanceof DeploymentDTO) {
-                DeploymentDTO deploymentDTO = (DeploymentDTO) linkedNode;
-                selector.put("app", deploymentDTO.getName());
-                break;
-            }
-        }
-
         Service service = new ServiceBuilder()
                 .withNewMetadata()
                 .withName(getName())
@@ -59,7 +48,6 @@ public class ServiceDTO extends NodeDTO {
                 .withNewSpec()
                 .withType(type)
                 .withPorts(servicePort)
-                .withSelector(selector)
                 .endSpec()
                 .build();
 

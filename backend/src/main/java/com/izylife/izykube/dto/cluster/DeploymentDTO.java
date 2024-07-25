@@ -10,9 +10,6 @@ import io.fabric8.kubernetes.client.utils.Serialization;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,48 +43,42 @@ public class DeploymentDTO extends NodeDTO {
 
     @Override
     public String create(KubernetesClient client) {
-        List<Volume> volumes = new ArrayList<>();
-        List<VolumeMount> volumeMounts = new ArrayList<>();
+
         StringBuilder fullYaml = new StringBuilder();
+        Map<String, String> labels = Map.of("app", name);
+        List<EnvFromSource> envFromSources = new ArrayList<>();
 
         for (NodeDTO linkedNode : linkedNodes) {
             if (linkedNode instanceof ConfigMapDTO) {
                 ConfigMapDTO configMapDTO = (ConfigMapDTO) linkedNode;
-                String yaml = configMapDTO.create(client);
-                InputStream yamlStream = new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8));
-                List<HasMetadata> items = client.load(yamlStream).get();
-                if (!items.isEmpty() && items.get(0) instanceof ConfigMap) {
-                    ConfigMap configMap = (ConfigMap) items.get(0);
-                    volumes.add(new VolumeBuilder()
-                            .withName(configMap.getMetadata().getName())
-                            .withNewConfigMap()
-                            .withName(configMap.getMetadata().getName())
-                            .endConfigMap()
-                            .build());
-                    volumeMounts.add(new VolumeMountBuilder()
-                            .withName(configMap.getMetadata().getName())
-                            .withMountPath("/etc/config")
-                            .build());
-                }
-                fullYaml.append(yaml).append("\n---\n");
+                String configMapYaml = configMapDTO.create(client);
+                fullYaml.append(configMapYaml);
+
+                // Add ConfigMap as an environment source
+                envFromSources.add(new EnvFromSourceBuilder()
+                        .withNewConfigMapRef()
+                        .withName(configMapDTO.getName())
+                        .endConfigMapRef()
+                        .build());
             } else if (linkedNode instanceof ServiceDTO) {
                 ServiceDTO serviceDTO = (ServiceDTO) linkedNode;
-                String serviceYaml = serviceDTO.create(client);
-                fullYaml.append(serviceYaml).append("\n---\n");
+                Service service = new ServiceBuilder()
+                        .withNewMetadata()
+                        .withName(serviceDTO.getName())
+                        .withNamespace("default")
+                        .endMetadata()
+                        .withNewSpec()
+                        .withType(serviceDTO.getType())
+                        .addNewPort()
+                        .withPort(serviceDTO.getPort())
+                        .withNodePort(serviceDTO.getNodePort())
+                        .endPort()
+                        .withSelector(labels)
+                        .endSpec()
+                        .build();
+                fullYaml.append(Serialization.asYaml(service));
             }
-            // Add handling for other types of linked nodes (e.g., volumes) here
         }
-
-        io.fabric8.kubernetes.api.model.Container container = new ContainerBuilder()
-                .withName(name)
-                .withImage(assetId)
-                .addNewPort()
-                .withContainerPort(containerPort)
-                .endPort()
-                .withResources(createResourceRequirements())
-                .withEnv(createEnvVarList())
-                .withVolumeMounts(volumeMounts)
-                .build();
 
         Deployment deployment = new DeploymentBuilder()
                 .withNewMetadata()
@@ -97,15 +88,22 @@ public class DeploymentDTO extends NodeDTO {
                 .withNewSpec()
                 .withReplicas(replicas)
                 .withNewSelector()
-                .addToMatchLabels("app", name)
+                .withMatchLabels(labels)
                 .endSelector()
                 .withNewTemplate()
                 .withNewMetadata()
-                .addToLabels("app", name)
+                .withLabels(labels)
                 .endMetadata()
                 .withNewSpec()
-                .addToContainers(container)
-                .withVolumes(volumes)
+                .addNewContainer()
+                .withName(name)
+                .withImage(assetId)
+                .addNewPort()
+                .withContainerPort(containerPort)
+                .endPort()
+                .withResources(createResourceRequirements())
+                .withEnvFrom(envFromSources)  // Add environment variables from ConfigMaps
+                .endContainer()
                 .endSpec()
                 .endTemplate()
                 .endSpec()
