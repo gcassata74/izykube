@@ -34,6 +34,8 @@ $toolbar-height: 70px;
   &-container {
     width: 100%;
     padding: 0 20px;
+    padding-left: 200px;
+    display: block;
   }
 
   &-content {
@@ -47,8 +49,9 @@ $toolbar-height: 70px;
     font-weight: bold;
   }
 
+
   .button-container {
-    margin-left: 200px;
+
     button {
       background-color: $izy-light-blue;
       color: $izy-white;

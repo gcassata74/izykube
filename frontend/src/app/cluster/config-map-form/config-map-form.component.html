@@ -1,22 +1,17 @@
 <form [formGroup]="form" class="mb-3 mt-3">
-  <div formArrayName="entries">
-    <div *ngFor="let entry of entries.controls; let i = index" class="container">
-      <div [formGroupName]="i">
-        <div class="row no-padding">
-          <div class="col-5">
-            <input formControlName="key" pInputText placeholder="Key" class="form-control"/>
-          </div>
-          <div class="col-5">
-            <input formControlName="value" pInputText placeholder="Value" class="form-control"/>
-          </div>
-          <div class="col-1">
-            <button type="button" class="btn btn-outline-secondary" (click)="removeEntry(i)">-</button>
-          </div>
-          <div class="col-1">
-            <button type="button" class="btn btn-primary" (click)="addEntry()">+</button>
-          </div>
-        </div>
+  <div formArrayName="entries" class="entries-container">
+
+    <div class="entry-row" *ngFor="let entry of entries.controls; let i = index" [formGroupName]="i">
+      <div class="input-group">
+        <input type="text" class="form-control key-input" placeholder="Key" formControlName="key">
+        <input type="text" class="form-control value-input" placeholder="Value" formControlName="value">
+        <button type="button" class="btn btn-danger" (click)="removeEntry(i)">-</button>
       </div>
+    </div>
+    <div class="add-button-container">
+      <button type="button" class="btn btn-primary add-button" (click)="addEntry()">
+        <span i18n="@@addEntry">Add</span> <i class="pi pi-plus"></i>
+      </button>
     </div>
   </div>
 </form>

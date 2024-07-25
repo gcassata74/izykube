@@ -1,6 +1,6 @@
 import { ToolbarModule } from 'primeng/toolbar';
 import { ToolbarService } from './services/toolbar.service';
-import { AfterViewInit, Component, OnInit } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { Store } from '@ngrx/store';
@@ -22,11 +22,12 @@ export class AppComponent implements OnInit{
   constructor(
               private router: Router,
               public toolBarService: ToolbarService,
-              private store: Store
+              private store: Store,
               ) {}
 
 
   ngOnInit(): void {
+   
   }            
 
 

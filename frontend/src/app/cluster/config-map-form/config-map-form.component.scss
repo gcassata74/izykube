@@ -1,0 +1,52 @@
+.entries-container {
+    position: relative;
+  }
+  
+  .add-button-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+  }
+  
+  .entry-row {
+    margin-bottom: 10px;
+  }
+  
+  .input-group {
+    display: flex;
+    align-items: center;
+  }
+  
+  .form-control {
+    flex: 1;
+    margin-right: 10px;
+  }
+  
+  .key-input {
+    width: 40%;
+  }
+  
+  .value-input {
+    width: 50%;
+  }
+  
+  .btn {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+  
+  .btn-danger {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .btn-primary {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .add-button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }

@@ -20,7 +20,9 @@
 
         <div class="p-field">
           <label for="containerPort">Container Port</label>
-          <p-inputNumber id="containerPort" formControlName="containerPort"></p-inputNumber>
+          <p-inputNumber id="containerPort" formControlName="containerPort" [useGrouping]="false" [min]="0"
+                         [maxFractionDigits]="0">
+          </p-inputNumber>
         </div>
       </div>
     </p-tabPanel>
