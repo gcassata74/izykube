@@ -10,7 +10,6 @@ import io.fabric8.kubernetes.client.utils.Serialization;
 import org.springframework.stereotype.Service;
 
 @Service
-@Processor(PodDTO.class)
 public class PodProcessor implements TemplateProcessor<PodDTO> {
 
     private ConfigMapProcessor configMapProcessor;

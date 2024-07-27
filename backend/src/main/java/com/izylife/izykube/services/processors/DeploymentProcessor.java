@@ -4,6 +4,8 @@ import com.izylife.izykube.dto.cluster.ConfigMapDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.dto.cluster.ServiceDTO;
+import com.izylife.izykube.model.Asset;
+import com.izylife.izykube.repositories.AssetRepository;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
@@ -16,16 +18,18 @@ import java.util.Map;
 
 @AllArgsConstructor
 @org.springframework.stereotype.Service
-@Processor(DeploymentDTO.class)
 public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
 
     private final ConfigMapProcessor configMapProcessor;
+    private final AssetRepository assetRepository;
 
     @Override
     public String createTemplate(DeploymentDTO dto) {
         StringBuilder fullYaml = new StringBuilder();
         Map<String, String> labels = Map.of("app", dto.getName());
         List<EnvFromSource> envFromSources = new ArrayList<>();
+
+        Asset asset = assetRepository.findById(dto.getAssetId()).orElseThrow();
 
         for (NodeDTO linkedNode : dto.getLinkedNodes()) {
             if (linkedNode instanceof ConfigMapDTO) {
@@ -76,7 +80,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .withNewSpec()
                 .addNewContainer()
                 .withName(dto.getName())
-                .withImage(dto.getAssetId())
+                .withImage(asset.getImage())
                 .addNewPort()
                 .withContainerPort(dto.getContainerPort())
                 .endPort()

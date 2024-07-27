@@ -24,12 +24,12 @@ export class NodeFormComponent implements OnDestroy {
   subscription: Subscription = new Subscription();
   formMapper: any = {
     'deployment': DeploymentFormComponent,
-    'configMap': ConfigMapFormComponent,
+    'configmap': ConfigMapFormComponent,
     'pod': PodFormComponent,
     'service': ServiceFormComponent,
     'ingress':IngressFormComponent
-  
-    
+
+
   };
 
   componentRef!: ComponentRef<any>;

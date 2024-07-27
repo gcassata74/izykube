@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@Processor(IngressDTO.class)
 public class IngressProcessor implements TemplateProcessor<IngressDTO> {
 
     public String createTemplate(IngressDTO dto) {

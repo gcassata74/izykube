@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@Processor(ConfigMapDTO.class)
 public class ConfigMapProcessor implements TemplateProcessor<ConfigMapDTO> {
 
     public String createTemplate(ConfigMapDTO dto) {

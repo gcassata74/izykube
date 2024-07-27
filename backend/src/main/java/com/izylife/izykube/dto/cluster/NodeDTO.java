@@ -16,7 +16,7 @@ import java.util.List;
         @JsonSubTypes.Type(value = ContainerDTO.class, name = "container"),
         @JsonSubTypes.Type(value = DeploymentDTO.class, name = "deployment"),
         @JsonSubTypes.Type(value = ServiceDTO.class, name = "service"),
-        @JsonSubTypes.Type(value = ConfigMapDTO.class, name = "configMap")
+        @JsonSubTypes.Type(value = ConfigMapDTO.class, name = "configmap")
 })
 public abstract class NodeDTO {
     String id;

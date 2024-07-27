@@ -7,7 +7,6 @@ import io.fabric8.kubernetes.client.utils.Serialization;
 import org.springframework.stereotype.Service;
 
 @Service
-@Processor(ServiceDTO.class)
 public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
 
     public String createTemplate(ServiceDTO dto) {

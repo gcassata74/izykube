@@ -45,9 +45,9 @@ export class DiagramComponent implements OnInit, OnDestroy {
       debounceTime(1000),
       tap(diagramData => {
         if(diagramData!==null && diagramData!==undefined && diagramData!==""){
-        this.model = go.Model.fromJson(diagramData); 
+        this.model = go.Model.fromJson(diagramData);
         }
-        this.createDiagram(); 
+        this.createDiagram();
       }),
      take(1)
     ).subscribe();
@@ -74,7 +74,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.diagram.nodeTemplate = this.makeNodeTemplate();
     this.diagram.commandHandler.deletesTree = true;
     this.diagram.commandHandler.canDeleteSelection = () => true;
-   
+
     //create empty model if not present
     this.model && (this.diagram.model = this.model);
     const graphLinksModel: go.GraphLinksModel = this.diagram.model as go.GraphLinksModel;
@@ -250,7 +250,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       { name: 'pod', type: 'pod', icon: this.iconService.getIconPath('pod') },
       { name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
       { name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
-      { name: 'configMap', type: 'configMap', icon: this.iconService.getIconPath('configMap') },
+      { name: 'configmap', type: 'configmap', icon: this.iconService.getIconPath('configmap') },
       { name: 'volume', type: 'volume', icon: this.iconService.getIconPath('volume') }
     ];
   }
@@ -261,7 +261,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       const toType = toNode.data.type;
 
       switch (fromType) {
-        case 'configMap':
+        case 'configmap':
           return toType === 'pod' || toType === 'deployment';
         case 'service':
           return toType === 'deployment' || toType === 'pod';
@@ -300,7 +300,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   makeNodeBorder() {
-    return $(go.Shape, "RoundedRectangle", 
+    return $(go.Shape, "RoundedRectangle",
       {
         width: 60, height: 60, fill: 'white', strokeWidth: 3,
         cursor: "hand",
@@ -329,7 +329,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
         width: 40, height: 40, margin: 5,
       },
      // new go.Binding("source", "icon") // Bind picture source to icon property in the node data
-      new go.Binding("source", "icon") 
+      new go.Binding("source", "icon")
     )
   }
 
