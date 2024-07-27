@@ -1,13 +1,13 @@
 package com.izylife.izykube.services;
 
-import com.izylife.izykube.dto.cluster.ClusterDTO;
-import com.izylife.izykube.dto.cluster.LinkDTO;
-import com.izylife.izykube.dto.cluster.NodeDTO;
+import com.izylife.izykube.dto.cluster.*;
 import com.izylife.izykube.factory.NodeFactory;
+import com.izylife.izykube.factory.TemplateFactory;
 import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.repositories.ClusterTemplateRepository;
+import com.izylife.izykube.services.processors.TemplateProcessor;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 public class ClusterService {
 
     private final KubernetesClient client;
+    private final TemplateFactory templateFactory;
     private final ClusterRepository clusterRepository;
     private final ClusterTemplateRepository clusterTemplateRepository;
 
@@ -134,7 +135,6 @@ public class ClusterService {
     public void createTemplate(String id) throws ObjectNotFoundException {
         Cluster cluster = clusterRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
         List<NodeDTO> nodes = cluster.getNodes();
-        List<LinkDTO> links = cluster.getLinks();
         List<String> yamlList = new ArrayList<>();
 
         Set<String> processedNodes = new HashSet<>();
@@ -143,7 +143,7 @@ public class ClusterService {
             if (!processedNodes.contains(node.getId())) {
                 List<NodeDTO> linkedNodes = cluster.findSourceNodesOf(node.getId());
                 node.setLinkedNodes(linkedNodes);
-                yamlList.add(node.create(client));
+                yamlList.add(processNodeDTO(node));
 
                 // Mark this node and all its linked nodes as processed
                 processedNodes.add(node.getId());
@@ -206,4 +206,27 @@ public class ClusterService {
             }
         }
     }
+
+    private String processNodeDTO(NodeDTO nodeDTO) {
+        if (nodeDTO instanceof DeploymentDTO) {
+            return processSpecificNodeDTO((DeploymentDTO) nodeDTO);
+        } else if (nodeDTO instanceof ConfigMapDTO) {
+            return processSpecificNodeDTO((ConfigMapDTO) nodeDTO);
+        } else if (nodeDTO instanceof ServiceDTO) {
+            return processSpecificNodeDTO((ServiceDTO) nodeDTO);
+        } else if (nodeDTO instanceof IngressDTO) {
+            return processSpecificNodeDTO((IngressDTO) nodeDTO);
+        } else if (nodeDTO instanceof ContainerDTO) {
+            return processSpecificNodeDTO((ContainerDTO) nodeDTO);
+        } else {
+            throw new IllegalArgumentException("Unsupported NodeDTO type: " + nodeDTO.getClass().getSimpleName());
+        }
+    }
+
+    private <T extends NodeDTO> String processSpecificNodeDTO(T specificNodeDTO) {
+        TemplateProcessor<T> processor = templateFactory.getProcessor(specificNodeDTO);
+        return processor.createTemplate(specificNodeDTO);
+    }
 }
+
+

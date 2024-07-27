@@ -39,7 +39,6 @@ public class NodeFactory {
                         ingress.getHost(),
                         ingress.getPath()
                 );
-            // Add cases for other node types as needed
             default:
                 throw new IllegalArgumentException("Unsupported node type: " + node.getKind());
         }

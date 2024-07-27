@@ -2,7 +2,6 @@ package com.izylife.izykube.dto.cluster;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import io.fabric8.kubernetes.client.KubernetesClient;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -33,5 +32,4 @@ public abstract class NodeDTO {
         linkedNodes = new ArrayList<>();
     }
 
-    public abstract String create(KubernetesClient client);
 }
