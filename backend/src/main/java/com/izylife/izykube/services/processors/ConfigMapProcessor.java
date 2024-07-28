@@ -1,6 +1,7 @@
 package com.izylife.izykube.services.processors;
 
 import com.izylife.izykube.dto.cluster.ConfigMapDTO;
+import com.izylife.izykube.dto.cluster.ConfigMapEntryDTO;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
 import io.fabric8.kubernetes.client.utils.Serialization;
@@ -10,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Processor(ConfigMapDTO.class)
 @Service
 public class ConfigMapProcessor implements TemplateProcessor<ConfigMapDTO> {
 
@@ -26,13 +28,12 @@ public class ConfigMapProcessor implements TemplateProcessor<ConfigMapDTO> {
                 .build();
 
         return Serialization.asYaml(configMap);
-
     }
 
-    private Map<String, String> mergeEntries(List<Map<String, String>> entries) {
+    private Map<String, String> mergeEntries(List<ConfigMapEntryDTO> entries) {
         Map<String, String> mergedMap = new HashMap<>();
-        for (Map<String, String> entry : entries) {
-            mergedMap.put(entry.get("key"), entry.get("value"));
+        for (ConfigMapEntryDTO entry : entries) {
+            mergedMap.put(entry.getKey(), entry.getValue());
         }
         return mergedMap;
     }

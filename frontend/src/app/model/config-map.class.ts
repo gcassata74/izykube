@@ -5,8 +5,8 @@ export class ConfigMap extends Node{
     entries: { [key: string]: string }[];
 
     constructor(id: string, name: string, kind: string) {
-        super(id, name, "configMap");
+        super(id, name, "configmap");
         this.entries = [];
     }
-  
+
 }

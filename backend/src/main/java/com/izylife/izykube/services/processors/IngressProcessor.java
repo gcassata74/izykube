@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+@Processor(IngressDTO.class)
 @Service
 public class IngressProcessor implements TemplateProcessor<IngressDTO> {
 

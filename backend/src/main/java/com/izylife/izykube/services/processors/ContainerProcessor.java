@@ -3,6 +3,7 @@ package com.izylife.izykube.services.processors;
 import com.izylife.izykube.dto.cluster.ContainerDTO;
 import org.springframework.stereotype.Service;
 
+@Processor(ContainerDTO.class)
 @Service
 public class ContainerProcessor implements TemplateProcessor<ContainerDTO> {
 

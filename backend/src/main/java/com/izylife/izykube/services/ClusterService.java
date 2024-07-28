@@ -1,6 +1,7 @@
 package com.izylife.izykube.services;
 
-import com.izylife.izykube.dto.cluster.*;
+import com.izylife.izykube.dto.cluster.ClusterDTO;
+import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.factory.NodeFactory;
 import com.izylife.izykube.factory.TemplateFactory;
 import com.izylife.izykube.model.Cluster;
@@ -128,22 +129,21 @@ public class ClusterService {
             log.error("Error getting cluster with ID " + id + ": " + e.getMessage());
             return null;
         }
-
         return dto;
     }
 
     public void createTemplate(String id) throws ObjectNotFoundException {
-        Cluster cluster = clusterRepository.findById(id).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
-        List<NodeDTO> nodes = cluster.getNodes();
-        List<String> yamlList = new ArrayList<>();
+        Cluster cluster = clusterRepository.findById(id)
+                .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
 
+        List<String> yamlList = new ArrayList<>();
         Set<String> processedNodes = new HashSet<>();
 
-        for (NodeDTO node : nodes) {
+        for (NodeDTO node : cluster.getNodes()) {
             if (!processedNodes.contains(node.getId())) {
                 List<NodeDTO> linkedNodes = cluster.findSourceNodesOf(node.getId());
                 node.setLinkedNodes(linkedNodes);
-                yamlList.add(processNodeDTO(node));
+                yamlList.add(processSpecificNodeDTO(node));
 
                 // Mark this node and all its linked nodes as processed
                 processedNodes.add(node.getId());
@@ -207,21 +207,6 @@ public class ClusterService {
         }
     }
 
-    private String processNodeDTO(NodeDTO nodeDTO) {
-        if (nodeDTO instanceof DeploymentDTO) {
-            return processSpecificNodeDTO((DeploymentDTO) nodeDTO);
-        } else if (nodeDTO instanceof ConfigMapDTO) {
-            return processSpecificNodeDTO((ConfigMapDTO) nodeDTO);
-        } else if (nodeDTO instanceof ServiceDTO) {
-            return processSpecificNodeDTO((ServiceDTO) nodeDTO);
-        } else if (nodeDTO instanceof IngressDTO) {
-            return processSpecificNodeDTO((IngressDTO) nodeDTO);
-        } else if (nodeDTO instanceof ContainerDTO) {
-            return processSpecificNodeDTO((ContainerDTO) nodeDTO);
-        } else {
-            throw new IllegalArgumentException("Unsupported NodeDTO type: " + nodeDTO.getClass().getSimpleName());
-        }
-    }
 
     private <T extends NodeDTO> String processSpecificNodeDTO(T specificNodeDTO) {
         TemplateProcessor<T> processor = templateFactory.getProcessor(specificNodeDTO);

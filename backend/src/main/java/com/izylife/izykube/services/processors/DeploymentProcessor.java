@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@Processor(DeploymentDTO.class)
 @AllArgsConstructor
 @org.springframework.stereotype.Service
 public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
