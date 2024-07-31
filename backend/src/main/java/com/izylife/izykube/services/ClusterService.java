@@ -1,6 +1,7 @@
 package com.izylife.izykube.services;
 
 import com.izylife.izykube.dto.cluster.ClusterDTO;
+import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.factory.NodeFactory;
 import com.izylife.izykube.factory.TemplateFactory;
@@ -140,14 +141,17 @@ public class ClusterService {
         Set<String> processedNodes = new HashSet<>();
 
         for (NodeDTO node : cluster.getNodes()) {
-            if (!processedNodes.contains(node.getId())) {
-                List<NodeDTO> linkedNodes = cluster.findSourceNodesOf(node.getId());
-                node.setLinkedNodes(linkedNodes);
-                yamlList.add(processSpecificNodeDTO(node));
+            //temporarily only process Deployment nodes
+            if (node instanceof DeploymentDTO) {
+                if (!processedNodes.contains(node.getId())) {
+                    List<NodeDTO> linkedNodes = cluster.findSourceNodesOf(node.getId());
+                    node.setLinkedNodes(linkedNodes);
+                    yamlList.add(processSpecificNodeDTO(node));
 
-                // Mark this node and all its linked nodes as processed
-                processedNodes.add(node.getId());
-                linkedNodes.forEach(linkedNode -> processedNodes.add(linkedNode.getId()));
+                    // Mark this node and all its linked nodes as processed
+                    processedNodes.add(node.getId());
+                    linkedNodes.forEach(linkedNode -> processedNodes.add(linkedNode.getId()));
+                }
             }
         }
 
@@ -157,6 +161,11 @@ public class ClusterService {
         clusterTemplateRepository.save(clusterTemplate);
     }
 
+    public void deleteTemplate(String clusterId) throws ObjectNotFoundException {
+        ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
+                .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
+        clusterTemplateRepository.delete(template);
+    }
 
     public void deploy(String clusterId) throws ObjectNotFoundException {
         // Retrieve the cluster template from the database
@@ -212,6 +221,8 @@ public class ClusterService {
         TemplateProcessor<T> processor = templateFactory.getProcessor(specificNodeDTO);
         return processor.createTemplate(specificNodeDTO);
     }
+
+
 }
 
 

@@ -1,6 +1,6 @@
 // clusterDTO.reducer.ts
 import { createReducer, on } from '@ngrx/store';
-import { addLink, addNode, loadCluster, removeLink, removeNode, updateCluster, updateDiagram, updateNode } from '../actions/cluster.actions';
+import { addLink, addNode, clusterDeployed, clusterUndeployed, loadCluster, removeLink, removeNode, templateCreated, templateDeleted, updateCluster, updateDiagram, updateNode } from '../actions/cluster.actions';
 import { initialState } from '../states/state';
 
 
@@ -60,12 +60,6 @@ export const clusterReducer = createReducer(
       }
   })),
 
-  // on(updateCluster, (state, { cluster }) => ({
-  //   ...state,
-  //   clusterData: cluster
-  // })),
-
-
   on(updateCluster, (state, { cluster }) => ({
     ...state,
     clusterData: {
@@ -77,6 +71,27 @@ export const clusterReducer = createReducer(
   on(loadCluster, (state, { cluster }) => ({
     ...state,
     clusterData: cluster
+  })),
+
+  on(templateCreated, (state) => ({
+    ...state,
+    hasTemplate: true
+  })),
+
+  on(templateDeleted, (state) => ({
+    ...state,
+    hasTemplate: false,
+    isDeployed: false
+  })),
+
+  on(clusterDeployed, (state) => ({
+    ...state,
+    isDeployed: true
+  })),
+
+  on(clusterUndeployed, (state) => ({
+    ...state,
+    isDeployed: false
   }))
 
 

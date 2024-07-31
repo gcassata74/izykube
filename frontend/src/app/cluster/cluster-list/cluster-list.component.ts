@@ -3,9 +3,11 @@ import { Component, ViewChild } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { ClusterService } from '../../services/cluster.service';
 import { Cluster } from 'src/app/model/cluster.class';
-import { switchMap } from 'rxjs';
+import { combineLatest, Observable, switchMap, take } from 'rxjs';
 import { Router } from '@angular/router';
 import { ContextMenu } from 'primeng/contextmenu';
+import { Store } from '@ngrx/store';
+import { getHasTemplate, getIsDeployed } from 'src/app/store/selectors/selectors';
 
 @Component({
   selector: 'app-cluster-list',
@@ -13,6 +15,9 @@ import { ContextMenu } from 'primeng/contextmenu';
   styleUrls: ['./cluster-list.component.scss']
 })
 export class ClusterListComponent {
+
+  hasTemplate$!: Observable<boolean>;
+  isDeployed$!: Observable<boolean>;
 
   @ViewChild('cm') contextMenu!: ContextMenu; 
   clusters: any[] = [];
@@ -23,8 +28,13 @@ export class ClusterListComponent {
   constructor(
     private clusterService: ClusterService,
     private dataService: DataService,
-    private router: Router
-  ) { }
+    private router: Router,
+    private store: Store
+  ) { 
+
+    this.hasTemplate$ = this.store.select(getHasTemplate);
+    this.isDeployed$ = this.store.select(getIsDeployed);
+  }
 
   ngOnInit() {
     this.clusterService.getAllClusters().subscribe(data => {
@@ -38,16 +48,43 @@ export class ClusterListComponent {
     ];
   }
 
+ 
   updateContextMenuItems($event: MouseEvent, id: string) {
-    this.selectedId = id; // Set selectedId to the right-clicked row's ID
-    this.items = [
-      { label: 'Edit', icon: 'pi pi-pencil', command: () => this.editCluster(this.selectedId) },
-      { label: 'Delete', icon: 'pi pi-times', command: () => this.deleteCluster(this.selectedId) },
-      { label: 'Create Template', icon: 'pi pi-th-large', command: () => this.createTemplate(this.selectedId) },
-      { label: 'Deploy', icon: 'pi pi-play', command: () => this.deploy(this.selectedId) },
-      { label: 'Undeploy', icon: 'pi pi-eraser', command: () => this.undeploy(this.selectedId) }
-    ];
-    this.contextMenu.show($event);
+    this.selectedId = id;
+    
+    combineLatest([this.hasTemplate$, this.isDeployed$]).pipe(
+      take(1)
+    ).subscribe(([hasTemplate, isDeployed]) => {
+      this.items = [
+        { label: 'Edit', icon: 'pi pi-pencil', command: () => this.editCluster(this.selectedId) },
+        { label: 'Delete', icon: 'pi pi-times', command: () => this.deleteCluster(this.selectedId) },
+        { 
+          label: 'Create Template', 
+          icon: 'pi pi-th-large', 
+          command: () => this.createTemplate(this.selectedId),
+          visible: !hasTemplate
+        },
+        { 
+          label: 'Delete Template', 
+          icon: 'pi pi-eraser', 
+          command: () => this.deleteTemplate(this.selectedId),
+          visible: hasTemplate
+        },
+        { 
+          label: 'Deploy', 
+          icon: 'pi pi-play', 
+          command: () => this.deploy(this.selectedId),
+          visible: hasTemplate && !isDeployed
+        },
+        { 
+          label: 'Undeploy', 
+          icon: 'pi pi-stop', 
+          command: () => this.undeploy(this.selectedId),
+          visible: isDeployed
+        }
+      ];
+      this.contextMenu.show($event);
+    });
   }
   
   undeploy(selectedId: string): void {
@@ -61,6 +98,11 @@ export class ClusterListComponent {
   createTemplate(selectedId: string): void {
    this.clusterService.createTemplate(selectedId);
   }
+
+  deleteTemplate(selectedId: string): void {
+    this.clusterService.deleteTemplate(selectedId);
+  }
+  
 
   addCluster() {
     this.router.navigate(['cluster-form']);

@@ -3,15 +3,13 @@ import { Observable, catchError, switchMap, throwError } from 'rxjs';
 import { Cluster } from '../model/cluster.class';
 import { DataService } from './data.service';
 import { Injectable } from '@angular/core';
-import { updateCluster } from '../store/actions/cluster.actions';
+import { clusterDeployed, clusterUndeployed, templateCreated, templateDeleted, updateCluster } from '../store/actions/cluster.actions';
 import { Store } from '@ngrx/store';
 import { Router } from '@angular/router';
 
 @Injectable()
 export class ClusterService {
-  
 
-  clusterService: any;
 
   constructor(
     private notificationService: NotificationService,
@@ -67,7 +65,20 @@ export class ClusterService {
         return throwError(() => error);
       })
     ).subscribe((message: any) => {
+      this.store.dispatch(templateCreated());
       this.notificationService.success('Template Created', message.message as string);
+    });
+  }
+
+  deleteTemplate(selectedId: string) {
+    this.dataService.delete('/cluster/'+selectedId+'/template',).pipe(
+      catchError((error) => {
+        this.notificationService.error('template deletion Failed', 'template could not be deleted');
+        return throwError(() => error);
+      })
+    ).subscribe(() => {
+      this.store.dispatch(templateDeleted());
+      this.notificationService.success('Template deleted', 'template deleted successfully');
     });
   }
 
@@ -78,18 +89,19 @@ export class ClusterService {
         return throwError(() => error);
       })
     ).subscribe(() => {
+      this.store.dispatch(clusterDeployed());
       this.notificationService.success('Deployment Complete', 'The deployment was successful');
     });
   }
 
-
   undeploy(selectedId: string) {
-    this.dataService.post('/cluster/'+selectedId+'/undeploy', {}).pipe(
+    this.dataService.delete('/cluster/'+selectedId+'/undeploy').pipe(
       catchError((error) => {
         this.notificationService.error('Undeployment Failed', 'The undeployment could not be completed');
         return throwError(() => error);
       })
     ).subscribe(() => {
+      this.store.dispatch(clusterUndeployed());
       this.notificationService.success('Undeployment Completed', 'cluster undeployed successfully');
     });
   }

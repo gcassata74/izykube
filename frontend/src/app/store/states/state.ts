@@ -10,7 +10,9 @@ export interface MainState {
 }
 
 export interface ClusterState {
-   clusterData: Cluster;
+   clusterData: Cluster,
+   hasTemplate: boolean,
+   isDeployed: boolean
  }
 
 export interface State {
@@ -31,7 +33,9 @@ export const initialState: State = {
       diagram: '',
       nameSpace: 'default',
       id: null
-    }
+    },
+    hasTemplate: false,
+    isDeployed: false
   }
 }
 

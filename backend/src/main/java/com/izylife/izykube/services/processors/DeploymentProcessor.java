@@ -22,6 +22,7 @@ import java.util.Map;
 public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
 
     private final ConfigMapProcessor configMapProcessor;
+    private final ServiceProcessor serviceProcessor;
     private final AssetRepository assetRepository;
 
     @Override
@@ -34,6 +35,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
 
         for (NodeDTO linkedNode : dto.getLinkedNodes()) {
             if (linkedNode instanceof ConfigMapDTO) {
+
                 ConfigMapDTO configMapDTO = (ConfigMapDTO) linkedNode;
                 String configMapYaml = configMapProcessor.createTemplate(configMapDTO);
                 fullYaml.append(configMapYaml);
@@ -46,21 +48,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                         .build());
             } else if (linkedNode instanceof ServiceDTO) {
                 ServiceDTO serviceDTO = (ServiceDTO) linkedNode;
-                Service service = new ServiceBuilder()
-                        .withNewMetadata()
-                        .withName(serviceDTO.getName())
-                        .withNamespace("default")
-                        .endMetadata()
-                        .withNewSpec()
-                        .withType(serviceDTO.getType())
-                        .addNewPort()
-                        .withPort(serviceDTO.getPort())
-                        .withNodePort(serviceDTO.getNodePort())
-                        .endPort()
-                        .withSelector(labels)
-                        .endSpec()
-                        .build();
-                fullYaml.append(Serialization.asYaml(service));
+                fullYaml.append(serviceProcessor.createTemplate(serviceDTO));
             }
         }
 

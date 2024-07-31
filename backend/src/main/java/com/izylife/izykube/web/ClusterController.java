@@ -108,6 +108,22 @@ public class ClusterController {
         }
     }
 
+    @DeleteMapping("/{id}/template")
+    @ResponseBody
+    public ResponseEntity<GenericResponseDTO> deleteTemplate(@PathVariable String id) {
+        GenericResponseDTO response = new GenericResponseDTO();
+        try {
+            clusterService.deleteTemplate(id);
+            response.setMessage("The template was created successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.setError("The template could not be created");
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+
+
     @PostMapping("/{id}/deploy")
     public ResponseEntity<GenericResponseDTO> deploy(@PathVariable String id) {
         GenericResponseDTO response = new GenericResponseDTO();
@@ -122,7 +138,7 @@ public class ClusterController {
     }
 
 
-    @PostMapping("/{id}/undeploy")
+    @DeleteMapping("/{id}/undeploy")
     public ResponseEntity<GenericResponseDTO> undeploy(@PathVariable String id) {
         GenericResponseDTO response = new GenericResponseDTO();
         try {

@@ -14,6 +14,10 @@ export const UPDATE_CLUSTER = '[Cluster] Update Cluster';
 export const LOAD_CLUSTER = '[Cluster] Load Cluster Request';
 export const LOAD_CLUSTER_SUCCESS = '[Cluster] Load Cluster Success';
 export const LOAD_CLUSTER_ERROR = '[Cluster] Load Cluster Error';
+export const CREATE_TEMPLATE = '[Cluster] Create Template';
+export const DELETE_TEMPLATE = '[Cluster] Delete Template';
+export const DEPLOY = '[Cluster] Deploy';
+export const UNDEPLOY = '[Cluster] Undeploy';
 
 export const addNode = createAction(
   ADD_NODE,
@@ -55,5 +59,10 @@ export const loadCluster = createAction(
   LOAD_CLUSTER,
   props<{ cluster: Cluster }>()
 );
+
+export const templateCreated = createAction(CREATE_TEMPLATE);
+export const templateDeleted = createAction(DELETE_TEMPLATE);
+export const clusterDeployed = createAction(DEPLOY);
+export const clusterUndeployed = createAction(UNDEPLOY);
 
 

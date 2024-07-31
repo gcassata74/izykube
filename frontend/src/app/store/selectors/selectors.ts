@@ -32,5 +32,15 @@ export const selectClusterDiagram = createSelector(
   (clusterData: Cluster) => clusterData?.diagram
 );
 
+export const getHasTemplate = createSelector(
+  getClusterState,
+  (state: ClusterState) => state.hasTemplate
+);
+
+export const getIsDeployed = createSelector(
+  getClusterState,
+  (state: ClusterState) => state.isDeployed
+);
+
 
 
