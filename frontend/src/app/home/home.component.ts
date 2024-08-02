@@ -8,9 +8,8 @@ import { Component, OnInit } from "@angular/core";
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent implements OnInit {
-  ngOnInit(): void {
-    throw new Error('Method not implemented.');
-  }
+  constructor() { }
 
- 
+  ngOnInit(): void {
+  } 
 }

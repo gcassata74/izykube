@@ -47,4 +47,12 @@ public class ClusterChangeLog {
             collection.insertOne(cluster);
         }
     }
+
+    @ChangeSet(order = "002", id = "addStatusFieldsToCluster", author = "developer")
+    public void addStatusFieldsToCluster(MongoDatabase db) {
+        db.getCollection("cluster").updateMany(
+                new Document(),
+                new Document("$set", new Document("hasTemplate", false).append("isDeployed", false))
+        );
+    }
 }

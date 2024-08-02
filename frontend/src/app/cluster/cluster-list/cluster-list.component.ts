@@ -19,7 +19,7 @@ export class ClusterListComponent {
   hasTemplate$!: Observable<boolean>;
   isDeployed$!: Observable<boolean>;
 
-  @ViewChild('cm') contextMenu!: ContextMenu; 
+  @ViewChild('cm') contextMenu!: ContextMenu;
   clusters: any[] = [];
   cols!: any[];
   items!: MenuItem[];
@@ -30,7 +30,7 @@ export class ClusterListComponent {
     private dataService: DataService,
     private router: Router,
     private store: Store
-  ) { 
+  ) {
 
     this.hasTemplate$ = this.store.select(getHasTemplate);
     this.isDeployed$ = this.store.select(getIsDeployed);
@@ -48,37 +48,37 @@ export class ClusterListComponent {
     ];
   }
 
- 
+
   updateContextMenuItems($event: MouseEvent, id: string) {
     this.selectedId = id;
-    
+
     combineLatest([this.hasTemplate$, this.isDeployed$]).pipe(
       take(1)
     ).subscribe(([hasTemplate, isDeployed]) => {
       this.items = [
         { label: 'Edit', icon: 'pi pi-pencil', command: () => this.editCluster(this.selectedId) },
         { label: 'Delete', icon: 'pi pi-times', command: () => this.deleteCluster(this.selectedId) },
-        { 
-          label: 'Create Template', 
-          icon: 'pi pi-th-large', 
+        {
+          label: 'Create Template',
+          icon: 'pi pi-th-large',
           command: () => this.createTemplate(this.selectedId),
           visible: !hasTemplate
         },
-        { 
-          label: 'Delete Template', 
-          icon: 'pi pi-eraser', 
+        {
+          label: 'Delete Template',
+          icon: 'pi pi-eraser',
           command: () => this.deleteTemplate(this.selectedId),
           visible: hasTemplate
         },
-        { 
-          label: 'Deploy', 
-          icon: 'pi pi-play', 
+        {
+          label: 'Deploy',
+          icon: 'pi pi-play',
           command: () => this.deploy(this.selectedId),
           visible: hasTemplate && !isDeployed
         },
-        { 
-          label: 'Undeploy', 
-          icon: 'pi pi-stop', 
+        {
+          label: 'Undeploy',
+          icon: 'pi pi-stop',
           command: () => this.undeploy(this.selectedId),
           visible: isDeployed
         }
@@ -86,7 +86,7 @@ export class ClusterListComponent {
       this.contextMenu.show($event);
     });
   }
-  
+
   undeploy(selectedId: string): void {
     this.clusterService.undeploy(selectedId);
   }
@@ -102,7 +102,7 @@ export class ClusterListComponent {
   deleteTemplate(selectedId: string): void {
     this.clusterService.deleteTemplate(selectedId);
   }
-  
+
 
   addCluster() {
     this.router.navigate(['cluster-form']);

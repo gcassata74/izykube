@@ -158,16 +158,26 @@ public class ClusterService {
         ClusterTemplate clusterTemplate = new ClusterTemplate();
         clusterTemplate.setClusterId(id);
         clusterTemplate.setYamlList(yamlList);
+        cluster.setHasTemplate(true);
+        clusterRepository.save(cluster);
         clusterTemplateRepository.save(clusterTemplate);
     }
 
     public void deleteTemplate(String clusterId) throws ObjectNotFoundException {
+        Cluster cluster = clusterRepository.findById(clusterId)
+                .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
         clusterTemplateRepository.delete(template);
+        cluster.setHasTemplate(false);
+        clusterRepository.save(cluster);
     }
 
     public void deploy(String clusterId) throws ObjectNotFoundException {
+
+        Cluster cluster = clusterRepository.findById(clusterId)
+                .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
+
         // Retrieve the cluster template from the database
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
@@ -183,6 +193,7 @@ public class ClusterService {
                     client.resource(resource).createOrReplace();
                     log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
                 }
+                cluster.setDeployed(true);
             } catch (KubernetesClientException e) {
                 log.error("Error deploying resource from template: " + e.getMessage());
                 // Optionally, you might want to throw this exception to be handled by the caller
@@ -191,6 +202,10 @@ public class ClusterService {
     }
 
     public void undeploy(String clusterId) throws ObjectNotFoundException {
+
+        Cluster cluster = clusterRepository.findById(clusterId)
+                .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
+
         // Retrieve the cluster template from the database
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
@@ -210,6 +225,7 @@ public class ClusterService {
                         log.warn("Failed to undeploy resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
                     }
                 }
+                cluster.setDeployed(false);
             } catch (KubernetesClientException e) {
                 log.error("Error undeploying resource from template: " + e.getMessage());
             }

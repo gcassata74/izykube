@@ -11,4 +11,6 @@ export class Cluster {
      links!: Link[];
      nameSpace!: string;
      diagram!: string;
+     isDeployed!: boolean;
+     hasTemplate!: boolean;
 }

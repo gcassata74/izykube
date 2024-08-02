@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import * as go from 'gojs';
 import { BehaviorSubject, Subject, tap, Subscription, catchError, of, throwError, Observable } from 'rxjs';
-import { addLink, addNode, removeLink, removeNode, updateCluster, updateNode } from '../store/actions/cluster.actions';
+import { addLink, addNode, removeLink, removeNode, updateCluster, updateNode } from '../store/actions/actions';
 import { Store } from '@ngrx/store';
 
 import { Link } from '../model/link.class';

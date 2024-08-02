@@ -8,8 +8,7 @@ import { DiagramComponent } from '../../diagram/diagram.component';
 import { DiagramService } from '../../services/diagram.service';
 import { ToolbarService } from '../../services/toolbar.service';
 import { getCurrentAction, getClusterData } from '../../store/selectors/selectors';
-import * as actions from '../../store/actions/actions';
-import *  as clusterActions from '../../store/actions/cluster.actions';
+import *  as actions from '../../store/actions/actions';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute } from '@angular/router';
 import { Cluster } from 'src/app/model/cluster.class';
@@ -61,7 +60,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
 
   loadCluster(clusterId: any) {
     this.clusterService.getCluster(clusterId).subscribe(cluster => {
-      this.store.dispatch(clusterActions.loadCluster({cluster: cluster}));
+      this.store.dispatch(actions.loadCluster({cluster: cluster}));
     });
   }
 

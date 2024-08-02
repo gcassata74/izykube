@@ -1,7 +1,7 @@
 import { clusterReducer } from './../reducers/cluster.reducer';
 import { createReducer, on } from '@ngrx/store';
 import * as actions from '../actions/actions';
-import { Cluster } from 'src/app/model/cluster.class';
+import { Cluster } from '../../model/cluster.class';
 
 
 export interface MainState {
@@ -10,9 +10,7 @@ export interface MainState {
 }
 
 export interface ClusterState {
-   clusterData: Cluster,
-   hasTemplate: boolean,
-   isDeployed: boolean
+   clusterData: Cluster
  }
 
 export interface State {
@@ -32,10 +30,10 @@ export const initialState: State = {
       links:[],
       diagram: '',
       nameSpace: 'default',
-      id: null
-    },
-    hasTemplate: false,
-    isDeployed: false
+      id: null,
+      isDeployed: false,
+      hasTemplate: false
+    }
   }
 }
 

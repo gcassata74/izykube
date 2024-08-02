@@ -3,7 +3,7 @@ import { Observable, catchError, switchMap, throwError } from 'rxjs';
 import { Cluster } from '../model/cluster.class';
 import { DataService } from './data.service';
 import { Injectable } from '@angular/core';
-import { clusterDeployed, clusterUndeployed, templateCreated, templateDeleted, updateCluster } from '../store/actions/cluster.actions';
+import { updateCluster } from '../store/actions/actions';
 import { Store } from '@ngrx/store';
 import { Router } from '@angular/router';
 
@@ -65,7 +65,6 @@ export class ClusterService {
         return throwError(() => error);
       })
     ).subscribe((message: any) => {
-      this.store.dispatch(templateCreated());
       this.notificationService.success('Template Created', message.message as string);
     });
   }
@@ -77,7 +76,6 @@ export class ClusterService {
         return throwError(() => error);
       })
     ).subscribe(() => {
-      this.store.dispatch(templateDeleted());
       this.notificationService.success('Template deleted', 'template deleted successfully');
     });
   }
@@ -89,7 +87,6 @@ export class ClusterService {
         return throwError(() => error);
       })
     ).subscribe(() => {
-      this.store.dispatch(clusterDeployed());
       this.notificationService.success('Deployment Complete', 'The deployment was successful');
     });
   }
@@ -101,7 +98,6 @@ export class ClusterService {
         return throwError(() => error);
       })
     ).subscribe(() => {
-      this.store.dispatch(clusterUndeployed());
       this.notificationService.success('Undeployment Completed', 'cluster undeployed successfully');
     });
   }

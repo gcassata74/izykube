@@ -33,13 +33,13 @@ export const selectClusterDiagram = createSelector(
 );
 
 export const getHasTemplate = createSelector(
-  getClusterState,
-  (state: ClusterState) => state.hasTemplate
+   getClusterData,
+    (clusterData: Cluster) => clusterData.hasTemplate
 );
 
 export const getIsDeployed = createSelector(
-  getClusterState,
-  (state: ClusterState) => state.isDeployed
+    getClusterData,
+     (clusterData: Cluster) => clusterData.isDeployed
 );
 
 

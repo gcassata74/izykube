@@ -22,6 +22,8 @@ public class Cluster {
     private String diagram;
     private Date creationDate;
     private Date lastUpdated;
+    private boolean hasTemplate;
+    private boolean isDeployed;
 
     // Find node by ID
     public NodeDTO findNodeById(String id) {

@@ -1,5 +1,4 @@
 import { ClusterState } from './../store/states/state';
-import { updateDiagram } from './../store/actions/cluster.actions';
 import { DiagramService } from './../services/diagram.service';
 import { IconService } from './../services/icon.service';
 import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild } from '@angular/core';
@@ -8,7 +7,6 @@ import { Store, select } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
 import { BehaviorSubject, Subscription, debounceTime, distinctUntilChanged, filter, startWith, take, tap } from 'rxjs';
 import * as actions from '../store/actions/actions';
-import * as clusterActions from '../store/actions/cluster.actions';
 import { getClusterData, selectClusterDiagram } from '../store/selectors/selectors';
 import { Cluster } from '../model/cluster.class';
 
@@ -147,20 +145,20 @@ export class DiagramComponent implements OnInit, OnDestroy {
         if (e.modelChange === "nodeDataArray") {
           if (e.change === go.ChangedEvent.Insert) {
             // Dispatch action for node added
-            this.store.dispatch(clusterActions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
+            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
           } else if (e.change === go.ChangedEvent.Remove) {
             // Dispatch action for node removed
-            this.store.dispatch(clusterActions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
+            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
           }
         }
         // handle linkDTO changes
         else if (e.modelChange === "linkDataArray") {
           if (e.change === go.ChangedEvent.Insert) {
             // Dispatch action for linkDTO added
-            this.store.dispatch(clusterActions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
+            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
           } else if (e.change === go.ChangedEvent.Remove) {
             // Dispatch action for linkDTO removed
-            this.store.dispatch(clusterActions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
+            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
           }
         }
       });
