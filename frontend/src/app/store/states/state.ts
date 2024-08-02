@@ -4,27 +4,28 @@ import * as actions from '../actions/actions';
 import { Cluster } from '../../model/cluster.class';
 
 
-export interface MainState {
+export interface AppState {
  currentAction: string | null;
- diagramModel: go.Model | null;
 }
 
 export interface ClusterState {
-   clusterData: Cluster
+  clusters: Cluster[];
+  currentCluster: Cluster;
  }
 
 export interface State {
-  mainState: MainState
+  mainState: AppState
   clusterState: ClusterState
 }
 
 export const initialState: State = {
   mainState: {
     currentAction: null,
-    diagramModel: null,
+
   },
   clusterState: {
-    clusterData: {
+    clusters: [],
+    currentCluster: {
       name: 'Cluster1',
       nodes: [],
       links:[],

@@ -1,8 +1,8 @@
 import { createFeatureSelector, createSelector } from "@ngrx/store";
-import { ClusterState, MainState } from "../states/state";
+import { ClusterState, AppState } from "../states/state";
 import { Cluster } from "src/app/model/cluster.class";
 
-export const getMainState = createFeatureSelector<MainState>(
+export const getMainState = createFeatureSelector<AppState>(
   'mainState'
 );
 
@@ -12,12 +12,12 @@ export const getClusterState = createFeatureSelector<ClusterState>(
 
 export const getCurrentAction = createSelector(
   getMainState,
-  (state: MainState) => state?.currentAction
+  (state: AppState) => state?.currentAction
 );
 
 export const getClusterData = createSelector(
   getClusterState,
-  (state: ClusterState) => state?.clusterData
+  (state: ClusterState) => state?.currentCluster
 );
 
 // Selector to get a node by ID from within the cluster data

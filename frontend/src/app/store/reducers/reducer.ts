@@ -2,25 +2,25 @@
 //reducer.ts
 import { createReducer, on } from '@ngrx/store';
 import * as actions from '../actions/actions';
-import { MainState, initialState } from '../states/state';
+import { AppState, initialState } from '../states/state';
 import { addNode } from '../actions/actions';
 
 
 export const reducer = createReducer(
   initialState.mainState,
 
-  on(actions.setCurrentAction, (state: MainState, { action }) => {
+  on(actions.setCurrentAction, (state: AppState, { action }) => {
     return {
-    ...state,
-    currentAction: action,
+      ...state,
+      currentAction: action,
     }
   }),
 
-  on(actions.resetCurrentAction, (state: MainState) => {
+  on(actions.resetCurrentAction, (state: AppState) => {
     return {
-    ...state,
-    currentAction: null,
-  }
+      ...state,
+      currentAction: null,
+    }
   })
 
 
@@ -31,70 +31,74 @@ export const clusterReducer = createReducer(
 
 
   on(addNode, (state, { node }) => ({
-      ...state,
-      clusterData: {
-        ...state.clusterData,
-        nodes: [...state.clusterData.nodes, node]
-      }
+    ...state,
+    currentCluster: {
+      ...state.currentCluster,
+      nodes: [...state.currentCluster.nodes, node]
+    }
 
   })),
 
   on(actions.removeNode, (state, { nodeId }) => ({
-      ...state,
-      clusterData: {
-        ...state.clusterData,
-        nodes: state.clusterData.nodes.filter((node: { id: string; }) => node.id !== nodeId),
-      },
+    ...state,
+    currentCluster: {
+      ...state.currentCluster,
+      nodes: state.currentCluster.nodes.filter((node: { id: string; }) => node.id !== nodeId),
+    },
   })),
 
   on(actions.updateNode, (state, { nodeId, formValues }) => ({
-      ...state,
-      clusterData: {
-        ...state.clusterData,
-        nodes: state.clusterData.nodes.map((node: { id: string; }) =>
-          node.id === nodeId ? { ...node, ...formValues } : node
-        )
-      }
+    ...state,
+    currentCluster: {
+      ...state.currentCluster,
+      nodes: state.currentCluster.nodes.map((node: { id: string; }) =>
+        node.id === nodeId ? { ...node, ...formValues } : node
+      )
+    }
   })),
 
   on(actions.addLink, (state, { link }) => ({
     ...state,
-    clusterData: {
-      ...state.clusterData,
-      links: [...state.clusterData.links, link]
+    currentCluster: {
+      ...state.currentCluster,
+      links: [...state.currentCluster.links, link]
     }
-})),
+  })),
 
   on(actions.removeLink, (state, { source, target }) => ({
     ...state,
-    clusterData: {
-      ...state.clusterData,
-      links: state.clusterData.links.filter((link: { source: string; target: string; }) => link.source !== source || link.target !== target)
+    currentCluster: {
+      ...state.currentCluster,
+      links: state.currentCluster.links.filter((link: { source: string; target: string; }) => link.source !== source || link.target !== target)
     }
   })),
 
 
   on(actions.updateDiagram, (state, { diagramData }) => ({
     ...state,
-    clusterData: {
-      ...state.clusterData,
+    currentCluster: {
+      ...state.currentCluster,
       diagram: diagramData
-      }
-  })),
-
-  on(actions.updateCluster, (state, { cluster }) => ({
-    ...state,
-    clusterData: {
-      ...state.clusterData,
-      ...cluster // Integra i nuovi dati dell'oggetto 'cluster' con quelli esistenti in 'clusterData'
     }
   })),
 
-  on(actions.loadCluster, (state, { cluster }) => ({
-    ...state,
-    clusterData: cluster
-  }))
+  on(actions.updateCluster, (state, { cluster }) => {
+    return {
+      ...state,
+      currentCluster: {
+        ...state.currentCluster,
+        ...cluster
+      }
+    }
+  }),
 
- 
+  on(actions.loadCluster, (state, { cluster }) => {
+    return {
+      ...state,
+      currentCluster: cluster
+    }
+  })
+
+
 
 );
