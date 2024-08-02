@@ -1,4 +1,4 @@
-import { clusterReducer } from './../reducers/cluster.reducer';
+import { clusterReducer } from './../reducers/reducer';
 import { createReducer, on } from '@ngrx/store';
 import * as actions from '../actions/actions';
 import { Cluster } from '../../model/cluster.class';
