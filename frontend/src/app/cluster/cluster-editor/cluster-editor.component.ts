@@ -7,7 +7,7 @@ import { Subscription, catchError, distinctUntilChanged, filter, first, switchMa
 import { DiagramComponent } from '../../diagram/diagram.component';
 import { DiagramService } from '../../services/diagram.service';
 import { ToolbarService } from '../../services/toolbar.service';
-import { getCurrentAction, getClusterData } from '../../store/selectors/selectors';
+import { getCurrentAction, getCurrentCluster } from '../../store/selectors/selectors';
 import *  as actions from '../../store/actions/actions';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute } from '@angular/router';
@@ -50,7 +50,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy{
           select(getCurrentAction),
           distinctUntilChanged(),
           filter(action => action === 'save-diagram'),
-          switchMap(() => this.store.select(getClusterData).pipe(take(1)))
+          switchMap(() => this.store.select(getCurrentCluster).pipe(take(1)))
         ).subscribe(clusterData => {
           this.clusterService.saveCluster(clusterData);
           this.store.dispatch(actions.resetCurrentAction());

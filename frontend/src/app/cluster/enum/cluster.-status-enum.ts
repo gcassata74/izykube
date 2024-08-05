@@ -1,0 +1,6 @@
+export enum ClusterStatusEnum{
+  CREATED = "CREATED",
+  READY_FOR_DEPLOYMENT = "READY_FOR_DEPLOYMENT",
+  DEPLOYED= "DEPLOYED"
+
+}

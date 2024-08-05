@@ -1,3 +1,4 @@
+import { ClusterStatusEnum } from "../cluster/enum/cluster.-status-enum";
 import { ConfigMap } from "./config-map.class";
 import { Deployment } from "./deployment.class";
 import { Link } from "./link.class";
@@ -11,6 +12,18 @@ export class Cluster {
      links!: Link[];
      nameSpace!: string;
      diagram!: string;
-     isDeployed!: boolean;
-     hasTemplate!: boolean;
+     status!: ClusterStatusEnum
+
+
+     static fromJSON(apiResponse: any): Cluster {
+          const cluster = new Cluster();
+          cluster.id = apiResponse.id || null;
+          cluster.name = apiResponse.name;
+          cluster.nodes = apiResponse.nodes;
+          cluster.links = apiResponse.links;
+          cluster.nameSpace = apiResponse.nameSpace;
+          cluster.diagram = apiResponse.diagram;
+          cluster.status = ClusterStatusEnum[apiResponse.status as keyof typeof ClusterStatusEnum];
+          return cluster;
+     }
 }

@@ -17,6 +17,7 @@ export const UPDATE_DIAGRAM = '[Cluster] Update Diagram';
 export const UPDATE_NODE = '[Cluster] Update Node';
 export const UPDATE_CLUSTER = '[Cluster] Update Cluster';
 export const LOAD_CLUSTER = '[Cluster] Load Cluster Request';
+export const LOAD_CLUSTERS = '[Cluster] Load Clusters';
 export const LOAD_CLUSTER_SUCCESS = '[Cluster] Load Cluster Success';
 export const LOAD_CLUSTER_ERROR = '[Cluster] Load Cluster Error';
 export const CREATE_TEMPLATE = '[Cluster] Create Template';
@@ -79,6 +80,13 @@ export const loadCluster = createAction(
   LOAD_CLUSTER,
   props<{ cluster: Cluster }>()
 );
+
+//when all the clusters are loaded
+export const loadClusters = createAction(
+  LOAD_CLUSTERS,
+  props<{ clusters: Cluster[] }>()
+);
+
 
 
 

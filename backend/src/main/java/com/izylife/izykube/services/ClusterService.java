@@ -1,5 +1,6 @@
 package com.izylife.izykube.services;
 
+import com.izylife.izykube.collections.ClusterStateEnum;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
@@ -158,7 +159,8 @@ public class ClusterService {
         ClusterTemplate clusterTemplate = new ClusterTemplate();
         clusterTemplate.setClusterId(id);
         clusterTemplate.setYamlList(yamlList);
-        cluster.setHasTemplate(true);
+        cluster.setStatus(ClusterStateEnum.READY_FOR_DEPLOYMENT);
+
         clusterRepository.save(cluster);
         clusterTemplateRepository.save(clusterTemplate);
     }
@@ -169,7 +171,7 @@ public class ClusterService {
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
         clusterTemplateRepository.delete(template);
-        cluster.setHasTemplate(false);
+        cluster.setStatus(ClusterStateEnum.CREATED);
         clusterRepository.save(cluster);
     }
 
@@ -193,7 +195,7 @@ public class ClusterService {
                     client.resource(resource).createOrReplace();
                     log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
                 }
-                cluster.setDeployed(true);
+                cluster.setStatus(ClusterStateEnum.RUNNING);
             } catch (KubernetesClientException e) {
                 log.error("Error deploying resource from template: " + e.getMessage());
                 // Optionally, you might want to throw this exception to be handled by the caller
@@ -225,7 +227,7 @@ public class ClusterService {
                         log.warn("Failed to undeploy resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
                     }
                 }
-                cluster.setDeployed(false);
+                cluster.setStatus(ClusterStateEnum.READY_FOR_DEPLOYMENT);
             } catch (KubernetesClientException e) {
                 log.error("Error undeploying resource from template: " + e.getMessage());
             }

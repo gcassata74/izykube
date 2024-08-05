@@ -7,7 +7,7 @@ import { Store, select } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
 import { BehaviorSubject, Subscription, debounceTime, distinctUntilChanged, filter, startWith, take, tap } from 'rxjs';
 import * as actions from '../store/actions/actions';
-import { getClusterData, selectClusterDiagram } from '../store/selectors/selectors';
+import { getCurrentCluster, selectClusterDiagram } from '../store/selectors/selectors';
 import { Cluster } from '../model/cluster.class';
 
 const $ = go.GraphObject.make;

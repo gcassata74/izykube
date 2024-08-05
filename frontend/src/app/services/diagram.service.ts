@@ -5,7 +5,7 @@ import { addLink, addNode, removeLink, removeNode, updateCluster, updateNode } f
 import { Store } from '@ngrx/store';
 
 import { Link } from '../model/link.class';
-import { getClusterData } from '../store/selectors/selectors';
+import { getCurrentCluster } from '../store/selectors/selectors';
 import { Cluster } from '../model/cluster.class';
 import { DataService } from './data.service';
 import { NodeFactoryService } from './node.factory.service';

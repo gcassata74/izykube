@@ -4,7 +4,7 @@ import { createReducer, on } from '@ngrx/store';
 import * as actions from '../actions/actions';
 import { AppState, initialState } from '../states/state';
 import { addNode } from '../actions/actions';
-
+import { Cluster } from 'src/app/model/cluster.class';
 
 export const reducer = createReducer(
   initialState.mainState,
@@ -22,8 +22,6 @@ export const reducer = createReducer(
       currentAction: null,
     }
   })
-
-
 );
 
 export const clusterReducer = createReducer(
@@ -95,9 +93,15 @@ export const clusterReducer = createReducer(
   on(actions.loadCluster, (state, { cluster }) => {
     return {
       ...state,
-      currentCluster: cluster
+      currentCluster: Cluster.fromJSON(cluster)
     }
-  })
+  }),
+
+  on(actions.loadClusters, (state, { clusters }) => ({
+    ...state,
+    clusters: clusters.map((cluster: Cluster) => Cluster.fromJSON(cluster))
+  })),
+
 
 
 

@@ -2,6 +2,7 @@ import { clusterReducer } from './../reducers/reducer';
 import { createReducer, on } from '@ngrx/store';
 import * as actions from '../actions/actions';
 import { Cluster } from '../../model/cluster.class';
+import { ClusterStatusEnum } from 'src/app/cluster/enum/cluster.-status-enum';
 
 
 export interface AppState {
@@ -32,8 +33,7 @@ export const initialState: State = {
       diagram: '',
       nameSpace: 'default',
       id: null,
-      isDeployed: false,
-      hasTemplate: false
+      status: ClusterStatusEnum.CREATED
     }
   }
 }
