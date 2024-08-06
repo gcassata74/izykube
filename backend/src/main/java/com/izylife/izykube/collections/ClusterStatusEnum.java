@@ -4,6 +4,7 @@ import lombok.Getter;
 
 @Getter
 public enum ClusterStatusEnum {
+    INITIALIZED("INITIALIZED"),
     CREATED("CREATED"),
     READY_FOR_DEPLOYMENT("READY_FOR_DEPLOYMENT"),
     DEPLOYED("DEPLOYED");

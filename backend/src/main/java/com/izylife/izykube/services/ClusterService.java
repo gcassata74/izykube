@@ -45,6 +45,7 @@ public class ClusterService {
             cluster.setNodes(clusterDTO.getNodes());
             cluster.setLinks(clusterDTO.getLinks());
             cluster.setDiagram(clusterDTO.getDiagram());
+            cluster.setStatus(ClusterStatusEnum.INITIALIZED);
             Cluster savedCluster = clusterRepository.save(cluster);
 
             ClusterDTO savedClusterDTO = new ClusterDTO();

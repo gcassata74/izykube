@@ -64,7 +64,10 @@ export class ClusterFormComponent implements OnInit, OnDestroy{
     }
     this.cluster.name = values.name;
     this.cluster.nameSpace = values.namespace;
-    this.clusterService.saveCluster(this.cluster);
+    this.clusterService.saveCluster(this.cluster).subscribe(()=>{
+      this.notificationService.success('Success', 'Cluster creared successfully');
+      this.router.navigate(['/clusters']);
+    })
   }
 
   ngOnDestroy(): void {
