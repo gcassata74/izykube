@@ -1,6 +1,6 @@
 package com.izylife.izykube.model;
 
-import com.izylife.izykube.collections.ClusterStateEnum;
+import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import lombok.Data;
@@ -23,7 +23,7 @@ public class Cluster {
     private String diagram;
     private Date creationDate;
     private Date lastUpdated;
-    private ClusterStateEnum status;
+    private ClusterStatusEnum status;
 
 
     // Find node by ID

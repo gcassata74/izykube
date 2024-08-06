@@ -43,7 +43,8 @@ export class ClusterListComponent {
 
     this.cols = [
       { field: 'name', header: 'Name' },
-      { field: 'nameSpace', header: 'Namespace' }
+      { field: 'nameSpace', header: 'Namespace' },
+      { field: 'status', header: 'Status' }
     ];
   }
 

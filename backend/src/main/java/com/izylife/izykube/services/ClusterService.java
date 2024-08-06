@@ -1,6 +1,6 @@
 package com.izylife.izykube.services;
 
-import com.izylife.izykube.collections.ClusterStateEnum;
+import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
@@ -159,7 +159,7 @@ public class ClusterService {
         ClusterTemplate clusterTemplate = new ClusterTemplate();
         clusterTemplate.setClusterId(id);
         clusterTemplate.setYamlList(yamlList);
-        cluster.setStatus(ClusterStateEnum.READY_FOR_DEPLOYMENT);
+        cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
 
         clusterRepository.save(cluster);
         clusterTemplateRepository.save(clusterTemplate);
@@ -171,7 +171,7 @@ public class ClusterService {
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
         clusterTemplateRepository.delete(template);
-        cluster.setStatus(ClusterStateEnum.CREATED);
+        cluster.setStatus(ClusterStatusEnum.CREATED);
         clusterRepository.save(cluster);
     }
 
@@ -195,10 +195,10 @@ public class ClusterService {
                     client.resource(resource).createOrReplace();
                     log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
                 }
-                cluster.setStatus(ClusterStateEnum.RUNNING);
+                cluster.setStatus(ClusterStatusEnum.DEPLOYED);
+                clusterRepository.save(cluster);
             } catch (KubernetesClientException e) {
                 log.error("Error deploying resource from template: " + e.getMessage());
-                // Optionally, you might want to throw this exception to be handled by the caller
             }
         }
     }
@@ -227,11 +227,13 @@ public class ClusterService {
                         log.warn("Failed to undeploy resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
                     }
                 }
-                cluster.setStatus(ClusterStateEnum.READY_FOR_DEPLOYMENT);
+
             } catch (KubernetesClientException e) {
                 log.error("Error undeploying resource from template: " + e.getMessage());
             }
         }
+        cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
+        clusterRepository.save(cluster);
     }
 
 
