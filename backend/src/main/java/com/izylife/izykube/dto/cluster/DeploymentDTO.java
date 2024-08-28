@@ -1,34 +1,35 @@
 package com.izylife.izykube.dto.cluster;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
-import java.util.Map;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+@AllArgsConstructor
 public class DeploymentDTO extends NodeDTO {
-
-    private String assetId;
     private int replicas;
-    private int containerPort;
-    private Map<String, String> resources;
+    private DeploymentStrategyDTO strategy;
+    private Integer minReadySeconds;
+    private Integer revisionHistoryLimit;
+    private Integer progressDeadlineSeconds;
 
-    @JsonCreator
-    public DeploymentDTO(
-            @JsonProperty("id") String id,
-            @JsonProperty("name") String name,
-            @JsonProperty("assetId") String assetId,
-            @JsonProperty("replicas") int replicas,
-            @JsonProperty("containerPort") int containerPort,
-            @JsonProperty("resources") Map<String, String> resources
-    ) {
+    public DeploymentDTO(String id, String name, int replicas, DeploymentStrategyDTO strategy) {
         super(id, name, "deployment");
-        this.assetId = assetId;
         this.replicas = replicas;
-        this.containerPort = containerPort;
-        this.resources = resources;
+        this.strategy = strategy;
+    }
+
+    public DeploymentDTO(String id, String name, int replicas, DeploymentStrategyDTO strategy,
+                         Integer minReadySeconds, Integer revisionHistoryLimit, Integer progressDeadlineSeconds) {
+        super(id, name, "deployment");
+        this.replicas = replicas;
+        this.strategy = strategy;
+        this.minReadySeconds = minReadySeconds;
+        this.revisionHistoryLimit = revisionHistoryLimit;
+        this.progressDeadlineSeconds = progressDeadlineSeconds;
     }
 }
+

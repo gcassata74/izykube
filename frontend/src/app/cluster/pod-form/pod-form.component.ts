@@ -1,17 +1,7 @@
-import { DropdownChangeEvent, DropdownModule } from 'primeng/dropdown';
-import { Dropdown } from 'primeng/dropdown';
-import { AutoSaveService } from './../../services/auto-save.service';
-import { Pod } from './../../model/pod.class';
-import { AssetService } from './../../services/asset.service';
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
-import { Store } from '@ngrx/store';
-import { Observable, map, of, tap, Subscription, switchMap, Subject, distinctUntilChanged } from 'rxjs';
-import { Asset } from '../../model/asset.class';
-import { DataService } from '../../services/data.service';
-import { DiagramService } from '../../services/diagram.service';
-import { ControlContainer, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Node } from '../../model/node.class';
-import { Deployment } from 'src/app/model/deployment.class';
+import { Component, Input, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { AutoSaveService } from '../../services/auto-save.service';
+import { Pod, RestartPolicy, DNSPolicy, PreemptionPolicy } from '../../model/pod.class';
 
 @Component({
   selector: 'app-pod-form',
@@ -20,34 +10,38 @@ import { Deployment } from 'src/app/model/deployment.class';
   providers: [AutoSaveService]
 })
 export class PodFormComponent implements OnInit {
-
-
-  filteredAssets$!: Observable<any[] | undefined>;
+  @Input() selectedNode!: Pod;
   form!: FormGroup;
-  @Input() selectedNode!: Node
-  @ViewChild("assets") dropDown!: Dropdown;
-  _change: Subject<any> = new Subject<any>();
-  change$ = this._change.asObservable();
-  
+  restartPolicies: RestartPolicy[] = ['Always', 'OnFailure', 'Never'];
+  dnsPolicies: DNSPolicy[] = ['ClusterFirst', 'ClusterFirstWithHostNet', 'Default', 'None'];
+  preemptionPolicies: PreemptionPolicy[] = ['PreemptLowerPriority', 'Never'];
 
   constructor(
-    private assetService: AssetService,
-    private autoSaveService: AutoSaveService,
     private fb: FormBuilder,
-  ) { }
+    private autoSaveService: AutoSaveService
+  ) {}
 
-  ngOnInit(): void {
-    const pod = this.selectedNode as Pod;
-    this.filteredAssets$ = this.assetService.getAssets();
+  ngOnInit() {
+    this.initForm();
+    this.setupAutoSave();
+  }
+
+  private initForm() {
     this.form = this.fb.group({
-      assetId: [pod?.assetId, Validators.required]
+      name: [this.selectedNode.name || '', [Validators.required, Validators.pattern('[a-z0-9]([-a-z0-9]*[a-z0-9])?')]],
+      restartPolicy: [this.selectedNode.restartPolicy || 'Always', Validators.required],
+      serviceAccountName: [this.selectedNode.serviceAccountName || 'default'],
+      hostNetwork: [this.selectedNode.hostNetwork || false],
+      dnsPolicy: [this.selectedNode.dnsPolicy || 'ClusterFirst', Validators.required],
+      schedulerName: [this.selectedNode.schedulerName || 'default-scheduler'],
+      priority: [this.selectedNode.priority || 0, [Validators.min(0), Validators.max(1000000000)]],
+      preemptionPolicy: [this.selectedNode.preemptionPolicy || 'PreemptLowerPriority']
     });
-    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.change$);
   }
 
 
-  emitChange(event: DropdownChangeEvent) {
-    this._change.next({assetId:event.value});
+  private setupAutoSave() {
+    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.form.valueChanges);
   }
 
 }

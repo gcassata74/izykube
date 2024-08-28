@@ -1,27 +1,40 @@
 package com.izylife.izykube.dto.cluster;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
-@Getter
-@Setter
+import java.util.Map;
+
+@Data
+@EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class PodDTO extends NodeDTO {
+    private String restartPolicy;
+    private String serviceAccountName;
+    private Map<String, String> nodeSelector;
+    private Boolean hostNetwork;
+    private String dnsPolicy;
+    private String schedulerName;
+    private Integer priority;
+    private String preemptionPolicy;
 
-    private String assetId;
-    private int containerPort;
-
-    @JsonCreator
-    public PodDTO(
-            @JsonProperty("id") String id,
-            @JsonProperty("name") String name,
-            @JsonProperty("assetId") String assetId,
-            @JsonProperty("containerPort") int containerPort
-    ) {
+    public PodDTO(String id, String name, String restartPolicy) {
         super(id, name, "pod");
-        this.assetId = assetId;
-        this.containerPort = containerPort;
+        this.restartPolicy = restartPolicy;
     }
 
+    public PodDTO(String id, String name, String restartPolicy, String serviceAccountName,
+                  Map<String, String> nodeSelector, Boolean hostNetwork, String dnsPolicy,
+                  String schedulerName, Integer priority, String preemptionPolicy) {
+        super(id, name, "pod");
+        this.restartPolicy = restartPolicy;
+        this.serviceAccountName = serviceAccountName;
+        this.nodeSelector = nodeSelector;
+        this.hostNetwork = hostNetwork;
+        this.dnsPolicy = dnsPolicy;
+        this.schedulerName = schedulerName;
+        this.priority = priority;
+        this.preemptionPolicy = preemptionPolicy;
+    }
 }

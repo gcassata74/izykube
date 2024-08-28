@@ -1,24 +1,21 @@
 package com.izylife.izykube.dto.cluster;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+@AllArgsConstructor
 public class ContainerDTO extends NodeDTO {
-
     private String assetId;
+    private int containerPort;
 
-    @JsonCreator
-    public ContainerDTO(
-            @JsonProperty("id") String id,
-            @JsonProperty("name") String name,
-            @JsonProperty("assetId") String assetId
-    ) {
+    public ContainerDTO(String id, String name, String assetId, int containerPort) {
         super(id, name, "container");
         this.assetId = assetId;
+        this.containerPort = containerPort;
     }
-
 }

@@ -41,9 +41,11 @@ import { AutoSaveService } from './services/auto-save.service';
 import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.component';
 import { MessageService } from 'primeng/api';
 import { CardModule } from 'primeng/card';
-import { ServiceFormComponent } from './cluster/cluster-editor/service-form/service-form.component';
+import { ServiceFormComponent } from './cluster/service-form/service-form.component';
 import { IngressFormComponent } from './cluster/ingress-form/ingress-form.component';
 import { TabViewModule } from 'primeng/tabview';
+import { ContainerFormComponent } from './cluster/container-form/container-form.component';
+import { VolumeFormComponent } from './cluster/volume-form/volume-form.component';
 
 @NgModule({
   declarations: [
@@ -60,6 +62,8 @@ import { TabViewModule } from 'primeng/tabview';
     ClusterFormComponent,
     ServiceFormComponent,
     IngressFormComponent,
+    ContainerFormComponent,
+    VolumeFormComponent,
   ],
   imports: [
     ReactiveFormsModule,

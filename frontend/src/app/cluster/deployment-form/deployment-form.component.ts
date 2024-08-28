@@ -13,43 +13,44 @@ import { AssetService } from '../../services/asset.service';
   providers: [AutoSaveService]
 })
 export class DeploymentFormComponent implements OnInit {
-  @Input() selectedNode!: Node;
+  @Input() selectedNode!: Deployment;
   form!: FormGroup;
-  filteredAssets$!: Observable<any[]>;
+  strategyTypes: ('Recreate' | 'RollingUpdate')[] = ['Recreate', 'RollingUpdate'];
 
   constructor(
     private fb: FormBuilder,
-    private autoSaveService: AutoSaveService,
-    private assetService: AssetService
+    private autoSaveService: AutoSaveService
   ) {}
 
   ngOnInit() {
     this.initForm();
     this.setupAutoSave();
-    this.loadAssets();
   }
 
   private initForm() {
-    const deployment = this.selectedNode as Deployment;
     this.form = this.fb.group({
-      name: [deployment.name, Validators.required],
-      replicas: [deployment.replicas, [Validators.required, Validators.min(1)]],
-      assetId: [deployment.assetId, Validators.required],
-      containerPort: [deployment.containerPort, Validators.required],
-      resources: this.fb.group({
-        cpu: [deployment.resources.cpu],
-        memory: [deployment.resources.memory]
-      })
+      name: [this.selectedNode.name, Validators.required],
+      replicas: [this.selectedNode.replicas, [Validators.required, Validators.min(0)]],
+      strategy: this.fb.group({
+        type: [this.selectedNode.strategy.type, Validators.required],
+        rollingUpdate: this.fb.group({
+          maxUnavailable: [this.selectedNode.strategy.rollingUpdate?.maxUnavailable],
+          maxSurge: [this.selectedNode.strategy.rollingUpdate?.maxSurge]
+        })
+      }),
+      minReadySeconds: [this.selectedNode.minReadySeconds],
+      revisionHistoryLimit: [this.selectedNode.revisionHistoryLimit],
+      progressDeadlineSeconds: [this.selectedNode.progressDeadlineSeconds]
     });
-  }
 
-  private loadAssets() {
-    this.filteredAssets$ = this.assetService.getAssets();
-  }
-
-  emitChange(event: any) {
-    console.log('Selected asset:', event.value);
-    // You might want to update other form fields based on the selected asset
+    // Disable rollingUpdate fields if strategy is not RollingUpdate
+    this.form.get('strategy.type')?.valueChanges.subscribe(value => {
+      if (value === 'RollingUpdate') {
+        this.form.get('strategy.rollingUpdate')?.enable();
+      } else {
+        this.form.get('strategy.rollingUpdate')?.disable();
+      }
+    });
   }
 
   private setupAutoSave() {

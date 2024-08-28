@@ -266,8 +266,11 @@ export class DiagramComponent implements OnInit, OnDestroy {
         case 'ingress':
           return toType === 'service';
         case 'pod':
+          return toType === 'deployment';
         case 'deployment':
           return false;
+        case 'container':
+          return toType === 'deployment' || toType === 'pod';
         default:
           return false;
       }

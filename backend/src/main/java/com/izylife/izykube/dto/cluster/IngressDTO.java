@@ -1,25 +1,25 @@
 package com.izylife.izykube.dto.cluster;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+@AllArgsConstructor
 public class IngressDTO extends NodeDTO {
     private String host;
     private String path;
+    private String serviceName;
+    private int servicePort;
 
-    @JsonCreator
-    public IngressDTO(
-            @JsonProperty("id") String id,
-            @JsonProperty("name") String name,
-            @JsonProperty("host") String host,
-            @JsonProperty("path") String path
-    ) {
+    public IngressDTO(String id, String name, String host, String path, String serviceName, int servicePort) {
         super(id, name, "ingress");
         this.host = host;
         this.path = path;
+        this.serviceName = serviceName;
+        this.servicePort = servicePort;
     }
 }
