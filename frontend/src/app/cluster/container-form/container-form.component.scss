@@ -1,0 +1,13 @@
+@import '../common_form';
+
+.container-form {
+  @extend .form-container;
+
+  .asset-select {
+    // Custom styles for asset dropdown if needed
+  }
+
+  .port-input {
+    // Custom styles for port input if needed
+  }
+}

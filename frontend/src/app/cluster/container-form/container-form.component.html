@@ -1,0 +1,18 @@
+<form [formGroup]="form">
+  <div>
+    <label for="name">Container Name:</label>
+    <input id="name" formControlName="name" required>
+  </div>
+  <div>
+    <label for="assetId">Asset:</label>
+    <select id="assetId" formControlName="assetId" required>
+      <option *ngFor="let asset of assets$ | async" [value]="asset.id">
+        {{asset.name}} - {{asset.version}}
+      </option>
+    </select>
+  </div>
+  <div>
+    <label for="containerPort">Container Port:</label>
+    <input id="containerPort" type="number" formControlName="containerPort" required>
+  </div>
+</form>

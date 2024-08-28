@@ -1,0 +1,20 @@
+@import '../common_form';
+
+.service-form {
+  @extend .form-container;
+
+  .type-select {
+    // Custom styles for service type select if needed
+  }
+
+  .port-mappings {
+    // Styles for port mapping inputs
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    input {
+      width: calc(50% - 5px);
+    }
+  }
+}

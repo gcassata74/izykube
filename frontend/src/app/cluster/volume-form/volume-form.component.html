@@ -1,0 +1,39 @@
+<form [formGroup]="form" class="volume-form">
+  <div class="form-group">
+    <label for="name">Volume Name:</label>
+    <input id="name" formControlName="name" required>
+  </div>
+
+  <div class="form-group">
+    <label for="type">Volume Type:</label>
+    <select id="type" formControlName="type">
+      <option *ngFor="let type of volumeTypes" [value]="type">{{type}}</option>
+    </select>
+  </div>
+
+  <!-- EmptyDir specific fields -->
+  <ng-container *ngIf="form.get('type')?.value === 'emptyDir'">
+    <div class="form-group">
+      <label for="medium">Medium:</label>
+      <input id="medium" formControlName="medium">
+    </div>
+    <div class="form-group">
+      <label for="sizeLimit">Size Limit:</label>
+      <input id="sizeLimit" formControlName="sizeLimit">
+    </div>
+  </ng-container>
+
+  <!-- HostPath specific fields -->
+  <ng-container *ngIf="form.get('type')?.value === 'hostPath'">
+    <div class="form-group">
+      <label for="path">Path:</label>
+      <input id="path" formControlName="path" required>
+    </div>
+    <div class="form-group">
+      <label for="hostPathType">Type:</label>
+      <input id="hostPathType" formControlName="type">
+    </div>
+  </ng-container>
+
+  <!-- Add more volume type specific fields as needed -->
+</form>
