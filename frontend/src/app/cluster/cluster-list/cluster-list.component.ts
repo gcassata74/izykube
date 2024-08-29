@@ -35,9 +35,6 @@ export class ClusterListComponent {
   ) {}
 
   ngOnInit() {
-    this.clusters$ = this.store.select(getClusters).pipe(
-      tap(clusters => console.log('Clusters:', clusters))
-    );
 
     this.getAllClusters();
 
@@ -48,15 +45,16 @@ export class ClusterListComponent {
     ];
   }
 
-  getAllClusters() {
-    this.subscriptions.add(
-      this.clusterService.getAllClusters().pipe(
-        tap(clusters => this.store.dispatch(loadClusters({ clusters }))),
-        catchError(error => {
-          console.error('Error loading clusters:', error);
-          return EMPTY;
-        })
-      ).subscribe()
+
+  private getAllClusters() {
+    this.clusters$ = this.clusterService.getAllClusters().pipe(
+      tap(clusters => this.store.dispatch(loadClusters({ clusters }))),
+      catchError(error => {
+        console.error('Error loading clusters:', error);
+        return of([]);  // Return an empty array in case of error
+      }),
+      switchMap(() => this.store.select(getClusters)),
+      tap(clusters => console.log('Clusters:', clusters))
     );
   }
 
@@ -69,7 +67,7 @@ export class ClusterListComponent {
         cluster => {
           if (cluster) {
             this.items = this.generateMenuItems(cluster);
-            this.contextMenu.show($event);
+            setTimeout(() =>  { this.contextMenu.show($event); }, 100);
           }
         }
       )
@@ -155,11 +153,11 @@ export class ClusterListComponent {
   deleteTemplate(selectedId: string): void {
     this.subscriptions.add(
       this.clusterService.deleteTemplate(selectedId).pipe(
-        tap(() => { 
+        tap(() => {
           this.notificationService.success('Template deleted', 'Successfully deleted template');
           this.getAllClusters();
         }
-      
+
       ),
         catchError(error => {
           this.notificationService.error('Template Deletion Failed', 'The template could not be deleted');
