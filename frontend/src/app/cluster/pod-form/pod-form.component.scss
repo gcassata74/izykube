@@ -1,0 +1,13 @@
+@import '../common_form';
+
+.pod-form {
+  @extend .form-container;
+
+  .node-selector-input {
+    // Custom styles for node selector input if needed
+  }
+
+  .priority-input {
+    // Custom styles for priority input if needed
+  }
+}

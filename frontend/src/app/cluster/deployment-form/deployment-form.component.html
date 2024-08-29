@@ -1,43 +1,44 @@
-<form [formGroup]="form">
-  <p-tabView>
-    <p-tabPanel header="General">
-      <div class="p-fluid">
-        <div class="p-field">
-          <label for="name">Name</label>
-          <input id="name" type="text" pInputText formControlName="name">
-        </div>
+<form [formGroup]="form" class="deployment-form">
+  <div class="form-group">
+    <label for="name">Deployment Name:</label>
+    <input id="name" formControlName="name" required>
+  </div>
 
-        <div class="p-field">
-          <label for="replicas">Replicas</label>
-          <p-inputNumber id="replicas" formControlName="replicas"></p-inputNumber>
-        </div>
+  <div class="form-group">
+    <label for="replicas">Replicas:</label>
+    <input id="replicas" type="number" formControlName="replicas" required>
+  </div>
 
-        <div class="p-field">
-          <label for="asset">Asset</label>
-          <p-dropdown id="asset" [options]="(filteredAssets$ | async) ?? []" formControlName="assetId"
-                      optionLabel="name" optionValue="id" (onChange)="emitChange($event)"></p-dropdown>
-        </div>
+  <div formGroupName="strategy" class="form-group">
+    <label for="strategyType">Deployment Strategy:</label>
+    <select id="strategyType" formControlName="type">
+      <option *ngFor="let type of strategyTypes" [value]="type">{{type}}</option>
+    </select>
 
-        <div class="p-field">
-          <label for="containerPort">Container Port</label>
-          <p-inputNumber id="containerPort" formControlName="containerPort" [useGrouping]="false" [min]="0"
-                         [maxFractionDigits]="0">
-          </p-inputNumber>
-        </div>
+    <div formGroupName="rollingUpdate" *ngIf="form.get('strategy.type')?.value === 'RollingUpdate'">
+      <div class="form-group">
+        <label for="maxUnavailable">Max Unavailable:</label>
+        <input id="maxUnavailable" formControlName="maxUnavailable">
       </div>
-    </p-tabPanel>
-
-    <p-tabPanel header="Resources">
-      <div class="p-fluid" formGroupName="resources">
-        <div class="p-field">
-          <label for="cpu">CPU</label>
-          <p-inputNumber id="cpu" formControlName="cpu"></p-inputNumber>
-        </div>
-        <div class="p-field">
-          <label for="memory">Memory</label>
-          <p-inputNumber id="memory" formControlName="memory"></p-inputNumber>
-        </div>
+      <div class="form-group">
+        <label for="maxSurge">Max Surge:</label>
+        <input id="maxSurge" formControlName="maxSurge">
       </div>
-    </p-tabPanel>
-  </p-tabView>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="minReadySeconds">Min Ready Seconds:</label>
+    <input id="minReadySeconds" type="number" formControlName="minReadySeconds">
+  </div>
+
+  <div class="form-group">
+    <label for="revisionHistoryLimit">Revision History Limit:</label>
+    <input id="revisionHistoryLimit" type="number" formControlName="revisionHistoryLimit">
+  </div>
+
+  <div class="form-group">
+    <label for="progressDeadlineSeconds">Progress Deadline Seconds:</label>
+    <input id="progressDeadlineSeconds" type="number" formControlName="progressDeadlineSeconds">
+  </div>
 </form>

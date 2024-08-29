@@ -1,31 +1,17 @@
-:host ::ng-deep {
-  .p-fluid {
-    max-width: 600px;
-    margin: 0 auto;
+@import '../common_form';
 
-    .p-field {
-      margin-bottom: 1.5rem;
+.ingress-form {
+  @extend .form-container;
 
-      label {
-        display: block;
-        margin-bottom: 0.5rem;
-        font-weight: bold;
-      }
-
-      input, .p-inputnumber {
-        width: 100%;
-      }
-
-      .p-error {
-        color: #f44336;
-        font-size: 0.875rem;
-        margin-top: 0.25rem;
-        display: block;
-      }
-    }
+  .host-input, .path-input {
+    // Custom styles for host and path inputs if needed
   }
 
-  .p-button {
-    margin-top: 1rem;
+  .rules-container {
+    // Styles for multiple ingress rules if applicable
+    border: 1px solid #bdc3c7;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 4px;
   }
 }

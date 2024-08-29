@@ -1,15 +1,58 @@
-<div class="pod-form-container mb-2">
-  <form [formGroup]="form">
-
-    <div class="grid justify-center">
-      <div class="col-12">
-        <p-dropdown #assets *ngIf="filteredAssets$ | async as filteredAssets" [options]="filteredAssets"
-                    formControlName="assetId" optionValue="id" optionLabel="label" (onChange)="emitChange($event)"
-                    placeholder="Select an Asset">
-        </p-dropdown>
-      </div>
+<form [formGroup]="form" class="pod-form">
+  <div class="form-group">
+    <label for="name">Pod Name:</label>
+    <input id="name" formControlName="name" required>
+    <div *ngIf="form.get('name')?.invalid && form.get('name')?.touched" class="error-message">
+      Pod name must consist of lowercase letters, numbers, and hyphens, and must start and end with an alphanumeric
+      character.
     </div>
+  </div>
+
+  <div class="form-group">
+    <label for="restartPolicy">Restart Policy:</label>
+    <select id="restartPolicy" formControlName="restartPolicy">
+      <option *ngFor="let policy of restartPolicies" [value]="policy">{{policy}}</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="serviceAccountName">Service Account Name:</label>
+    <input id="serviceAccountName" formControlName="serviceAccountName">
+  </div>
 
 
-  </form>
-</div>
+  <div class="form-group">
+    <label for="hostNetwork">
+      <input id="hostNetwork" type="checkbox" formControlName="hostNetwork">
+      Use Host Network
+    </label>
+  </div>
+
+  <div class="form-group">
+    <label for="dnsPolicy">DNS Policy:</label>
+    <select id="dnsPolicy" formControlName="dnsPolicy">
+      <option *ngFor="let policy of dnsPolicies" [value]="policy">{{policy}}</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="schedulerName">Scheduler Name:</label>
+    <input id="schedulerName" formControlName="schedulerName">
+  </div>
+
+  <div class="form-group">
+    <label for="priority">Priority:</label>
+    <input id="priority" type="number" formControlName="priority">
+    <div *ngIf="form.get('priority')?.invalid" class="error-message">
+      Priority must be between 0 and 1000000000.
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="preemptionPolicy">Preemption Policy:</label>
+    <select id="preemptionPolicy" formControlName="preemptionPolicy">
+      <option *ngFor="let policy of preemptionPolicies" [value]="policy">{{policy}}</option>
+    </select>
+  </div>
+
+</form>

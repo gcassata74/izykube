@@ -7,8 +7,11 @@ import { getNodeById } from 'src/app/store/selectors/selectors';
 import { DeploymentFormComponent } from '../deployment-form/deployment-form.component';
 import { ConfigMapFormComponent } from '../config-map-form/config-map-form.component';
 import { PodFormComponent } from '../pod-form/pod-form.component';
-import { ServiceFormComponent } from '../cluster-editor/service-form/service-form.component';
+import { ServiceFormComponent } from '../service-form/service-form.component';
 import { IngressFormComponent } from '../ingress-form/ingress-form.component';
+import { ContainerFormComponent } from '../container-form/container-form.component';
+import { Volume } from 'src/app/model/volume.class';
+import { VolumeFormComponent } from '../volume-form/volume-form.component';
 
 
 @Component({
@@ -27,9 +30,9 @@ export class NodeFormComponent implements OnDestroy {
     'configmap': ConfigMapFormComponent,
     'pod': PodFormComponent,
     'service': ServiceFormComponent,
-    'ingress':IngressFormComponent
-
-
+    'ingress':IngressFormComponent,
+    'container': ContainerFormComponent,
+    'volume': VolumeFormComponent,
   };
 
   componentRef!: ComponentRef<any>;

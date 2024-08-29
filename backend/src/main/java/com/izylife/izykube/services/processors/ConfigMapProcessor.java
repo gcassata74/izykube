@@ -8,16 +8,18 @@ import io.fabric8.kubernetes.client.utils.Serialization;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Processor(ConfigMapDTO.class)
 @Service
 public class ConfigMapProcessor implements TemplateProcessor<ConfigMapDTO> {
 
+    @Override
     public String createTemplate(ConfigMapDTO dto) {
-
-        Map<String, String> data = mergeEntries(dto.getEntries());
+        Map<String, String> data = new HashMap<>();
+        for (ConfigMapEntryDTO entry : dto.getEntries()) {
+            data.put(entry.getKey(), entry.getValue());
+        }
 
         ConfigMap configMap = new ConfigMapBuilder()
                 .withNewMetadata()
@@ -28,13 +30,5 @@ public class ConfigMapProcessor implements TemplateProcessor<ConfigMapDTO> {
                 .build();
 
         return Serialization.asYaml(configMap);
-    }
-
-    private Map<String, String> mergeEntries(List<ConfigMapEntryDTO> entries) {
-        Map<String, String> mergedMap = new HashMap<>();
-        for (ConfigMapEntryDTO entry : entries) {
-            mergedMap.put(entry.getKey(), entry.getValue());
-        }
-        return mergedMap;
     }
 }
