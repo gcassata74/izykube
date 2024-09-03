@@ -7,34 +7,14 @@ export const clusterReducer = createReducer(
     initialState.clusterState,
   
   
-    on(actions.addNode, (state, { node }) => {
-        console.log('Current state:', state);
-        console.log('Current cluster:', state.currentCluster);
-        console.log('Nodes:', state.currentCluster.nodes);
-      
-        if (!Array.isArray(state.currentCluster.nodes)) {
-          console.error('nodes is not an array:', state.currentCluster.nodes);
-          // Initialize as an empty array if it's not already an array
-          state = {
-            ...state,
-            currentCluster: {
-              ...state.currentCluster,
-              nodes: []
-            }
-          };
+    on(actions.addNode, (state, { node }) => ({
+        ...state,
+        currentCluster: {
+          ...state.currentCluster,
+          nodes: [...state.currentCluster.nodes, node]
         }
-      
-        const newState = {
-          ...state,
-          currentCluster: {
-            ...state.currentCluster,
-            nodes: [...state.currentCluster.nodes, node]
-          }
-        };
-      
-        console.log('New state:', newState);
-        return newState;
-      }),
+    
+      })),
   
     on(actions.removeNode, (state, { nodeId }) => ({
       ...state,
