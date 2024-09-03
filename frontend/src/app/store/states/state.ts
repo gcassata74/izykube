@@ -1,4 +1,3 @@
-import { clusterReducer } from './../reducers/reducer';
 import { createReducer, on } from '@ngrx/store';
 import * as actions from '../actions/actions';
 import { Cluster } from '../../model/cluster.class';
@@ -19,22 +18,23 @@ export interface State {
   clusterState: ClusterState
 }
 
+// Create an instance of Cluster for the initial state
+const initialCluster = new Cluster(
+  null,
+  'Cluster1',
+  [],
+  [], 
+  '', 
+  'default',  
+  ClusterStatusEnum.CREATED 
+);
+
 export const initialState: State = {
   mainState: {
     currentAction: null,
-
   },
   clusterState: {
     clusters: [],
-    currentCluster: {
-      name: 'Cluster1',
-      nodes: [],
-      links:[],
-      diagram: '',
-      nameSpace: 'default',
-      id: null,
-      status: ClusterStatusEnum.CREATED
-    }
+    currentCluster: initialCluster
   }
 }
-

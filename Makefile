@@ -16,7 +16,7 @@ run-i18n-extract:
 	cd frontend && ng extract-i18n --output-path src/locale --format xlf
 
 run-chrome-dev:
-	google-chrome --incognito --new-window "http://127.0.0.1:4200" --remote-debugging-port=9222 --disable-web-security --user-data-dir="~/ChromeDevSession"
+	google-chrome --new-window "http://127.0.0.1:4200" --remote-debugging-port=9222 --disable-web-security --user-data-dir="~/ChromeDevSession"
 
 run-angular-client:
 	cd frontend && npx kill-port 4200 || true && npm start
