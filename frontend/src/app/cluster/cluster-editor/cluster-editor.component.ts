@@ -79,11 +79,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
     );
   }
 
-  // loadCluster(clusterId: any) {
-  //   this.clusterService.getCluster(clusterId).subscribe(cluster => {
-  //     this.store.dispatch(actions.loadCluster({ cluster: cluster }));
-  //   });
-  // }
+
 
   createButtons() {
     let button: Button = {

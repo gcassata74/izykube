@@ -3,12 +3,10 @@ package com.izylife.izykube.dto.cluster;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
-@AllArgsConstructor
 public class ContainerDTO extends NodeDTO {
     private String assetId;
     private int containerPort;

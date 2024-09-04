@@ -1,10 +1,11 @@
 package com.izylife.izykube.dto.cluster;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import lombok.Setter;
 
 import java.util.ArrayList;
@@ -13,7 +14,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "kind")
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "kind", visible = true)
 @JsonSubTypes({
         @JsonSubTypes.Type(value = PodDTO.class, name = "pod"),
         @JsonSubTypes.Type(value = ContainerDTO.class, name = "container"),
@@ -24,8 +25,11 @@ import java.util.List;
         @JsonSubTypes.Type(value = IngressDTO.class, name = "ingress")
 })
 public abstract class NodeDTO {
+    @JsonProperty("id")
     String id;
+    @JsonProperty("name")
     String name;
+    @JsonProperty("kind")
     String kind;
     @Setter
     List<NodeDTO> linkedNodes;

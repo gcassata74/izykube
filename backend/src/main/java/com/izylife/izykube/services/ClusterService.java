@@ -63,8 +63,6 @@ public class ClusterService {
         }
     }
 
-
-
     public ClusterDTO updateCluster(ClusterDTO clusterDTO) throws Exception {
         try {
             Cluster cluster = clusterRepository.findById(clusterDTO.getId()).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
