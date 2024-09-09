@@ -157,7 +157,6 @@ export class ClusterListComponent {
           this.notificationService.success('Template deleted', 'Successfully deleted template');
           this.getAllClusters();
         }
-
       ),
         catchError(error => {
           this.notificationService.error('Template Deletion Failed', 'The template could not be deleted');
@@ -178,6 +177,10 @@ export class ClusterListComponent {
   deleteCluster(id: string): void {
     this.subscriptions.add(
       this.clusterService.deleteCluster(id).pipe(
+        tap(() => {
+          this.notificationService.success('Cluster Deleted', 'The cluster was successfully deleted');
+          this.getAllClusters();
+        }),
         catchError(error => {
           this.notificationService.error('Cluster Deletion Failed', 'The cluster could not be deleted');
           return EMPTY;

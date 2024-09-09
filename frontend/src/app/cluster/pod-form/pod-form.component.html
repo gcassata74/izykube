@@ -1,13 +1,12 @@
 <form [formGroup]="form" class="pod-form">
-  <div class="form-group">
+  <div class="p-field">
     <label for="name">Pod Name:</label>
-    <input id="name" formControlName="name" required>
-    <div *ngIf="form.get('name')?.invalid && form.get('name')?.touched" class="error-message">
+    <p-inputText id="name" formControlName="name" [required]="true"></p-inputText>
+    <small *ngIf="form.get('name')?.invalid && form.get('name')?.touched" class="p-error">
       Pod name must consist of lowercase letters, numbers, and hyphens, and must start and end with an alphanumeric
       character.
-    </div>
+    </small>
   </div>
-
   <div class="form-group">
     <label for="restartPolicy">Restart Policy:</label>
     <select id="restartPolicy" formControlName="restartPolicy">
@@ -56,3 +55,4 @@
   </div>
 
 </form>
+use primeng in place of base vomponent i want white background ans the same look and feel as container

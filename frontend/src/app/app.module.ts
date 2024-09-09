@@ -91,7 +91,7 @@ import { VolumeFormComponent } from './cluster/volume-form/volume-form.component
     StoreModule.forRoot(reducers),
     EffectsModule.forRoot([InitEffects]),
     StoreDevtoolsModule.instrument({ maxAge: 25, logOnly: !isDevMode() }),
-    StoreRouterConnectingModule.forRoot()
+    StoreRouterConnectingModule.forRoot(),
   ],
   providers: [
     ToolbarService,
