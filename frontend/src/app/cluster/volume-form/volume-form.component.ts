@@ -12,7 +12,13 @@ import { Volume, VolumeType } from '../../model/volume.class';
 export class VolumeFormComponent implements OnInit {
   @Input() selectedNode!: Volume;
   form!: FormGroup;
-  volumeTypes: VolumeType[] = ['emptyDir', 'hostPath', 'configMap', 'secret', 'persistentVolumeClaim'];
+  volumeTypes = [
+    { label: 'emptyDir', value: 'emptyDir' },
+    { label: 'hostPath', value: 'hostPath' },
+    { label: 'configMap', value: 'configMap' },
+    { label: 'secret', value: 'secret' },
+    { label: 'persistentVolumeClaim', value: 'persistentVolumeClaim' }
+  ];
 
   constructor(
     private fb: FormBuilder,

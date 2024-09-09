@@ -1,3 +1,9 @@
+@import '../common_form';
+
+.config-map-form {
+  @extend .form-container;
+
+
 .entries-container {
     position: relative;
   }
@@ -50,3 +56,5 @@
     align-items: center;
     gap: 5px;
   }
+
+}

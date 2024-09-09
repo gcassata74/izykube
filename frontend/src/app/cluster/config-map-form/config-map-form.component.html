@@ -1,10 +1,10 @@
-<form [formGroup]="form" class="mb-3 mt-3">
+<form [formGroup]="form" class="mb-3 mt-3 config-map-form">
   <div formArrayName="entries" class="entries-container">
 
     <div class="entry-row" *ngFor="let entry of entries.controls; let i = index" [formGroupName]="i">
       <div class="input-group">
-        <input type="text" class="form-control key-input" placeholder="Key" formControlName="key">
-        <input type="text" class="form-control value-input" placeholder="Value" formControlName="value">
+        <input type="text" pInputText class="form-control key-input" placeholder="Key" formControlName="key">
+        <input type="text" pInputText class="form-control value-input" placeholder="Value" formControlName="value">
         <button type="button" class="btn btn-danger" (click)="removeEntry(i)">-</button>
       </div>
     </div>

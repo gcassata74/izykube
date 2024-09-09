@@ -30,6 +30,7 @@ import { PodFormComponent } from './cluster/pod-form/pod-form.component';
 import { DeploymentFormComponent } from './cluster/deployment-form/deployment-form.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
+import { CheckboxModule } from 'primeng/checkbox';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ContextMenuModule } from 'primeng/contextmenu';
 import { ButtonModule } from 'primeng/button';
@@ -76,6 +77,7 @@ import { VolumeFormComponent } from './cluster/volume-form/volume-form.component
     TabViewModule,
     InputNumberModule,
     ContextMenuModule,
+    CheckboxModule,
     ToastModule,
     MenuModule,
     CardModule,

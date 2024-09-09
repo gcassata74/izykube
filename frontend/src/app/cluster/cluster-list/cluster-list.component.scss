@@ -15,7 +15,7 @@ $izy-row-dark: lighten($izy-light-blue, 40%);
 
 .izy-card {
   background-color: $izy-white;
-  border-radius: 8px;
+  border-radius: 15px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 
   ::ng-deep .p-card-header {
@@ -45,6 +45,7 @@ $izy-row-dark: lighten($izy-light-blue, 40%);
   background-color: $izy-blue;
   border-color: $izy-blue;
   color: $izy-white;
+  border-radius: 8px;
 
   &:hover {
     background-color: darken($izy-blue, 10%);
@@ -56,6 +57,7 @@ $izy-row-dark: lighten($izy-light-blue, 40%);
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
+  border-radius: 8px;
 
   th, td {
     border: 1px solid lighten($izy-blue, 20%);

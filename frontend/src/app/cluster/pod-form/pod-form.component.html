@@ -1,58 +1,73 @@
 <form [formGroup]="form" class="pod-form">
-  <div class="p-field">
+  <div class="form-group">
     <label for="name">Pod Name:</label>
-    <p-inputText id="name" formControlName="name" [required]="true"></p-inputText>
-    <small *ngIf="form.get('name')?.invalid && form.get('name')?.touched" class="p-error">
+    <input pInputText id="name" formControlName="name" required>
+    <div *ngIf="form.get('name')?.invalid && form.get('name')?.touched" class="error-message">
       Pod name must consist of lowercase letters, numbers, and hyphens, and must start and end with an alphanumeric
       character.
-    </small>
+    </div>
   </div>
+
   <div class="form-group">
-    <label for="restartPolicy">Restart Policy:</label>
-    <select id="restartPolicy" formControlName="restartPolicy">
-      <option *ngFor="let policy of restartPolicies" [value]="policy">{{policy}}</option>
-    </select>
+    <div class="p-field">
+      <label for="restartPolicy">Restart Policy:</label>
+      <p-dropdown id="restartPolicy"
+                  formControlName="restartPolicy"
+                  [options]="restartPolicies"
+                  optionLabel="label"
+                  optionValue="value"
+                  [style]="{'width':'100%'}">
+      </p-dropdown>
+    </div>
   </div>
 
   <div class="form-group">
     <label for="serviceAccountName">Service Account Name:</label>
-    <input id="serviceAccountName" formControlName="serviceAccountName">
+    <input pInputText id="serviceAccountName" formControlName="serviceAccountName">
   </div>
 
 
-  <div class="form-group">
-    <label for="hostNetwork">
-      <input id="hostNetwork" type="checkbox" formControlName="hostNetwork">
-      Use Host Network
-    </label>
+  <div class="p-field-checkbox custom-checkbox-alignment mb-3">
+    <p-checkbox id="hostNetwork"
+                formControlName="hostNetwork"
+                [binary]="true">
+    </p-checkbox>
+    <label for="hostNetwork">Use Host Network</label>
   </div>
 
-  <div class="form-group">
+  <div class="p-field">
     <label for="dnsPolicy">DNS Policy:</label>
-    <select id="dnsPolicy" formControlName="dnsPolicy">
-      <option *ngFor="let policy of dnsPolicies" [value]="policy">{{policy}}</option>
-    </select>
+    <p-dropdown id="dnsPolicy"
+                formControlName="dnsPolicy"
+                [options]="dnsPolicies"
+                optionLabel="label"
+                optionValue="value"
+                [style]="{'width':'100%'}">
+    </p-dropdown>
   </div>
 
   <div class="form-group">
     <label for="schedulerName">Scheduler Name:</label>
-    <input id="schedulerName" formControlName="schedulerName">
+    <input pInputText id="schedulerName" formControlName="schedulerName">
   </div>
 
   <div class="form-group">
     <label for="priority">Priority:</label>
-    <input id="priority" type="number" formControlName="priority">
+    <input pInputText id="priority" type="number" formControlName="priority">
     <div *ngIf="form.get('priority')?.invalid" class="error-message">
       Priority must be between 0 and 1000000000.
     </div>
   </div>
 
-  <div class="form-group">
+  <div class="p-field">
     <label for="preemptionPolicy">Preemption Policy:</label>
-    <select id="preemptionPolicy" formControlName="preemptionPolicy">
-      <option *ngFor="let policy of preemptionPolicies" [value]="policy">{{policy}}</option>
-    </select>
+    <p-dropdown id="preemptionPolicy"
+                formControlName="preemptionPolicy"
+                [options]="preemptionPolicies"
+                optionLabel="label"
+                optionValue="value"
+                [style]="{'width':'100%'}">
+    </p-dropdown>
   </div>
 
 </form>
-use primeng in place of base vomponent i want white background ans the same look and feel as container

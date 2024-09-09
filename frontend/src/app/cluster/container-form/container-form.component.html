@@ -1,10 +1,10 @@
-<form [formGroup]="form" class="p-fluid">
-  <div class="p-field">
+<form [formGroup]="form" class="p-fluid container-form">
+  <div class="p-field mb-3">
     <label for="name">Container Name:</label>
     <input id="name" type="text" pInputText formControlName="name" [required]="true">
   </div>
 
-  <div class="p-field">
+  <div class="p-field mb-3">
     <label for="assetId">Asset:</label>
     <p-dropdown id="assetId" [options]="(assets$ | async) ?? []" formControlName="assetId"
                 optionLabel="name" optionValue="id" [showClear]="true"
@@ -15,7 +15,7 @@
     </p-dropdown>
   </div>
 
-  <div class="p-field">
+  <div class="p-field mb-3">
     <label for="containerPort">Container Port:</label>
     <p-inputNumber id="containerPort" formControlName="containerPort"
                    [showButtons]="true" buttonLayout="horizontal" spinnerMode="horizontal"

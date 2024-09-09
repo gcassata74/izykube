@@ -12,9 +12,23 @@ import { Pod, RestartPolicy, DNSPolicy, PreemptionPolicy } from '../../model/pod
 export class PodFormComponent implements OnInit {
   @Input() selectedNode!: Pod;
   form!: FormGroup;
-  restartPolicies: RestartPolicy[] = ['Always', 'OnFailure', 'Never'];
-  dnsPolicies: DNSPolicy[] = ['ClusterFirst', 'ClusterFirstWithHostNet', 'Default', 'None'];
-  preemptionPolicies: PreemptionPolicy[] = ['PreemptLowerPriority', 'Never'];
+  restartPolicies = [
+    { label: 'Always', value: 'Always' },
+    { label: 'OnFailure', value: 'OnFailure' },
+    { label: 'Never', value: 'Never' }
+  ];
+
+  dnsPolicies = [
+    { label: 'ClusterFirst', value: 'ClusterFirst' },
+    { label: 'ClusterFirstWithHostNet', value: 'ClusterFirstWithHostNet' },
+    { label: 'Default', value: 'Default' },
+    { label: 'None', value: 'None' }
+  ];
+
+  preemptionPolicies = [
+    { label: 'PreemptLowerPriority', value: 'PreemptLowerPriority' },
+    { label: 'Never', value: 'Never' }
+  ];
 
   constructor(
     private fb: FormBuilder,

@@ -15,7 +15,10 @@ import { AssetService } from '../../services/asset.service';
 export class DeploymentFormComponent implements OnInit {
   @Input() selectedNode!: Deployment;
   form!: FormGroup;
-  strategyTypes: ('Recreate' | 'RollingUpdate')[] = ['Recreate', 'RollingUpdate'];
+  strategyTypes = [
+    { label: 'Recreate', value: 'Recreate' },
+    { label: 'Rolling Update', value: 'RollingUpdate' }
+  ];
 
   constructor(
     private fb: FormBuilder,

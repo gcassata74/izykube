@@ -3,9 +3,6 @@
 .ingress-form {
   @extend .form-container;
 
-  .host-input, .path-input {
-    // Custom styles for host and path inputs if needed
-  }
 
   .rules-container {
     // Styles for multiple ingress rules if applicable
