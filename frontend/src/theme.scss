@@ -1,0 +1,29 @@
+// theme.scss
+
+// Izy color palette
+$izy-blue: #021c3fee;  // Deep blue
+$izy-green: #4CAF50;  // Green, replace the orange
+$izy-light-blue: #4169E1;
+$izy-white: #FFFFFF;
+$izy-black: #000000;
+$izy-grey: #F0F0F0;
+
+// Additional shades and tints
+$izy-blue-light: lighten($izy-blue, 10%);
+$izy-blue-dark: darken($izy-blue, 10%);
+$izy-green-light: lighten($izy-green, 10%);
+$izy-green-dark: darken($izy-green, 10%);
+
+// Functional color assignments
+$primary-color: $izy-blue;
+$secondary-color: $izy-green;
+
+$background-color: $izy-white;
+$text-color: $izy-black;
+$border-color: $izy-grey;
+
+// Additional functional colors
+$hover-color: $izy-green-light;
+$active-color: $izy-blue-dark;
+$error-color: #FF3B30;  // A bright red color for errors
+$success-color: $izy-green;  // Use the Izy green for success messages

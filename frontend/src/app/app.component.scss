@@ -9,11 +9,7 @@ $izy-grey: #F0F0F0;
 $sidebar-width: 200px;
 $toolbar-height: 70px;
 
-// Mixins
-@mixin flex-center {
-  display: flex;
-  align-items: center;
-}
+
 
 // Main Container
 .app-container {
@@ -24,89 +20,9 @@ $toolbar-height: 70px;
   color: $izy-black;
 }
 
-// Toolbar Styles
-.app-toolbar {
-  height: $toolbar-height;
-  background-color: $izy-blue;
-  color: $izy-white;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-
-  &-container {
-    width: 100%;
-    padding: 0 20px;
-    padding-left: 200px;
-    display: block;
-  }
-
-  &-content {
-    @include flex-center;
-    justify-content: space-between;
-    height: 100%;
-  }
-
-  .title {
-    font-size: 24px;
-    font-weight: bold;
-  }
 
 
-  .button-container {
 
-    button {
-      background-color: $izy-light-blue;
-      color: $izy-white;
-      border: none;
-      padding: 8px 15px;
-      margin-left: 10px;
-      border-radius: 4px;
-      transition: all 0.3s ease;
-
-      &:hover {
-        background-color: darken($izy-light-blue, 10%);
-      }
-    }
-  }
-}
-
-// Sidebar Styles
-.app-sidebar {
-  width: $sidebar-width;
-  height: calc(100vh - #{$toolbar-height});
-  position: fixed;
-  top: $toolbar-height;
-  left: 0;
-  background-color: $izy-blue;
-  color: $izy-white;
-  padding: 20px 0;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-
-  ul {
-    padding: 0;
-    list-style-type: none;
-  }
-
-  li {
-    margin-bottom: 10px;
-  }
-
-  a {
-    @include flex-center;
-    padding: 12px 20px;
-    text-decoration: none;
-    color: $izy-white;
-    transition: all 0.3s ease;
-
-    &:hover {
-      background-color: $izy-white;
-      color: $izy-blue;
-    }
-
-    i {
-      margin-right: 15px;
-      font-size: 1.2em;
-    }
-  }
-}
 
 // Main Content Area
 .content-container {
@@ -116,18 +32,6 @@ $toolbar-height: 70px;
   min-height: calc(100vh - #{$toolbar-height});
 }
 
-// Logo Styles
-.logo-div {
-  height: $toolbar-height;
-  background-color: $izy-blue;
-  @include flex-center;
-  justify-content: center;
-  padding: 0 20px;
-
-  img {
-    max-height: 40px;
-  }
-}
 
 // Responsive Adjustments
 @media (max-width: 768px) {

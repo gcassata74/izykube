@@ -14,8 +14,7 @@ import { NotificationService } from 'src/app/services/notification.service';
 
 @Component({
   selector: 'app-cluster-list',
-  templateUrl: './cluster-list.component.html',
-  styleUrls: ['./cluster-list.component.scss']
+  templateUrl: './cluster-list.component.html'
 })
 export class ClusterListComponent {
 

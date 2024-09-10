@@ -1,33 +1,31 @@
 <div class="content">
-  <p-toolbar>
-    <div class="p-toolbar-group-right">
-      <button pButton label="Add" icon="pi pi-plus" (click)="addAsset()" styleClass="p-button-success"></button>
+  <p-card class="izy-card" header="Assets" i18n-header="@@assets">
+    <div class="izy-button-container">
+      <button pButton label="Add" (click)="addAsset()" class="p-button-text" styleClass="p-button-success"></button>
     </div>
-  </p-toolbar>
-
-  <p-table [value]="assets">
-    <ng-template pTemplate="header">
-      <tr>
-        <th>Name</th>
-        <th>Asset Type</th>
-        <th>Reference Type</th>
-        <th>Reference</th>
-        <th>Physical</th>
-        <th>Actions</th>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="body" let-asset>
-      <tr>
-        <td>{{ asset.name }}</td>
-        <td>{{ asset.assetType }}</td>
-        <td>{{ asset.referenceType }}</td>
-        <td>{{ asset.reference }}</td>
-        <td>{{ asset.physical }}</td>
-        <td>
-          <button pButton icon="pi pi-pencil" (click)="onEdit(asset)"></button>
-          <button pButton icon="pi pi-ellipsis-h" styleClass="p-button-secondary"></button>
-        </td>
-      </tr>
-    </ng-template>
-  </p-table>
+    <p-table [value]="assets">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Name</th>
+          <th>Asset Type</th>
+          <th>Reference Type</th>
+          <th>Reference</th>
+          <th>Physical</th>
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-asset>
+        <tr>
+          <td>{{ asset.name }}</td>
+          <td>{{ asset.assetType }}</td>
+          <td>{{ asset.referenceType }}</td>
+          <td>{{ asset.reference }}</td>
+          <td>{{ asset.physical }}</td>
+          <td>
+            <button pButton icon="pi pi-pencil" (click)="onEdit(asset)"></button>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
 </div>

@@ -1,8 +1,23 @@
+// Import the theme
+@import 'theme';
+
 // Global imports
 @import '~primeng/resources/themes/bootstrap4-light-blue/theme.css';
 @import '~primeng/resources/primeng.min.css';
 @import '~primeicons/primeicons.css';
 @import '~bootstrap/dist/css/bootstrap.min.css';
+
+// Use theme colors
+$izy-blue: $primary-color;
+$izy-light-blue: $secondary-color;
+$izy-white: $background-color;
+$izy-black: $text-color;
+$izy-grey: $border-color;
+$izy-row-light: lighten($izy-light-blue, 45%);
+$izy-row-dark: lighten($izy-light-blue, 40%);
+
+$toolbar-height: 70px;
+$sidebar-width: 200px;
 
 // PrimeIcons font face
 @font-face {
@@ -12,15 +27,22 @@
   font-style: normal;
 }
 
+// Mixins
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+}
+
 // Sidebar styles
 .p-sidebar {
-  background-color: #08033a;
-  color: #ebeff3;
+  background-color: $primary-color;
+  color: $izy-white;
   border: 0 none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 
   &.p-sidebar-active[role="complementary"] {
     width: 200px;
+    color: $izy-white;
   }
 
   &-content {
@@ -28,7 +50,7 @@
   }
 
   ul {
-    list-style-type: none; // Removes the bullets
+    list-style-type: none;
 
     li {
       a {
@@ -37,22 +59,12 @@
       }
 
       i {
-        margin-right: 8px; // Adjust spacing between icon and text
+        margin-right: 8px;
       }
     }
   }
 }
 
-// Toolbar styles
-.p-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  position: sticky;
-  height: 70px;
-  z-index: 998;
-}
 
 // Dropdown styles
 .p-dropdown {
@@ -64,49 +76,48 @@
   position: fixed;
   background-image: url('assets/images/logo/izylife.png');
   background-size: 100px 35px;
-  background-position: center; 
-  background-repeat: no-repeat; 
+  background-position: center;
+  background-repeat: no-repeat;
   top: 0;
   left: 0;
-  width: 201px; 
-  height: 70px; 
-  background-color: #08033a;
+  width: 201px;
+  height: 70px;
   z-index: 999;
 }
 
 // Context menu styles
 .p-contextmenu {
   padding: 0.5rem 0;
-  background: #ffffff;
-  color: black;
+  background: $background-color;
+  color: $text-color;
   border: 0 none;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   border-radius: 6px;
   width: 12.5rem;
 
   .p-menuitem-link {
-    color: black;
+    color: $text-color;
     padding: 0.75rem 1.25rem;
     user-select: none;
 
     &:hover {
-      background-color: #ddd; // Lighter grey on hover
-      color: #4b5563; // Black text on hover
+      background-color: $hover-color;
+      color: $text-color;
     }
   }
 
   .p-menuitem-text {
-    color: black;
+    color: $text-color;
     line-height: 2;
     margin-left: 10px;
 
     &:hover {
-      color: #4b5563; // Black text on hover
+      color: $text-color;
     }
   }
 
   .p-menuitem-icon {
-    color: black;
+    color: $text-color;
     line-height: 2;
     margin-left: 10px;
   }
@@ -123,9 +134,139 @@
   padding: 0;
 }
 
-
 .p-card {
   transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-  perspective: 1500px; 
-  
+  perspective: 1500px;
+}
+
+.p-datatable {
+  .p-datatable-tbody > tr > td {
+    text-align: left;
+    border: 1px solid $border-color;
+    border-width: 0 0 1px 0;
+    padding: 5px 1rem;
+  }
+
+  .p-datatable-thead > tr > th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border: 1px solid $border-color;
+    border-width: 0 0 1px 0;
+    font-weight: 600;
+    color: $text-color;
+    background: $background-color;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s, outline-color 0.2s;
+  }
+}
+
+.p-button {
+  height: 44px;
+  width: auto;
+  background-color: transparent;
+  border: none;
+  color: $primary-color;
+  font-size: 1.2em;
+  cursor: pointer;
+
+  &:hover {
+    color: $secondary-color;
+  }
+
+  &:last-child {
+    margin-right: 0;
+  }
+}
+
+.izy-button-container {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.p-button-text {
+  padding: 0.5rem 1rem;
+  margin-right: 20px;
+  width: auto;
+}
+
+/// Toolbar Styles
+.app-toolbar {
+  height: $toolbar-height;
+  background-color:  $izy-white;
+  color: $primary-color;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+
+  &-container {
+    width: 100%;
+    padding: 0 20px;
+    padding-left: 200px;
+    display: block;
+  }
+
+  &-content {
+    @include flex-center;
+    justify-content: space-between;
+    height: 100%;
+  }
+
+  .title {
+    font-size: 24px;
+    font-weight: bold;
+  }
+
+
+  .button-container {
+
+    button {
+      background-color: $primary-color;
+      color: $izy-white;
+      border: none;
+      padding: 8px 15px;
+      margin-left: 10px;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background-color: lighten($primary-color, 10%);
+      }
+    }
+  }
+}
+
+// Sidebar Styles
+.app-sidebar {
+  width: $sidebar-width;
+  height: calc(100vh - #{$toolbar-height});
+  position: fixed;
+  top: $toolbar-height;
+  left: 0;
+  color: $izy-white;
+  padding: 20px 0;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+
+  ul {
+    padding: 0;
+    list-style-type: none;
+  }
+
+  li {
+    margin-bottom: 10px;
+  }
+
+  a {
+    @include flex-center;
+    padding: 12px 20px;
+    text-decoration: none;
+    color: $izy-white;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background-color: $izy-white;
+      color: $primary-color;
+    }
+
+    i {
+      margin-right: 15px;
+      font-size: 1.2em;
+    }
+  }
 }

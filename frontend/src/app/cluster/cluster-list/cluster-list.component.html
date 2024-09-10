@@ -1,11 +1,11 @@
 <div class="content">
   <p-card class="izy-card" header="Clusters" i18n-header="@@clusters">
     <div class="card-content">
-      <div class="button-container">
-        <button pButton label="Add" icon="pi pi-plus" (click)="addCluster()" class="izy-button-primary"></button>
+      <div class="izy-button-container">
+        <button pButton label="Add" class="p-button-text" (click)="addCluster()"></button>
       </div>
       <ng-container *ngIf="clusters$ | async as clusters">
-        <p-table [value]="clusters" [columns]="cols" styleClass="izy-table">
+        <p-table [value]="clusters" [columns]="cols" styleClass="p-datatable-striped">
           <ng-template pTemplate="header" let-columns>
             <tr>
               <th *ngFor="let col of columns">
@@ -21,10 +21,10 @@
                 {{rowData[col.field]}}
               </td>
               <td class="action-column">
-                <button class="row-button" (click)="editDiagram(rowData.id)">
+                <button pButton (click)="editDiagram(rowData.id)">
                   <i class="pi pi-pencil"></i>
                 </button>
-                <button class="row-button context-menu-trigger" #rowContextMenu
+                <button pButton class="context-menu-trigger" #rowContextMenu
                         (click)="updateContextMenuItems($event,rowData.id)">
                   <i class="pi pi-ellipsis-v"></i>
                 </button>
