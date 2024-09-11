@@ -40,10 +40,7 @@ public class NodeFactory {
                         deployment.getId(),
                         deployment.getName(),
                         deployment.getReplicas(),
-                        deployment.getStrategy(),
-                        deployment.getMinReadySeconds(),
-                        deployment.getRevisionHistoryLimit(),
-                        deployment.getProgressDeadlineSeconds()
+                        deployment.getStrategyType()
                 );
             case "service":
                 ServiceDTO service = (ServiceDTO) node;
@@ -87,7 +84,7 @@ public class NodeFactory {
             case "container":
                 return new ContainerDTO(id, name, "", 80);
             case "deployment":
-                return new DeploymentDTO(id, name, 1, new DeploymentStrategyDTO());
+                return new DeploymentDTO(id, name, 1, "RollingUpdate");
             case "service":
                 return new ServiceDTO(id, name, "ClusterIP", 80);
             case "ingress":

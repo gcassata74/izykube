@@ -11,25 +11,12 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class DeploymentDTO extends NodeDTO {
     private int replicas;
-    private DeploymentStrategyDTO strategy;
-    private Integer minReadySeconds;
-    private Integer revisionHistoryLimit;
-    private Integer progressDeadlineSeconds;
+    private String strategyType;
 
-    public DeploymentDTO(String id, String name, int replicas, DeploymentStrategyDTO strategy) {
+    public DeploymentDTO(String id, String name, int replicas, String strategyType) {
         super(id, name, "deployment");
         this.replicas = replicas;
-        this.strategy = strategy;
-    }
-
-    public DeploymentDTO(String id, String name, int replicas, DeploymentStrategyDTO strategy,
-                         Integer minReadySeconds, Integer revisionHistoryLimit, Integer progressDeadlineSeconds) {
-        super(id, name, "deployment");
-        this.replicas = replicas;
-        this.strategy = strategy;
-        this.minReadySeconds = minReadySeconds;
-        this.revisionHistoryLimit = revisionHistoryLimit;
-        this.progressDeadlineSeconds = progressDeadlineSeconds;
+        this.strategyType = strategyType;
     }
 }
 

@@ -38,7 +38,6 @@ $sidebar-width: 200px;
   background-color: $primary-color;
   color: $izy-white;
   border: 0 none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 
   &.p-sidebar-active[role="complementary"] {
     width: 200px;
@@ -161,6 +160,7 @@ $sidebar-width: 200px;
 .p-button {
   height: 44px;
   width: auto;
+  max-width: 200px;
   background-color: transparent;
   border: none;
   color: $primary-color;
@@ -192,7 +192,7 @@ $sidebar-width: 200px;
   height: $toolbar-height;
   background-color:  $izy-white;
   color: $primary-color;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid black;
   position: relative;
 
   &-container {

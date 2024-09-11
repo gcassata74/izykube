@@ -2,27 +2,16 @@ import { Node } from './node.class';
 
 export class Deployment extends Node {
     replicas: number;
-    strategy: DeploymentStrategy;
-    minReadySeconds?: number;
-    revisionHistoryLimit?: number;
-    progressDeadlineSeconds?: number;
+    strategyType: 'Recreate' | 'RollingUpdate';
 
     constructor(
         id: string,
         name: string,
         replicas: number = 1,
-        strategy: DeploymentStrategy = { type: 'RollingUpdate' }
+        strategyType: 'Recreate' | 'RollingUpdate' = 'RollingUpdate'
     ) {
         super(id, name, 'deployment');
         this.replicas = replicas;
-        this.strategy = strategy;
+        this.strategyType = strategyType;
     }
-}
-
-export interface DeploymentStrategy {
-    type: 'Recreate' | 'RollingUpdate';
-    rollingUpdate?: {
-        maxUnavailable?: number | string;
-        maxSurge?: number | string;
-    };
 }

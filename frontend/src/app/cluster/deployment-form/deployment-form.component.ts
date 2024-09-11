@@ -34,25 +34,7 @@ export class DeploymentFormComponent implements OnInit {
     this.form = this.fb.group({
       name: [this.selectedNode.name, Validators.required],
       replicas: [this.selectedNode.replicas, [Validators.required, Validators.min(0)]],
-      strategy: this.fb.group({
-        type: [this.selectedNode.strategy.type, Validators.required],
-        rollingUpdate: this.fb.group({
-          maxUnavailable: [this.selectedNode.strategy.rollingUpdate?.maxUnavailable],
-          maxSurge: [this.selectedNode.strategy.rollingUpdate?.maxSurge]
-        })
-      }),
-      minReadySeconds: [this.selectedNode.minReadySeconds],
-      revisionHistoryLimit: [this.selectedNode.revisionHistoryLimit],
-      progressDeadlineSeconds: [this.selectedNode.progressDeadlineSeconds]
-    });
-
-    // Disable rollingUpdate fields if strategy is not RollingUpdate
-    this.form.get('strategy.type')?.valueChanges.subscribe(value => {
-      if (value === 'RollingUpdate') {
-        this.form.get('strategy.rollingUpdate')?.enable();
-      } else {
-        this.form.get('strategy.rollingUpdate')?.disable();
-      }
+      strategyType: [this.selectedNode.strategyType, Validators.required]
     });
   }
 

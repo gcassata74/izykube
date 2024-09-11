@@ -21,12 +21,25 @@ export class ConfigMapFormComponent implements OnInit {
     private autoSaveService: AutoSaveService,
     private diagramService: DiagramService) { }
 
+  get entries(): FormArray {
+    return this.form.get('entries') as FormArray;
+  }
+
+
   ngOnInit() {
     this.form = this.fb.group({
       entries: this.fb.array([])
     });
 
+    this.initializeForm();
+    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.form.valueChanges);
+  }
+
+
+  initializeForm() {
+
     const configMap = this.selectedNode as ConfigMap
+    //if we have entries in the state then add them to the form
     if (Object.entries(configMap.entries).length > 0) {
 
       Object.entries(configMap.entries).forEach(([key, value]: [string, any]) => {
@@ -34,15 +47,11 @@ export class ConfigMapFormComponent implements OnInit {
       });
 
     } else {
+      //add empty entry
       this.addEntry();
     }
-
-    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.form.valueChanges);
   }
 
-  get entries(): FormArray {
-    return this.form.get('entries') as FormArray;
-  }
 
   newEntry(key: string, value: string): FormGroup {
 

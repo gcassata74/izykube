@@ -1,17 +1,16 @@
 <form [formGroup]="form" class="mb-3 mt-3 config-map-form">
   <div formArrayName="entries" class="entries-container">
-
-    <div class="entry-row" *ngFor="let entry of entries.controls; let i = index" [formGroupName]="i">
-      <div class="input-group">
-        <input type="text" pInputText class="form-control key-input" placeholder="Key" formControlName="key">
-        <input type="text" pInputText class="form-control value-input" placeholder="Value" formControlName="value">
-        <button type="button" class="btn btn-danger" (click)="removeEntry(i)">-</button>
+    <div class="entry-group mb-2" *ngFor="let entry of entries.controls; let i = index" [formGroupName]="i">
+      <div class="p-inputgroup mb-1">
+        <input type="text" pInputText placeholder="Key" formControlName="key">
       </div>
-    </div>
-    <div class="add-button-container">
-      <button type="button" class="btn btn-primary add-button" (click)="addEntry()">
-        <span i18n="@@addEntry">Add</span> <i class="pi pi-plus"></i>
-      </button>
+      <div class="p-inputgroup mb-1">
+        <input type="text" pInputText placeholder="Value" formControlName="value">
+      </div>
+      <div class="button-row">
+        <button type="button" pButton label="Remove" class="p-button-danger" (click)="removeEntry(i)"></button>
+        <button type="button" pButton label="Add" class="p-button-primary" (click)="addEntry()"></button>
+      </div>
     </div>
   </div>
 </form>

@@ -28,7 +28,9 @@
 
   <div class="p-field">
     <label for="servicePort">Service Port</label>
-    <p-inputNumber id="servicePort" formControlName="servicePort"></p-inputNumber>
+    <p-inputNumber id="servicePort" formControlName="servicePort" [useGrouping]="false" [min]="1" [step]="1"
+                   mode="decimal" [minFractionDigits]="0" [maxFractionDigits]="0">
+    </p-inputNumber>
     <small class="p-error"
            *ngIf="ingressForm.get('servicePort')?.invalid && (ingressForm.get('servicePort')?.dirty || ingressForm.get('servicePort')?.touched)">
       Service Port is required.

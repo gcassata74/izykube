@@ -1,46 +1,17 @@
 <form [formGroup]="form" class="deployment-form">
   <div class="form-group">
     <label for="name">Deployment Name</label>
-    <input pInputText id="name" formControlName="name" required>
+    <input id="name" type="text" pInputText formControlName="name">
   </div>
 
   <div class="form-group">
     <label for="replicas">Replicas</label>
-    <input pInputText id="replicas" type="number" formControlName="replicas" required>
+    <p-inputNumber id="replicas" formControlName="replicas" [min]="0" [step]="1"></p-inputNumber>
   </div>
 
-  <div formGroupName="strategy" class="p-field">
+  <div class="form-group">
     <label for="strategyType">Deployment Strategy</label>
-    <div class="form-group">
-      <p-dropdown id="strategyType" formControlName="type" [options]="strategyTypes" optionLabel="label"
-                  optionValue="value">
-      </p-dropdown>
-    </div>
-  </div>
-
-  <div formGroupName="rollingUpdate" *ngIf="form.get('strategy.type')?.value === 'RollingUpdate'" class="p-field">
-    <div class="form-group">
-      <label for="maxUnavailable">Max Unavailable</label>
-      <input pInputText id="maxUnavailable" formControlName="maxUnavailable">
-    </div>
-    <div class="form-group">
-      <label for="maxSurge">Max Surge</label>
-      <input pInputText id="maxSurge" formControlName="maxSurge">
-    </div>
-  </div>
-
-  <div class="form-group">
-    <label for="minReadySeconds">Min Ready Seconds</label>
-    <input pInputText id="minReadySeconds" type="number" formControlName="minReadySeconds">
-  </div>
-
-  <div class="form-group">
-    <label for="revisionHistoryLimit">Revision History Limit</label>
-    <input pInputText id="revisionHistoryLimit" type="number" formControlName="revisionHistoryLimit">
-  </div>
-
-  <div class="form-group">
-    <label for="progressDeadlineSeconds">Progress Deadline Seconds</label>
-    <input pInputText id="progressDeadlineSeconds" type="number" formControlName="progressDeadlineSeconds">
+    <p-dropdown id="strategyType" [options]="strategyTypes" formControlName="strategyType" optionLabel="label"
+                optionValue="value"></p-dropdown>
   </div>
 </form>

@@ -14,8 +14,6 @@ export class AutoSaveService {
   ) {}
 
   enableAutoSave(form: FormGroup, nodeId: string, change$: Observable<Event>) {
-    this.subscription.unsubscribe();
-    this.subscription = new Subscription();
     this.subscription.add(change$.pipe(
       debounceTime(500),
       distinctUntilChanged(),

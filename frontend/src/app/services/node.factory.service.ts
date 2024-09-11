@@ -3,7 +3,7 @@ import { Pod, RestartPolicy } from '../model/pod.class';
 import { Container } from '../model/container.class';
 import { Node } from '../model/node.class';
 import { Service } from '../model/service.class';
-import { Deployment, DeploymentStrategy } from '../model/deployment.class';
+import { Deployment } from '../model/deployment.class';
 import { ConfigMap, ConfigMapEntry } from '../model/config-map.class';
 import { Ingress } from '../model/ingress.class';
 import { Volume, VolumeConfig } from '../model/volume.class';
@@ -37,13 +37,13 @@ export class NodeFactoryService {
           'ClusterIP',
           80
         );
-      case 'deployment':
-        return new Deployment(
-          id,
-          name,
-          1,  // default replicas
-          { type: 'RollingUpdate' } as DeploymentStrategy  // default strategy
-        );
+        case 'deployment':
+          return new Deployment(
+            id,
+            name,
+            1,  // default replicas
+            'RollingUpdate'  // default strategy type
+          );
       case 'configmap':
         return new ConfigMap(
           id,

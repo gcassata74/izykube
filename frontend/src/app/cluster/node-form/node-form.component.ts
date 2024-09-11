@@ -1,7 +1,7 @@
 import { Node } from './../../model/node.class';
 import { Store } from '@ngrx/store';
 import { Component, OnDestroy, ViewContainerRef, ComponentRef, ViewChild } from '@angular/core';
-import { switchMap, of, filter, tap, Subscription, mergeMap } from 'rxjs';
+import { switchMap, of, filter, tap, Subscription, mergeMap, distinct, distinctUntilChanged, take, EMPTY } from 'rxjs';
 import { DiagramService } from 'src/app/services/diagram.service';
 import { getNodeById } from 'src/app/store/selectors/selectors';
 import { DeploymentFormComponent } from '../deployment-form/deployment-form.component';
@@ -46,16 +46,19 @@ export class NodeFormComponent implements OnDestroy {
     this.subscription.add(
       this.diagramService.selectedNode$.pipe(
         filter((node: go.Node) => node !== null && node !== undefined),
+        distinctUntilChanged((prev, curr) => prev?.data?.key === curr?.data?.key),
         switchMap((node: go.Node) => {
           this.selectedNodeType = node?.data?.type || null;
           const nodeId = node?.data?.key;
           if (nodeId) {
-            return this.store.select(getNodeById(nodeId));
+            return this.store.select(getNodeById(nodeId)).pipe(
+              take(1),
+              filter((storeNode): storeNode is Node => storeNode !== null && storeNode !== undefined)
+            );
           } else {
-            return of(null);
+            return EMPTY;
           }
         }),
-        filter((node): node is Node => node !== null && node !== undefined),
         tap((node: Node) => {
           this.node = node;
           this.dynamicContainer.clear();
