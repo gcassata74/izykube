@@ -56,7 +56,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
         select(getCurrentAction),
         distinctUntilChanged(),
         filter(action => action === 'save-diagram'),
-        switchMap(() => this.store.select(getCurrentCluster)),
+        switchMap(() => this.store.select(getCurrentCluster).pipe(take(1))),
         switchMap(clusterData => this.clusterService.saveCluster(clusterData).pipe(
           catchError(error => {
             this.notificationService.error('Failed to save cluster');
