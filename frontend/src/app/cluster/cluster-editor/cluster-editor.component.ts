@@ -21,7 +21,6 @@ import { NotificationService } from 'src/app/services/notification.service';
 })
 export class ClusterEditorComponent implements OnInit, OnDestroy {
 
-
   @ViewChild('diagram') diagramComponent!: DiagramComponent;
   subscription: Subscription = new Subscription();
 
@@ -81,8 +80,6 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
       });
     }).unsubscribe();  
   }
-
-
 
   createButtons() {
     let button: Button = {
