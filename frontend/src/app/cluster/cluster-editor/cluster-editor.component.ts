@@ -36,47 +36,50 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.createButtons();
+    this.loadCluster();
+    this.setupSaveAction();
+  }
 
+  private loadCluster(): void {
     this.subscription.add(
-      this.activatedRoute.params.pipe(
-        switchMap((params: Params): Observable<any> => {
-          const id = params['id'];
-          return id ? this.loadCluster(id) : EMPTY;
-        }),
-        catchError(error => {
-          this.notificationService.error('Failed to load cluster');
-          console.error('Error loading cluster:', error);
-          return EMPTY;
-        })
-      ).subscribe()
-    );
-
-    this.subscription.add(
-      this.store.pipe(
-        select(getCurrentAction),
-        distinctUntilChanged(),
-        filter(action => action === 'save-diagram'),
-        switchMap(() => this.store.select(getCurrentCluster).pipe(take(1))),
-        switchMap(clusterData => this.clusterService.saveCluster(clusterData).pipe(
-          catchError(error => {
-            this.notificationService.error('Failed to save cluster');
-            console.error('Error saving cluster:', error);
-            return EMPTY;
-          })
-        ))
-      ).subscribe(() => {
-        this.notificationService.success('Cluster saved successfully');
-        this.store.dispatch(actions.resetCurrentAction());
+      this.activatedRoute.params.subscribe(params => {
+        const id = params['id'];
+        if (id) {
+          this.clusterService.getCluster(id).subscribe({
+            next: (cluster) => this.store.dispatch(actions.loadCluster({ cluster })),
+            error: (error) => {
+              this.notificationService.error('Failed to load cluster');
+              console.error('Error loading cluster:', error);
+            }
+          });
+        }
       })
     );
   }
 
-  private loadCluster(clusterId: string): Observable<any> {
-    return this.clusterService.getCluster(clusterId).pipe(
-      tap(cluster => {
-        this.store.dispatch(actions.loadCluster({ cluster: cluster }));
+  private setupSaveAction(): void {
+    this.subscription.add(
+      this.store.select(getCurrentAction).subscribe(action => {
+        if (action === 'save-diagram') {
+          this.saveCluster();
+        }
       })
     );
+  }
+
+  private saveCluster(): void {
+    this.store.select(getCurrentCluster).subscribe(clusterData => {
+      this.clusterService.saveCluster(clusterData).subscribe({
+        next: () => {
+          this.notificationService.success('Cluster saved successfully');
+          this.store.dispatch(actions.resetCurrentAction());
+        },
+        error: (error) => {
+          this.notificationService.error('Failed to save cluster');
+          console.error('Error saving cluster:', error);
+        }
+      });
+    }).unsubscribe();  
   }
 
 
