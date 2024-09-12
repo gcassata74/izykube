@@ -20,15 +20,8 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .withNewSpec()
                 .withReplicas(dto.getReplicas())
                 .withNewStrategy()
-                .withType(dto.getStrategy().getType())
-                .withNewRollingUpdate()
-                .withMaxSurge(dto.getStrategy().getRollingUpdate().getMaxSurge())
-                .withMaxUnavailable(dto.getStrategy().getRollingUpdate().getMaxUnavailable())
-                .endRollingUpdate()
+                .withType(dto.getStrategyType())
                 .endStrategy()
-                .withMinReadySeconds(dto.getMinReadySeconds())
-                .withRevisionHistoryLimit(dto.getRevisionHistoryLimit())
-                .withProgressDeadlineSeconds(dto.getProgressDeadlineSeconds())
                 .endSpec()
                 .build();
 

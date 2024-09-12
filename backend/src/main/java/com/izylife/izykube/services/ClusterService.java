@@ -2,6 +2,7 @@ package com.izylife.izykube.services;
 
 import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
+import com.izylife.izykube.dto.cluster.ClusterDTOHelper;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.factory.NodeFactory;
@@ -48,14 +49,13 @@ public class ClusterService {
             cluster.setStatus(ClusterStatusEnum.INITIALIZED);
             Cluster savedCluster = clusterRepository.save(cluster);
 
-            ClusterDTO savedClusterDTO = new ClusterDTO();
-            savedClusterDTO.setId(savedCluster.getId());
-            savedClusterDTO.setName(savedCluster.getName());
-            savedClusterDTO.setNodes(savedCluster.getNodes());
-            savedClusterDTO.setLinks(savedCluster.getLinks());
-            savedClusterDTO.setDiagram(savedCluster.getDiagram());
-
-            return savedClusterDTO;
+            return ClusterDTO.builder()
+                    .id(savedCluster.getId())
+                    .name(savedCluster.getName())
+                    .nodes(savedCluster.getNodes())
+                    .links(savedCluster.getLinks())
+                    .diagram(savedCluster.getDiagram())
+                    .build();
 
         } catch (Exception e) {
             log.error("Error saving cluster: " + e.getMessage());
@@ -74,15 +74,14 @@ public class ClusterService {
             cluster.setDiagram(clusterDTO.getDiagram());
             Cluster updatedCluster = clusterRepository.save(cluster);
 
-            ClusterDTO updatedClusterDTO = new ClusterDTO();
-            updatedClusterDTO.setId(updatedCluster.getId());
-            updatedClusterDTO.setName(updatedCluster.getName());
-            updatedClusterDTO.setNameSpace(updatedCluster.getNameSpace());
-            updatedClusterDTO.setNodes(updatedCluster.getNodes());
-            updatedClusterDTO.setLinks(updatedCluster.getLinks());
-            updatedClusterDTO.setDiagram(updatedCluster.getDiagram());
-
-            return updatedClusterDTO;
+            return ClusterDTO.builder()
+                    .id(updatedCluster.getId())
+                    .name(updatedCluster.getName())
+                    .nameSpace(updatedCluster.getNameSpace())
+                    .nodes(updatedCluster.getNodes())
+                    .links(updatedCluster.getLinks())
+                    .diagram(updatedCluster.getDiagram())
+                    .build();
 
         } catch (Exception e) {
             log.error("Error updating cluster: " + e.getMessage());
@@ -108,34 +107,46 @@ public class ClusterService {
     }
 
     public ClusterDTO getClusterById(String id) {
-        ClusterDTO dto = new ClusterDTO();
 
         try {
             Cluster cluster = clusterRepository.findById(id)
                     .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
-
-            dto.setId(cluster.getId());
-            dto.setName(cluster.getName());
-            dto.setNameSpace(cluster.getNameSpace());
 
             // Use the factory to create appropriate NodeDTOs
             List<NodeDTO> nodeDTOs = cluster.getNodes().stream()
                     .map(NodeFactory::createNodeDTO)
                     .collect(Collectors.toList());
 
-            dto.setNodes(nodeDTOs);
-            dto.setLinks(cluster.getLinks());
-            dto.setDiagram(cluster.getDiagram());
+            ClusterDTO clusterDTO = ClusterDTO.builder()
+                    .id(cluster.getId())
+                    .name(cluster.getName())
+                    .nameSpace(cluster.getNameSpace())
+                    .nodes(nodeDTOs)
+                    .links(cluster.getLinks())
+                    .diagram(cluster.getDiagram())
+                    .build();
+
+            return clusterDTO;
+
         } catch (Exception e) {
             log.error("Error getting cluster with ID " + id + ": " + e.getMessage());
             return null;
         }
-        return dto;
+
     }
 
     public void createTemplate(String id) throws ObjectNotFoundException {
         Cluster cluster = clusterRepository.findById(id)
                 .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
+
+        // put values in the dto
+        ClusterDTO clusterDTO = ClusterDTO.builder()
+                .id(cluster.getId())
+                .name(cluster.getName())
+                .nodes(cluster.getNodes())
+                .links(cluster.getLinks())
+                .diagram(cluster.getDiagram())
+                .build();
 
         List<String> yamlList = new ArrayList<>();
         Set<String> processedNodes = new HashSet<>();
@@ -144,7 +155,7 @@ public class ClusterService {
             //temporarily only process Deployment nodes
             if (node instanceof DeploymentDTO) {
                 if (!processedNodes.contains(node.getId())) {
-                    List<NodeDTO> linkedNodes = cluster.findSourceNodesOf(node.getId());
+                    List<NodeDTO> linkedNodes = ClusterDTOHelper.findSourceNodesOf(clusterDTO, node.getId());
                     node.setLinkedNodes(linkedNodes);
                     yamlList.add(processSpecificNodeDTO(node));
 

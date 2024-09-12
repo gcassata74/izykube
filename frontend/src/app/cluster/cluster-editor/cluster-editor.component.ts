@@ -3,7 +3,7 @@ import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild } from '@angular
 import { Store, select } from '@ngrx/store';
 import * as go from 'gojs';
 import { Button } from '../../model/button.interface';
-import { EMPTY, Observable, Subscription, catchError, distinctUntilChanged, filter, first, switchMap, take, tap, throwError } from 'rxjs';
+import { EMPTY, Observable, Subscription, catchError, distinctUntilChanged, filter, finalize, first, switchMap, take, tap, throwError } from 'rxjs';
 import { DiagramComponent } from '../../diagram/diagram.component';
 import { DiagramService } from '../../services/diagram.service';
 import { ToolbarService } from '../../services/toolbar.service';
@@ -58,27 +58,29 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
 
   private setupSaveAction(): void {
     this.subscription.add(
-      this.store.select(getCurrentAction).subscribe(action => {
-        if (action === 'save-diagram') {
-          this.saveCluster();
-        }
-      })
+      this.store.select(getCurrentAction).pipe(
+        filter(action => action === 'save-diagram'),
+        switchMap(action => this.saveCluster()),
+        finalize(() => this.store.dispatch(actions.resetCurrentAction()))
+      ).subscribe()
     );
   }
 
-  private saveCluster(): void {
-    this.store.select(getCurrentCluster).subscribe(clusterData => {
-      this.clusterService.saveCluster(clusterData).subscribe({
-        next: () => {
+  private saveCluster(): Observable<any> {
+    return this.store.select(getCurrentCluster).pipe(
+      take(1),
+      switchMap(clusterData => this.clusterService.saveCluster(clusterData).pipe(
+        tap(() => {
           this.notificationService.success('Cluster saved successfully');
           this.store.dispatch(actions.resetCurrentAction());
-        },
-        error: (error) => {
+        }),
+        catchError(error => {
           this.notificationService.error('Failed to save cluster');
           console.error('Error saving cluster:', error);
-        }
-      });
-    }).unsubscribe();  
+          return throwError(() => error);
+        })
+      ))
+    );
   }
 
   createButtons() {
