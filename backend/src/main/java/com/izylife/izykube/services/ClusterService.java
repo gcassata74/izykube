@@ -3,7 +3,6 @@ package com.izylife.izykube.services;
 import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.ClusterDTOHelper;
-import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.factory.NodeFactory;
 import com.izylife.izykube.factory.TemplateFactory;
@@ -72,6 +71,7 @@ public class ClusterService {
             cluster.setNodes(clusterDTO.getNodes());
             cluster.setLinks(clusterDTO.getLinks());
             cluster.setDiagram(clusterDTO.getDiagram());
+            cluster.setStatus(ClusterStatusEnum.CREATED);
             Cluster updatedCluster = clusterRepository.save(cluster);
 
             return ClusterDTO.builder()
@@ -139,7 +139,6 @@ public class ClusterService {
         Cluster cluster = clusterRepository.findById(id)
                 .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
 
-        // put values in the dto
         ClusterDTO clusterDTO = ClusterDTO.builder()
                 .id(cluster.getId())
                 .name(cluster.getName())
@@ -151,19 +150,9 @@ public class ClusterService {
         List<String> yamlList = new ArrayList<>();
         Set<String> processedNodes = new HashSet<>();
 
+        // Process all nodes in the order they appear in the cluster
         for (NodeDTO node : cluster.getNodes()) {
-            //temporarily only process Deployment nodes
-            if (node instanceof DeploymentDTO) {
-                if (!processedNodes.contains(node.getId())) {
-                    List<NodeDTO> linkedNodes = ClusterDTOHelper.findSourceNodesOf(clusterDTO, node.getId());
-                    node.setLinkedNodes(linkedNodes);
-                    yamlList.add(processSpecificNodeDTO(node));
-
-                    // Mark this node and all its linked nodes as processed
-                    processedNodes.add(node.getId());
-                    linkedNodes.forEach(linkedNode -> processedNodes.add(linkedNode.getId()));
-                }
-            }
+            processNodeAndLinkedNodes(clusterDTO, node, yamlList, processedNodes);
         }
 
         ClusterTemplate clusterTemplate = new ClusterTemplate();
@@ -173,6 +162,32 @@ public class ClusterService {
 
         clusterRepository.save(cluster);
         clusterTemplateRepository.save(clusterTemplate);
+    }
+
+    private void processNodeAndLinkedNodes(ClusterDTO clusterDTO, NodeDTO node, List<String> yamlList, Set<String> processedNodes) {
+        if (processedNodes.contains(node.getId())) {
+            return;
+        }
+
+        List<NodeDTO> linkedNodes = ClusterDTOHelper.findSourceNodesOf(clusterDTO, node.getId());
+
+        // Process linked nodes first
+        for (NodeDTO linkedNode : linkedNodes) {
+            processNodeAndLinkedNodes(clusterDTO, linkedNode, yamlList, processedNodes);
+        }
+
+        // Now process the current node
+        node.setLinkedNodes(linkedNodes);
+        String yaml = processSpecificNodeDTO(node);
+        if (yaml != null && !yaml.isEmpty()) {
+            yamlList.add(yaml);
+        }
+        processedNodes.add(node.getId());
+    }
+
+    private String processSpecificNodeDTO(NodeDTO node) {
+        TemplateProcessor processor = templateFactory.getProcessor(node);
+        return processor.createTemplate(node);
     }
 
     public void deleteTemplate(String clusterId) throws ObjectNotFoundException {
@@ -245,13 +260,6 @@ public class ClusterService {
         cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
         clusterRepository.save(cluster);
     }
-
-
-    private <T extends NodeDTO> String processSpecificNodeDTO(T specificNodeDTO) {
-        TemplateProcessor<T> processor = templateFactory.getProcessor(specificNodeDTO);
-        return processor.createTemplate(specificNodeDTO);
-    }
-
 
 }
 
