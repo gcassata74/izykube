@@ -201,31 +201,56 @@ public class ClusterService {
     }
 
     public void deploy(String clusterId) throws ObjectNotFoundException {
-
         Cluster cluster = clusterRepository.findById(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
 
-        // Retrieve the cluster template from the database
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
 
-        // Deploy each YAML in the template
+        boolean allResourcesDeployed = true;
+
         for (String yaml : template.getYamlList()) {
             try {
-                // Load the YAML into Kubernetes resources
                 List<HasMetadata> resources = client.load(new ByteArrayInputStream(yaml.getBytes())).get();
 
-                // Create or update each resource
-                for (HasMetadata resource : resources) {
-                    client.resource(resource).createOrReplace();
-                    log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
+                // Filter out unwanted resources
+                List<HasMetadata> deployableResources = resources.stream()
+                        .filter(this::isDeployableResource)
+                        .collect(Collectors.toList());
+
+                for (HasMetadata resource : deployableResources) {
+                    try {
+                        client.resource(resource).createOrReplace();
+                        log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
+                    } catch (KubernetesClientException e) {
+                        log.error("Error deploying resource: " + resource.getKind() + "/" + resource.getMetadata().getName(), e);
+                        allResourcesDeployed = false;
+                    }
                 }
-                cluster.setStatus(ClusterStatusEnum.DEPLOYED);
-                clusterRepository.save(cluster);
-            } catch (KubernetesClientException e) {
-                log.error("Error deploying resource from template: " + e.getMessage());
+            } catch (Exception e) {
+                log.error("Error processing YAML: " + e.getMessage());
+                allResourcesDeployed = false;
             }
         }
+
+        if (allResourcesDeployed) {
+            cluster.setStatus(ClusterStatusEnum.DEPLOYED);
+            clusterRepository.save(cluster);
+        } else {
+            /*cluster.setStatus(ClusterStatusEnum.DEPLOYMENT_FAILED);
+            clusterRepository.save(cluster);*/
+            log.error("Deployment failed for cluster ID: " + clusterId);
+        }
+    }
+
+    private boolean isDeployableResource(HasMetadata resource) {
+        // List of Kubernetes resource kinds that we want to deploy
+        Set<String> deployableKinds = Set.of(
+                "Deployment", "Service", "ConfigMap", "Secret", "Ingress",
+                "PersistentVolumeClaim", "StatefulSet", "DaemonSet", "Job", "CronJob"
+        );
+
+        return deployableKinds.contains(resource.getKind());
     }
 
     public void undeploy(String clusterId) throws ObjectNotFoundException {
