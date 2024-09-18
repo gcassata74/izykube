@@ -65,7 +65,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
     }
 
     private List<Container> createContainers(DeploymentDTO dto) {
-        return dto.getLinkedNodes().stream()
+        return dto.getSourceNodes().stream()
                 .filter(node -> node instanceof ContainerDTO)
                 .map(node -> (ContainerDTO) node)
                 .map(this::createContainer)

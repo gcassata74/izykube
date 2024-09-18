@@ -32,13 +32,15 @@ public abstract class NodeDTO {
     @JsonProperty("kind")
     String kind;
     @Setter
-    List<NodeDTO> linkedNodes;
+    List<NodeDTO> sourceNodes;
+    List<NodeDTO> targetNodes;
 
     public NodeDTO(String id, String name, String kind) {
         this.id = id;
         this.name = name;
         this.kind = kind;
-        this.linkedNodes = new ArrayList<>();
+        this.sourceNodes = new ArrayList<>();
+        this.targetNodes = new ArrayList<>();
     }
 
 }

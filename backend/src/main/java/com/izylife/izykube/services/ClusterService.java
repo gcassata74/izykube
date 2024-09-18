@@ -172,15 +172,12 @@ public class ClusterService {
         if (processedNodes.contains(node.getId())) {
             return;
         }
-
-        List<NodeDTO> linkedNodes = ClusterDTOUtil.findSourceNodesOf(clusterDTO, node.getId());
-
-        linkedNodes.stream()
-                .filter(this::isTemplateableResource)
-                .forEach(linkedNode -> processNodeAndLinkedNodes(clusterDTO, linkedNode, yamlList, processedNodes));
+        List<NodeDTO> sourceNodes = ClusterDTOUtil.findSourceNodesOf(clusterDTO, node.getId());
+        List<NodeDTO> targetNodes = ClusterDTOUtil.findTargetNodesOf(clusterDTO, node.getId());
 
         // Now process the current node
-        node.setLinkedNodes(linkedNodes);
+        node.setSourceNodes(sourceNodes);
+        node.setTargetNodes(targetNodes);
         String yaml = processSpecificNodeDTO(node);
         if (yaml != null && !yaml.isEmpty()) {
             yamlList.add(yaml);
@@ -189,7 +186,7 @@ public class ClusterService {
     }
 
     private String processSpecificNodeDTO(NodeDTO node) {
-        TemplateProcessor processor = templateFactory.getProcessor(node);
+        TemplateProcessor<NodeDTO> processor = templateFactory.getProcessor(node);
         return processor.createTemplate(node);
     }
 
