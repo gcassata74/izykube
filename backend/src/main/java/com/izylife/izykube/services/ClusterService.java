@@ -2,7 +2,6 @@ package com.izylife.izykube.services;
 
 import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
-import com.izylife.izykube.utils.ClusterDTOUtil;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.factory.NodeFactory;
 import com.izylife.izykube.factory.TemplateFactory;
@@ -11,6 +10,8 @@ import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.repositories.ClusterTemplateRepository;
 import com.izylife.izykube.services.processors.TemplateProcessor;
+import com.izylife.izykube.utils.ClusterDTOUtil;
+import com.izylife.izykube.utils.TemplatableResourceUtil;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
@@ -150,10 +151,9 @@ public class ClusterService {
         List<String> yamlList = new ArrayList<>();
         Set<String> processedNodes = new HashSet<>();
 
-        // Process all nodes in the order they appear in the cluster
-        for (NodeDTO node : cluster.getNodes()) {
-            processNodeAndLinkedNodes(clusterDTO, node, yamlList, processedNodes);
-        }
+        cluster.getNodes().stream()
+                .filter(this::isTemplateableResource)
+                .forEach(node -> processNodeAndLinkedNodes(clusterDTO, node, yamlList, processedNodes));
 
         ClusterTemplate clusterTemplate = new ClusterTemplate();
         clusterTemplate.setClusterId(id);
@@ -164,6 +164,10 @@ public class ClusterService {
         clusterTemplateRepository.save(clusterTemplate);
     }
 
+    private boolean isTemplateableResource(NodeDTO node) {
+        return TemplatableResourceUtil.isTemplatable(node.getKind());
+    }
+
     private void processNodeAndLinkedNodes(ClusterDTO clusterDTO, NodeDTO node, List<String> yamlList, Set<String> processedNodes) {
         if (processedNodes.contains(node.getId())) {
             return;
@@ -171,10 +175,9 @@ public class ClusterService {
 
         List<NodeDTO> linkedNodes = ClusterDTOUtil.findSourceNodesOf(clusterDTO, node.getId());
 
-        // Process linked nodes first
-        for (NodeDTO linkedNode : linkedNodes) {
-            processNodeAndLinkedNodes(clusterDTO, linkedNode, yamlList, processedNodes);
-        }
+        linkedNodes.stream()
+                .filter(this::isTemplateableResource)
+                .forEach(linkedNode -> processNodeAndLinkedNodes(clusterDTO, linkedNode, yamlList, processedNodes));
 
         // Now process the current node
         node.setLinkedNodes(linkedNodes);
@@ -201,56 +204,31 @@ public class ClusterService {
     }
 
     public void deploy(String clusterId) throws ObjectNotFoundException {
+
         Cluster cluster = clusterRepository.findById(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
 
+        // Retrieve the cluster template from the database
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
 
-        boolean allResourcesDeployed = true;
-
+        // Deploy each YAML in the template
         for (String yaml : template.getYamlList()) {
             try {
+                // Load the YAML into Kubernetes resources
                 List<HasMetadata> resources = client.load(new ByteArrayInputStream(yaml.getBytes())).get();
 
-                // Filter out unwanted resources
-                List<HasMetadata> deployableResources = resources.stream()
-                        .filter(this::isDeployableResource)
-                        .collect(Collectors.toList());
-
-                for (HasMetadata resource : deployableResources) {
-                    try {
-                        client.resource(resource).createOrReplace();
-                        log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
-                    } catch (KubernetesClientException e) {
-                        log.error("Error deploying resource: " + resource.getKind() + "/" + resource.getMetadata().getName(), e);
-                        allResourcesDeployed = false;
-                    }
+                // Create or update each resource
+                for (HasMetadata resource : resources) {
+                    client.resource(resource).createOrReplace();
+                    log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
                 }
-            } catch (Exception e) {
-                log.error("Error processing YAML: " + e.getMessage());
-                allResourcesDeployed = false;
+                cluster.setStatus(ClusterStatusEnum.DEPLOYED);
+                clusterRepository.save(cluster);
+            } catch (KubernetesClientException e) {
+                log.error("Error deploying resource from template: " + e.getMessage());
             }
         }
-
-        if (allResourcesDeployed) {
-            cluster.setStatus(ClusterStatusEnum.DEPLOYED);
-            clusterRepository.save(cluster);
-        } else {
-            /*cluster.setStatus(ClusterStatusEnum.DEPLOYMENT_FAILED);
-            clusterRepository.save(cluster);*/
-            log.error("Deployment failed for cluster ID: " + clusterId);
-        }
-    }
-
-    private boolean isDeployableResource(HasMetadata resource) {
-        // List of Kubernetes resource kinds that we want to deploy
-        Set<String> deployableKinds = Set.of(
-                "Deployment", "Service", "ConfigMap", "Secret", "Ingress",
-                "PersistentVolumeClaim", "StatefulSet", "DaemonSet", "Job", "CronJob"
-        );
-
-        return deployableKinds.contains(resource.getKind());
     }
 
     public void undeploy(String clusterId) throws ObjectNotFoundException {
