@@ -1,9 +1,13 @@
-package com.izylife.izykube.dto.cluster;
+package com.izylife.izykube.utils;
+
+import com.izylife.izykube.dto.cluster.ClusterDTO;
+import com.izylife.izykube.dto.cluster.LinkDTO;
+import com.izylife.izykube.dto.cluster.NodeDTO;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ClusterDTOHelper {
+public class ClusterDTOUtil {
 
     // Find node by ID
     public static NodeDTO findNodeById(ClusterDTO cluster, String id) {

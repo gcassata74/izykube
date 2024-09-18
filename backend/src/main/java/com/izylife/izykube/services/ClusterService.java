@@ -2,7 +2,7 @@ package com.izylife.izykube.services;
 
 import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
-import com.izylife.izykube.dto.cluster.ClusterDTOHelper;
+import com.izylife.izykube.utils.ClusterDTOUtil;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.factory.NodeFactory;
 import com.izylife.izykube.factory.TemplateFactory;
@@ -169,7 +169,7 @@ public class ClusterService {
             return;
         }
 
-        List<NodeDTO> linkedNodes = ClusterDTOHelper.findSourceNodesOf(clusterDTO, node.getId());
+        List<NodeDTO> linkedNodes = ClusterDTOUtil.findSourceNodesOf(clusterDTO, node.getId());
 
         // Process linked nodes first
         for (NodeDTO linkedNode : linkedNodes) {
