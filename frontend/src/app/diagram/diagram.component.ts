@@ -70,7 +70,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       });
 
     this.diagram.nodeTemplate = this.makeNodeTemplate();
-    this.diagram.commandHandler.deletesTree = true;
+    this.diagram.commandHandler.deletesTree = false;
     this.diagram.commandHandler.canDeleteSelection = () => true;
 
     //create empty model if not present
@@ -257,20 +257,18 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.diagram.toolManager.linkingTool.linkValidation = (fromNode, fromPort, toNode, toPort) => {
       const fromType = fromNode.data.type;
       const toType = toNode.data.type;
-
+  
       switch (fromType) {
         case 'configmap':
-          return toType === 'pod' || toType === 'deployment';
-        case 'service':
-          return toType === 'deployment' || toType === 'pod';
-        case 'ingress':
-          return toType === 'service';
-        case 'pod':
+          return toType === 'deployment';
+        case 'container':
           return toType === 'deployment';
         case 'deployment':
-          return false;
-        case 'container':
-          return toType === 'deployment' || toType === 'pod';
+          return toType === 'service';
+        case 'service':
+          return toType === 'ingress';
+        case 'ingress':
+          return false; // Ingress is typically the endpoint, so it doesn't link to anything
         default:
           return false;
       }

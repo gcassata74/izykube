@@ -51,8 +51,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .endMetadata()
                 .withNewSpec()
                 .withContainers(containers)
-                .withRestartPolicy("Always") // Default for Deployments
-                // Other pod-level specifications can be added here if needed
+                .withRestartPolicy("Always") 
                 .endSpec()
                 .endTemplate()
                 .withNewStrategy()

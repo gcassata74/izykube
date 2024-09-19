@@ -61,6 +61,7 @@ export class ClusterListComponent {
     this.selectedId = id;
     this.subscriptions.add(
       this.clusters$.pipe(
+        take(1),
         map(clusters => clusters.find(cluster => cluster.id === id))
       ).subscribe(
         cluster => {

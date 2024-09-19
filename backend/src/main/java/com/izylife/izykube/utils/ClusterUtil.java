@@ -7,7 +7,7 @@ import com.izylife.izykube.dto.cluster.NodeDTO;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ClusterDTOUtil {
+public class ClusterUtil {
 
     // Find node by ID
     public static NodeDTO findNodeById(ClusterDTO cluster, String id) {

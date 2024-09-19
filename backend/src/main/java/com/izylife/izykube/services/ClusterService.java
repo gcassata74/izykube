@@ -10,7 +10,7 @@ import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.repositories.ClusterTemplateRepository;
 import com.izylife.izykube.services.processors.TemplateProcessor;
-import com.izylife.izykube.utils.ClusterDTOUtil;
+import com.izylife.izykube.utils.ClusterUtil;
 import com.izylife.izykube.utils.TemplatableResourceUtil;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -172,8 +172,8 @@ public class ClusterService {
         if (processedNodes.contains(node.getId())) {
             return;
         }
-        List<NodeDTO> sourceNodes = ClusterDTOUtil.findSourceNodesOf(clusterDTO, node.getId());
-        List<NodeDTO> targetNodes = ClusterDTOUtil.findTargetNodesOf(clusterDTO, node.getId());
+        List<NodeDTO> sourceNodes = ClusterUtil.findSourceNodesOf(clusterDTO, node.getId());
+        List<NodeDTO> targetNodes = ClusterUtil.findTargetNodesOf(clusterDTO, node.getId());
 
         // Now process the current node
         node.setSourceNodes(sourceNodes);
