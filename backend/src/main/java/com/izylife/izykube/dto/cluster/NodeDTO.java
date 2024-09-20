@@ -33,14 +33,12 @@ public abstract class NodeDTO {
     String kind;
     @Setter
     List<NodeDTO> sourceNodes;
-    List<NodeDTO> targetNodes;
 
     public NodeDTO(String id, String name, String kind) {
         this.id = id;
         this.name = name;
         this.kind = kind;
         this.sourceNodes = new ArrayList<>();
-        this.targetNodes = new ArrayList<>();
     }
 
 }

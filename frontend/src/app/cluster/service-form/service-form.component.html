@@ -12,11 +12,11 @@
 
   <div class="p-field">
     <label for="port">Port</label>
-    <p-inputNumber id="port" formControlName="port"></p-inputNumber>
+    <p-inputNumber id="port" formControlName="port" [useGrouping]="false"></p-inputNumber>
   </div>
 
   <div class="p-field" *ngIf="form.get('type')?.value === 'NodePort'">
     <label for="nodePort">Node Port</label>
-    <p-inputNumber id="nodePort" formControlName="nodePort"></p-inputNumber>
+    <p-inputNumber id="nodePort" formControlName="nodePort" [useGrouping]="false"></p-inputNumber>
   </div>
 </form>

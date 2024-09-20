@@ -158,10 +158,10 @@ public class ClusterService {
         ClusterTemplate clusterTemplate = new ClusterTemplate();
         clusterTemplate.setClusterId(id);
         clusterTemplate.setYamlList(yamlList);
-        cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
-
-        clusterRepository.save(cluster);
         clusterTemplateRepository.save(clusterTemplate);
+        cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
+        clusterRepository.save(cluster);
+
     }
 
     private boolean isTemplateableResource(NodeDTO node) {
@@ -173,11 +173,9 @@ public class ClusterService {
             return;
         }
         List<NodeDTO> sourceNodes = ClusterUtil.findSourceNodesOf(clusterDTO, node.getId());
-        List<NodeDTO> targetNodes = ClusterUtil.findTargetNodesOf(clusterDTO, node.getId());
 
         // Now process the current node
         node.setSourceNodes(sourceNodes);
-        node.setTargetNodes(targetNodes);
         String yaml = processSpecificNodeDTO(node);
         if (yaml != null && !yaml.isEmpty()) {
             yamlList.add(yaml);

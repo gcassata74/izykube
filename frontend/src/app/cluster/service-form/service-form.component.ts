@@ -39,6 +39,16 @@ export class ServiceFormComponent implements OnInit {
       port: [service.port, [Validators.required, Validators.min(1), Validators.max(65535)]],
       nodePort: [service.nodePort, [Validators.min(30000), Validators.max(32767)]]
     });
+
+    this.form.get('type')?.valueChanges.subscribe((value) => {
+      if (value === 'NodePort') {
+        // Provide a default value for nodePort when type is NodePort
+        this.form.get('nodePort')?.setValue(30000); // Example default value for nodePort
+      } else {
+        // Reset nodePort if the type is changed to something other than NodePort
+        this.form.get('nodePort')?.setValue(null);
+      }
+    });
   }
 
   private setupAutoSave() {

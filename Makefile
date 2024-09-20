@@ -25,19 +25,19 @@ run-spring-boot-server:
 	cd backend && MAVEN_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005" mvn spring-boot:run
 
 create-docker-registry:
-	docker run -d --name k3d-test-app-registry -p 5000:5000 --restart=always registry:2
+	docker run -d --name izyregistry -p 5000:5000 --restart=always registry:2
 
 create-k3d-registry:
-	k3d registry create test-app-registry --port 5000
+	k3d registry create izyregistry --port 5000
 
 delete-docker-registry:
-	docker stop k3d-test-app-registry && docker rm -v k3d-test-app-registry
+	docker stop izyregistry && docker rm -v izyregistry
 
 delete-k3d-registry:
-	k3d registry delete test-app-registry
+	k3d registry delete izyregistry
 
 create-k3d-cluster:
-	k3d cluster create -p "9000:80@loadbalancer" --registry-use k3d-test-app-registry:5000
+	k3d cluster create izycluster --registry-use izyregistry:5000 -p "80:80@loadbalancer"  -p "443:443@loadbalancer"
 
 delete-k3d-cluster:
 	k3d cluster delete
