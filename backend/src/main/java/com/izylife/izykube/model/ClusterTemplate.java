@@ -4,7 +4,7 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.List;
+import java.util.LinkedList;
 
 @Data
 @Document(collection = "clusterTemplates")
@@ -13,6 +13,6 @@ public class ClusterTemplate {
     @Id
     private String id;
     private String clusterId;
-    private List<String> yamlList;
+    private LinkedList<String> yamlList;
 
 }

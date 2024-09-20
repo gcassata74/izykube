@@ -21,10 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
@@ -148,7 +145,7 @@ public class ClusterService {
                 .diagram(cluster.getDiagram())
                 .build();
 
-        List<String> yamlList = new ArrayList<>();
+        LinkedList<String> yamlList = new LinkedList<>();
         Set<String> processedNodes = new HashSet<>();
 
         cluster.getNodes().stream()

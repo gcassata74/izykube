@@ -1,11 +1,14 @@
 package com.izylife.izykube.services.processors;
 
+import com.izylife.izykube.dto.cluster.ConfigMapDTO;
 import com.izylife.izykube.dto.cluster.ContainerDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.repositories.AssetRepository;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerBuilder;
+import io.fabric8.kubernetes.api.model.Volume;
+import io.fabric8.kubernetes.api.model.VolumeBuilder;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.client.utils.Serialization;
@@ -27,6 +30,11 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
     @Override
     public String createTemplate(DeploymentDTO dto) {
         List<Container> containers = createContainers(dto);
+        List<Volume> confgMaps = dto.getSourceNodes().stream()
+                .filter(node -> node instanceof ConfigMapDTO)
+                .map(node -> (ConfigMapDTO) node)
+                .map(this::createVolume)
+                .collect(Collectors.toList());
 
         if (containers.isEmpty()) {
             throw new IllegalArgumentException("Deployment must have at least one linked Container");
@@ -51,6 +59,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .endMetadata()
                 .withNewSpec()
                 .withContainers(containers)
+                .withVolumes(confgMaps)
                 .withRestartPolicy("Always") 
                 .endSpec()
                 .endTemplate()
@@ -61,6 +70,18 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .build();
 
         return Serialization.asYaml(deployment);
+    }
+
+    private Volume createVolume(ConfigMapDTO configMapDTO) {
+        //create volume from configmap with multiple entries
+        return new VolumeBuilder()
+                .withName(configMapDTO.getName())
+                .withNewConfigMap()
+                .withName(configMapDTO.getName())
+                .endConfigMap()
+                .build();
+
+
     }
 
     private List<Container> createContainers(DeploymentDTO dto) {
