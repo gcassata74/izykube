@@ -261,6 +261,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
       switch (fromType) {
         case 'configmap':
           return toType === 'deployment';
+        case 'volume':
+          return toType === 'deployment';  
         case 'container':
           return toType === 'deployment';
         case 'deployment':

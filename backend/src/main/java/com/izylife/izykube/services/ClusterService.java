@@ -148,7 +148,8 @@ public class ClusterService {
         LinkedList<String> yamlList = new LinkedList<>();
         Set<String> processedNodes = new HashSet<>();
 
-        cluster.getNodes().stream()
+        List<NodeDTO> orderedNodes = orderNodesAncestorsFirst(clusterDTO);
+        orderedNodes.stream()
                 .filter(this::isTemplateableResource)
                 .forEach(node -> processNodeAndLinkedNodes(clusterDTO, node, yamlList, processedNodes));
 
@@ -159,6 +160,38 @@ public class ClusterService {
         cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
         clusterRepository.save(cluster);
 
+    }
+
+    private List<NodeDTO> orderNodesAncestorsFirst(ClusterDTO clusterDTO) {
+        List<NodeDTO> result = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        Set<String> visiting = new HashSet<>();
+
+        for (NodeDTO node : clusterDTO.getNodes()) {
+            if (!visited.contains(node.getId())) {
+                topologicalSortWithDependencyCheck(node, clusterDTO, result, visited, visiting);
+            }
+        }
+        return result;
+    }
+
+    private void topologicalSortWithDependencyCheck(NodeDTO node, ClusterDTO clusterDTO, List<NodeDTO> result,
+                                                    Set<String> visited, Set<String> visiting) {
+        visiting.add(node.getId());
+
+        List<NodeDTO> sourceNodes = ClusterUtil.findSourceNodesOf(clusterDTO, node.getId());
+        for (NodeDTO sourceNode : sourceNodes) {
+            if (visiting.contains(sourceNode.getId())) {
+                throw new IllegalStateException("Circular dependency detected between " + node.getName() + " and " + sourceNode.getName());
+            }
+            if (!visited.contains(sourceNode.getId())) {
+                topologicalSortWithDependencyCheck(sourceNode, clusterDTO, result, visited, visiting);
+            }
+        }
+
+        visiting.remove(node.getId());
+        visited.add(node.getId());
+        result.add(node);
     }
 
     private boolean isTemplateableResource(NodeDTO node) {

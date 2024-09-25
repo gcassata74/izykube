@@ -61,6 +61,7 @@ public class NodeFactory {
                         ingress.getServiceName(),
                         ingress.getServicePort()
                 );
+
             case "volume":
                 VolumeDTO volume = (VolumeDTO) node;
                 return new VolumeDTO(
@@ -90,7 +91,12 @@ public class NodeFactory {
             case "ingress":
                 return new IngressDTO(id, name, "example.com", "/", "default-service", 80);
             case "volume":
-                return new VolumeDTO(id, name, "emptyDir", new HashMap<>());
+                HashMap<String, Object> defaultConfig = new HashMap<>();
+                defaultConfig.put("type", "emptyDir");
+                defaultConfig.put("mountPath", "/mnt/data");
+                defaultConfig.put("medium", "");
+                defaultConfig.put("sizeLimit", "");
+                return new VolumeDTO(id, name, "emptyDir", defaultConfig);
             default:
                 throw new IllegalArgumentException("Unsupported node type: " + type);
         }

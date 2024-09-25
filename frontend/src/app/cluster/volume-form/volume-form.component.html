@@ -1,43 +1,68 @@
-<form [formGroup]="form" class="volume-form">
-  <div class="form-group">
-    <label for="name">Volume Name</label>
-    <input pInputText id="name" formControlName="name" required>
-  </div>
-
+<form [formGroup]="form" class="p-fluid">
   <div class="p-field">
-    <label for="type">Volume Type</label>
-    <p-dropdown id="type"
-                formControlName="type"
-                [options]="volumeTypes"
-                optionLabel="label"
-                optionValue="value"
-                [style]="{'width':'100%'}"
-                placeholder="Select a volume type">
-    </p-dropdown>
+    <label for="name">Volume Name</label>
+    <input id="name" type="text" pInputText formControlName="name"/>
   </div>
 
-  <!-- EmptyDir specific fields -->
-  <ng-container *ngIf="form.get('type')?.value === 'emptyDir'">
-    <div class="form-group">
-      <label for="medium">Medium</label>
-      <input pInputText id="medium" formControlName="medium">
+  <div formGroupName="config">
+    <div class="p-field">
+      <label for="type">Volume Type</label>
+      <p-dropdown id="type" [options]="volumeTypes" formControlName="type" optionLabel="label"
+                  optionValue="value"></p-dropdown>
     </div>
-    <div class="form-group">
-      <label for="sizeLimit">Size Limit</label>
-      <input pInputText id="sizeLimit" formControlName="sizeLimit">
-    </div>
-  </ng-container>
 
-  <!-- HostPath specific fields -->
-  <ng-container *ngIf="form.get('type')?.value === 'hostPath'">
-    <div class="form-group">
-      <label for="path">Path</label>
-      <input pInputText id="path" formControlName="path" required>
+    <div class="p-field">
+      <label for="mountPath">Mount Path</label>
+      <input id="mountPath" type="text" pInputText formControlName="mountPath"/>
     </div>
-    <div class="form-group">
-      <label for="hostPathType">Type</label>
-      <input pInputText id="hostPathType" formControlName="type">
-    </div>
-  </ng-container>
 
+    <ng-container [ngSwitch]="form.get('config.type')?.value">
+      <ng-container *ngSwitchCase="'emptyDir'">
+        <div class="p-field">
+          <label for="medium">Medium</label>
+          <input id="medium" type="text" pInputText formControlName="medium"/>
+        </div>
+        <div class="p-field">
+          <label for="sizeLimit">Size Limit</label>
+          <input id="sizeLimit" type="text" pInputText formControlName="sizeLimit"/>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'hostPath'">
+        <div class="p-field">
+          <label for="path">Host Path</label>
+          <input id="path" type="text" pInputText formControlName="path"/>
+        </div>
+        <div class="p-field">
+          <label for="hostPathType">Host Path Type</label>
+          <input id="hostPathType" type="text" pInputText formControlName="hostPathType"/>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'persistentVolumeClaim'">
+        <div class="p-field">
+          <label for="claimName">Claim Name</label>
+          <input id="claimName" type="text" pInputText formControlName="claimName"/>
+        </div>
+        <div class="p-field-checkbox">
+          <p-checkbox id="readOnly" [binary]="true" formControlName="readOnly"></p-checkbox>
+          <label for="readOnly">Read Only</label>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'configMap'">
+        <div class="p-field">
+          <label for="name">ConfigMap Name</label>
+          <input id="name" type="text" pInputText formControlName="name"/>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'secret'">
+        <div class="p-field">
+          <label for="secretName">Secret Name</label>
+          <input id="secretName" type="text" pInputText formControlName="secretName"/>
+        </div>
+      </ng-container>
+    </ng-container>
+  </div>
 </form>
