@@ -23,7 +23,7 @@
         <maven.compiler.target>11</maven.compiler.target>
         <spring-cloud.version>2021.0.3</spring-cloud.version>
         <spring.boot.version>2.7.2</spring.boot.version>
-        <lombok.version>1.18.24</lombok.version>
+        <lombok.version>1.18.30</lombok.version>
         <spring-rabbit-test.version>2.4.6</spring-rabbit-test.version>
         <spring-security-test.version>5.7.2</spring-security-test.version>
         <reactor-test.version>3.4.21</reactor-test.version>

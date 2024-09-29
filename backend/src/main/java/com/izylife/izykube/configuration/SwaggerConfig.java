@@ -3,17 +3,13 @@ package com.izylife.izykube.configuration;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.servers.Server;
-import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-@AllArgsConstructor
 @Configuration
 public class SwaggerConfig {
 
-  private final BuildProperties buildProperties;
 
   /**
    * Information that is associated with the swagger models that are specific to this application server.
@@ -24,8 +20,7 @@ public class SwaggerConfig {
             .addServersItem(new Server().url(contextPath))
             .openapi("3.0.0")
             .info(new Info().title("IZYKUBE SERVER REST API")
-                    .description("IZYKUBE project. Server API")
-                    .version(buildProperties.getVersion()));
+                    .description("IZYKUBE project. Server API"));
   }
 }
 
