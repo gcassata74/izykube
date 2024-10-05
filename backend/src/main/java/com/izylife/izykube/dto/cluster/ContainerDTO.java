@@ -10,10 +10,12 @@ import lombok.NoArgsConstructor;
 public class ContainerDTO extends NodeDTO {
     private String assetId;
     private int containerPort;
+    private boolean isSidecar;
 
-    public ContainerDTO(String id, String name, String assetId, int containerPort) {
+    public ContainerDTO(String id, String name, String assetId, int containerPort, boolean isSidecar) {
         super(id, name, "container");
         this.assetId = assetId;
         this.containerPort = containerPort;
+        this.isSidecar = isSidecar;
     }
 }

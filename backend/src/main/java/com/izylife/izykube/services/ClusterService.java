@@ -9,9 +9,6 @@ import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.repositories.ClusterTemplateRepository;
-import com.izylife.izykube.services.processors.TemplateProcessor;
-import com.izylife.izykube.utils.ClusterUtil;
-import com.izylife.izykube.utils.TemplatableResourceUtil;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
@@ -21,7 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
-import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
@@ -33,6 +30,7 @@ public class ClusterService {
     private final TemplateFactory templateFactory;
     private final ClusterRepository clusterRepository;
     private final ClusterTemplateRepository clusterTemplateRepository;
+    private final TemplateService templateService;
 
 
     public ClusterDTO createCluster(ClusterDTO clusterDTO) {
@@ -122,6 +120,7 @@ public class ClusterService {
                     .nodes(nodeDTOs)
                     .links(cluster.getLinks())
                     .diagram(cluster.getDiagram())
+                    .status(cluster.getStatus())
                     .build();
 
             return clusterDTO;
@@ -133,100 +132,6 @@ public class ClusterService {
 
     }
 
-    public void createTemplate(String id) throws ObjectNotFoundException {
-        Cluster cluster = clusterRepository.findById(id)
-                .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
-
-        ClusterDTO clusterDTO = ClusterDTO.builder()
-                .id(cluster.getId())
-                .name(cluster.getName())
-                .nodes(cluster.getNodes())
-                .links(cluster.getLinks())
-                .diagram(cluster.getDiagram())
-                .build();
-
-        LinkedList<String> yamlList = new LinkedList<>();
-        Set<String> processedNodes = new HashSet<>();
-
-        List<NodeDTO> orderedNodes = orderNodesAncestorsFirst(clusterDTO);
-        orderedNodes.stream()
-                .filter(this::isTemplateableResource)
-                .forEach(node -> processNodeAndLinkedNodes(clusterDTO, node, yamlList, processedNodes));
-
-        ClusterTemplate clusterTemplate = new ClusterTemplate();
-        clusterTemplate.setClusterId(id);
-        clusterTemplate.setYamlList(yamlList);
-        clusterTemplateRepository.save(clusterTemplate);
-        cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
-        clusterRepository.save(cluster);
-
-    }
-
-    private List<NodeDTO> orderNodesAncestorsFirst(ClusterDTO clusterDTO) {
-        List<NodeDTO> result = new ArrayList<>();
-        Set<String> visited = new HashSet<>();
-        Set<String> visiting = new HashSet<>();
-
-        for (NodeDTO node : clusterDTO.getNodes()) {
-            if (!visited.contains(node.getId())) {
-                topologicalSortWithDependencyCheck(node, clusterDTO, result, visited, visiting);
-            }
-        }
-        return result;
-    }
-
-    private void topologicalSortWithDependencyCheck(NodeDTO node, ClusterDTO clusterDTO, List<NodeDTO> result,
-                                                    Set<String> visited, Set<String> visiting) {
-        visiting.add(node.getId());
-
-        List<NodeDTO> sourceNodes = ClusterUtil.findSourceNodesOf(clusterDTO, node.getId());
-        for (NodeDTO sourceNode : sourceNodes) {
-            if (visiting.contains(sourceNode.getId())) {
-                throw new IllegalStateException("Circular dependency detected between " + node.getName() + " and " + sourceNode.getName());
-            }
-            if (!visited.contains(sourceNode.getId())) {
-                topologicalSortWithDependencyCheck(sourceNode, clusterDTO, result, visited, visiting);
-            }
-        }
-
-        visiting.remove(node.getId());
-        visited.add(node.getId());
-        result.add(node);
-    }
-
-    private boolean isTemplateableResource(NodeDTO node) {
-        return TemplatableResourceUtil.isTemplatable(node.getKind());
-    }
-
-    private void processNodeAndLinkedNodes(ClusterDTO clusterDTO, NodeDTO node, List<String> yamlList, Set<String> processedNodes) {
-        if (processedNodes.contains(node.getId())) {
-            return;
-        }
-        List<NodeDTO> sourceNodes = ClusterUtil.findSourceNodesOf(clusterDTO, node.getId());
-
-        // Now process the current node
-        node.setSourceNodes(sourceNodes);
-        String yaml = processSpecificNodeDTO(node);
-        if (yaml != null && !yaml.isEmpty()) {
-            yamlList.add(yaml);
-        }
-        processedNodes.add(node.getId());
-    }
-
-    private String processSpecificNodeDTO(NodeDTO node) {
-        TemplateProcessor<NodeDTO> processor = templateFactory.getProcessor(node);
-        return processor.createTemplate(node);
-    }
-
-    public void deleteTemplate(String clusterId) throws ObjectNotFoundException {
-        Cluster cluster = clusterRepository.findById(clusterId)
-                .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
-        ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
-                .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
-        clusterTemplateRepository.delete(template);
-        cluster.setStatus(ClusterStatusEnum.CREATED);
-        clusterRepository.save(cluster);
-    }
 
     public void deploy(String clusterId) throws ObjectNotFoundException {
 
@@ -238,6 +143,12 @@ public class ClusterService {
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
 
         // Deploy each YAML in the template
+        applyTemplate(template);
+        cluster.setStatus(ClusterStatusEnum.DEPLOYED);
+        clusterRepository.save(cluster);
+    }
+
+    private void applyTemplate(ClusterTemplate template) {
         for (String yaml : template.getYamlList()) {
             try {
                 // Load the YAML into Kubernetes resources
@@ -248,8 +159,6 @@ public class ClusterService {
                     client.resource(resource).createOrReplace();
                     log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
                 }
-                cluster.setStatus(ClusterStatusEnum.DEPLOYED);
-                clusterRepository.save(cluster);
             } catch (KubernetesClientException e) {
                 log.error("Error deploying resource from template: " + e.getMessage());
             }
@@ -273,12 +182,7 @@ public class ClusterService {
 
                 // Delete each resource
                 for (HasMetadata resource : resources) {
-                    boolean deleted = client.resource(resource).delete();
-                    if (deleted) {
-                        log.info("Undeployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
-                    } else {
-                        log.warn("Failed to undeploy resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
-                    }
+                    client.resource(resource).delete();
                 }
 
             } catch (KubernetesClientException e) {
@@ -289,6 +193,73 @@ public class ClusterService {
         clusterRepository.save(cluster);
     }
 
+    public ClusterDTO patchCluster(String id, ClusterDTO clusterDTO) {
+        try {
+            // Find the existing cluster
+            Cluster existingCluster = clusterRepository.findById(id)
+                    .orElseThrow(() -> new ObjectNotFoundException("Cluster not found with id: " + id));
+
+            // Generate and save the template
+            ClusterTemplate template = templateService.generateAndSaveTemplate(id, clusterDTO);
+            if (template == null) {
+                throw new IllegalStateException("Failed to generate template for cluster: " + id);
+            }
+
+            // Apply the template to the Kubernetes cluster
+            for (String yaml : template.getYamlList()) {
+                try {
+                    // Load the YAML into Kubernetes resources
+                    List<HasMetadata> resources = client.load(new ByteArrayInputStream(yaml.getBytes())).get();
+
+                    // Patch each resource
+                    for (HasMetadata resource : resources) {
+                        String kind = resource.getKind();
+                        String name = resource.getMetadata().getName();
+                        String namespace = resource.getMetadata().getNamespace();
+
+                        // If namespace is null, use "default" or appropriate default namespace
+                        if (namespace == null) {
+                            namespace = "default";
+                        }
+/*
+                        HasMetadata patchedResource = client.resource(resource)
+                                .inNamespace(namespace)
+                                .patch();*/
+
+                        log.info("Patched resource: " + kind + "/" + name + " in namespace " + namespace);
+                    }
+                } catch (KubernetesClientException e) {
+                    log.error("Error patching resource from template: " + e.getMessage());
+                }
+            }
+
+            // Update the cluster entity with new data
+            existingCluster.setName(clusterDTO.getName());
+            existingCluster.setNameSpace(clusterDTO.getNameSpace());
+            existingCluster.setNodes(clusterDTO.getNodes());
+            existingCluster.setLinks(clusterDTO.getLinks());
+            existingCluster.setDiagram(clusterDTO.getDiagram());
+            //keep the status as it is
+            existingCluster.setStatus(existingCluster.getStatus());
+            // Save the updated cluster
+            Cluster updatedCluster = clusterRepository.save(existingCluster);
+
+            // Return the updated cluster as DTO
+            return ClusterDTO.builder()
+                    .id(updatedCluster.getId())
+                    .name(updatedCluster.getName())
+                    .nameSpace(updatedCluster.getNameSpace())
+                    .nodes(updatedCluster.getNodes())
+                    .links(updatedCluster.getLinks())
+                    .diagram(updatedCluster.getDiagram())
+                    .status(updatedCluster.getStatus())
+                    .build();
+        } catch (ObjectNotFoundException e) {
+            throw new RuntimeException("Failed to patch cluster: " + id, e);
+        } catch (Exception e) {
+            throw new RuntimeException("Unexpected error while patching cluster: " + id, e);
+        }
+    }
 }
 
 

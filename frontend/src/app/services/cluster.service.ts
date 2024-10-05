@@ -10,6 +10,7 @@ import { Router } from '@angular/router';
 @Injectable()
 export class ClusterService {
 
+
   constructor(
     private dataService: DataService,
     private store: Store,
@@ -20,12 +21,12 @@ export class ClusterService {
     return this.dataService.get<Cluster[]>('/cluster/all');
   }
 
-  getCluster(id: string): Observable<Cluster> {
-    return this.dataService.get<Cluster>('/cluster/' + id);
+  getCluster(clusterId: string): Observable<Cluster> {
+    return this.dataService.get<Cluster>('/cluster/' + clusterId);
   }
 
-  deleteCluster(id: string): Observable<Cluster> {
-    return this.dataService.delete<Cluster>('/cluster/' + id);
+  deleteCluster(clusterId: string): Observable<Cluster> {
+    return this.dataService.delete<Cluster>('/cluster/' + clusterId);
   }
 
   saveCluster(clusterData: Cluster): Observable<Cluster> {
@@ -36,20 +37,15 @@ export class ClusterService {
     }
   }
 
-  createTemplate(selectedId: string): Observable<any> {
-    return this.dataService.post('/cluster/' + selectedId + '/template', {});
+  patchCluster(id: string | null, clusterData: Cluster) {
+    return this.dataService.patch<Cluster>('cluster/' + clusterData.id, clusterData);
   }
 
-  deleteTemplate(selectedId: string): Observable<any> {
-    return this.dataService.delete('/cluster/' + selectedId + '/template');
+  deploy(clusterId: string): Observable<any> {
+    return this.dataService.post('/cluster/' + clusterId + '/deploy', {});
   }
 
-  deploy(selectedId: string): Observable<any> {
-    return this.dataService.post('/cluster/' + selectedId + '/deploy', {});
+  undeploy(clusterId: string): Observable<any> {
+    return this.dataService.delete('/cluster/' + clusterId + '/undeploy');
   }
-
-  undeploy(selectedId: string): Observable<any> {
-    return this.dataService.delete('/cluster/' + selectedId + '/undeploy');
-  }
-
 }

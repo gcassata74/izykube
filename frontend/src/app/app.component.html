@@ -2,13 +2,25 @@
   <div class="logo-div"></div>
   <p-toolbar styleClass="app-toolbar">
     <div class="app-toolbar-container">
-    <div class="button-container">
-          <ng-container *ngIf="toolBarService.buttons$| async as buttons">
-            <button *ngFor="let btn of buttons" class="btn btn-primary" (click)="performAction(btn.action)">
-              <i [class]="btn.icon"></i> {{ btn.label }}
+      <div class="button-container">
+        <ng-container *ngIf="buttons$ | async as buttons">
+          <ng-container *ngFor="let btn of buttons">
+            <button *ngIf="!isArray(btn.actions)" pButton
+                    [label]="btn.label"
+                    [icon]="btn.icon"
+                    (click)="performAction(btn.actions)"
+                    class="p-button-primary">
             </button>
+            <p-splitButton *ngIf="isArray(btn.actions)"
+                           [label]="btn.label"
+                           [icon]="btn.icon"
+                           (onClick)="handleSplitButtonClick(btn.actions)"
+                           [model]="items"
+                           styleClass="p-button-primary">
+            </p-splitButton>
           </ng-container>
-        </div>
+        </ng-container>
+      </div>
     </div>
   </p-toolbar>
 

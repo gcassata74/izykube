@@ -5,6 +5,7 @@ import { SidebarModule } from 'primeng/sidebar';
 import { MenuModule } from 'primeng/menu';
 import { DropdownModule } from 'primeng/dropdown';
 import { TableModule } from 'primeng/table';
+import { SplitButtonModule } from 'primeng/splitbutton';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { HomeComponent } from './home/home.component';
@@ -76,6 +77,7 @@ import { VolumeFormComponent } from './cluster/volume-form/volume-form.component
     InputTextModule,
     TabViewModule,
     InputNumberModule,
+    SplitButtonModule,
     ContextMenuModule,
     CheckboxModule,
     ToastModule,

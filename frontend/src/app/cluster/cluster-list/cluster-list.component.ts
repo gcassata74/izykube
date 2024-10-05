@@ -1,3 +1,4 @@
+import { TemplateService } from './../../services/template.service';
 import { DataService } from './../../services/data.service';
 import { Component, ViewChild } from '@angular/core';
 import { MenuItem } from 'primeng/api';
@@ -27,6 +28,7 @@ export class ClusterListComponent {
 
   constructor(
     private clusterService: ClusterService,
+    private templateService: TemplateService,
     private dataService: DataService,
     private notificationService: NotificationService,
     private router: Router,
@@ -137,7 +139,7 @@ export class ClusterListComponent {
 
   createTemplate(selectedId: string): void {
     this.subscriptions.add(
-      this.clusterService.createTemplate(selectedId).pipe(
+      this.templateService.createTemplate(selectedId).pipe(
         tap((message: any) => {
           this.notificationService.success('Template Created', message.message as string);
           this.getAllClusters();
@@ -152,7 +154,7 @@ export class ClusterListComponent {
 
   deleteTemplate(selectedId: string): void {
     this.subscriptions.add(
-      this.clusterService.deleteTemplate(selectedId).pipe(
+      this.templateService.deleteTemplate(selectedId).pipe(
         tap(() => {
           this.notificationService.success('Template deleted', 'Successfully deleted template');
           this.getAllClusters();

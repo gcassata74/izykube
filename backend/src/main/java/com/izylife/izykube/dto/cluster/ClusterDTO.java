@@ -1,5 +1,6 @@
 package com.izylife.izykube.dto.cluster;
 
+import com.izylife.izykube.collections.ClusterStatusEnum;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,5 +20,6 @@ public class ClusterDTO {
     private List<NodeDTO> nodes = new ArrayList<>();
     private List<LinkDTO> links = new ArrayList<>();
     private String diagram;
+    private ClusterStatusEnum status;
 
 }

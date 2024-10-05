@@ -32,7 +32,8 @@ public class NodeFactory {
                         container.getId(),
                         container.getName(),
                         container.getAssetId(),
-                        container.getContainerPort()
+                        container.getContainerPort(),
+                        false
                 );
             case "deployment":
                 DeploymentDTO deployment = (DeploymentDTO) node;
@@ -83,7 +84,7 @@ public class NodeFactory {
             case "pod":
                 return new PodDTO(id, name, "Always");
             case "container":
-                return new ContainerDTO(id, name, "", 80);
+                return new ContainerDTO(id, name, "", 80, false);
             case "deployment":
                 return new DeploymentDTO(id, name, 1, "RollingUpdate");
             case "service":

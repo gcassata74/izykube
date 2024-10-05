@@ -7,9 +7,10 @@ import { Observable } from 'rxjs';
 })
 export class DataService {
 
+
   private baseUrl = '/api'; // Replace with your API base URL
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   // Generic GET method
   get<T>(endpoint: string, params?: HttpParams): Observable<T> {
@@ -27,6 +28,11 @@ export class DataService {
   put<T>(endpoint: string, data: any): Observable<T> {
     const url = `${this.baseUrl}/${endpoint}`;
     return this.http.put<T>(url, data);
+  }
+
+  patch<T>(endpoint: string, data: any): Observable<T> {
+    const url = `${this.baseUrl}/${endpoint}`;
+    return this.http.patch<T>(url, data);
   }
 
   // Generic DELETE method

@@ -4,8 +4,8 @@ package com.izylife.izykube.web;
 import com.izylife.izykube.dto.GenericResponseDTO;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.services.ClusterService;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,10 +16,10 @@ import java.util.Map;
 @RestController
 @Slf4j
 @RequestMapping("/api/cluster")
+@AllArgsConstructor
 public class ClusterController {
-    @Autowired
-    private ClusterService clusterService;
 
+    private ClusterService clusterService;
 
     @PostMapping
     public ResponseEntity<?> createCluster(@RequestBody ClusterDTO clusterDTO) {
@@ -57,6 +57,38 @@ public class ClusterController {
         }
     }
 
+    @PatchMapping("/{id}")
+    public ResponseEntity<?> patchCluster(@PathVariable String id, @RequestBody ClusterDTO clusterDTO) {
+        try {
+            clusterDTO.setId(id);
+            ClusterDTO patchedCluster = clusterService.patchCluster(id, clusterDTO);
+
+            // Check if the cluster was patched successfully
+            if (patchedCluster != null) {
+                //create a new clusterDTO object with the updated values
+                ClusterDTO updatedCluster = ClusterDTO.builder()
+                        .id(patchedCluster.getId())
+                        .name(patchedCluster.getName())
+                        .nameSpace(patchedCluster.getNameSpace())
+                        .nodes(patchedCluster.getNodes())
+                        .links(patchedCluster.getLinks())
+                        .diagram(patchedCluster.getDiagram())
+                        .status(patchedCluster.getStatus())
+                        .build();
+
+                return ResponseEntity.ok(updatedCluster);
+            } else {
+                // Handle the case where the cluster wasn't patched properly
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error patching cluster");
+            }
+        } catch (Exception e) {
+            log.error("Error patching cluster: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Error patching cluster: " + e.getMessage());
+        }
+    }
+
+
+
     @GetMapping("/all")
     public ResponseEntity<?> getAllClusters() {
         try {
@@ -77,7 +109,6 @@ public class ClusterController {
         }
     }
 
-
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteCluster(@PathVariable String id) {
         try {
@@ -93,36 +124,6 @@ public class ClusterController {
         }
     }
 
-    @PostMapping("/{id}/template")
-    @ResponseBody
-    public ResponseEntity<GenericResponseDTO> createTemplate(@PathVariable String id) {
-        GenericResponseDTO response = new GenericResponseDTO();
-        try {
-            clusterService.createTemplate(id);
-            response.setMessage("The template was created successfully");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            response.setError("The template could not be created");
-            return ResponseEntity.badRequest().body(response);
-        }
-    }
-
-    @DeleteMapping("/{id}/template")
-    @ResponseBody
-    public ResponseEntity<GenericResponseDTO> deleteTemplate(@PathVariable String id) {
-        GenericResponseDTO response = new GenericResponseDTO();
-        try {
-            clusterService.deleteTemplate(id);
-            response.setMessage("The template was created successfully");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            response.setError("The template could not be created");
-            return ResponseEntity.badRequest().body(response);
-        }
-    }
-
-
-
     @PostMapping("/{id}/deploy")
     public ResponseEntity<GenericResponseDTO> deploy(@PathVariable String id) {
         GenericResponseDTO response = new GenericResponseDTO();
@@ -136,7 +137,6 @@ public class ClusterController {
         }
     }
 
-
     @DeleteMapping("/{id}/undeploy")
     public ResponseEntity<GenericResponseDTO> undeploy(@PathVariable String id) {
         GenericResponseDTO response = new GenericResponseDTO();
@@ -149,7 +149,4 @@ public class ClusterController {
             return ResponseEntity.badRequest().body(response);
         }
     }
-
-
-
 }

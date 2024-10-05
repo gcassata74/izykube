@@ -1,5 +1,6 @@
 package com.izylife.izykube.model;
 
+import lombok.Builder;
 import lombok.Data;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.domain.Persistable;
