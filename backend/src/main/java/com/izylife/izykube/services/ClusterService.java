@@ -9,7 +9,9 @@ import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.repositories.ClusterTemplateRepository;
+import com.izylife.izykube.utils.ClusterUtil;
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import javassist.tools.rmi.ObjectNotFoundException;
@@ -18,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -200,38 +203,15 @@ public class ClusterService {
                     .orElseThrow(() -> new ObjectNotFoundException("Cluster not found with id: " + id));
 
             // Generate and save the template
-            ClusterTemplate template = templateService.generateAndSaveTemplate(id, clusterDTO);
+            ClusterTemplate template = templateService.createOrReplaceTemplate(id, clusterDTO);
             if (template == null) {
                 throw new IllegalStateException("Failed to generate template for cluster: " + id);
             }
 
-            // Apply the template to the Kubernetes cluster
-            for (String yaml : template.getYamlList()) {
-                try {
-                    // Load the YAML into Kubernetes resources
-                    List<HasMetadata> resources = client.load(new ByteArrayInputStream(yaml.getBytes())).get();
+            applyTemplate(template);
 
-                    // Patch each resource
-                    for (HasMetadata resource : resources) {
-                        String kind = resource.getKind();
-                        String name = resource.getMetadata().getName();
-                        String namespace = resource.getMetadata().getNamespace();
+            triggerDeploymentUpdates(clusterDTO);
 
-                        // If namespace is null, use "default" or appropriate default namespace
-                        if (namespace == null) {
-                            namespace = "default";
-                        }
-/*
-                        HasMetadata patchedResource = client.resource(resource)
-                                .inNamespace(namespace)
-                                .patch();*/
-
-                        log.info("Patched resource: " + kind + "/" + name + " in namespace " + namespace);
-                    }
-                } catch (KubernetesClientException e) {
-                    log.error("Error patching resource from template: " + e.getMessage());
-                }
-            }
 
             // Update the cluster entity with new data
             existingCluster.setName(clusterDTO.getName());
@@ -243,22 +223,42 @@ public class ClusterService {
             existingCluster.setStatus(existingCluster.getStatus());
             // Save the updated cluster
             Cluster updatedCluster = clusterRepository.save(existingCluster);
-
             // Return the updated cluster as DTO
-            return ClusterDTO.builder()
-                    .id(updatedCluster.getId())
-                    .name(updatedCluster.getName())
-                    .nameSpace(updatedCluster.getNameSpace())
-                    .nodes(updatedCluster.getNodes())
-                    .links(updatedCluster.getLinks())
-                    .diagram(updatedCluster.getDiagram())
-                    .status(updatedCluster.getStatus())
-                    .build();
+            return ClusterUtil.convertToDTO(updatedCluster);
+
         } catch (ObjectNotFoundException e) {
             throw new RuntimeException("Failed to patch cluster: " + id, e);
         } catch (Exception e) {
             throw new RuntimeException("Unexpected error while patching cluster: " + id, e);
         }
+    }
+
+    private void triggerDeploymentUpdates(ClusterDTO clusterDTO) {
+        List<NodeDTO> configMaps = ClusterUtil.findNodesByKind(clusterDTO, "configmap");
+
+        for (NodeDTO configMap : configMaps) {
+            List<NodeDTO> connectedDeployments = ClusterUtil.findTargetNodesOf(clusterDTO, configMap.getId())
+                    .stream()
+                    .filter(node -> "deployment".equals(node.getKind()))
+                    .collect(Collectors.toList());
+
+            for (NodeDTO deployment : connectedDeployments) {
+                restartDeployment(deployment.getName());
+            }
+        }
+    }
+
+    private void restartDeployment(String name) {
+        // Implement the logic to trigger a rolling update for the deployment
+        // Example using Fabric8 Kubernetes client:
+        client.apps().deployments()
+                .inNamespace("default")
+                .withName(name)
+                .edit(d -> new DeploymentBuilder(d)
+                        .editSpec().editTemplate().editMetadata()
+                        .addToAnnotations("kubectl.kubernetes.io/restartedAt", Instant.now().toString())
+                        .endMetadata().endTemplate().endSpec()
+                        .build());
     }
 }
 

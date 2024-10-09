@@ -20,7 +20,6 @@ import {reducers} from './store/reducers';
 import {initialState} from './store/states/state';
 import { ClusterListComponent } from './cluster/cluster-list/cluster-list.component';
 import { FormsModule } from '@angular/forms';
-import { AssetsListComponent } from './assets/assets-list/assets-list.component';
 import { ToolbarService } from './services/toolbar.service';
 import { InitEffects } from './store/effects/init-effects';
 import { HttpClientModule } from '@angular/common/http';
@@ -48,6 +47,8 @@ import { IngressFormComponent } from './cluster/ingress-form/ingress-form.compon
 import { TabViewModule } from 'primeng/tabview';
 import { ContainerFormComponent } from './cluster/container-form/container-form.component';
 import { VolumeFormComponent } from './cluster/volume-form/volume-form.component';
+import { AssetListComponent } from './assets/assets-list/assets-list.component';
+import { AssetFormComponent } from './assets/asset-form/asset-form.component';
 
 @NgModule({
   declarations: [
@@ -55,7 +56,7 @@ import { VolumeFormComponent } from './cluster/volume-form/volume-form.component
     HomeComponent,
     DiagramComponent,
     ClusterListComponent,
-    AssetsListComponent,
+    AssetListComponent,
     ClusterEditorComponent,
     NodeFormComponent,
     PodFormComponent,
@@ -66,6 +67,7 @@ import { VolumeFormComponent } from './cluster/volume-form/volume-form.component
     IngressFormComponent,
     ContainerFormComponent,
     VolumeFormComponent,
+    AssetFormComponent,
   ],
   imports: [
     ReactiveFormsModule,

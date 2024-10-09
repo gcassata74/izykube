@@ -139,7 +139,6 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
     );
   }
 
-
   private saveCluster(): Observable<any> {
     return this.store.select(getCurrentCluster).pipe(
       take(1),

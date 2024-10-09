@@ -39,12 +39,12 @@ public class TemplateService {
                 .diagram(cluster.getDiagram())
                 .build();
 
-        generateAndSaveTemplate(id, clusterDTO);
+        createOrReplaceTemplate(id, clusterDTO);
         cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
         clusterRepository.save(cluster);
     }
 
-    protected ClusterTemplate generateAndSaveTemplate(String id, ClusterDTO clusterDTO) {
+    protected ClusterTemplate createOrReplaceTemplate(String id, ClusterDTO clusterDTO) {
         LinkedList<String> yamlList = new LinkedList<>();
         Set<String> processedNodes = new HashSet<>();
 
@@ -57,10 +57,19 @@ public class TemplateService {
                 }
             }
 
-            ClusterTemplate clusterTemplate = new ClusterTemplate();
-            clusterTemplate.setClusterId(id);
-            clusterTemplate.setYamlList(yamlList);
-            return clusterTemplateRepository.save(clusterTemplate);
+            Optional<ClusterTemplate> existingTemplate = clusterTemplateRepository.findByClusterId(id);
+            ClusterTemplate template = null;
+            if (existingTemplate.isPresent()) {
+                // Update the existing template
+                template = existingTemplate.get();
+                template.setYamlList(yamlList);
+            } else {
+                // Create a new template
+                template = new ClusterTemplate();
+                template.setClusterId(id);
+                template.setYamlList(yamlList);
+            }
+            return clusterTemplateRepository.save(template);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate and save template for cluster: " + id, e);
         }
@@ -133,6 +142,6 @@ public class TemplateService {
     }
 
     public void updateTemplate(String id, ClusterDTO clusterDTO) {
-        generateAndSaveTemplate(id, clusterDTO);
+        createOrReplaceTemplate(id, clusterDTO);
     }
 }

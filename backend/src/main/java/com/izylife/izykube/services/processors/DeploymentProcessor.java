@@ -9,10 +9,7 @@ import com.izylife.izykube.repositories.AssetRepository;
 import com.izylife.izykube.utils.ConfigMapUtils;
 import com.izylife.izykube.utils.ContainerUtils;
 import com.izylife.izykube.utils.VolumeUtils;
-import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.EnvFromSource;
-import io.fabric8.kubernetes.api.model.Volume;
-import io.fabric8.kubernetes.api.model.VolumeMount;
+import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.client.utils.Serialization;
@@ -64,7 +61,11 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .endSpec()
                 .endTemplate()
                 .withNewStrategy()
-                .withType(dto.getStrategyType())
+                .withType("RollingUpdate")
+                .withNewRollingUpdate()
+                .withMaxSurge(new IntOrString(1))
+                .withMaxUnavailable(new IntOrString(0))
+                .endRollingUpdate()
                 .endStrategy()
                 .endSpec()
                 .build();

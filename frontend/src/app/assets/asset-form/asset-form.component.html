@@ -1,0 +1,59 @@
+<div class="container custom-container mt-5">
+  <p-card>
+    <ng-template pTemplate="header">
+      <div class="card-header">
+        <h2>{{ isEditMode ? 'Edit' : 'Create' }} Asset</h2>
+      </div>
+    </ng-template>
+
+    <div class="card-body">
+      <form [formGroup]="assetForm" (ngSubmit)="saveAsset()">
+        <div class="mt-4 ml-4 mr-4">
+          <label for="name">Asset Name</label>
+          <input id="name" type="text" pInputText formControlName="name" class="p-inputtext-lg"
+                 style="width: 100%;">
+          <small *ngIf="assetForm.get('name')?.invalid && assetForm.get('name')?.touched" class="p-error">
+            Asset name is required.
+          </small>
+        </div>
+
+        <div class="mt-4 ml-4 mr-4">
+          <label for="port">Port</label>
+          <div width="100%">
+            <p-inputNumber id="port" formControlName="port" [min]="1" [max]="65535" [useGrouping]="false"
+                           styleClass="p-inputtext-lg"></p-inputNumber>
+            <small *ngIf="assetForm.get('port')?.invalid && assetForm.get('port')?.touched" class="p-error">
+              Port is required and must be between 1 and 65535.
+            </small>
+          </div>
+        </div>
+
+        <div class="mt-4 ml-4 mr-4">
+          <label for="image">Image</label>
+          <input id="image" type="text" pInputText formControlName="image" class="p-inputtext-lg"
+                 style="width: 100%;">
+          <small *ngIf="assetForm.get('image')?.invalid && assetForm.get('image')?.touched" class="p-error">
+            Image is required.
+          </small>
+        </div>
+
+        <div class="mt-4 ml-4 mr-4">
+          <label for="version">Version</label>
+          <input id="version" type="text" pInputText formControlName="version" class="p-inputtext-lg"
+                 style="width: 100%;">
+          <small *ngIf="assetForm.get('version')?.invalid && assetForm.get('version')?.touched"
+                 class="p-error">
+            Version is required.
+          </small>
+        </div>
+
+        <div class="text-end mt-4 pl-4 pr-4 mb-4">
+          <p-button type="submit" label="Save" [disabled]="assetForm.invalid"
+                    styleClass="p-button-success mr-2"></p-button>
+          <p-button type="button" label="Cancel" (click)="cancel()"
+                    styleClass="p-button-secondary"></p-button>
+        </div>
+      </form>
+    </div>
+  </p-card>
+</div>

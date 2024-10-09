@@ -3,6 +3,7 @@ package com.izylife.izykube.utils;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
+import com.izylife.izykube.model.Cluster;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -54,4 +55,30 @@ public class ClusterUtil {
                 .filter(node -> targetIds.contains(node.getId()))
                 .collect(Collectors.toList());
     }
+
+    public static ClusterDTO convertToDTO(Cluster cluster) {
+        return ClusterDTO.builder()
+                .id(cluster.getId())
+                .name(cluster.getName())
+                .nameSpace(cluster.getNameSpace())
+                .nodes(cluster.getNodes())
+                .links(cluster.getLinks())
+                .diagram(cluster.getDiagram())
+                .status(cluster.getStatus())
+                .build();
+    }
+
+    // Convert ClusterDTO to Cluster
+    public static Cluster convertToEntity(ClusterDTO clusterDTO) {
+        Cluster cluster = new Cluster();
+        cluster.setId(clusterDTO.getId());
+        cluster.setName(clusterDTO.getName());
+        cluster.setNameSpace(clusterDTO.getNameSpace());
+        cluster.setNodes(clusterDTO.getNodes());
+        cluster.setLinks(clusterDTO.getLinks());
+        cluster.setDiagram(clusterDTO.getDiagram());
+        cluster.setStatus(clusterDTO.getStatus());
+        return cluster;
+    }
+
 }
