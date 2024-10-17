@@ -6,7 +6,7 @@ import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.Volume;
-import com.github.dockerjava.core.DockerClientBuilder;
+import com.github.dockerjava.core.DockerClientImpl;
 import com.izylife.izykube.dto.ContainerInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +40,7 @@ public class DockerContainerService {
     }
 
     public String runContainer(String imageName, String[] command, String[] volumeBindings) {
-        DockerClient dockerClient = DockerClientBuilder.getInstance().build();
+        DockerClient dockerClient = DockerClientImpl.getInstance();
 
         CreateContainerCmd createContainerCmd = dockerClient.createContainerCmd(imageName);
 
@@ -62,7 +62,7 @@ public class DockerContainerService {
     }
 
     public List<ContainerInfo> getContainers(boolean includeExited) {
-        DockerClient dockerClient = DockerClientBuilder.getInstance().build();
+        DockerClient dockerClient = DockerClientImpl.getInstance();
 
         List<Container> containers = dockerClient.listContainersCmd()
                 .withShowAll(includeExited)
@@ -78,7 +78,7 @@ public class DockerContainerService {
     }
 
     public ContainerInfo getContainerById(String containerId, boolean includeExited) {
-        DockerClient dockerClient = DockerClientBuilder.getInstance().build();
+        DockerClient dockerClient = DockerClientImpl.getInstance();
 
         InspectContainerResponse containerResponse;
         if (includeExited) {

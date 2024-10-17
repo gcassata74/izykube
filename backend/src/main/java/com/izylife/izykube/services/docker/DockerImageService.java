@@ -6,7 +6,7 @@ import com.github.dockerjava.api.command.BuildImageResultCallback;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.BuildResponseItem;
 import com.github.dockerjava.api.model.PullResponseItem;
-import com.github.dockerjava.core.DockerClientBuilder;
+import com.github.dockerjava.core.DockerClientImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -92,7 +92,7 @@ public class DockerImageService {
         }
 
         try {
-            DockerClient dockerClient = DockerClientBuilder.getInstance().build();
+            DockerClient dockerClient = DockerClientImpl.getInstance();
             BuildImageResultCallback callback = new BuildImageResultCallback() {
                 public void onNext(BuildResponseItem item) {
                     super.onNext(item);

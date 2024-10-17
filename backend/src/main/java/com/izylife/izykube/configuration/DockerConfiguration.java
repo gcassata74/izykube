@@ -2,7 +2,7 @@ package com.izylife.izykube.configuration;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
-import com.github.dockerjava.core.DockerClientBuilder;
+import com.github.dockerjava.core.DockerClientImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -29,7 +29,7 @@ public class DockerConfiguration {
             //.withRegistryEmail("dockeremail")
             .build();
 
-    return DockerClientBuilder.getInstance(config).build();
+    return DockerClientImpl.getInstance(config);
   }
 
 }

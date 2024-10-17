@@ -17,7 +17,9 @@ public class ClusterDTO {
     private String id;
     private String name;
     private String nameSpace;
+    @Builder.Default
     private List<NodeDTO> nodes = new ArrayList<>();
+    @Builder.Default
     private List<LinkDTO> links = new ArrayList<>();
     private String diagram;
     private ClusterStatusEnum status;

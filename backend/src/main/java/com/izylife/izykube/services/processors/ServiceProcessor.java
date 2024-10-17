@@ -3,6 +3,7 @@ package com.izylife.izykube.services.processors;
 import com.izylife.izykube.dto.cluster.ContainerDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.ServiceDTO;
+import io.fabric8.istio.api.networking.v1beta1.*;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServicePort;
@@ -18,8 +19,25 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
 
     @Override
     public String createTemplate(ServiceDTO dto) {
+        StringBuilder yaml = new StringBuilder();
 
+        // Create Kubernetes Service
+        yaml.append(createKubernetesService(dto));
 
+        // Always create VirtualService
+        yaml.append("---\n");
+        yaml.append(createVirtualService(dto));
+
+        // If service is exposed, create Gateway
+        if (dto.isExposeService() && dto.getFrontendUrl() != null && !dto.getFrontendUrl().isEmpty()) {
+            yaml.append("---\n");
+            yaml.append(createGateway(dto));
+        }
+
+        return yaml.toString();
+    }
+
+    private String createKubernetesService(ServiceDTO dto) {
         DeploymentDTO deploymentDTO = dto.getSourceNodes().stream()
                 .filter(DeploymentDTO.class::isInstance)
                 .map(DeploymentDTO.class::cast)
@@ -32,13 +50,7 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
                 .findFirst()
                 .orElse(null);
 
-
-        Map<String, String> selectors = dto.getSourceNodes().stream()
-                .filter(DeploymentDTO.class::isInstance)
-                .map(DeploymentDTO.class::cast)
-                .findFirst()
-                .map(deployment -> Collections.singletonMap("app", deployment.getName()))
-                .orElse(Collections.emptyMap());
+        Map<String, String> selectors = Collections.singletonMap("app", deploymentDTO.getName());
 
         ServicePort servicePort = new ServicePort();
         servicePort.setPort(dto.getPort());
@@ -61,5 +73,60 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
                 .build();
 
         return Serialization.asYaml(service);
+    }
+
+    private String createGateway(ServiceDTO dto) {
+        Gateway gateway = new GatewayBuilder()
+                .withNewMetadata()
+                .withName(dto.getName() + "-gateway")
+                .withNamespace("default")
+                .endMetadata()
+                .withNewSpec()
+                .withSelector(Collections.singletonMap("istio", "ingressgateway"))
+                .addNewServer()
+                .withHosts(dto.getFrontendUrl())
+                .withNewPort()
+                .withNumber(80)
+                .withName("http")
+                .withProtocol("HTTP")
+                .endPort()
+                .endServer()
+                .endSpec()
+                .build();
+
+        return Serialization.asYaml(gateway);
+    }
+
+    private String createVirtualService(ServiceDTO dto) {
+        StringMatch uriMatch = new StringMatch();
+        uriMatch.setAdditionalProperty("prefix", "/");
+
+        HTTPMatchRequest matchRequest = new HTTPMatchRequest();
+        matchRequest.setUri(uriMatch);
+
+        HTTPRouteDestination destination = new HTTPRouteDestination();
+        Destination dest = new Destination();
+        dest.setHost(dto.getName());
+        dest.setPort(new PortSelector());
+        dest.getPort().setNumber(dto.getPort());
+        destination.setDestination(dest);
+
+        HTTPRoute httpRoute = new HTTPRoute();
+        httpRoute.setMatch(Collections.singletonList(matchRequest));
+        //  httpRoute.setRoute(Collections.singletonList(destination));
+
+        VirtualService virtualService = new VirtualServiceBuilder()
+                .withNewMetadata()
+                .withName(dto.getName() + "-virtualservice")
+                .withNamespace("default")
+                .endMetadata()
+                .withNewSpec()
+                .withHosts(Collections.singletonList(dto.getFrontendUrl()))
+                .withGateways(Collections.singletonList(dto.getName() + "-gateway"))
+                .withHttp(Collections.singletonList(httpRoute))
+                .endSpec()
+                .build();
+
+        return Serialization.asYaml(virtualService);
     }
 }

@@ -3,6 +3,7 @@ package com.izylife.izykube.services;
 import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
+import com.izylife.izykube.factory.ClientFactory;
 import com.izylife.izykube.factory.NodeFactory;
 import com.izylife.izykube.factory.TemplateFactory;
 import com.izylife.izykube.model.Cluster;
@@ -10,6 +11,9 @@ import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.repositories.ClusterTemplateRepository;
 import com.izylife.izykube.utils.ClusterUtil;
+import io.fabric8.istio.api.networking.v1beta1.Gateway;
+import io.fabric8.istio.api.networking.v1beta1.VirtualService;
+import io.fabric8.istio.client.IstioClient;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -29,10 +33,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ClusterService {
 
-    private final KubernetesClient client;
-    private final TemplateFactory templateFactory;
+    private final ClientFactory clientFactory;
     private final ClusterRepository clusterRepository;
     private final ClusterTemplateRepository clusterTemplateRepository;
+    private final TemplateFactory templateFactory;
     private final TemplateService templateService;
 
 
@@ -137,29 +141,59 @@ public class ClusterService {
 
 
     public void deploy(String clusterId) throws ObjectNotFoundException {
-
         Cluster cluster = clusterRepository.findById(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
 
-        // Retrieve the cluster template from the database
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
 
-        // Deploy each YAML in the template
-        applyTemplate(template);
+        for (String yaml : template.getYamlList()) {
+            try {
+                KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
+                ByteArrayInputStream stream = new ByteArrayInputStream(yaml.getBytes());
+                //TODO change this
+                List<HasMetadata> resources = k8sClient.load(new ByteArrayInputStream(yaml.getBytes())).get();
+
+                for (HasMetadata resource : resources) {
+                    Object client = clientFactory.getClient(resource.getApiVersion());
+
+                    if (client instanceof IstioClient) {
+                        deployIstioResource((IstioClient) client, resource);
+                    } else if (client instanceof KubernetesClient) {
+                        ((KubernetesClient) client).resource(resource).createOrReplace();
+                    }
+
+                    log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
+                }
+            } catch (KubernetesClientException e) {
+                log.error("Error deploying resource from template: " + e.getMessage());
+            }
+        }
+
         cluster.setStatus(ClusterStatusEnum.DEPLOYED);
         clusterRepository.save(cluster);
+    }
+
+    private void deployIstioResource(IstioClient istioClient, HasMetadata resource) {
+        if (resource instanceof Gateway) {
+            istioClient.v1beta1().gateways().inNamespace("default").resource((Gateway) resource).create();
+        } else if (resource instanceof VirtualService) {
+            istioClient.v1beta1().virtualServices().inNamespace("default").resource((VirtualService) resource).create();
+        } else {
+            log.warn("Unsupported Istio resource type: " + resource.getKind());
+        }
     }
 
     private void applyTemplate(ClusterTemplate template) {
         for (String yaml : template.getYamlList()) {
             try {
                 // Load the YAML into Kubernetes resources
-                List<HasMetadata> resources = client.load(new ByteArrayInputStream(yaml.getBytes())).get();
+                KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
+                List<HasMetadata> resources = k8sClient.load(new ByteArrayInputStream(yaml.getBytes())).get();
 
                 // Create or update each resource
                 for (HasMetadata resource : resources) {
-                    client.resource(resource).createOrReplace();
+                    k8sClient.resource(resource).createOrReplace();
                     log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
                 }
             } catch (KubernetesClientException e) {
@@ -181,11 +215,12 @@ public class ClusterService {
         for (String yaml : template.getYamlList()) {
             try {
                 // Load the YAML into Kubernetes resources
-                List<HasMetadata> resources = client.load(new ByteArrayInputStream(yaml.getBytes())).get();
+                KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
+                List<HasMetadata> resources = k8sClient.load(new ByteArrayInputStream(yaml.getBytes())).get();
 
                 // Delete each resource
                 for (HasMetadata resource : resources) {
-                    client.resource(resource).delete();
+                    k8sClient.resource(resource).delete();
                 }
 
             } catch (KubernetesClientException e) {
@@ -251,7 +286,8 @@ public class ClusterService {
     private void restartDeployment(String name) {
         // Implement the logic to trigger a rolling update for the deployment
         // Example using Fabric8 Kubernetes client:
-        client.apps().deployments()
+        KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
+        k8sClient.apps().deployments()
                 .inNamespace("default")
                 .withName(name)
                 .edit(d -> new DeploymentBuilder(d)

@@ -1,12 +1,13 @@
 package com.izylife.izykube.model;
 
-import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Document(collection = "assets")
 public class Asset extends BaseEntity implements Persistable<String> {
 
