@@ -2,6 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Node } from '../../model/node.class';
 import { AutoSaveService } from '../../services/auto-save.service';
+import { Service } from '../../model/service.class';
 
 @Component({
   selector: 'app-service-form',
@@ -32,21 +33,30 @@ export class ServiceFormComponent implements OnInit {
   }
 
   private initForm() {
-    const service = this.selectedNode as any; // Cast to any for now
+    const service = this.selectedNode as Service;
     this.form = this.fb.group({
       name: [service.name || (this.connectedDeployment ? this.connectedDeployment.name + '-service' : ''), Validators.required],
       type: [service.type || 'ClusterIP', Validators.required],
       port: [service.port, [Validators.required, Validators.min(1), Validators.max(65535)]],
-      nodePort: [service.nodePort, [Validators.min(30000), Validators.max(32767)]]
+      nodePort: [service.nodePort, [Validators.min(30000), Validators.max(32767)]],
+      exposeService: [service.exposeService || false],
+      frontendUrl: [service.frontendUrl || '']
     });
 
     this.form.get('type')?.valueChanges.subscribe((value) => {
       if (value === 'NodePort') {
-        // Provide a default value for nodePort when type is NodePort
-        this.form.get('nodePort')?.setValue(30000); // Example default value for nodePort
+        this.form.get('nodePort')?.setValue(30000);
       } else {
-        // Reset nodePort if the type is changed to something other than NodePort
         this.form.get('nodePort')?.setValue(null);
+      }
+    });
+
+    this.form.get('exposeService')?.valueChanges.subscribe((value) => {
+      if (value) {
+        this.form.get('frontendUrl')?.enable();
+      } else {
+        this.form.get('frontendUrl')?.disable();
+        this.form.get('frontendUrl')?.setValue('');
       }
     });
   }

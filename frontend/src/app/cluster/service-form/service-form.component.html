@@ -1,7 +1,7 @@
-<form [formGroup]="form" class="p-fluid service-form">
+<form [formGroup]="form">
   <div class="p-field">
     <label for="name">Name</label>
-    <input pInputText id="name" type="text" pInputText formControlName="name">
+    <input id="name" type="text" pInputText formControlName="name">
   </div>
 
   <div class="p-field">
@@ -12,11 +12,22 @@
 
   <div class="p-field">
     <label for="port">Port</label>
-    <p-inputNumber id="port" formControlName="port" [useGrouping]="false"></p-inputNumber>
+    <p-inputNumber id="port" formControlName="port" [min]="1" [max]="65535" [useGrouping]="false"></p-inputNumber>
   </div>
 
   <div class="p-field" *ngIf="form.get('type')?.value === 'NodePort'">
     <label for="nodePort">Node Port</label>
-    <p-inputNumber id="nodePort" formControlName="nodePort" [useGrouping]="false"></p-inputNumber>
+    <p-inputNumber id="nodePort" formControlName="nodePort" [min]="30000" [max]="32767"
+                   [useGrouping]="false"></p-inputNumber>
+  </div>
+
+  <div class="p-field-checkbox">
+    <p-checkbox id="exposeService" formControlName="exposeService" [binary]="true"></p-checkbox>
+    <label for="exposeService">Expose service</label>
+  </div>
+
+  <div class="p-field" *ngIf="form.get('exposeService')?.value">
+    <label for="frontendUrl">Frontend URL</label>
+    <input id="frontendUrl" type="text" pInputText formControlName="frontendUrl">
   </div>
 </form>

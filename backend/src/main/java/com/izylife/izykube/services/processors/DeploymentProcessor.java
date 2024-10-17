@@ -12,7 +12,7 @@ import com.izylife.izykube.utils.VolumeUtils;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
-import io.fabric8.kubernetes.client.utils.Serialization;
+import io.fabric8.kubernetes.client.utils.*;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 

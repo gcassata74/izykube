@@ -37,11 +37,25 @@ delete-k3d-registry:
 	k3d registry delete izyregistry
 
 create-k3d-cluster:
-	k3d cluster create izycluster --registry-use izyregistry:5000 -p "80:80@loadbalancer"  -p "443:443@loadbalancer"
+	k3d cluster create izycluster --registry-use izyregistry:5000  -p '80:80@loadbalancer' -p '443:443@loadbalancer' --k3s-arg '--disable=traefik@server:*'
 
 delete-k3d-cluster:
-	k3d cluster delete
+	k3d cluster delete izycluster
 
 start-k3d-cluster: create-k3d-registry create-k3d-cluster
 
 restart-k3d-cluster: delete-k3d-cluster create-k3d-registry create-k3d-cluster
+
+# New target for installing Istio
+install-istio:
+	@echo "Installing Istio..."
+	@if ! command -v istioctl &> /dev/null; then \
+		echo "istioctl not found. Downloading..."; \
+		curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.18.2 sh -; \
+	fi
+	./istio-1.18.2/bin/istioctl install --set profile=default -y
+	kubectl label namespace default istio-injection=enabled
+	@echo "Istio installation complete."
+
+# Updated target to include Istio installation
+start-k3d-cluster-with-istio: create-k3d-registry create-k3d-cluster install-istio

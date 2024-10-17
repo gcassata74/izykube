@@ -4,31 +4,38 @@ export class Service extends Node {
     type: ServiceType;
     port: number;
     nodePort?: number;
+    exposeService: boolean;
+    frontendUrl?: string;
 
     constructor(
         id: string,
         name: string,
         type: ServiceType,
         port: number,
+        exposeService: boolean = false,
+        frontendUrl?: string,
         nodePort?: number
     ) {
         super(id, name, 'service');
         this.type = type;
         this.port = port;
         this.nodePort = nodePort;
+        this.exposeService = exposeService;
+        this.frontendUrl = frontendUrl;
     }
 
-    // You can keep or modify these methods as needed
-    setNodePort(port: number) {
-        if (this.type === 'NodePort') {
-            this.nodePort = port;
+    // Existing methods...
+
+    setExposeService(expose: boolean) {
+        this.exposeService = expose;
+        if (!expose) {
+            this.frontendUrl = undefined;
         }
     }
 
-    changeType(newType: ServiceType) {
-        this.type = newType;
-        if (newType !== 'NodePort') {
-            this.nodePort = undefined;
+    setFrontendUrl(url: string) {
+        if (this.exposeService) {
+            this.frontendUrl = url;
         }
     }
 }

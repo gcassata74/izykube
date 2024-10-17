@@ -26,6 +26,12 @@ export class DiagramComponent implements OnInit, OnDestroy {
   firstColumnWidth: number = 180;
   minWidth: number = 200; // Minimum width of the first column in pixels
   subscription: Subscription = new Subscription();
+  layoutOptions = [
+    { label: 'Default', value: 'default' },
+    { label: 'Circular', value: 'circular' },
+    { label: 'Force-Directed', value: 'force-directed' }
+  ];
+  selectedLayout: string = 'default';
 
   constructor(
     private iconService: IconService,
@@ -73,7 +79,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.diagram.commandHandler.deletesTree = false;
     this.diagram.commandHandler.canDeleteSelection = () => true;
 
-    //create empty model if not present
+     //create empty model if not present
     this.model && (this.diagram.model = this.model);
     const graphLinksModel: go.GraphLinksModel = this.diagram.model as go.GraphLinksModel;
 
@@ -96,9 +102,12 @@ export class DiagramComponent implements OnInit, OnDestroy {
     // Attach event handlers
     this.addEventHanlders(graphLinksModel);
     this.setLinkingRules();
+
+    
+
   }
 
-
+ 
   private addEventHanlders(graphLinksModel: go.GraphLinksModel) {
     this.diagram.addDiagramListener('LinkDrawn', (e) => {
       const link = e.subject;
@@ -109,6 +118,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
         graphLinksModel.addLinkData(link.data);
       }
       this.diagramService.onLinkDrawn(e)
+    });
+
+    this.diagram.addDiagramListener("SelectionMoved", (e) => {
+        this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
     });
 
     this.diagram.addDiagramListener('ChangedSelection', e => this.diagramService.onSelectionChanged(e));
