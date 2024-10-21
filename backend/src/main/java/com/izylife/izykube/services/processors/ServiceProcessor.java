@@ -11,6 +11,7 @@ import io.fabric8.kubernetes.client.utils.Serialization;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 @Processor(ServiceDTO.class)
@@ -84,7 +85,7 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
                 .withNewSpec()
                 .withSelector(Collections.singletonMap("istio", "ingressgateway"))
                 .addNewServer()
-                .withHosts(dto.getFrontendUrl())
+                .withHosts(stripHttpPrefix(dto.getFrontendUrl()))
                 .withNewPort()
                 .withNumber(80)
                 .withName("http")
@@ -98,12 +99,13 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
     }
 
     private String createVirtualService(ServiceDTO dto) {
+        // Create URI match
         StringMatch uriMatch = new StringMatch();
         uriMatch.setAdditionalProperty("prefix", "/");
-
         HTTPMatchRequest matchRequest = new HTTPMatchRequest();
         matchRequest.setUri(uriMatch);
 
+        // Create destination
         HTTPRouteDestination destination = new HTTPRouteDestination();
         Destination dest = new Destination();
         dest.setHost(dto.getName());
@@ -111,17 +113,26 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         dest.getPort().setNumber(dto.getPort());
         destination.setDestination(dest);
 
+        Map<String, Object> headers = new HashMap<>();
+        Map<String, String> requestHeaders = new HashMap<>();
+        requestHeaders.put("x-forwarded-host", stripHttpPrefix(dto.getFrontendUrl()));
+        headers.put("request", Collections.singletonMap("set", requestHeaders));
+
+        // Create HTTP route and set headers
         HTTPRoute httpRoute = new HTTPRoute();
         httpRoute.setMatch(Collections.singletonList(matchRequest));
-        //  httpRoute.setRoute(Collections.singletonList(destination));
+        httpRoute.setRoute(Collections.singletonList(destination));
+        httpRoute.setAdditionalProperty("headers", headers);
 
+
+        // Create VirtualService
         VirtualService virtualService = new VirtualServiceBuilder()
                 .withNewMetadata()
                 .withName(dto.getName() + "-virtualservice")
                 .withNamespace("default")
                 .endMetadata()
                 .withNewSpec()
-                .withHosts(Collections.singletonList(dto.getFrontendUrl()))
+                .withHosts(Collections.singletonList(stripHttpPrefix(dto.getFrontendUrl())))
                 .withGateways(Collections.singletonList(dto.getName() + "-gateway"))
                 .withHttp(Collections.singletonList(httpRoute))
                 .endSpec()
@@ -129,4 +140,10 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
 
         return Serialization.asYaml(virtualService);
     }
+
+    private String stripHttpPrefix(String url) {
+        return url.replaceAll("^(http://|https://)", "");
+    }
+
+
 }

@@ -50,7 +50,9 @@ public class NodeFactory {
                         service.getName(),
                         service.getType(),
                         service.getPort(),
-                        service.getNodePort()
+                        service.getNodePort(),
+                        service.isExposeService(),
+                        service.getFrontendUrl()
                 );
             case "ingress":
                 IngressDTO ingress = (IngressDTO) node;

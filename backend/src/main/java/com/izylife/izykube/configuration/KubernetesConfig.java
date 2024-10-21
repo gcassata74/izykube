@@ -1,21 +1,15 @@
 package com.izylife.izykube.configuration;
-import io.fabric8.kubernetes.client.Config;
-        import io.fabric8.kubernetes.client.ConfigBuilder;
-        import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-        import io.fabric8.kubernetes.client.KubernetesClient;
-        import org.springframework.context.annotation.Bean;
-        import org.springframework.context.annotation.Configuration;
+
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class KubernetesConfig {
 
     @Bean
-    public Config config() {
-        return new ConfigBuilder().build();
-    }
-
-    @Bean
-    public KubernetesClient kubernetesClient(Config config) {
-        return new DefaultKubernetesClient(config);
+    public KubernetesClient kubernetesClient() {
+        return new KubernetesClientBuilder().build();
     }
 }

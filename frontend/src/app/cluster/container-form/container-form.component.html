@@ -17,8 +17,8 @@
 
   <div class="p-field mb-3">
     <label for="containerPort">Container Port:</label>
-    <p-inputNumber id="containerPort" formControlName="containerPort"
-                   [showButtons]="true" buttonLayout="horizontal" spinnerMode="horizontal"
+    <p-inputNumber id="containerPort" formControlName="containerPort" [useGrouping]="false"
+                   buttonLayout="horizontal" spinnerMode="horizontal"
                    decrementButtonClass="p-button-secondary" incrementButtonClass="p-button-secondary"
                    incrementButtonIcon="pi pi-plus" decrementButtonIcon="pi pi-minus" [required]="true">
     </p-inputNumber>

@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -150,9 +151,7 @@ public class ClusterService {
         for (String yaml : template.getYamlList()) {
             try {
                 KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
-                ByteArrayInputStream stream = new ByteArrayInputStream(yaml.getBytes());
-                //TODO change this
-                List<HasMetadata> resources = k8sClient.load(new ByteArrayInputStream(yaml.getBytes())).get();
+                List<HasMetadata> resources = k8sClient.load(new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8))).items();
 
                 for (HasMetadata resource : resources) {
                     Object client = clientFactory.getClient(resource.getApiVersion());
@@ -189,7 +188,7 @@ public class ClusterService {
             try {
                 // Load the YAML into Kubernetes resources
                 KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
-                List<HasMetadata> resources = k8sClient.load(new ByteArrayInputStream(yaml.getBytes())).get();
+                List<HasMetadata> resources = k8sClient.load(new ByteArrayInputStream(yaml.getBytes())).items();
 
                 // Create or update each resource
                 for (HasMetadata resource : resources) {
