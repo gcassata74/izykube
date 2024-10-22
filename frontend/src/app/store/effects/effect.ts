@@ -1,4 +1,4 @@
-import { ClusterService } from './../../services/cluster.service';
+import { ClusterService } from '../../services/cluster.service';
 import { Injectable } from "@angular/core";
 import { Actions, createEffect, ofType } from "@ngrx/effects";
 import { Store } from "@ngrx/store";
@@ -9,7 +9,7 @@ import { Cluster } from 'src/app/model/cluster.class';
 
 
 @Injectable()
-export class InitEffects {
+export class ClusterEffect {
 
   constructor(
     private actions$: Actions, 

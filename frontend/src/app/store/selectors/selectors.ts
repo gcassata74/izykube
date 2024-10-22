@@ -1,9 +1,9 @@
 import { createFeatureSelector, createSelector, State } from "@ngrx/store";
-import { ClusterState, AppState } from "../states/state";
+import { ClusterState, ActionState } from "../states/state";
 import { Cluster } from "src/app/model/cluster.class";
 
-export const getMainState = createFeatureSelector<AppState>(
-  'mainState'
+export const getActionState = createFeatureSelector<ActionState>(
+  'actionState'
 );
 
 export const getClusterState = createFeatureSelector<ClusterState>(
@@ -11,8 +11,8 @@ export const getClusterState = createFeatureSelector<ClusterState>(
 );
 
 export const getCurrentAction = createSelector(
-  getMainState,
-  (state: AppState) => state?.currentAction
+  getActionState,
+  (state: ActionState) => state?.currentAction
 );
 
 export const getCurrentCluster = createSelector(
