@@ -107,8 +107,6 @@ export const clusterReducer = createReducer(
     return updated_state
   }),
 
- 
-
 
   on(actions.loadClusters, (state, { clusters }) => ({
       ...state,

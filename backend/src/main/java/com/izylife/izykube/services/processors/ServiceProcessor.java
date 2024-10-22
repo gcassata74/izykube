@@ -113,32 +113,36 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         dest.getPort().setNumber(dto.getPort());
         destination.setDestination(dest);
 
-        Map<String, Object> headers = new HashMap<>();
-        Map<String, String> requestHeaders = new HashMap<>();
-        requestHeaders.put("x-forwarded-host", stripHttpPrefix(dto.getFrontendUrl()));
-        headers.put("request", Collections.singletonMap("set", requestHeaders));
-
         // Create HTTP route and set headers
         HTTPRoute httpRoute = new HTTPRoute();
         httpRoute.setMatch(Collections.singletonList(matchRequest));
         httpRoute.setRoute(Collections.singletonList(destination));
-        httpRoute.setAdditionalProperty("headers", headers);
 
+        if (dto.isExposeService()) {
+            Map<String, Object> headers = new HashMap<>();
+            Map<String, String> requestHeaders = new HashMap<>();
+            requestHeaders.put("x-forwarded-host", stripHttpPrefix(dto.getFrontendUrl()));
+            headers.put("request", Collections.singletonMap("set", requestHeaders));
+            httpRoute.setAdditionalProperty("headers", headers);
+        }
 
         // Create VirtualService
-        VirtualService virtualService = new VirtualServiceBuilder()
+        VirtualServiceBuilder virtualService = new VirtualServiceBuilder()
                 .withNewMetadata()
                 .withName(dto.getName() + "-virtualservice")
                 .withNamespace("default")
                 .endMetadata()
                 .withNewSpec()
-                .withHosts(Collections.singletonList(stripHttpPrefix(dto.getFrontendUrl())))
                 .withGateways(Collections.singletonList(dto.getName() + "-gateway"))
                 .withHttp(Collections.singletonList(httpRoute))
-                .endSpec()
-                .build();
+                .endSpec();
 
-        return Serialization.asYaml(virtualService);
+        if (dto.isExposeService()) {
+            virtualService.editOrNewSpec()
+                    .withHosts(Collections.singletonList(stripHttpPrefix(dto.getFrontendUrl())))
+                    .endSpec();
+        }
+        return Serialization.asYaml(virtualService.build());
     }
 
     private String stripHttpPrefix(String url) {

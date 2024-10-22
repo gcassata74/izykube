@@ -25,5 +25,5 @@ export const initialState: State = {
   clusterState: {
     clusters: [],
     currentCluster: new Cluster()
-  }
+  },
 }
