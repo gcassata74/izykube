@@ -20,11 +20,10 @@ export const getCurrentCluster = createSelector(
   (state: ClusterState) => state?.currentCluster
 );
 
-// Selector to get a node by ID from within the current cluster
 export const getNodeById = (nodeId: string) => createSelector(
   getCurrentCluster,
   (currentCluster: Cluster) => {
-    return currentCluster?.nodes.find(node => node.id === nodeId);
+    return currentCluster.nodes.find(node => node.id === nodeId);
   });
 
 export const selectClusterDiagram = createSelector(
@@ -36,8 +35,6 @@ export const getStatus = createSelector(
    getCurrentCluster,
     (currentCluster: Cluster) => currentCluster.status
 );
-
-
 
 export const getClusters = createSelector(
   getClusterState,
