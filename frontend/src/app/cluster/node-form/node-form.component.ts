@@ -42,33 +42,28 @@ export class NodeFormComponent implements OnDestroy {
     private store: Store,
   ) { }
 
-  ngOnInit(): void {
+ 
+ ngOnInit(): void {
     this.subscription.add(
       this.diagramService.selectedNode$.pipe(
-        filter((node: go.Node) => node !== null && node !== undefined),
-        distinctUntilChanged((prev, curr) => prev?.data?.key === curr?.data?.key),
-        switchMap((node: go.Node) => {
-          this.selectedNodeType = node?.data?.type || null;
-          const nodeId = node?.data?.key;
-          if (nodeId) {
-            return this.store.select(getNodeById(nodeId)).pipe(
-              take(1),
-              filter((storeNode): storeNode is Node => storeNode !== null && storeNode !== undefined)
-            );
-          } else {
-            return EMPTY;
-          }
-        }),
-        tap((node: Node) => {
-          this.node = node;
-          this.dynamicContainer.clear();
-          if (this.formMapper[this.selectedNodeType]) {
-            this.componentRef = this.dynamicContainer.createComponent(this.formMapper[this.selectedNodeType]);
-            this.componentRef.instance.selectedNode = node;
-          }
-        })
+      filter((node: go.Node) => node !== null && node !== undefined),
+      distinctUntilChanged((prev, curr) => prev?.data?.key === curr?.data?.key),
+      switchMap((node: go.Node) => this.store.select(getNodeById(node.data.key)).pipe(
+        take(1),
+      )),
+      filter((node: Node | undefined): node is Node => !!node),
+      tap((node: Node) => this.loadForm(node))
       ).subscribe()
     );
+  }
+
+  loadForm(node: Node) {
+    {
+      this.node = node;
+      this.dynamicContainer.clear();
+      this.componentRef = this.dynamicContainer.createComponent(this.formMapper[node.kind]);
+      this.componentRef.instance.selectedNode = node;
+    }
   }
 
   ngOnDestroy(): void {
