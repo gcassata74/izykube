@@ -5,21 +5,19 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.List;
-
 @Getter
 @Setter
 public class ConfigMapDTO extends NodeDTO {
 
-    List<ConfigMapEntryDTO> entries;
+    String yaml;
 
     @JsonCreator
     public ConfigMapDTO(
             @JsonProperty("id") String id,
             @JsonProperty("name") String name,
-            @JsonProperty("entries") List<ConfigMapEntryDTO> entries
+            @JsonProperty("yaml") String yaml
     ) {
         super(id, name, "configmap");
-        this.entries = entries;
+        this.yaml = yaml;
     }
 }

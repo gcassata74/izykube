@@ -1,15 +1,12 @@
 <form [formGroup]="form" class="mb-3 mt-3 config-map-form">
-  <div formArrayName="entries" class="entries-container">
-    <div class="entry-group mb-2" *ngFor="let entry of entries.controls; let i = index" [formGroupName]="i">
-      <div class="p-inputgroup mb-1">
-        <input type="text" pInputText placeholder="Key" formControlName="key">
-      </div>
-      <div class="p-inputgroup mb-1">
-        <input type="text" pInputText placeholder="Value" formControlName="value">
-      </div>
-      <div class="button-row">
-        <button type="button" pButton label="Remove" class="p-button-danger" (click)="removeEntry(i)"></button>
-        <button type="button" pButton label="Add" class="p-button-primary" (click)="addEntry()"></button>
+  <div appYaml formControlName="yaml" [width]="'250px'"></div>
+  <div *ngIf="form.get('yaml')?.invalid && form.get('yaml')?.touched" class="text-danger">
+    <div *ngIf="form.get('yaml')?.errors?.['required']">YAML is required</div>
+    <div *ngIf="form.get('yaml')?.errors?.['yamlError']">
+      {{ form.get('yaml')?.errors?.['yamlError']?.message }}
+      <div *ngIf="form.get('yaml')?.errors?.['yamlError']?.line">
+        Line: {{ form.get('yaml')?.errors?.['yamlError']?.line + 1 }},
+        Column: {{ form.get('yaml')?.errors?.['yamlError']?.column + 1 }}
       </div>
     </div>
   </div>

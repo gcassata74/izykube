@@ -23,6 +23,7 @@
     "@ngrx/router-store": "^16.3.0",
     "@ngrx/store": "^16.3.0",
     "@ngrx/store-devtools": "^16.3.0",
+    "ace-builds": "^1.36.3",
     "bootstrap": "^5.3.3",
     "gojs": "^2.3.7",
     "lodash": "^4.17.21",

@@ -4,7 +4,7 @@ import { Container } from '../model/container.class';
 import { Node } from '../model/node.class';
 import { Service } from '../model/service.class';
 import { Deployment } from '../model/deployment.class';
-import { ConfigMap, ConfigMapEntry } from '../model/config-map.class';
+import { ConfigMap } from '../model/config-map.class';
 import { Ingress } from '../model/ingress.class';
 import { Volume, VolumeConfig } from '../model/volume.class';
 
@@ -48,7 +48,7 @@ export class NodeFactoryService {
         return new ConfigMap(
           id,
           name,
-          []  // empty ConfigMapEntry array
+          ''
         );
       case 'volume':
         return new Volume(

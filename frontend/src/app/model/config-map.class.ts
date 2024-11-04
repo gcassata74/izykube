@@ -1,16 +1,12 @@
 import { config } from "rxjs";
 import { Node } from "./node.class";
 
-export interface ConfigMapEntry {
-    key: string;
-    value: string;
-  }
   
   export class ConfigMap extends Node {
-      entries: ConfigMapEntry[];
+      yaml!: string;
   
-      constructor(id: string, name: string, entries: ConfigMapEntry[] = []) {
+      constructor(id: string, name: string, yaml: string) {
           super(id, name, "configmap");
-          this.entries = entries;
+          this.yaml = yaml;
       }
   }

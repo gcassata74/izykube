@@ -47,6 +47,8 @@ import { VolumeFormComponent } from './cluster/volume-form/volume-form.component
 import { AssetListComponent } from './assets/assets-list/assets-list.component';
 import { AssetFormComponent } from './assets/asset-form/asset-form.component';
 import { ClusterEffect } from './store/effects/effect';
+import { EditorModule } from 'primeng/editor';
+import { SharedModule } from './shared/shared.module';
 
 @NgModule({
   declarations: [
@@ -68,6 +70,7 @@ import { ClusterEffect } from './store/effects/effect';
     AssetFormComponent,
   ],
   imports: [
+    SharedModule,
     ReactiveFormsModule,
     BrowserModule,
     AppRoutingModule,
@@ -80,6 +83,7 @@ import { ClusterEffect } from './store/effects/effect';
     SplitButtonModule,
     ContextMenuModule,
     CheckboxModule,
+    EditorModule,
     ToastModule,
     MenuModule,
     CardModule,

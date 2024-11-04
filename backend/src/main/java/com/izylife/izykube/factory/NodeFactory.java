@@ -3,7 +3,6 @@ package com.izylife.izykube.factory;
 import com.izylife.izykube.dto.cluster.*;
 
 import java.util.HashMap;
-import java.util.ArrayList;
 
 public class NodeFactory {
 
@@ -11,7 +10,7 @@ public class NodeFactory {
         switch (node.getKind().toLowerCase()) {
             case "configmap":
                 ConfigMapDTO configMap = (ConfigMapDTO) node;
-                return new ConfigMapDTO(configMap.getId(), configMap.getName(), configMap.getEntries());
+                return new ConfigMapDTO(configMap.getId(), configMap.getName(), configMap.getYaml());
             case "pod":
                 PodDTO pod = (PodDTO) node;
                 return new PodDTO(
@@ -82,7 +81,7 @@ public class NodeFactory {
     public static NodeDTO createNewNode(String type, String id, String name) {
         switch (type.toLowerCase()) {
             case "configmap":
-                return new ConfigMapDTO(id, name, new ArrayList<>());
+                return new ConfigMapDTO(id, name, "");
             case "pod":
                 return new PodDTO(id, name, "Always");
             case "container":
