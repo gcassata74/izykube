@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.Transient;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,13 +33,18 @@ public abstract class NodeDTO {
     @JsonProperty("kind")
     String kind;
     @Setter
+    @Transient
     List<NodeDTO> sourceNodes;
+    @Setter
+    @Transient
+    List<NodeDTO> targetNodes;
 
     public NodeDTO(String id, String name, String kind) {
         this.id = id;
         this.name = name;
         this.kind = kind;
         this.sourceNodes = new ArrayList<>();
+        this.targetNodes = new ArrayList<>();
     }
 
 }

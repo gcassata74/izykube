@@ -11,7 +11,6 @@ import io.fabric8.kubernetes.client.utils.Serialization;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 @Processor(ServiceDTO.class)
@@ -117,14 +116,6 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         HTTPRoute httpRoute = new HTTPRoute();
         httpRoute.setMatch(Collections.singletonList(matchRequest));
         httpRoute.setRoute(Collections.singletonList(destination));
-
-        if (dto.isExposeService()) {
-            Map<String, Object> headers = new HashMap<>();
-            Map<String, String> requestHeaders = new HashMap<>();
-            requestHeaders.put("x-forwarded-host", stripHttpPrefix(dto.getFrontendUrl()));
-            headers.put("request", Collections.singletonMap("set", requestHeaders));
-            httpRoute.setAdditionalProperty("headers", headers);
-        }
 
         // Create VirtualService
         VirtualServiceBuilder virtualService = new VirtualServiceBuilder()

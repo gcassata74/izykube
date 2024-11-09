@@ -42,6 +42,7 @@ public class TemplateService {
         createOrReplaceTemplate(id, clusterDTO);
         cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
         clusterRepository.save(cluster);
+
     }
 
     protected ClusterTemplate createOrReplaceTemplate(String id, ClusterDTO clusterDTO) {
@@ -116,14 +117,19 @@ public class TemplateService {
             return;
         }
         List<NodeDTO> sourceNodes = ClusterUtil.findSourceNodesOf(clusterDTO, node.getId());
+        List<NodeDTO> targetNodes = ClusterUtil.findTargetNodesOf(clusterDTO, node.getId());
+
+        processedNodes.add(node.getId());
 
         // Now process the current node
         node.setSourceNodes(sourceNodes);
+        node.setTargetNodes(targetNodes);
+
         String yaml = processSpecificNodeDTO(node);
         if (yaml != null && !yaml.isEmpty()) {
             yamlList.add(yaml);
         }
-        processedNodes.add(node.getId());
+
     }
 
     private String processSpecificNodeDTO(NodeDTO node) {
@@ -144,4 +150,17 @@ public class TemplateService {
     public void updateTemplate(String id, ClusterDTO clusterDTO) {
         createOrReplaceTemplate(id, clusterDTO);
     }
+
+    private Cluster createDetachedCluster(ClusterDTO cluster) {
+        Cluster detachedCluster = new Cluster();
+        detachedCluster.setName(cluster.getName());
+        detachedCluster.setNameSpace(cluster.getNameSpace());
+        detachedCluster.setCreationDate(new Date());
+        detachedCluster.setLastUpdated(new Date());
+        detachedCluster.setNodes(cluster.getNodes());
+        detachedCluster.setLinks(cluster.getLinks());
+        detachedCluster.setDiagram(cluster.getDiagram());
+        return detachedCluster;
+    }
+
 }

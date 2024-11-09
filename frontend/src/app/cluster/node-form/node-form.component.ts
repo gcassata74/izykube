@@ -10,7 +10,6 @@ import { PodFormComponent } from '../pod-form/pod-form.component';
 import { ServiceFormComponent } from '../service-form/service-form.component';
 import { IngressFormComponent } from '../ingress-form/ingress-form.component';
 import { ContainerFormComponent } from '../container-form/container-form.component';
-import { Volume } from 'src/app/model/volume.class';
 import { VolumeFormComponent } from '../volume-form/volume-form.component';
 
 

@@ -1,9 +1,6 @@
 package com.izylife.izykube.services.processors;
 
-import com.izylife.izykube.dto.cluster.ConfigMapDTO;
-import com.izylife.izykube.dto.cluster.ContainerDTO;
-import com.izylife.izykube.dto.cluster.DeploymentDTO;
-import com.izylife.izykube.dto.cluster.VolumeDTO;
+import com.izylife.izykube.dto.cluster.*;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.repositories.AssetRepository;
 import com.izylife.izykube.utils.ConfigMapUtils;
@@ -12,10 +9,11 @@ import com.izylife.izykube.utils.VolumeUtils;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
-import io.fabric8.kubernetes.client.utils.*;
+import io.fabric8.kubernetes.client.utils.Serialization;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +31,21 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         List<Container> containers = createContainers(dto);
         List<EnvFromSource> envFromSources = createEnvFromSources(dto);
         List<Volume> volumes = createVolumes(dto);
+        HostAlias hostAlias = null;
+
+        ServiceDTO serviceDTO = dto.getTargetNodes().stream()
+                .filter(ServiceDTO.class::isInstance)
+                .map(ServiceDTO.class::cast)
+                .findFirst()
+                .orElse(null);
+
+
+        if (serviceDTO != null && !serviceDTO.getFrontendUrl().isEmpty()) {
+            InetAddress loopbackAddress = InetAddress.getLoopbackAddress();
+            hostAlias = new HostAlias();
+            hostAlias.setIp(loopbackAddress.getHostAddress());
+            hostAlias.setHostnames(List.of(stripHttpPrefix(serviceDTO.getFrontendUrl())));
+        }
 
         if (containers.isEmpty()) {
             throw new IllegalArgumentException("Deployment must have at least one linked Container");
@@ -77,6 +90,10 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
             deployment.getSpec().getTemplate().getSpec().setVolumes(volumes);
         }
 
+        if (hostAlias != null) {
+            deployment.getSpec().getTemplate().getSpec().setHostAliases(List.of(hostAlias));
+        }
+
         return Serialization.asYaml(deployment);
     }
 
@@ -112,5 +129,9 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .map(node -> (VolumeDTO) node)
                 .map(VolumeUtils::createVolume)
                 .collect(Collectors.toList());
+    }
+
+    private String stripHttpPrefix(String url) {
+        return url.replaceAll("^(http://|https://)", "");
     }
 }
