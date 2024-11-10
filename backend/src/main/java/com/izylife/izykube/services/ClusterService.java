@@ -202,35 +202,60 @@ public class ClusterService {
     }
 
     public void undeploy(String clusterId) throws ObjectNotFoundException {
-
         Cluster cluster = clusterRepository.findById(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
 
-        // Retrieve the cluster template from the database
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
 
-        // Undeploy each YAML in the template
         for (String yaml : template.getYamlList()) {
             try {
-                // Load the YAML into Kubernetes resources
                 KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
-                List<HasMetadata> resources = k8sClient.load(new ByteArrayInputStream(yaml.getBytes())).get();
+                List<HasMetadata> resources = k8sClient.load(new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8))).get();
 
-                // Delete each resource
+                if (resources == null || resources.isEmpty()) {
+                    log.error("No resources found in YAML: " + yaml);
+                    continue;
+                }
+
                 for (HasMetadata resource : resources) {
-                    k8sClient.resource(resource).delete();
+                    if (resource == null) {
+                        log.error("Null resource found in YAML: " + yaml);
+                        continue;
+                    }
+
+                    Object client = clientFactory.getClient(resource.getApiVersion());
+
+                    if (client instanceof IstioClient) {
+                        undeployIstioResource((IstioClient) client, resource);
+                    } else if (client instanceof KubernetesClient) {
+                        ((KubernetesClient) client).resource(resource).delete();
+                    }
+
+                    log.info("Deleted resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
                 }
 
             } catch (KubernetesClientException e) {
                 log.error("Error undeploying resource from template: " + e.getMessage());
             }
         }
+
         cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
         clusterRepository.save(cluster);
     }
 
-    public ClusterDTO patchCluster(String id, ClusterDTO clusterDTO) {
+    private void undeployIstioResource(IstioClient istioClient, HasMetadata resource) {
+        if (resource instanceof Gateway) {
+            istioClient.v1beta1().gateways().inNamespace("default").resource((Gateway) resource).delete();
+        } else if (resource instanceof VirtualService) {
+            istioClient.v1beta1().virtualServices().inNamespace("default").resource((VirtualService) resource).delete();
+        } else {
+            log.warn("Unsupported Istio resource type: " + resource.getKind());
+        }
+    }
+
+
+    public Cluster patchCluster(String id, ClusterDTO clusterDTO) {
         try {
             // Find the existing cluster
             Cluster existingCluster = clusterRepository.findById(id)
@@ -243,9 +268,7 @@ public class ClusterService {
             }
 
             applyTemplate(template);
-
             triggerDeploymentUpdates(clusterDTO);
-
 
             // Update the cluster entity with new data
             existingCluster.setName(clusterDTO.getName());
@@ -257,8 +280,8 @@ public class ClusterService {
             existingCluster.setStatus(existingCluster.getStatus());
             // Save the updated cluster
             Cluster updatedCluster = clusterRepository.save(existingCluster);
-            // Return the updated cluster as DTO
-            return ClusterUtil.convertToDTO(updatedCluster);
+            return updatedCluster;
+
 
         } catch (ObjectNotFoundException e) {
             throw new RuntimeException("Failed to patch cluster: " + id, e);

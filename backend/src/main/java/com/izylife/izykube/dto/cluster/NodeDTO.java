@@ -1,5 +1,6 @@
 package com.izylife.izykube.dto.cluster;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -34,9 +35,11 @@ public abstract class NodeDTO {
     String kind;
     @Setter
     @Transient
+    @JsonIgnore
     List<NodeDTO> sourceNodes;
     @Setter
     @Transient
+    @JsonIgnore
     List<NodeDTO> targetNodes;
 
     public NodeDTO(String id, String name, String kind) {

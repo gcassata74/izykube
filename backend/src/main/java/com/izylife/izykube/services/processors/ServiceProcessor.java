@@ -25,12 +25,10 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         yaml.append(createKubernetesService(dto));
 
         // Always create VirtualService
-        yaml.append("---\n");
         yaml.append(createVirtualService(dto));
 
         // If service is exposed, create Gateway
         if (dto.isExposeService() && dto.getFrontendUrl() != null && !dto.getFrontendUrl().isEmpty()) {
-            yaml.append("---\n");
             yaml.append(createGateway(dto));
         }
 
@@ -124,13 +122,13 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
                 .withNamespace("default")
                 .endMetadata()
                 .withNewSpec()
-                .withGateways(Collections.singletonList(dto.getName() + "-gateway"))
                 .withHttp(Collections.singletonList(httpRoute))
                 .endSpec();
 
-        if (dto.isExposeService()) {
+        if (dto.isExposeService() && !dto.getFrontendUrl().isEmpty()) {
             virtualService.editOrNewSpec()
                     .withHosts(Collections.singletonList(stripHttpPrefix(dto.getFrontendUrl())))
+                    .withGateways(Collections.singletonList(dto.getName() + "-gateway"))
                     .endSpec();
         }
         return Serialization.asYaml(virtualService.build());

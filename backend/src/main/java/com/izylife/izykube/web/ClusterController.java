@@ -3,7 +3,9 @@ package com.izylife.izykube.web;
 
 import com.izylife.izykube.dto.GenericResponseDTO;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
+import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.services.ClusterService;
+import com.izylife.izykube.utils.ClusterUtil;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -61,24 +63,12 @@ public class ClusterController {
     public ResponseEntity<?> patchCluster(@PathVariable String id, @RequestBody ClusterDTO clusterDTO) {
         try {
             clusterDTO.setId(id);
-            ClusterDTO patchedCluster = clusterService.patchCluster(id, clusterDTO);
+            Cluster patchedCluster = clusterService.patchCluster(id, clusterDTO);
 
             // Check if the cluster was patched successfully
             if (patchedCluster != null) {
-                //create a new clusterDTO object with the updated values
-                ClusterDTO updatedCluster = ClusterDTO.builder()
-                        .id(patchedCluster.getId())
-                        .name(patchedCluster.getName())
-                        .nameSpace(patchedCluster.getNameSpace())
-                        .nodes(patchedCluster.getNodes())
-                        .links(patchedCluster.getLinks())
-                        .diagram(patchedCluster.getDiagram())
-                        .status(patchedCluster.getStatus())
-                        .build();
-
-                return ResponseEntity.ok(updatedCluster);
+                return ResponseEntity.ok(ClusterUtil.convertToDTO(patchedCluster));
             } else {
-                // Handle the case where the cluster wasn't patched properly
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error patching cluster");
             }
         } catch (Exception e) {
