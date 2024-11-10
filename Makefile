@@ -56,6 +56,7 @@ install-istio:
 	./istio-1.18.2/bin/istioctl install --set profile=default -y
 	kubectl label namespace default istio-injection=enabled
 	@echo "Istio installation complete."
+	rm -rf istio-1.18.2
 
 # Updated target to include Istio installation
 start-k3d-cluster-with-istio: create-k3d-registry create-k3d-cluster install-istio
