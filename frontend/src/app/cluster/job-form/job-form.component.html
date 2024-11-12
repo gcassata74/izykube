@@ -1,0 +1,17 @@
+<form [formGroup]="form" class="job-form">
+  <div class="p-field mb-3">
+    <label for="name">Job Name:</label>
+    <input pInputText id="name" formControlName="name" class="w-full">
+  </div>
+
+  <div class="p-field mb-3">
+    <label for="assetId">Asset:</label>
+    <p-dropdown id="assetId" [options]="(assets$ | async) ?? []" formControlName="assetId"
+                optionLabel="name" optionValue="id" [showClear]="true"
+                placeholder="Select an asset" [required]="true">
+      <ng-template let-asset pTemplate="item">
+        <div>{{asset.name}} - {{asset.version}}</div>
+      </ng-template>
+    </p-dropdown>
+  </div>
+</form>

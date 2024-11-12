@@ -49,6 +49,7 @@ import { AssetFormComponent } from './assets/asset-form/asset-form.component';
 import { ClusterEffect } from './store/effects/effect';
 import { EditorModule } from 'primeng/editor';
 import { SharedModule } from './shared/shared.module';
+import { JobFormComponent } from './cluster/job-form/job-form.component';
 
 @NgModule({
   declarations: [
@@ -68,6 +69,7 @@ import { SharedModule } from './shared/shared.module';
     ContainerFormComponent,
     VolumeFormComponent,
     AssetFormComponent,
+    JobFormComponent,
   ],
   imports: [
     SharedModule,

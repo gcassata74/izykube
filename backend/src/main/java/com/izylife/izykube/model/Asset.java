@@ -1,5 +1,6 @@
 package com.izylife.izykube.model;
 
+import com.izylife.izykube.enums.AssetType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.data.annotation.Transient;
@@ -12,6 +13,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class Asset extends BaseEntity implements Persistable<String> {
 
     private String name;
+    private AssetType type;
+    private String yaml;
     private String version;
     private String description;
     private String image;

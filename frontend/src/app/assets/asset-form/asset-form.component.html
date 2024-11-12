@@ -10,28 +10,44 @@
       <form [formGroup]="assetForm" (ngSubmit)="saveAsset()">
         <div class="mt-4 ml-4 mr-4">
           <label for="name">Asset Name</label>
-          <input id="name" type="text" pInputText formControlName="name" class="p-inputtext-lg"
-                 style="width: 100%;">
+          <input id="name" type="text" pInputText formControlName="name" class="p-inputtext-lg" style="width: 100%;">
           <small *ngIf="assetForm.get('name')?.invalid && assetForm.get('name')?.touched" class="p-error">
             Asset name is required.
           </small>
         </div>
 
         <div class="mt-4 ml-4 mr-4">
+          <label for="type">Asset Type</label>
+          <p-dropdown id="type" [options]="assetTypes" formControlName="type"
+                      optionLabel="label" optionValue="value"
+                      styleClass="p-inputtext-lg" [style]="{'width': '100%'}">
+          </p-dropdown>
+          <small *ngIf="assetForm.get('type')?.invalid && assetForm.get('type')?.touched" class="p-error">
+            Asset type is required.
+          </small>
+        </div>
+
+        <div class="mt-4 ml-4 mr-4" *ngIf="assetForm.get('type')?.value === 'playbook'">
+          <label for="yaml">Playbook YAML</label>
+          <div appYaml formControlName="yaml" [width]="'100%'" [height]="'250px'"></div>
+          <small *ngIf="assetForm.get('yaml')?.invalid && assetForm.get('yaml')?.touched" class="p-error">
+            Valid YAML is required.
+          </small>
+        </div>
+
+        <div class="mt-4 ml-4 mr-4">
           <label for="port">Port</label>
-          <div width="100%">
-            <p-inputNumber id="port" formControlName="port" [min]="1" [max]="65535" [useGrouping]="false"
-                           styleClass="p-inputtext-lg"></p-inputNumber>
-            <small *ngIf="assetForm.get('port')?.invalid && assetForm.get('port')?.touched" class="p-error">
-              Port is required and must be between 1 and 65535.
-            </small>
-          </div>
+          <p-inputNumber id="port" formControlName="port" [min]="1" [max]="65535" [useGrouping]="false"
+                         styleClass="p-inputtext-lg" [style]="{'width': '100%', 'display': 'block'}">
+          </p-inputNumber>
+          <small *ngIf="assetForm.get('port')?.invalid && assetForm.get('port')?.touched" class="p-error">
+            Port is required and must be between 1 and 65535.
+          </small>
         </div>
 
         <div class="mt-4 ml-4 mr-4">
           <label for="image">Image</label>
-          <input id="image" type="text" pInputText formControlName="image" class="p-inputtext-lg"
-                 style="width: 100%;">
+          <input id="image" type="text" pInputText formControlName="image" class="p-inputtext-lg" style="width: 100%;">
           <small *ngIf="assetForm.get('image')?.invalid && assetForm.get('image')?.touched" class="p-error">
             Image is required.
           </small>
@@ -41,8 +57,7 @@
           <label for="version">Version</label>
           <input id="version" type="text" pInputText formControlName="version" class="p-inputtext-lg"
                  style="width: 100%;">
-          <small *ngIf="assetForm.get('version')?.invalid && assetForm.get('version')?.touched"
-                 class="p-error">
+          <small *ngIf="assetForm.get('version')?.invalid && assetForm.get('version')?.touched" class="p-error">
             Version is required.
           </small>
         </div>
@@ -50,8 +65,7 @@
         <div class="text-end mt-4 pl-4 pr-4 mb-4">
           <p-button type="submit" label="Save" [disabled]="assetForm.invalid"
                     styleClass="p-button-success mr-2"></p-button>
-          <p-button type="button" label="Cancel" (click)="cancel()"
-                    styleClass="p-button-secondary"></p-button>
+          <p-button type="button" label="Cancel" (click)="cancel()" styleClass="p-button-secondary"></p-button>
         </div>
       </form>
     </div>

@@ -10,7 +10,8 @@ import { NotificationService } from 'src/app/services/notification.service';
 
 @Component({
   selector: 'app-assets-list',
-  templateUrl: './assets-list.component.html'
+  templateUrl: './assets-list.component.html',
+  styleUrls: ['./assets-list.component.scss']
 })
   export class AssetListComponent implements OnInit {
     assets$!: Observable<Asset[]>;

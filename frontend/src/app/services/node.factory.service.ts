@@ -7,6 +7,7 @@ import { Deployment } from '../model/deployment.class';
 import { ConfigMap } from '../model/config-map.class';
 import { Ingress } from '../model/ingress.class';
 import { Volume, VolumeConfig } from '../model/volume.class';
+import { Job } from '../model/job.class';
 
 @Injectable({
   providedIn: 'root'
@@ -50,6 +51,12 @@ export class NodeFactoryService {
           name,
           ''
         );
+        case 'job':
+          return new Job(
+            id,
+            name,
+            ''
+          );  
       case 'volume':
         return new Volume(
           id,

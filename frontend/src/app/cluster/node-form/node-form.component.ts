@@ -11,6 +11,8 @@ import { ServiceFormComponent } from '../service-form/service-form.component';
 import { IngressFormComponent } from '../ingress-form/ingress-form.component';
 import { ContainerFormComponent } from '../container-form/container-form.component';
 import { VolumeFormComponent } from '../volume-form/volume-form.component';
+import { JobFormComponent } from '../job-form/job-form.component';
+import { AssetFormComponent } from 'src/app/assets/asset-form/asset-form.component';
 
 
 @Component({
@@ -32,6 +34,7 @@ export class NodeFormComponent implements OnDestroy {
     'ingress':IngressFormComponent,
     'container': ContainerFormComponent,
     'volume': VolumeFormComponent,
+    'job': JobFormComponent
   };
 
   componentRef!: ComponentRef<any>;
@@ -56,8 +59,9 @@ export class NodeFormComponent implements OnDestroy {
     );
   }
 
+  //better replace with component-outlet
   loadForm(node: Node) {
-    {
+    {AssetFormComponent
       this.node = node;
       this.dynamicContainer.clear();
       this.componentRef = this.dynamicContainer.createComponent(this.formMapper[node.kind]);

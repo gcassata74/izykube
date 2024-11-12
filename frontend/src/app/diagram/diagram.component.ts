@@ -262,7 +262,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
       { name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
       { name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
       { name: 'configmap', type: 'configmap', icon: this.iconService.getIconPath('configmap') },
-      { name: 'volume', type: 'volume', icon: this.iconService.getIconPath('volume') }
+      { name: 'volume', type: 'volume', icon: this.iconService.getIconPath('volume') },
+      { name: 'job', type: 'job', icon: this.iconService.getIconPath('job') } 
     ];
   }
 
@@ -278,10 +279,12 @@ export class DiagramComponent implements OnInit, OnDestroy {
           return toType === 'deployment';  
         case 'container':
           return toType === 'deployment';
+        case 'job':
+          return toType === 'deployment';  
         case 'deployment':
           return toType === 'service';
         case 'service':
-          return toType === 'ingress';
+          return toType === 'ingress' || toType === 'deployment';
         case 'ingress':
           return false; // Ingress is typically the endpoint, so it doesn't link to anything
         default:

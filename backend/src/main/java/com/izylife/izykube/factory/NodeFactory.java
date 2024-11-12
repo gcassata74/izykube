@@ -11,6 +11,9 @@ public class NodeFactory {
             case "configmap":
                 ConfigMapDTO configMap = (ConfigMapDTO) node;
                 return new ConfigMapDTO(configMap.getId(), configMap.getName(), configMap.getYaml());
+            case "job":
+                JobDTO job = (JobDTO) node;
+                return new JobDTO(job.getId(), job.getName(), job.getAssetId());
             case "pod":
                 PodDTO pod = (PodDTO) node;
                 return new PodDTO(
