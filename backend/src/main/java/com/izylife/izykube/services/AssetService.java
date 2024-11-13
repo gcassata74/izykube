@@ -1,5 +1,6 @@
 package com.izylife.izykube.services;
 
+import com.izylife.izykube.dto.cluster.AssetDTO;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.repositories.AssetRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +21,18 @@ public class AssetService {
     private AssetRepository assetRepository;
 
 
-    public List<Asset> findAll() {
-        return assetRepository.findAll();
+    public List<AssetDTO> findAll() {
+        List<Asset> assets = assetRepository.findAll();
+        return assets.stream().map(asset -> {
+            AssetDTO assetDTO = new AssetDTO();
+            assetDTO.setId(asset.getId());
+            assetDTO.setName(asset.getName());
+            assetDTO.setType(asset.getType());
+            assetDTO.setDescription(asset.getDescription());
+            assetDTO.setImage(asset.getImage());
+            assetDTO.setVersion(asset.getVersion());
+            return assetDTO;
+        }).toList();
     }
 
     public Asset getAsset(String assetId) {

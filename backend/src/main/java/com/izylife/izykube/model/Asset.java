@@ -6,6 +6,7 @@ import lombok.EqualsAndHashCode;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -13,6 +14,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class Asset extends BaseEntity implements Persistable<String> {
 
     private String name;
+    @Field("type")
     private AssetType type;
     private String yaml;
     private String version;

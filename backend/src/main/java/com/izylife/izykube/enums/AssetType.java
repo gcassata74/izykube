@@ -19,11 +19,11 @@ public enum AssetType {
 
     public static AssetType fromValue(String value) {
         for (AssetType type : values()) {
-            if (type.getValue().equals(value)) {
+            if (type.value.equals(value.toLowerCase())) {
                 return type;
             }
         }
-        throw new IllegalArgumentException("Unknown AssetType value: " + value);
+        throw new IllegalArgumentException("Unknown AssetType: " + value);
     }
 
     @Override

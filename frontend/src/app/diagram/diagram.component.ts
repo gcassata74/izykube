@@ -280,7 +280,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
         case 'container':
           return toType === 'deployment';
         case 'job':
-          return toType === 'deployment';  
+          return toType === 'service';  
         case 'deployment':
           return toType === 'service';
         case 'service':

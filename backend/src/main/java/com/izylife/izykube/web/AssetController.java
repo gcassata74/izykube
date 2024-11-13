@@ -1,5 +1,6 @@
 package com.izylife.izykube.web;
 
+import com.izylife.izykube.dto.cluster.AssetDTO;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.services.AssetService;
 import lombok.AllArgsConstructor;
@@ -20,7 +21,7 @@ public class AssetController {
     private AssetService assetService;
 
     @GetMapping("/all")
-    public List<Asset> getAllAssets() {
+    public List<AssetDTO> getAllAssets() {
         return assetService.findAll();
     }
 
