@@ -1,10 +1,11 @@
 import { Component, Input } from '@angular/core';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
-import { filter, Observable } from 'rxjs';
+import { catchError, filter, map, Observable, of, tap } from 'rxjs';
 import { AssetType } from 'src/app/model/asset.class';
 import { Job } from 'src/app/model/job.class';
 import { AssetService } from 'src/app/services/asset.service';
 import { AutoSaveService } from 'src/app/services/auto-save.service';
+import { NotificationService } from 'src/app/services/notification.service';
 
 @Component({
   selector: 'app-job-form',
@@ -20,7 +21,8 @@ export class JobFormComponent {
   constructor(
     private fb: FormBuilder,
     private autoSaveService: AutoSaveService,
-    private assetService: AssetService
+    private assetService: AssetService,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit() {
@@ -38,7 +40,13 @@ export class JobFormComponent {
 
   private loadAssets() {
     this.assets$ = this.assetService.getAssets().pipe(
-      filter(assets => assets.some(asset => asset.type === AssetType.PLAYBOOK))
+        map(assets => assets.filter(asset => asset.type === AssetType.PLAYBOOK)),
+        tap(playbooks => console.log('Loaded playbooks:', playbooks)),
+        catchError(error => {
+            console.error('Error loading playbooks:', error);
+            this.notificationService.error('Error', 'Failed to load playbooks');
+            return of([]);
+        })
     );
   }
 

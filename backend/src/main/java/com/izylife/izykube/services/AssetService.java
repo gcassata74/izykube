@@ -20,7 +20,6 @@ public class AssetService {
     @Autowired
     private AssetRepository assetRepository;
 
-
     public List<AssetDTO> findAll() {
         List<Asset> assets = assetRepository.findAll();
         return assets.stream().map(asset -> {
@@ -54,6 +53,9 @@ public class AssetService {
         existingAsset.setName(asset.getName());
         existingAsset.setDescription(asset.getDescription());
         existingAsset.setImage(asset.getImage());
+        existingAsset.setPort(asset.getPort());
+        existingAsset.setYaml(asset.getYaml());
+        existingAsset.setType(asset.getType());
         existingAsset.setVersion(asset.getVersion());
         return assetRepository.save(existingAsset);
     }

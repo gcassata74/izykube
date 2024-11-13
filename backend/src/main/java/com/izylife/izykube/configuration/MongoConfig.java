@@ -1,6 +1,7 @@
 package com.izylife.izykube.configuration;
 
-import com.izylife.izykube.model.AssetTypeConverter;
+import com.izylife.izykube.model.AssetTypeReadConverter;
+import com.izylife.izykube.model.AssetTypeWriteConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
@@ -13,7 +14,8 @@ public class MongoConfig {
     @Bean
     public MongoCustomConversions mongoCustomConversions() {
         return new MongoCustomConversions(Arrays.asList(
-                new AssetTypeConverter()
+                new AssetTypeReadConverter(),
+                new AssetTypeWriteConverter()
         ));
     }
 }

@@ -1,9 +1,11 @@
 import { Component, Input } from '@angular/core';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
-import { Observable } from 'rxjs';
+import { catchError, map, Observable, of, tap } from 'rxjs';
+import { AssetType } from 'src/app/model/asset.class';
 import { Container } from 'src/app/model/container.class';
 import { AssetService } from 'src/app/services/asset.service';
 import { AutoSaveService } from 'src/app/services/auto-save.service';
+import { NotificationService } from 'src/app/services/notification.service';
 
 @Component({
   selector: 'app-container-form',
@@ -19,7 +21,8 @@ export class ContainerFormComponent {
   constructor(
     private fb: FormBuilder,
     private autoSaveService: AutoSaveService,
-    private assetService: AssetService
+    private assetService: AssetService,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit() {
@@ -36,8 +39,17 @@ export class ContainerFormComponent {
     });
   }
 
+
   private loadAssets() {
-    this.assets$ = this.assetService.getAssets();
+    this.assets$ = this.assetService.getAssets().pipe(
+        map(assets => assets.filter(asset => asset.type === AssetType.IMAGE)),
+        tap(playbooks => console.log('Loaded playbooks:', playbooks)),
+        catchError(error => {
+            console.error('Error loading playbooks:', error);
+            this.notificationService.error('Error', 'Failed to load playbooks');
+            return of([]);
+        })
+    );
   }
 
   private setupAutoSave() {
