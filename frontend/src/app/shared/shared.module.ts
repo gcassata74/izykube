@@ -4,10 +4,12 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { YamlDirective } from './directives/yaml.directive';
+import { BashDirective } from './directives/bash.directive';
 
 @NgModule({
   declarations: [
-    YamlDirective
+    YamlDirective,
+    BashDirective
   ],
   imports: [
     BrowserAnimationsModule,
@@ -17,6 +19,7 @@ import { YamlDirective } from './directives/yaml.directive';
   ],
   exports: [
     YamlDirective,
+    BashDirective
   ]
 })
 export class SharedModule { }

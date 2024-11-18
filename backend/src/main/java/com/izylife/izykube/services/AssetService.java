@@ -57,6 +57,7 @@ public class AssetService {
         existingAsset.setYaml(asset.getYaml());
         existingAsset.setType(asset.getType());
         existingAsset.setVersion(asset.getVersion());
+        existingAsset.setId(id);
         return assetRepository.save(existingAsset);
     }
 

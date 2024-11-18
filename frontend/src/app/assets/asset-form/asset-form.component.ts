@@ -23,6 +23,7 @@ export class AssetFormComponent {
   readonly DEFAULT_IMAGE_PORT = 8080;
   readonly DEFAULT_VERSION = '1.00';
   readonly DEFAULT_YAML = '---\n- name: My Playbook\n  hosts: all\n  tasks:\n    - name: Example task\n      debug:\n        msg: "Hello World"';
+  readonly DEFAULT_BASH ="#!/bin/bash\n\n";
 
   assetTypes = [
     { label: 'Playbook', value: AssetType.PLAYBOOK },
@@ -43,6 +44,7 @@ export class AssetFormComponent {
       name: ['', Validators.required],
       type: [AssetType.IMAGE, Validators.required],
       yaml: [this.DEFAULT_YAML],
+      bash: [this.DEFAULT_BASH],
       port: [this.DEFAULT_IMAGE_PORT, [Validators.required, Validators.min(1), Validators.max(65535)]],
       image: ['', Validators.required],
       version: [this.DEFAULT_VERSION, Validators.required]
@@ -84,7 +86,7 @@ export class AssetFormComponent {
         this.assetForm.patchValue({
           name: this.asset.name,
           type: this.asset.type,
-          yaml: this.asset.yaml || this.DEFAULT_YAML,
+          script: this.asset.script || (this.asset.type === AssetType.PLAYBOOK) ?this.DEFAULT_YAML : this.DEFAULT_BASH,
           port: this.asset.port,
           image: this.asset.image,
           version: this.asset.version
@@ -101,7 +103,7 @@ export class AssetFormComponent {
       }
       this.asset.name = values.name;
       this.asset.type = values.type;
-      this.asset.yaml = values.yaml;
+      this.asset.script = values.script;
       this.asset.port = values.port;
       this.asset.image = values.image;
       this.asset.version = values.version;

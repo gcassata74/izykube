@@ -6,11 +6,11 @@ export enum AssetType {
 
 export class Asset {
     id!: string;
-    name!: AssetType;
-    yaml?: string;
-    type!: string;
-    port!: number;
-    image!: string;
+    name!: string;
+    script?: string;
+    type!: AssetType;
+    port?: number;
+    image?: string;
     version!: string;
   }
 
