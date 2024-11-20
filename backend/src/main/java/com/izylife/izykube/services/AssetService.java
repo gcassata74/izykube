@@ -54,7 +54,7 @@ public class AssetService {
         existingAsset.setDescription(asset.getDescription());
         existingAsset.setImage(asset.getImage());
         existingAsset.setPort(asset.getPort());
-        existingAsset.setYaml(asset.getYaml());
+        existingAsset.setScript(asset.getScript());
         existingAsset.setType(asset.getType());
         existingAsset.setVersion(asset.getVersion());
         existingAsset.setId(id);

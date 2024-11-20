@@ -11,19 +11,19 @@ import { NotificationService } from 'src/app/services/notification.service';
   templateUrl: './asset-form.component.html'
 })
 export class AssetFormComponent implements OnInit, OnDestroy {
+  readonly DEFAULT_VALUES = {
+    ANSIBLE_IMAGE: 'docker.io/ansible/ansible-runner:latest',
+    ANSIBLE_PORT: 22,
+    IMAGE_PORT: 8080,
+    VERSION: '1.00',
+    YAML: '---\n- name: My Playbook\n  hosts: all\n  tasks:\n    - name: Example task\n      debug:\n        msg: "Hello World"',
+    BASH: '#!/bin/bash\n\n'
+  } as const;
 
   assetForm!: FormGroup;
-  isEditMode: boolean = false;
-  assetId: string | null = null;
-  asset!: Asset;
-  subscription: Subscription = new Subscription();
-
-  readonly ANSIBLE_DEFAULT_IMAGE = 'docker.io/ansible/ansible-runner:latest';
-  readonly DEFAULT_ANSIBLE_PORT = 22;  
-  readonly DEFAULT_IMAGE_PORT = 8080;
-  readonly DEFAULT_VERSION = '1.00';
-  readonly DEFAULT_YAML = '---\n- name: My Playbook\n  hosts: all\n  tasks:\n    - name: Example task\n      debug:\n        msg: "Hello World"';
-  readonly DEFAULT_BASH = "#!/bin/bash\n\n";
+  isEditMode = false;
+  asset?: Asset;
+  subscription = new Subscription();
 
   assetTypes = [
     { label: 'Playbook', value: AssetType.PLAYBOOK },
@@ -32,201 +32,229 @@ export class AssetFormComponent implements OnInit, OnDestroy {
   ];
 
   constructor(
-    private formBuilder: FormBuilder,
+    private fb: FormBuilder,
     private assetService: AssetService,
     private router: Router,
     private route: ActivatedRoute,
-    private notificationService: NotificationService
+    private notify: NotificationService
   ) {}
 
   ngOnInit(): void {
-    this.initializeForm();
-    this.setupTypeChangeSubscription();
+    this.initForm();
+    this.watchTypeChanges();
     this.handleRouteParams();
   }
 
-  private initializeForm(): void {
-    this.assetForm = this.formBuilder.group({
-      name: ['', Validators.required],
-      type: [AssetType.IMAGE, Validators.required],
-      script: [''],  
-      port: ['8080'],    
-      image: [''],  
-      version: [this.DEFAULT_VERSION, Validators.required]
+  private initForm(): void {
+    // Initialize with base validators
+    this.assetForm = this.fb.group({
+      name: ['', [Validators.required]],
+      type: [AssetType.IMAGE, [Validators.required]],
+      script: [''],
+      port: ['8080'],
+      image: [''],
+      version: [this.DEFAULT_VALUES.VERSION, [Validators.required]]
     });
-
-    // Set initial script value based on initial type
-    this.updateScriptBasedOnType(AssetType.IMAGE);
-  }
-
-  private setupTypeChangeSubscription(): void {
-    this.subscription.add(
-      this.assetForm.get('type')?.valueChanges.subscribe(type => {
-        this.updateFormBasedOnType(type);
-      })
-    );
-  }
-
-  private updateFormBasedOnType(type: AssetType): void {
-    // Clear all conditional field validators first
-    this.assetForm.get('script')?.clearValidators();
-    this.assetForm.get('port')?.clearValidators();
-    this.assetForm.get('image')?.clearValidators();
-
-    // Set default values and validators based on type
-    switch (type) {
-      case AssetType.PLAYBOOK:
-        this.assetForm.patchValue({
-          script: this.getDefaultScriptForType(type),
-          image: this.ANSIBLE_DEFAULT_IMAGE,
-          port: this.DEFAULT_ANSIBLE_PORT
-        });
-        
-        this.assetForm.get('script')?.setValidators([Validators.required]);
-        this.assetForm.get('port')?.setValidators([
-          Validators.required, 
-          Validators.min(1), 
-          Validators.max(65535)
-        ]);
-        this.assetForm.get('image')?.setValidators([Validators.required]);
-        break;
-
-      case AssetType.SCRIPT:
-        this.assetForm.patchValue({
-          script: this.getDefaultScriptForType(type),
-          image: null,
-          port: null
-        });
-        
-        this.assetForm.get('script')?.setValidators([Validators.required]);
-        break;
-
-      case AssetType.IMAGE:
-        this.assetForm.patchValue({
-          script: null,
-          image: '',
-          port: this.DEFAULT_IMAGE_PORT
-        });
-        
-        this.assetForm.get('port')?.setValidators([
-          Validators.required, 
-          Validators.min(1), 
-          Validators.max(65535)
-        ]);
-        this.assetForm.get('image')?.setValidators([Validators.required]);
-        break;
-    }
-
-    // Update validity of all fields
-    Object.keys(this.assetForm.controls).forEach(key => {
-      const control = this.assetForm.get(key);
-      control?.updateValueAndValidity();
-    });
-  }
-
-  private updateScriptBasedOnType(type: AssetType): void {
     
-    // Only set default if current value is empty
-      let defaultScript = '';
-      switch (type) {
-        case AssetType.PLAYBOOK:
-          defaultScript = this.DEFAULT_YAML;
-          break;
-        case AssetType.SCRIPT:
-          defaultScript = this.DEFAULT_BASH;
-          break;
-        default:
-          defaultScript = '';
-      }
-      
-      this.assetForm.patchValue({
-        script: defaultScript
-      }, { emitEvent: false });
+    // Set initial state based on default type
+    this.setFormState(AssetType.IMAGE);
+  }
+
+  private watchTypeChanges(): void {
+    const typeControl = this.assetForm.get('type');
+    if (typeControl) {
+      this.subscription.add(
+        typeControl.valueChanges.pipe(
+          tap(newType => this.setFormState(newType))
+        ).subscribe()
+      );
+    }
   }
 
   private handleRouteParams(): void {
     this.subscription.add(
-      this.route.paramMap.subscribe(params => {
-        this.assetId = params.get('id');
-        this.isEditMode = !!this.assetId;
-
-        if (this.isEditMode && this.assetId) {
-          this.loadAssetData(this.assetId);
-        }
-      })
-    );
-  }
-
-  loadAssetData(id: string) {
-    this.subscription.add(
-      this.assetService.getAsset(id).pipe(
-        tap(data => {
-          this.asset = data;
-          
-          // First set the type to trigger type-specific logic
-          this.assetForm.patchValue({
-            type: this.asset.type
-          }, { emitEvent: true });  // Emit event to trigger type change subscription
-
-          // Then patch the rest of the values
-          this.assetForm.patchValue({
-            name: this.asset.name,
-            script: this.asset.script || this.getDefaultScriptForType(this.asset.type),
-            port: this.asset.port,
-            image: this.asset.image,
-            version: this.asset.version
-          }, { emitEvent: false });
+      this.route.paramMap.pipe(
+        tap(params => {
+          const id = params.get('id');
+          if (id) {
+            this.isEditMode = true;
+            this.loadAsset(id);
+          }
         })
       ).subscribe()
     );
   }
 
-  private getDefaultScriptForType(type: AssetType): string {
+  private setFormState(type: AssetType): void {
+    const controls = {
+      script: this.assetForm.get('script'),
+      port: this.assetForm.get('port'),
+      image: this.assetForm.get('image')
+    };
+
+    // Clear all validators first
+    Object.values(controls).forEach(control => {
+      if (control) {
+        control.clearValidators();
+      }
+    });
+
+    // Set new state based on type
     switch (type) {
       case AssetType.PLAYBOOK:
-        return this.DEFAULT_YAML;
+        this.setPlaybookState(controls);
+        break;
       case AssetType.SCRIPT:
-        return this.DEFAULT_BASH;
+        this.setScriptState(controls);
+        break;
+      case AssetType.IMAGE:
+        this.setImageState(controls);
+        break;
+    }
+
+    // Update validity
+    Object.values(controls).forEach(control => {
+      if (control) {
+        control.updateValueAndValidity({ emitEvent: false });
+      }
+    });
+  }
+
+  private setPlaybookState(controls: any): void {
+    const { script, port, image } = controls;
+    
+    if (script && !script.value) {
+      script.setValue(this.DEFAULT_VALUES.YAML, { emitEvent: false });
+    }
+    if (port) {
+      port.setValue(this.DEFAULT_VALUES.ANSIBLE_PORT, { emitEvent: false });
+      port.setValidators([Validators.required, Validators.min(1), Validators.max(65535)]);
+    }
+    if (image) {
+      image.setValue(this.DEFAULT_VALUES.ANSIBLE_IMAGE, { emitEvent: false });
+      image.setValidators([Validators.required]);
+    }
+    if (script) {
+      script.setValidators([Validators.required]);
+    }
+  }
+
+  private setScriptState(controls: any): void {
+    const { script, port, image } = controls;
+    
+    if (script && !script.value) {
+      script.setValue(this.DEFAULT_VALUES.BASH, { emitEvent: false });
+    }
+    if (port) {
+      port.setValue(null, { emitEvent: false });
+    }
+    if (image) {
+      image.setValue(null, { emitEvent: false });
+    }
+    if (script) {
+      script.setValidators([Validators.required]);
+    }
+  }
+
+  private setImageState(controls: any): void {
+    const { script, port, image } = controls;
+    
+    if (script) {
+      script.setValue(null, { emitEvent: false });
+    }
+    if (port) {
+      port.setValue(this.DEFAULT_VALUES.IMAGE_PORT, { emitEvent: false });
+      port.setValidators([Validators.required, Validators.min(1), Validators.max(65535)]);
+    }
+    if (image) {
+      image.setValidators([Validators.required]);
+    }
+  }
+
+  private loadAsset(id: string): void {
+    this.subscription.add(
+      this.assetService.getAsset(id).pipe(
+        tap(asset => {
+          this.asset = asset;
+          
+          // First set type without emitting
+          this.assetForm.get('type')?.setValue(asset.type, { emitEvent: false });
+          
+          // Setup form state for this type
+          this.setFormState(asset.type);
+          
+          // Then patch all values
+          this.assetForm.patchValue({
+            name: asset.name,
+            script: asset.script || this.getDefaultScript(asset.type),
+            port: asset.port,
+            image: asset.image,
+            version: asset.version
+          }, { emitEvent: false });
+        }),
+        catchError(error => {
+          this.notify.error('Error', 'Failed to load asset');
+          console.error('Error loading asset:', error);
+          return EMPTY;
+        })
+      ).subscribe()
+    );
+  }
+
+  private getDefaultScript(type: AssetType): string {
+    switch (type) {
+      case AssetType.PLAYBOOK:
+        return this.DEFAULT_VALUES.YAML;
+      case AssetType.SCRIPT:
+        return this.DEFAULT_VALUES.BASH;
       default:
         return '';
     }
   }
 
-  saveAsset() {
+  saveAsset(): void {
     if (this.assetForm.valid) {
-      const values = this.assetForm.value;
-      if (!this.isEditMode) {
-        this.asset = new Asset();
-      }
+      const formValue = this.assetForm.value;
+      const asset = this.isEditMode ? this.asset! : new Asset();
       
-      Object.assign(this.asset, {
-        name: values.name,
-        type: values.type,
-        script: values.script,
-        port: values.port,
-        image: values.image,
-        version: values.version
+      Object.assign(asset, {
+        name: formValue.name,
+        type: formValue.type,
+        script: formValue.script,
+        port: formValue.port,
+        image: formValue.image,
+        version: formValue.version
       });
 
-      this.assetService.saveAsset(this.asset).pipe(
-        tap(() => {
-          this.notificationService.success('Success', `Asset ${this.isEditMode ? 'updated' : 'created'} successfully`);
-          this.router.navigate(['/assets']);
-        }),
-        catchError(error => {
-          this.notificationService.error('Error', `Failed to ${this.isEditMode ? 'update' : 'create'} asset`);
-          console.error('Error saving asset:', error);
-          return EMPTY;
-        })
-      ).subscribe();
+      this.subscription.add(
+        this.assetService.saveAsset(asset).pipe(
+          tap(() => {
+            this.notify.success('Success', `Asset ${this.isEditMode ? 'updated' : 'created'} successfully`);
+            this.router.navigate(['/assets']);
+          }),
+          catchError(error => {
+            this.notify.error('Error', `Failed to ${this.isEditMode ? 'update' : 'create'} asset`);
+            console.error('Error saving asset:', error);
+            return EMPTY;
+          })
+        ).subscribe()
+      );
+    } else {
+      // Mark all fields as touched to trigger validation messages
+      Object.keys(this.assetForm.controls).forEach(key => {
+        const control = this.assetForm.get(key);
+        if (control) {
+          control.markAsTouched();
+        }
+      });
     }
+  }
+
+  cancel(): void {
+    this.router.navigate(['/assets']);
   }
 
   ngOnDestroy(): void {
     this.subscription.unsubscribe();
-  }
-
-  cancel() {
-    this.router.navigate(['/assets']);
   }
 }

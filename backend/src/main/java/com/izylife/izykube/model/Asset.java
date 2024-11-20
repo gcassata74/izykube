@@ -16,7 +16,7 @@ public class Asset extends BaseEntity implements Persistable<String> {
     private String name;
     @Field("type")
     private AssetType type;
-    private String yaml;
+    private String script;
     private String version;
     private String description;
     private String image;
