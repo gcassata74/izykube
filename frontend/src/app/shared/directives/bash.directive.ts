@@ -1,5 +1,6 @@
-import { AfterViewInit, Directive, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Directive, ElementRef, Input, OnInit, OnDestroy } from '@angular/core';
 import { AbstractControl, ControlValueAccessor, NG_VALIDATORS, NG_VALUE_ACCESSOR, ValidationErrors } from '@angular/forms';
+import { enableDebugTools } from '@angular/platform-browser';
 import * as ace from "ace-builds";
 
 @Directive({
@@ -20,8 +21,8 @@ import * as ace from "ace-builds";
 export class BashDirective implements OnInit, ControlValueAccessor, OnDestroy {
   private editor: any;
   
-  @Input() theme: string = 'ace/theme/monokai'; // Dark theme better for code
-  @Input() mode: string = 'ace/mode/sh'; // Bash mode
+  @Input() theme: string = 'ace/theme/monokai';
+  @Input() mode: string = 'ace/mode/sh';
   @Input() readOnly: boolean = false;
   @Input() height: string = '400px';
   @Input() width: string = '100%';
@@ -62,25 +63,39 @@ export class BashDirective implements OnInit, ControlValueAccessor, OnDestroy {
     this.editor.session.setMode(this.mode);
     this.editor.setReadOnly(this.readOnly || this.isDisabled);
     
-    // Additional Bash-specific configurations
     this.editor.session.setTabSize(this.tabSize);
     this.editor.renderer.setShowGutter(this.showGutter);
     this.editor.setShowPrintMargin(this.showPrintMargin);
     
-    // Enable auto-completion
+    // Enable auto-completion and snippets
     this.editor.setOptions({
-      enableBasicAutocompletion: true,
-      enableLiveAutocompletion: true,
-      enableSnippets: true
+      // Add these options for better Bash editing experience
+      wrap: true,
+      showLineNumbers: true,
+      highlightActiveLine: true,
+      displayIndentGuides: true
     });
 
-    // Add common Bash keywords for highlighting
-    const bashKeywords = [
-      'if', 'then', 'else', 'elif', 'fi', 'case', 'esac', 'for', 'while', 
-      'do', 'done', 'in', 'function', 'return', 'exit', 'export', 'source'
-    ];
-    
-    this.editor.session.$mode.$highlightRules.addKeywords(bashKeywords);
+    // Define custom completions for Bash keywords
+    const bashCompleter = {
+      getCompletions: (editor: any, session: any, pos: any, prefix: any, callback: any) => {
+        const bashKeywords = [
+          'if', 'then', 'else', 'elif', 'fi', 'case', 'esac', 'for', 'while', 
+          'do', 'done', 'in', 'function', 'return', 'exit', 'export', 'source'
+        ];
+        
+        callback(null, bashKeywords.map(word => ({
+          caption: word,
+          value: word,
+          meta: 'bash keyword'
+        })));
+      }
+    };
+
+    // Add the custom completer to the editor
+    if (this.editor.completers) {
+      this.editor.completers.push(bashCompleter);
+    }
   }
 
   private setupEventListeners(): void {
@@ -90,7 +105,6 @@ export class BashDirective implements OnInit, ControlValueAccessor, OnDestroy {
       this.onTouched();
     });
 
-    // Add custom key bindings
     this.editor.commands.addCommand({
       name: 'saveFile',
       bindKey: { win: 'Ctrl-S', mac: 'Command-S' },
@@ -126,7 +140,6 @@ export class BashDirective implements OnInit, ControlValueAccessor, OnDestroy {
       return null;
     }
 
-    // Basic Bash syntax validation
     try {
       const currentContent = this.editor.getValue();
       if (this.hasBasicSyntaxErrors(currentContent)) {
@@ -147,7 +160,6 @@ export class BashDirective implements OnInit, ControlValueAccessor, OnDestroy {
   }
 
   private hasBasicSyntaxErrors(content: string): boolean {
-    // Implement basic syntax checking
     const lines = content.split('\n');
     let openIf = 0;
     let openCase = 0;
@@ -157,19 +169,15 @@ export class BashDirective implements OnInit, ControlValueAccessor, OnDestroy {
     for (const line of lines) {
       const trimmedLine = line.trim();
       
-      // Check for unclosed if statements
       if (trimmedLine.startsWith('if ')) openIf++;
       if (trimmedLine === 'fi') openIf--;
       
-      // Check for unclosed case statements
       if (trimmedLine.startsWith('case ')) openCase++;
       if (trimmedLine === 'esac') openCase--;
       
-      // Check for unclosed for loops
       if (trimmedLine.startsWith('for ')) openFor++;
       if (trimmedLine === 'done' && openFor > 0) openFor--;
       
-      // Check for unclosed while loops
       if (trimmedLine.startsWith('while ')) openWhile++;
       if (trimmedLine === 'done' && openWhile > 0) openWhile--;
     }
