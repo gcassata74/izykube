@@ -1,0 +1,185 @@
+// Variables
+$input-border-color: rgba(0, 0, 0, 0.12);
+$input-focus-color: var(--primary-color);
+$label-color: rgba(0, 0, 0, 0.6);
+$error-color: #f44336;
+$placeholder-color: rgba(0, 0, 0, 0.42);
+
+body {
+  .p-float-label {
+    position: relative;
+    margin: 1.5rem 0;
+    display: inline-block;
+    width: 100%;
+
+    label {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform-origin: 0 0;
+      transform: translateY(-50%);
+      transition: 0.2s ease all;
+      color: $label-color;
+      pointer-events: none;
+      margin: 0;
+      padding: 0;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    input:focus ~ label,
+    input.p-filled ~ label,
+    input:not(:placeholder-shown) ~ label,
+    .p-inputwrapper-focus ~ label,
+    .p-inputwrapper-filled ~ label,
+    .p-dropdown.p-focus ~ label,
+    .p-dropdown-filled ~ label,
+    .p-inputnumber-focus ~ label,
+    .p-inputnumber-filled ~ label {
+      transform: translateY(-130%) scale(0.85) !important;
+      color: $input-focus-color;
+    }
+
+    input::placeholder {
+      color: transparent !important;
+    }
+
+    // Handle specifically PrimeNG components
+    .p-inputtext,
+    .p-dropdown,
+    .p-multiselect,
+    .p-password,
+    .p-inputnumber .p-inputnumber-input {
+      padding-top: 1rem !important;
+      padding-bottom: 0.5rem !important;
+    }
+  }
+
+  // Input styling
+  .p-inputtext,
+  .p-dropdown,
+  .p-multiselect,
+  .p-password .p-password-input,
+  .p-inputnumber .p-inputnumber-input {
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--text-color);
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    border-bottom: 1px solid $input-border-color !important;
+    padding: 0.5rem 0 !important;
+    width: 100%;
+    transition: 0.2s ease all;
+    line-height: 1.5;
+    min-height: 42px;
+
+    &:enabled:focus {
+      box-shadow: none !important;
+      border-bottom: 2px solid $input-focus-color !important;
+      outline: none;
+    }
+
+    &.ng-dirty.ng-invalid {
+      border-bottom-color: $error-color !important;
+      
+      & ~ label {
+        color: $error-color !important;
+      }
+    }
+  }
+
+  // Dropdown specific styles
+  .p-dropdown {
+    .p-dropdown-label {
+      padding: 0.5rem 0;
+      border: none;
+      background: transparent;
+      border-bottom: none !important; // Remove duplicate border
+
+      &.p-placeholder {
+        color: transparent;
+      }
+    }
+
+    // Remove the bottom border of the dropdown container when it has a label
+    &.p-dropdown-clearable,
+    &:not(.p-dropdown-clearable) {
+      .p-dropdown-label {
+        border-bottom: none !important;
+      }
+    }
+
+    // Override any additional borders that might be added
+    .p-dropdown-trigger,
+    .p-dropdown-clear-icon {
+      border-bottom: none !important;
+    }
+
+    .p-dropdown-trigger {
+      width: 2rem;
+      background: transparent;
+      padding-right: 0;
+    }
+
+    .p-dropdown-panel {
+      border: none;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.2);
+      
+      .p-dropdown-items {
+        padding: 0.5rem 0;
+        
+        .p-dropdown-item {
+          padding: 0.75rem 1rem;
+          
+          &:hover {
+            background: rgba(0,0,0,0.04);
+          }
+          
+          &.p-highlight {
+            background: rgba($input-focus-color, 0.1);
+            color: $input-focus-color;
+          }
+        }
+      }
+    }
+
+    // Ensure no double borders on focus
+    &:focus,
+    &.p-focus {
+      .p-dropdown-label {
+        border-bottom: none !important;
+      }
+    }
+  }
+
+  // InputNumber specific styles
+  .p-inputnumber {
+    width: 100%;
+
+    .p-inputtext {
+      width: 100%;
+    }
+
+    .p-inputnumber-button-group {
+      display: none;
+    }
+  }
+
+  // Error styles
+  .p-error {
+    color: $error-color;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    display: block;
+    position: absolute;
+  }
+
+  // Form field spacing
+  .form-field {
+    position: relative;
+    margin-bottom: 2rem;
+    width: 100%;
+  }
+}

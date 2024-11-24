@@ -1,5 +1,6 @@
 // Import the theme
 @import 'theme';
+@import 'material-forms';
 
 // Global imports
 @import '~primeng/resources/themes/bootstrap4-light-blue/theme.css';
@@ -272,5 +273,24 @@ $sidebar-width: 200px;
       margin-right: 15px;
       font-size: 1.2em;
     }
+  }
+
+}
+
+.dynamic-input-wrapper {
+  margin-bottom: 1.5rem;
+  
+  input {
+    transition: all 0.2s;
+  }
+  
+  .dynamic-label {
+    pointer-events: none;
+    background-color: white;
+    padding: 0 0.25rem;
+    padding-top: 0.35rem;
+    font-weight: bold;
+    transform-origin: left top;
+    transition: opacity 0.2s ease-in-out;
   }
 }

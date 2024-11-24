@@ -1,36 +1,58 @@
 <div class="container custom-container mt-5">
   <div class="card">
     <div class="card-header">
-      <h2 i18n>Create Cluster</h2>
+      <h2 i18n="@@clusterForm.title">Create Cluster</h2>
     </div>
     <div class="card-body">
       <form [formGroup]="clusterForm" (ngSubmit)="saveCluster()">
         <div class="mt-4 ml-4 mr-4">
           <span class="p-float-label">
-            <input type="text" id="clustername" class="form-control" pInputText formControlName="name" required
+            <input type="text"
+                   id="clustername"
+                   class="form-control"
+                   pInputText
+                   formControlName="name"
+                   required
+                   i18n-placeholder="@@clusterForm.name.placeholder"
+                   placeholder="Enter cluster name"
                    (keyup)="clusterForm.get('name')?.markAsTouched()"/>
-            <label for="clustername" i18n>Cluster Name</label>
+            <label for="clustername" i18n="@@clusterForm.name.label">Cluster Name</label>
           </span>
           <small class="text-danger"
-                 *ngIf="clusterForm.get('name')?.touched && clusterForm.get('name')?.hasError('required')" i18n>
+                 *ngIf="clusterForm.get('name')?.touched && clusterForm.get('name')?.hasError('required')"
+                 i18n="@@clusterForm.name.required">
             Field is mandatory, please fill it.
           </small>
         </div>
         <div class="mt-4 pl-4 pr-4 mb-4">
           <span class="p-float-label">
-            <input type="text" id="namespace" class="form-control" pInputText formControlName="namespace" 
+            <input type="text"
+                   id="namespace"
+                   class="form-control"
+                   pInputText
+                   formControlName="namespace"
+                   i18n-placeholder="@@clusterForm.namespace.placeholder"
+                   placeholder="Enter namespace"
                    (keyup)="clusterForm.get('namespace')?.markAsTouched()"/>
-            <label for="namespace" i18n>Namespace</label>
+            <label for="namespace" i18n="@@clusterForm.namespace.label">Namespace</label>
           </span>
           <small class="text-danger"
                  *ngIf="clusterForm.get('namespace')?.touched && clusterForm.get('namespace')?.hasError('required')"
-                 i18n>
+                 i18n="@@clusterForm.namespace.required">
             Field is mandatory, please fill it.
           </small>
         </div>
         <div class="text-end">
-          <button type="submit" class="btn btn-primary me-2" [disabled]="!clusterForm.valid" i18n>Save</button>
-          <button type="button" class="btn btn-secondary" (click)="cancel()" i18n>Cancel</button>
+          <button type="submit"
+                  class="btn btn-primary me-2"
+                  [disabled]="!clusterForm.valid"
+                  i18n="@@clusterForm.button.save">Save
+          </button>
+          <button type="button"
+                  class="btn btn-secondary"
+                  (click)="cancel()"
+                  i18n="@@clusterForm.button.cancel">Cancel
+          </button>
         </div>
       </form>
     </div>

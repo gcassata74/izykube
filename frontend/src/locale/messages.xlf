@@ -2,11 +2,186 @@
 <xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
   <file source-language="en-US" datatype="plaintext" original="ng2.template">
     <body>
-      <trans-unit id="112030788625650954" datatype="html">
-        <source>Replicas</source>
+      <trans-unit id="assetFormTitle" datatype="html">
+        <source>{VAR_SELECT, select, true {Edit Asset} false {Create Asset}}</source>
         <context-group purpose="location">
-          <context context-type="sourcefile">src/app/cluster/deployment-form/deployment-form.component.html</context>
-          <context context-type="linenumber">8</context>
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">5</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="assetNamePlaceholder" datatype="html">
+        <source>Name</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">17</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="assetNameRequired" datatype="html">
+        <source> Asset name is required </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">23,25</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="assetTypePlaceholder" datatype="html">
+        <source>Asset Type</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">34</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="assetTypeRequired" datatype="html">
+        <source> Asset type is required </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">42,44</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="scriptTypeLabel" datatype="html">
+        <source> <x id="INTERPOLATION" equiv-text="{{assetForm.get(&apos;type&apos;)?.value === &apos;playbook&apos; ? &apos;Playbook YAML&apos; : &apos;Script&apos;}}"/> </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">49,51</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="scriptRequired" datatype="html">
+        <source> Valid script is required </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">66,68</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="portPlaceholder" datatype="html">
+        <source>Port</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">76</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="portRangeError" datatype="html">
+        <source> Port is required and must be between 1 and 65535 </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">85,87</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="imagePlaceholder" datatype="html">
+        <source>Image</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">96</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="imageRequired" datatype="html">
+        <source> Image is required </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">102,104</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="versionPlaceholder" datatype="html">
+        <source>Version</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">113</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="versionRequired" datatype="html">
+        <source> Version is required </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">119,121</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="saveButton" datatype="html">
+        <source>Save</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">127</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="cancelButton" datatype="html">
+        <source>Cancel</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
+          <context context-type="linenumber">133</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="clusterForm.title" datatype="html">
+        <source>Create Cluster</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
+          <context context-type="linenumber">4</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="clusterForm.name.placeholder" datatype="html">
+        <source>Enter cluster name</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
+          <context context-type="linenumber">17</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="clusterForm.name.label" datatype="html">
+        <source>Cluster Name</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
+          <context context-type="linenumber">19</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="clusterForm.name.required" datatype="html">
+        <source> Field is mandatory, please fill it. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
+          <context context-type="linenumber">23,25</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="clusterForm.namespace.placeholder" datatype="html">
+        <source>Enter namespace</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
+          <context context-type="linenumber">35</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="clusterForm.namespace.label" datatype="html">
+        <source>Namespace</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
+          <context context-type="linenumber">37</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="clusterForm.namespace.required" datatype="html">
+        <source> Field is mandatory, please fill it. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
+          <context context-type="linenumber">41,43</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="clusterForm.button.save" datatype="html">
+        <source>Save</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
+          <context context-type="linenumber">49</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="clusterForm.button.cancel" datatype="html">
+        <source>Cancel</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
+          <context context-type="linenumber">53</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="clusters" datatype="html">
+        <source>Clusters</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/cluster-list/cluster-list.component.html</context>
+          <context context-type="linenumber">2</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3193976279273491157" datatype="html">
+        <source>Actions</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/cluster-list/cluster-list.component.html</context>
+          <context context-type="linenumber">14</context>
         </context-group>
       </trans-unit>
     </body>

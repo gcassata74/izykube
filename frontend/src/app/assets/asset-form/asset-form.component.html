@@ -2,81 +2,135 @@
   <p-card>
     <ng-template pTemplate="header">
       <div class="card-header">
-        <h2>{{ isEditMode ? 'Edit' : 'Create' }} Asset</h2>
+        <h2 i18n="@@assetFormTitle">{isEditMode, select, true {Edit Asset} false {Create Asset}}</h2>
       </div>
     </ng-template>
 
     <div class="card-body">
       <form [formGroup]="assetForm" (ngSubmit)="saveAsset()">
         <div class="mt-4 ml-4 mr-4">
-          <label for="name">Asset Name</label>
-          <input id="name" type="text" pInputText formControlName="name" class="p-inputtext-lg" style="width: 100%;">
-          <small *ngIf="assetForm.get('name')?.invalid && assetForm.get('name')?.touched" class="p-error">
-            Asset name is required.
+          <span class="p-float-label">
+            <input id="name"
+                   type="text"
+                   pInputText
+                   formControlName="name"
+                   class="p-inputtext-lg w-full">
+            <label for="name" i18n="@@assetNamePlaceholder">Name</label>
+          </span>
+          <small *ngIf="assetForm.get('name')?.invalid && assetForm.get('name')?.touched"
+                 class="p-error"
+                 i18n="@@assetNameRequired">
+            Asset name is required
           </small>
         </div>
 
         <div class="mt-4 ml-4 mr-4">
-          <label for="type">Asset Type</label>
-          <p-dropdown id="type" [options]="assetTypes" formControlName="type"
-                      optionLabel="label" optionValue="value"
-                      styleClass="p-inputtext-lg" [style]="{'width': '100%'}">
-          </p-dropdown>
-          <small *ngIf="assetForm.get('type')?.invalid && assetForm.get('type')?.touched" class="p-error">
-            Asset type is required.
+          <span class="p-float-label">
+            <p-dropdown id="type"
+                        [options]="assetTypes"
+                        formControlName="type"
+                        optionLabel="label"
+                        optionValue="value"
+                        styleClass="p-inputtext-lg"
+                        [style]="{'width': '100%'}">
+            </p-dropdown>
+            <label for="type" i18n="@@assetTypePlaceholder">Asset Type</label>
+          </span>
+          <small *ngIf="assetForm.get('type')?.invalid && assetForm.get('type')?.touched"
+                 class="p-error"
+                 i18n="@@assetTypeRequired">
+            Asset type is required
           </small>
         </div>
 
         <div class="mt-4 ml-4 mr-4"
              *ngIf="assetForm.get('type')?.value === 'playbook' || assetForm.get('type')?.value === 'script'">
-          <label for="yaml">{{assetForm.get('type')?.value === 'playbook' ? 'Playbook YAML' : 'Script'}}</label>
-          <div appYaml *ngIf="assetForm.get('type')?.value === 'playbook'" formControlName="script" [width]="'100%'"
-               [height]="'250px'"></div>
-          <div appBash *ngIf="assetForm.get('type')?.value === 'script'" formControlName="script" [width]="'100%'"
-               [height]="'250px'"></div>
-          <small *ngIf="assetForm.get('script')?.invalid && assetForm.get('script')?.touched" class="p-error">
-            Valid script is required.
-          </small>
-        </div>
-
-        <div class="mt-4 ml-4 mr-4" *ngIf="assetForm.get('type')?.value !== 'script'">
-          <div class="mb-2">  <!-- Added wrapper div with margin-bottom -->
-            <label for="port">Port</label>
+          <label for="yaml" i18n="@@scriptTypeLabel">
+            {{assetForm.get('type')?.value === 'playbook' ? 'Playbook YAML' : 'Script'}}
+          </label>
+          <div appYaml
+               *ngIf="assetForm.get('type')?.value === 'playbook'"
+               formControlName="script"
+               [width]="'100%'"
+               [height]="'250px'">
           </div>
-          <p-inputNumber id="port"
-                         formControlName="port"
-                         [min]="1"
-                         [max]="65535"
-                         [useGrouping]="false"
-                         styleClass="p-inputtext-lg"
-                         [style]="{'width': '100%', 'display': 'block'}">
-          </p-inputNumber>
-          <small *ngIf="assetForm.get('port')?.invalid && assetForm.get('port')?.touched" class="p-error">
-            Port is required and must be between 1 and 65535.
+          <div appBash
+               *ngIf="assetForm.get('type')?.value === 'script'"
+               formControlName="script"
+               [width]="'100%'"
+               [height]="'250px'">
+          </div>
+          <small *ngIf="assetForm.get('script')?.invalid && assetForm.get('script')?.touched"
+                 class="p-error"
+                 i18n="@@scriptRequired">
+            Valid script is required
           </small>
         </div>
 
         <div class="mt-4 ml-4 mr-4" *ngIf="assetForm.get('type')?.value !== 'script'">
-          <label for="image">Image</label>
-          <input id="image" type="text" pInputText formControlName="image" class="p-inputtext-lg" style="width: 100%;">
-          <small *ngIf="assetForm.get('image')?.invalid && assetForm.get('image')?.touched" class="p-error">
-            Image is required.
+          <span class="p-float-label">
+            <p-inputNumber id="port"
+                           formControlName="port"
+                           [min]="1"
+                           [max]="65535"
+                           [useGrouping]="false"
+                           styleClass="p-inputtext-lg"
+                           [style]="{'width': '100%', 'display': 'block'}">
+            </p-inputNumber>
+            <label for="port" i18n="@@portPlaceholder">Port</label>
+          </span>
+          <small *ngIf="assetForm.get('port')?.invalid && assetForm.get('port')?.touched"
+                 class="p-error"
+                 i18n="@@portRangeError">
+            Port is required and must be between 1 and 65535
+          </small>
+        </div>
+
+        <div class="mt-4 ml-4 mr-4" *ngIf="assetForm.get('type')?.value !== 'script'">
+          <span class="p-float-label">
+            <input id="image"
+                   type="text"
+                   pInputText
+                   formControlName="image"
+                   class="p-inputtext-lg w-full">
+            <label for="image" i18n="@@imagePlaceholder">Image</label>
+          </span>
+          <small *ngIf="assetForm.get('image')?.invalid && assetForm.get('image')?.touched"
+                 class="p-error"
+                 i18n="@@imageRequired">
+            Image is required
           </small>
         </div>
 
         <div class="mt-4 ml-4 mr-4">
-          <label for="version">Version</label>
-          <input id="version" type="text" pInputText formControlName="version" class="p-inputtext-lg"
-                 style="width: 100%;">
-          <small *ngIf="assetForm.get('version')?.invalid && assetForm.get('version')?.touched" class="p-error">
-            Version is required.
+          <span class="p-float-label">
+            <input id="version"
+                   type="text"
+                   pInputText
+                   formControlName="version"
+                   class="p-inputtext-lg w-full">
+            <label for="version" i18n="@@versionPlaceholder">Version</label>
+          </span>
+          <small *ngIf="assetForm.get('version')?.invalid && assetForm.get('version')?.touched"
+                 class="p-error"
+                 i18n="@@versionRequired">
+            Version is required
           </small>
         </div>
 
         <div class="text-end mt-4 pl-4 pr-4 mb-4">
-          <p-button type="submit" label="Save" [disabled]="assetForm.invalid"
-                    styleClass="p-button-success mr-2"></p-button>
-          <p-button type="button" label="Cancel" (click)="cancel()" styleClass="p-button-secondary"></p-button>
+          <p-button type="submit"
+                    i18n-label="@@saveButton"
+                    label="Save"
+                    [disabled]="assetForm.invalid"
+                    styleClass="p-button-success mr-2">
+          </p-button>
+          <p-button type="button"
+                    i18n-label="@@cancelButton"
+                    label="Cancel"
+                    (click)="cancel()"
+                    styleClass="p-button-secondary">
+          </p-button>
         </div>
       </form>
     </div>
