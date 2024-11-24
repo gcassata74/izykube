@@ -20,7 +20,7 @@
         <source> Asset name is required </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
-          <context context-type="linenumber">23,25</context>
+          <context context-type="linenumber">21,23</context>
         </context-group>
       </trans-unit>
       <trans-unit id="assetTypePlaceholder" datatype="html">
@@ -34,21 +34,21 @@
         <source> Asset type is required </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
-          <context context-type="linenumber">42,44</context>
+          <context context-type="linenumber">38,40</context>
         </context-group>
       </trans-unit>
       <trans-unit id="scriptTypeLabel" datatype="html">
         <source> <x id="INTERPOLATION" equiv-text="{{assetForm.get(&apos;type&apos;)?.value === &apos;playbook&apos; ? &apos;Playbook YAML&apos; : &apos;Script&apos;}}"/> </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
-          <context context-type="linenumber">49,51</context>
+          <context context-type="linenumber">44,46</context>
         </context-group>
       </trans-unit>
       <trans-unit id="scriptRequired" datatype="html">
         <source> Valid script is required </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
-          <context context-type="linenumber">66,68</context>
+          <context context-type="linenumber">61,63</context>
         </context-group>
       </trans-unit>
       <trans-unit id="portPlaceholder" datatype="html">
@@ -62,49 +62,49 @@
         <source> Port is required and must be between 1 and 65535 </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
-          <context context-type="linenumber">85,87</context>
+          <context context-type="linenumber">80,82</context>
         </context-group>
       </trans-unit>
       <trans-unit id="imagePlaceholder" datatype="html">
         <source>Image</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
-          <context context-type="linenumber">96</context>
+          <context context-type="linenumber">92</context>
         </context-group>
       </trans-unit>
       <trans-unit id="imageRequired" datatype="html">
         <source> Image is required </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
-          <context context-type="linenumber">102,104</context>
+          <context context-type="linenumber">96,98</context>
         </context-group>
       </trans-unit>
       <trans-unit id="versionPlaceholder" datatype="html">
         <source>Version</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
-          <context context-type="linenumber">113</context>
+          <context context-type="linenumber">108</context>
         </context-group>
       </trans-unit>
       <trans-unit id="versionRequired" datatype="html">
         <source> Version is required </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
-          <context context-type="linenumber">119,121</context>
+          <context context-type="linenumber">112,114</context>
         </context-group>
       </trans-unit>
       <trans-unit id="saveButton" datatype="html">
         <source>Save</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
-          <context context-type="linenumber">127</context>
+          <context context-type="linenumber">120</context>
         </context-group>
       </trans-unit>
       <trans-unit id="cancelButton" datatype="html">
         <source>Cancel</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/assets/asset-form/asset-form.component.html</context>
-          <context context-type="linenumber">133</context>
+          <context context-type="linenumber">126</context>
         </context-group>
       </trans-unit>
       <trans-unit id="clusterForm.title" datatype="html">
@@ -157,17 +157,17 @@
         </context-group>
       </trans-unit>
       <trans-unit id="clusterForm.button.save" datatype="html">
-        <source>Save</source>
+        <source>Save </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
-          <context context-type="linenumber">49</context>
+          <context context-type="linenumber">49,50</context>
         </context-group>
       </trans-unit>
       <trans-unit id="clusterForm.button.cancel" datatype="html">
-        <source>Cancel</source>
+        <source>Cancel </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
-          <context context-type="linenumber">53</context>
+          <context context-type="linenumber">54,55</context>
         </context-group>
       </trans-unit>
       <trans-unit id="clusters" datatype="html">
@@ -182,6 +182,90 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/cluster/cluster-list/cluster-list.component.html</context>
           <context context-type="linenumber">14</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="containerName" datatype="html">
+        <source>Container Name</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/container-form/container-form.component.html</context>
+          <context context-type="linenumber">26</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="containerAsset" datatype="html">
+        <source>Asset</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/container-form/container-form.component.html</context>
+          <context context-type="linenumber">44</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="containerPort" datatype="html">
+        <source>Container Port</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/container-form/container-form.component.html</context>
+          <context context-type="linenumber">62</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="deploymentName" datatype="html">
+        <source>Deployment Name</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/deployment-form/deployment-form.component.html</context>
+          <context context-type="linenumber">25</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="replicasCount" datatype="html">
+        <source>Replicas</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/deployment-form/deployment-form.component.html</context>
+          <context context-type="linenumber">37</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="deploymentStrategy" datatype="html">
+        <source>Deployment Strategy</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/deployment-form/deployment-form.component.html</context>
+          <context context-type="linenumber">50</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="serviceForm.name.label" datatype="html">
+        <source>Name</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/service-form/service-form.component.html</context>
+          <context context-type="linenumber">21</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="serviceForm.type.label" datatype="html">
+        <source>Type</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/service-form/service-form.component.html</context>
+          <context context-type="linenumber">34</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="serviceForm.port.label" datatype="html">
+        <source>Port</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/service-form/service-form.component.html</context>
+          <context context-type="linenumber">47</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="serviceForm.nodePort.label" datatype="html">
+        <source>Node Port</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/service-form/service-form.component.html</context>
+          <context context-type="linenumber">60</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="serviceForm.exposeService.label" datatype="html">
+        <source> Expose service </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/service-form/service-form.component.html</context>
+          <context context-type="linenumber">72,74</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="serviceForm.frontendUrl.label" datatype="html">
+        <source>Frontend URL</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/service-form/service-form.component.html</context>
+          <context context-type="linenumber">85</context>
         </context-group>
       </trans-unit>
     </body>

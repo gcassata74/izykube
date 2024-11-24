@@ -10,7 +10,6 @@ import { NotificationService } from 'src/app/services/notification.service';
 @Component({
   selector: 'app-job-form',
   templateUrl: './job-form.component.html',
-  styleUrls: ['./job-form.component.scss'],
   providers: [AutoSaveService]
 })
 export class JobFormComponent {
