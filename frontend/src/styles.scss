@@ -1,26 +1,26 @@
-// Import the theme
-@import 'theme';
-@import 'material-forms';
+/**
+ * IzyKube - Enterprise Kubernetes Management Platform
+ * Copyright (C) 2024 IzyLife Corporation. All rights reserved.
+ * 
+ * This file is part of IzyKube, an enterprise Kubernetes management platform
+ * developed by IzyLife Corporation. Unauthorized copying or redistribution of this file 
+ * in source and binary forms via any medium is strictly prohibited.
+ * 
+ * IzyKube is proprietary software of IzyLife Corporation. 
+ * No warranty, explicit or implicit, provided.
+ * 
+ * @author IzyLife Development Team
+ * @version 1.0.0
+ * @since March 2024
+ */
 
-// Global imports
+// External Dependencies
 @import '~primeng/resources/themes/bootstrap4-light-blue/theme.css';
 @import '~primeng/resources/primeng.min.css';
 @import '~primeicons/primeicons.css';
 @import '~bootstrap/dist/css/bootstrap.min.css';
 
-// Use theme colors
-$izy-blue: $primary-color;
-$izy-light-blue: $secondary-color;
-$izy-white: $background-color;
-$izy-black: $text-color;
-$izy-grey: $border-color;
-$izy-row-light: lighten($izy-light-blue, 45%);
-$izy-row-dark: lighten($izy-light-blue, 40%);
-
-$toolbar-height: 70px;
-$sidebar-width: 200px;
-
-// PrimeIcons font face
+// Font Definitions
 @font-face {
   font-family: 'PrimeIcons';
   src: url('~primeicons/fonts/primeicons.woff') format('woff');
@@ -28,55 +28,305 @@ $sidebar-width: 200px;
   font-style: normal;
 }
 
+//-----------------------------------------------------------------------------
+// Variables
+//-----------------------------------------------------------------------------
+
+// Color Palette
+$izy-blue: #021c3fee;
+$izy-green: #4CAF50;
+$izy-light-blue: #4169E1;
+$izy-white: #FFFFFF;
+$izy-black: #000000;
+$izy-grey: #F0F0F0;
+
+// Color Variations
+$izy-blue-light: lighten($izy-blue, 10%);
+$izy-blue-dark: darken($izy-blue, 10%);
+$izy-green-light: lighten($izy-green, 10%);
+$izy-green-dark: darken($izy-green, 10%);
+
+// Functional Colors
+$primary-color: $izy-blue;
+$secondary-color: $izy-green;
+$background-color: $izy-white;
+$text-color: $izy-black;
+$border-color: $izy-grey;
+$hover-color: $izy-green-light;
+$active-color: $izy-blue-dark;
+$error-color: #FF3B30;
+$success-color: $izy-green;
+
+// Form Variables
+$input-border-color: rgba(0, 0, 0, 0.12);
+$input-focus-color: $primary-color;
+$label-color: rgba(0, 0, 0, 0.6);
+$placeholder-color: rgba(0, 0, 0, 0.42);
+
+// Layout Variables
+$toolbar-height: 70px;
+$sidebar-width: 200px;
+
+//-----------------------------------------------------------------------------
 // Mixins
+//-----------------------------------------------------------------------------
+
 @mixin flex-center {
   display: flex;
   align-items: center;
 }
 
-// Sidebar styles
-.p-sidebar {
-  background-color: $primary-color;
-  color: $izy-white;
-  border: 0 none;
+@mixin material-bottom-border {
+  border: none !important;
+  border-bottom: 1px solid $input-border-color !important;
+  border-radius: 0 !important;
+}
 
-  &.p-sidebar-active[role="complementary"] {
-    width: 200px;
+@mixin material-focus {
+  box-shadow: none !important;
+  border-bottom: 2px solid $input-focus-color !important;
+  outline: none;
+}
+
+//-----------------------------------------------------------------------------
+// Base Form Styles
+//-----------------------------------------------------------------------------
+
+body {
+  // Float Label Base
+  .p-float-label {
+    position: relative;
+    margin: 1.5rem 0;
+    display: inline-block;
+    width: 100%;
+
+    label {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform-origin: 0 0;
+      transform: translateY(-50%);
+      transition: 0.2s ease all;
+      color: $label-color;
+      pointer-events: none;
+      margin: 0;
+      padding: 0;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    // Float Label Animation States
+    input:focus ~ label,
+    input.p-filled ~ label,
+    input:not(:placeholder-shown) ~ label,
+    .p-inputwrapper-focus ~ label,
+    .p-inputwrapper-filled ~ label,
+    .p-dropdown.p-focus ~ label,
+    .p-dropdown-filled ~ label,
+    .p-inputnumber-focus ~ label,
+    .p-inputnumber-filled ~ label {
+      transform: translateY(-130%) scale(0.85) !important;
+      color: $input-focus-color;
+    }
   }
 
-  &-content {
-    margin-top: 80px;
-  }
+  // Base Input Styles
+  .p-inputtext,
+  .p-password .p-password-input,
+  .p-inputnumber .p-inputnumber-input {
+    @include material-bottom-border;
+    background: transparent !important;
+    width: 100%;
+    padding: 0.5rem 0 !important;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: $text-color;
+    transition: all 0.2s ease;
+    min-height: 42px;
 
-  ul {
-    list-style-type: none;
+    &:enabled:focus {
+      @include material-focus;
+    }
 
-    li {
-      a {
-        display: flex;
-        align-items: center;
+    &.ng-dirty.ng-invalid {
+      border-bottom-color: $error-color !important;
+      
+      & ~ label {
+        color: $error-color !important;
       }
+    }
 
-      i {
-        margin-right: 8px;
+    &::placeholder {
+      color: transparent !important;
+    }
+  }
+
+  // Dropdown Specific Styles
+  .p-dropdown {
+    background: transparent;
+    width: 100%;
+    
+    &.p-component {
+      @include material-bottom-border;
+      padding: 0 !important;
+    }
+
+    .p-dropdown-label {
+      background: transparent;
+      border: none !important;
+      padding: 0.5rem 0;
+      margin: 0;
+      color: $text-color;
+      
+      &.p-placeholder {
+        color: $placeholder-color;
+      }
+    }
+
+    &:not(.p-disabled) {
+      &.p-focus {
+        @include material-focus;
+        
+        .p-dropdown-label {
+          border: none !important;
+        }
+      }
+    }
+
+    .p-dropdown-trigger {
+      width: 2rem;
+      background: transparent;
+      border: none;
+      padding-right: 0;
+
+      .p-dropdown-trigger-icon {
+        color: $text-color;
+      }
+    }
+
+    .p-dropdown-panel {
+      background: $background-color;
+      border: none;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      
+      .p-dropdown-items {
+        padding: 0.5rem 0;
+        
+        .p-dropdown-item {
+          padding: 0.75rem 1rem;
+          color: $text-color;
+          transition: background-color 0.2s;
+          
+          &:hover {
+            background: rgba(0, 0, 0, 0.04);
+          }
+          
+          &.p-highlight {
+            background: rgba($input-focus-color, 0.1);
+            color: $input-focus-color;
+          }
+        }
       }
     }
   }
 }
 
+//-----------------------------------------------------------------------------
+// Layout Components
+//-----------------------------------------------------------------------------
 
-// Dropdown styles
-.p-dropdown {
-  width: 100%;
+// Sidebar
+.p-sidebar {
+  background-color: $primary-color;
+  color: $izy-white;
+  border: 0 none;
+
+  &-content {
+    margin-top: 80px;
+  }
+
+  &.p-sidebar-active[role="complementary"] {
+    width: $sidebar-width;
+  }
+
+  ul {
+    list-style-type: none;
+    padding: 0;
+
+    li {
+      margin-bottom: 10px;
+
+      a {
+        @include flex-center;
+        padding: 12px 20px;
+        text-decoration: none;
+        color: $izy-white;
+        transition: all 0.3s ease;
+
+        &:hover {
+          background-color: $izy-white;
+          color: $primary-color !important;
+        }
+
+        i {
+          margin-right: 15px;
+          font-size: 1.2em;
+        }
+      }
+    }
+  }
 }
 
-// Logo styles
+// Toolbar
+.app-toolbar {
+  height: $toolbar-height;
+  background-color: $izy-white;
+  color: $primary-color;
+  border-bottom: 1px solid $izy-black;
+  position: relative;
+
+  &-container {
+    width: 100%;
+    padding: 0 20px 0 $sidebar-width;
+    display: block;
+  }
+
+  &-content {
+    @include flex-center;
+    justify-content: space-between;
+    height: 100%;
+  }
+
+  .title {
+    font-size: 24px;
+    font-weight: bold;
+  }
+
+  .button-container button {
+    background-color: $primary-color;
+    color: $izy-white;
+    border: none;
+    padding: 8px 15px;
+    margin-left: 10px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background-color: $izy-blue-light;
+    }
+  }
+}
+
+// Logo
 .logo-div {
   position: fixed;
-  background-image: url('assets/images/logo/izylife.png');
-  background-size: 100px 35px;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: {
+    image: url('assets/images/logo/izylife.png');
+    size: 100px 35px;
+    position: center;
+    repeat: no-repeat;
+  }
   top: 0;
   left: 0;
   width: 201px;
@@ -84,7 +334,11 @@ $sidebar-width: 200px;
   z-index: 999;
 }
 
-// Context menu styles
+//-----------------------------------------------------------------------------
+// PrimeNG Components
+//-----------------------------------------------------------------------------
+
+// Context Menu
 .p-contextmenu {
   padding: 0.5rem 0;
   background: $background-color;
@@ -94,70 +348,48 @@ $sidebar-width: 200px;
   border-radius: 6px;
   width: 12.5rem;
 
-  .p-menuitem-link {
-    color: $text-color;
-    padding: 0.75rem 1.25rem;
-    user-select: none;
-
-    &:hover {
-      background-color: $hover-color;
+  .p-menuitem {
+    &-link {
       color: $text-color;
+      padding: 0.75rem 1.25rem;
+      user-select: none;
+
+      &:hover {
+        background-color: $hover-color;
+      }
+    }
+
+    &-text, &-icon {
+      color: $text-color;
+      line-height: 2;
+      margin-left: 10px;
     }
   }
-
-  .p-menuitem-text {
-    color: $text-color;
-    line-height: 2;
-    margin-left: 10px;
-
-    &:hover {
-      color: $text-color;
-    }
-  }
-
-  .p-menuitem-icon {
-    color: $text-color;
-    line-height: 2;
-    margin-left: 10px;
-  }
 }
 
-// Icon styles
-.pi:before {
-  backface-visibility: hidden;
-  margin-left: 10px;
-}
-
-// Additional styles
-.no-padding > * {
-  padding: 0;
-}
-
-.p-card {
-  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-  perspective: 1500px;
-}
-
+// DataTable
 .p-datatable {
-  .p-datatable-tbody > tr > td {
+  .p-datatable-tbody > tr > td,
+  .p-datatable-thead > tr > th {
     text-align: left;
     border: 1px solid $border-color;
     border-width: 0 0 1px 0;
+  }
+
+  .p-datatable-tbody > tr > td {
     padding: 5px 1rem;
   }
 
   .p-datatable-thead > tr > th {
-    text-align: left;
     padding: 0.75rem 1rem;
-    border: 1px solid $border-color;
-    border-width: 0 0 1px 0;
     font-weight: 600;
     color: $text-color;
     background: $background-color;
-    transition: background-color 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s, outline-color 0.2s;
+    transition: all 0.2s;
   }
 }
 
+// Buttons
 .p-button {
   height: 44px;
   width: auto;
@@ -175,6 +407,20 @@ $sidebar-width: 200px;
   &:last-child {
     margin-right: 0;
   }
+
+  &-text {
+    padding: 0.5rem 1rem;
+    margin-right: 20px;
+    width: auto;
+  }
+}
+
+//-----------------------------------------------------------------------------
+// Utility Classes
+//-----------------------------------------------------------------------------
+
+.no-padding > * {
+  padding: 0;
 }
 
 .izy-button-container {
@@ -182,113 +428,14 @@ $sidebar-width: 200px;
   justify-content: flex-end;
 }
 
-.p-button-text {
-  padding: 0.5rem 1rem;
-  margin-right: 20px;
-  width: auto;
-}
-
-/// Toolbar Styles
-.app-toolbar {
-  height: $toolbar-height;
-  background-color:  $izy-white;
-  color: $primary-color;
-  border-bottom: 1px solid black;
-  position: relative;
-
-  &-container {
-    width: 100%;
-    padding: 0 20px;
-    padding-left: 200px;
-    display: block;
-  }
-
-  &-content {
-    @include flex-center;
-    justify-content: space-between;
-    height: 100%;
-  }
-
-  .title {
-    font-size: 24px;
-    font-weight: bold;
-  }
-
-
-  .button-container {
-
-    button {
-      background-color: $primary-color;
-      color: $izy-white;
-      border: none;
-      padding: 8px 15px;
-      margin-left: 10px;
-      border-radius: 4px;
-      transition: all 0.3s ease;
-
-      &:hover {
-        background-color: lighten($primary-color, 10%);
-      }
-    }
-  }
-}
-
-// Sidebar Styles
-.app-sidebar {
-  width: $sidebar-width;
-  height: calc(100vh - #{$toolbar-height});
-  position: fixed;
-  top: $toolbar-height;
-  left: 0;
-  color: $izy-white;
-  padding: 20px 0;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-
-  &.p-sidebar-active[role="complementary"] {
-    width: 200px;
-  }
-
-  ul {
-    padding: 0;
-    list-style-type: none;
-  }
-
-  li {
-    margin-bottom: 10px;
-  }
-
-  a {
-    @include flex-center;
-    padding: 12px 20px;
-    text-decoration: none;
-    color: $izy-white;
-    transition: all 0.3s ease;
-
-    &:hover {
-      background-color: $izy-white;
-      color: $primary-color !important;
-    }
-
-    i {
-      margin-right: 15px;
-      font-size: 1.2em;
-    }
-  }
-
-}
-
 .dynamic-input-wrapper {
-  margin-bottom: 1.5rem;
-  
   input {
     transition: all 0.2s;
   }
   
   .dynamic-label {
     pointer-events: none;
-    background-color: white;
-    padding: 0 0.25rem;
-    padding-top: 0.35rem;
+    background-color: $izy-white;
     font-weight: bold;
     transform-origin: left top;
     transition: opacity 0.2s ease-in-out;

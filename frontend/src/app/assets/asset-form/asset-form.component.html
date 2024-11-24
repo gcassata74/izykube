@@ -8,7 +8,6 @@
 
     <div class="card-body">
       <form [formGroup]="assetForm" (ngSubmit)="saveAsset()">
-        <div class="mt-4 ml-4 mr-4">
           <span class="p-float-label">
             <input id="name"
                    type="text"
@@ -22,9 +21,7 @@
                  i18n="@@assetNameRequired">
             Asset name is required
           </small>
-        </div>
 
-        <div class="mt-4 ml-4 mr-4">
           <span class="p-float-label">
             <p-dropdown id="type"
                         [options]="assetTypes"
@@ -41,7 +38,6 @@
                  i18n="@@assetTypeRequired">
             Asset type is required
           </small>
-        </div>
 
         <div class="mt-4 ml-4 mr-4"
              *ngIf="assetForm.get('type')?.value === 'playbook' || assetForm.get('type')?.value === 'script'">

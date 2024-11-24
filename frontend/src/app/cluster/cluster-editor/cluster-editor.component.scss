@@ -1,56 +1,144 @@
-.page-container {
+/**
+ * IzyKube - Enterprise Kubernetes Management Platform
+ * Copyright (C) 2024 IzyLife Corporation. All rights reserved.
+ * 
+ * This file is part of IzyKube, an enterprise Kubernetes management platform
+ * developed by IzyLife Corporation. Unauthorized copying or redistribution of this file 
+ * in source and binary forms via any medium is strictly prohibited.
+ * 
+ * IzyKube is proprietary software of IzyLife Corporation. 
+ * No warranty, explicit or implicit, provided.
+ * 
+ * @author IzyLife Development Team
+ * @version 1.0.0
+ * @since March 2024
+ */
+
+ .page-container {
   display: flex;
-  height: calc(100vh - 80px); /* Adjust the height as needed */
+  height: calc(100vh - 80px);
   background-color: white;
+  overflow: hidden;
+  width: 100%;
+  position: relative;
 }
 
 .diagram {
-  flex-grow: 1;
-  flex-shrink: 1;
-  flex-basis: 75%;
-  overflow: auto;
+  flex: 1;
   height: 100%;
+  overflow: hidden;
   background-color: white;
+  position: relative;
+  margin-right: 0;
+  padding-right: 0;
+  min-width: 0; // Allow diagram to shrink below its content size
 }
 
 .config-panel {
-  flex-grow: 0;
-  flex-shrink: 0;
-  flex-basis: 25%;
-  max-width: 300px;
-  min-width: 200px;
+  flex: 0 0 30%; // Use percentage instead of fixed width
+  min-width: 350px;
+  max-width: 450px;
   height: 100%;
-  overflow: auto;
-  margin: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
   background-color: white;
+  border-left: 1px solid #ddd;
+  padding: 1rem;
+  margin: 0;
+  position: relative;
+  transition: all 0.3s ease; // Smooth transitions for size changes
 }
 
+// Large screens
+@media (min-width: 1601px) {
+  .config-panel {
+    flex: 0 0 25%;
+    min-width: 400px;
+  }
+}
+
+// Medium-large screens
+@media (max-width: 1600px) {
+  .config-panel {
+    flex: 0 0 28%;
+    min-width: 380px;
+  }
+}
+
+// Medium screens
+@media (max-width: 1400px) {
+  .config-panel {
+    flex: 0 0 30%;
+    min-width: 350px;
+  }
+}
+
+// Medium-small screens
 @media (max-width: 1200px) {
-  .diagram {
-    flex-basis: 70%;
+  .config-panel {
+    flex: 0 0 35%;
+    min-width: 320px;
   }
 }
 
+// Small screens
 @media (max-width: 992px) {
-  .diagram {
-    flex-basis: 65%;
+  .config-panel {
+    flex: 0 0 40%;
+    min-width: 300px;
   }
 }
 
+// Mobile layout
 @media (max-width: 768px) {
   .page-container {
     flex-direction: column;
   }
 
   .diagram {
-    height: 70%;
-    flex-basis: auto;
+    height: 55vh; // Slightly more space for the diagram on mobile
+    width: 100%;
   }
 
   .config-panel {
-    flex-basis: auto;
-    width: calc(100% - 20px);
+    flex: none;
+    width: 100%;
     max-width: none;
-    height: 30%;
+    min-width: auto;
+    height: 45vh; // More space for the config panel
+    border-left: none;
+    border-top: 1px solid #ddd;
+  }
+}
+
+// Very small screens
+@media (max-width: 480px) {
+  .diagram {
+    height: 50vh;
+  }
+
+  .config-panel {
+    height: 50vh;
+    padding: 0.5rem;
+  }
+}
+
+// Handle landscape mode on mobile
+@media (max-width: 768px) and (orientation: landscape) {
+  .page-container {
+    flex-direction: row;
+  }
+
+  .diagram {
+    height: 100%;
+    width: 60%;
+  }
+
+  .config-panel {
+    height: 100%;
+    width: 40%;
+    min-width: 250px;
+    border-left: 1px solid #ddd;
+    border-top: none;
   }
 }

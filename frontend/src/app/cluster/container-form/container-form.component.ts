@@ -10,7 +10,6 @@ import { NotificationService } from 'src/app/services/notification.service';
 @Component({
   selector: 'app-container-form',
   templateUrl: './container-form.component.html',
-  styleUrls: ['./container-form.component.scss'],
   providers: [AutoSaveService]
 })
 export class ContainerFormComponent {

@@ -1,3 +1,18 @@
+/**
+ * IzyKube - Enterprise Kubernetes Management Platform
+ * Copyright (C) 2024 IzyLife Corporation. All rights reserved.
+ * 
+ * This file is part of IzyKube, an enterprise Kubernetes management platform
+ * developed by IzyLife Corporation. Unauthorized copying or redistribution of this file 
+ * in source and binary forms via any medium is strictly prohibited.
+ * 
+ * IzyKube is proprietary software of IzyLife Corporation. 
+ * No warranty, explicit or implicit, provided.
+ * 
+ * @author IzyLife Development Team
+ * @version 1.0.0
+ * @since March 2024
+ */
 import { Component, Input, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Node } from '../../model/node.class';
@@ -7,7 +22,6 @@ import { Service } from '../../model/service.class';
 @Component({
   selector: 'app-service-form',
   templateUrl: './service-form.component.html',
-  styleUrls: ['./service-form.component.scss'],
   providers: [AutoSaveService]
 })
 export class ServiceFormComponent implements OnInit {

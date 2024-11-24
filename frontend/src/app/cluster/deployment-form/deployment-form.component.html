@@ -1,17 +1,53 @@
+<!--
+ * IzyKube - Enterprise Kubernetes Management Platform
+ * Copyright (C) 2024 IzyLife Corporation. All rights reserved.
+ *
+ * This file is part of IzyKube, an enterprise Kubernetes management platform
+ * developed by IzyLife Corporation. Unauthorized copying or redistribution of this file
+ * in source and binary forms via any medium is strictly prohibited.
+ *
+ * IzyKube is proprietary software of IzyLife Corporation.
+ * No warranty, explicit or implicit, provided.
+ *
+ * @author IzyLife Development Team
+ * @version 1.0.0
+ * @since March 2024
+-->
+
 <form [formGroup]="form" class="deployment-form">
-  <div class="form-group">
-    <label for="name">Deployment Name</label>
-    <input id="name" type="text" pInputText formControlName="name">
+  <div class="p-field">
+    <span class="p-float-label">
+      <input
+        id="name"
+        type="text"
+        pInputText
+        formControlName="name">
+      <label for="name" i18n="@@deploymentName">Deployment Name</label>
+    </span>
   </div>
 
-  <div class="form-group">
-    <label for="replicas">Replicas</label>
-    <p-inputNumber id="replicas" formControlName="replicas" [min]="0" [step]="1"></p-inputNumber>
+  <div class="p-field">
+    <span class="p-float-label">
+      <p-inputNumber
+        id="replicas"
+        formControlName="replicas"
+        [min]="0"
+        [step]="1">
+      </p-inputNumber>
+      <label for="replicas" i18n="@@replicasCount">Replicas</label>
+    </span>
   </div>
 
-  <div class="form-group">
-    <label for="strategyType">Deployment Strategy</label>
-    <p-dropdown id="strategyType" [options]="strategyTypes" formControlName="strategyType" optionLabel="label"
-                optionValue="value"></p-dropdown>
+  <div class="p-field">
+    <span class="p-float-label">
+      <p-dropdown
+        id="strategyType"
+        [options]="strategyTypes"
+        formControlName="strategyType"
+        optionLabel="label"
+        optionValue="value">
+      </p-dropdown>
+      <label for="strategyType" i18n="@@deploymentStrategy">Deployment Strategy</label>
+    </span>
   </div>
 </form>

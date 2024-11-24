@@ -1,26 +1,42 @@
-.container {
+/**
+ * IzyKube - Enterprise Kubernetes Management Platform
+ * Copyright (C) 2024 IzyLife Corporation. All rights reserved.
+ * 
+ * This file is part of IzyKube, an enterprise Kubernetes management platform
+ * developed by IzyLife Corporation. Unauthorized copying or redistribution of this file 
+ * in source and binary forms via any medium is strictly prohibited.
+ * 
+ * IzyKube is proprietary software of IzyLife Corporation. 
+ * No warranty, explicit or implicit, provided.
+ * 
+ * @author IzyLife Development Team
+ * @version 1.0.0
+ * @since March 2024
+ */
+
+ .container {
   display: flex;
-  height: calc(100vh - 80px);
+  height: 100%;
   width: 100%;
-  margin-left: 0px;
-  padding-left: 0px;
-  padding-right: 0px;
+  margin: 0;
+  padding: 0;
 }
 
 .first-column {
   flex: 0 0 auto;
-  width: 120px; // Set a fixed width
-  min-width: 150px; // Minimum width
-  max-width: 250px; // Maximum width
-  height: calc(100vh - 80px);
+  width: 120px;
+  min-width: 150px;
+  max-width: 250px;
+  height: 100%;
   border: 1px solid black;
 }
 
 .second-column {
-  flex: 1 1 auto;
-  min-width: 0; // Allow shrinking below content size
-  height: calc(100vh - 80px);
+  flex: 1;
+  min-width: 0;
+  height: 100%;
   border: 1px solid black;
+  overflow: hidden;
 }
 
 @media (max-width: 1200px) {
@@ -38,6 +54,7 @@
 @media (max-width: 768px) {
   .container {
     flex-direction: column;
+    height: 70vh;
   }
 
   .first-column {
@@ -47,6 +64,6 @@
   }
 
   .second-column {
-    height: calc(100vh - 280px); // Adjust for first column height
+    height: calc(100% - 200px);
   }
 }

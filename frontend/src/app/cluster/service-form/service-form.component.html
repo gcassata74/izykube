@@ -1,33 +1,88 @@
+<!--/**
+ * IzyKube - Enterprise Kubernetes Management Platform
+ * Copyright (C) 2024 IzyLife Corporation. All rights reserved.
+ *
+ * This file is part of IzyKube, an enterprise Kubernetes management platform
+ * developed by IzyLife Corporation. Unauthorized copying or redistribution of this file
+ * in source and binary forms via any medium is strictly prohibited.
+ *
+ * IzyKube is proprietary software of IzyLife Corporation.
+ * No warranty, explicit or implicit, provided.
+ *
+ * @author IzyLife Development Team
+ * @version 1.0.0
+ * @since March 2024
+ */-->
+
 <form [formGroup]="form">
   <div class="p-field">
-    <label for="name">Name</label>
-    <input id="name" type="text" pInputText formControlName="name">
+    <span class="p-float-label">
+      <input id="name" type="text" pInputText formControlName="name" class="w-full">
+      <label for="name" i18n="@@serviceForm.name.label">Name</label>
+    </span>
   </div>
 
   <div class="p-field">
-    <label for="type">Type</label>
-    <p-dropdown id="type" [options]="serviceTypes" formControlName="type" optionLabel="name"
-                optionValue="value"></p-dropdown>
+    <span class="p-float-label">
+      <p-dropdown id="type"
+                  [options]="serviceTypes"
+                  formControlName="type"
+                  optionLabel="name"
+                  optionValue="value"
+                  class="w-full">
+      </p-dropdown>
+      <label for="type" i18n="@@serviceForm.type.label">Type</label>
+    </span>
   </div>
 
   <div class="p-field">
-    <label for="port">Port</label>
-    <p-inputNumber id="port" formControlName="port" [min]="1" [max]="65535" [useGrouping]="false"></p-inputNumber>
+    <span class="p-float-label">
+      <p-inputNumber id="port"
+                     formControlName="port"
+                     [min]="1"
+                     [max]="65535"
+                     [useGrouping]="false"
+                     class="w-full">
+      </p-inputNumber>
+      <label for="port" i18n="@@serviceForm.port.label">Port</label>
+    </span>
   </div>
 
   <div class="p-field" *ngIf="form.get('type')?.value === 'NodePort'">
-    <label for="nodePort">Node Port</label>
-    <p-inputNumber id="nodePort" formControlName="nodePort" [min]="30000" [max]="32767"
-                   [useGrouping]="false"></p-inputNumber>
+    <span class="p-float-label">
+      <p-inputNumber id="nodePort"
+                     formControlName="nodePort"
+                     [min]="30000"
+                     [max]="32767"
+                     [useGrouping]="false"
+                     class="w-full">
+      </p-inputNumber>
+      <label for="nodePort" i18n="@@serviceForm.nodePort.label">Node Port</label>
+    </span>
   </div>
 
   <div class="p-field-checkbox">
-    <p-checkbox id="exposeService" formControlName="exposeService" [binary]="true"></p-checkbox>
-    <label for="exposeService">Expose service</label>
+    <div class="flex items-center" style="margin-bottom: 20px;">
+      <p-checkbox id="exposeService"
+                  formControlName="exposeService"
+                  [binary]="true">
+      </p-checkbox>
+      <label for="exposeService"
+             class="ml-2"
+             i18n="@@serviceForm.exposeService.label">
+        Expose service
+      </label>
+    </div>
   </div>
 
   <div class="p-field" *ngIf="form.get('exposeService')?.value">
-    <label for="frontendUrl">Frontend URL</label>
-    <input id="frontendUrl" type="text" pInputText formControlName="frontendUrl">
+    <span class="p-float-label">
+      <input id="frontendUrl"
+             type="text"
+             pInputText
+             formControlName="frontendUrl"
+             class="w-full">
+      <label for="frontendUrl" i18n="@@serviceForm.frontendUrl.label">Frontend URL</label>
+    </span>
   </div>
 </form>

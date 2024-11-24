@@ -1,26 +1,65 @@
+<!--
+ * IzyKube - Enterprise Kubernetes Management Platform
+ * Copyright (C) 2024 IzyLife Corporation. All rights reserved.
+ *
+ * This file is part of IzyKube, an enterprise Kubernetes management platform
+ * developed by IzyLife Corporation. Unauthorized copying or redistribution of this file
+ * in source and binary forms via any medium is strictly prohibited.
+ *
+ * IzyKube is proprietary software of IzyLife Corporation.
+ * No warranty, explicit or implicit, provided.
+ *
+ * @author IzyLife Development Team
+ * @version 1.0.0
+ * @since March 2024
+-->
+
 <form [formGroup]="form" class="p-fluid container-form">
   <div class="p-field mb-3">
-    <label for="name">Container Name:</label>
-    <input id="name" type="text" pInputText formControlName="name" [required]="true">
+    <span class="p-float-label">
+      <input
+        id="name"
+        type="text"
+        pInputText
+        formControlName="name"
+        [required]="true">
+      <label for="name" i18n="@@containerName">Container Name</label>
+    </span>
   </div>
 
   <div class="p-field mb-3">
-    <label for="assetId">Asset:</label>
-    <p-dropdown id="assetId" [options]="(assets$ | async) ?? []" formControlName="assetId"
-                optionLabel="name" optionValue="id" [showClear]="true"
-                placeholder="Select an asset" [required]="true">
-      <ng-template let-asset pTemplate="item">
-        <div>{{asset.name}} - {{asset.version}}</div>
-      </ng-template>
-    </p-dropdown>
+    <span class="p-float-label">
+      <p-dropdown
+        id="assetId"
+        [options]="(assets$ | async) ?? []"
+        formControlName="assetId"
+        optionLabel="name"
+        optionValue="id"
+        [showClear]="true"
+        [required]="true">
+        <ng-template let-asset pTemplate="item">
+          <div>{{asset.name}} - {{asset.version}}</div>
+        </ng-template>
+      </p-dropdown>
+      <label for="assetId" i18n="@@containerAsset">Asset</label>
+    </span>
   </div>
 
   <div class="p-field mb-3">
-    <label for="containerPort">Container Port:</label>
-    <p-inputNumber id="containerPort" formControlName="containerPort" [useGrouping]="false"
-                   buttonLayout="horizontal" spinnerMode="horizontal"
-                   decrementButtonClass="p-button-secondary" incrementButtonClass="p-button-secondary"
-                   incrementButtonIcon="pi pi-plus" decrementButtonIcon="pi pi-minus" [required]="true">
-    </p-inputNumber>
+    <span class="p-float-label">
+      <p-inputNumber
+        id="containerPort"
+        formControlName="containerPort"
+        [useGrouping]="false"
+        buttonLayout="horizontal"
+        spinnerMode="horizontal"
+        decrementButtonClass="p-button-secondary"
+        incrementButtonClass="p-button-secondary"
+        incrementButtonIcon="pi pi-plus"
+        decrementButtonIcon="pi pi-minus"
+        [required]="true">
+      </p-inputNumber>
+      <label for="containerPort" i18n="@@containerPort">Container Port</label>
+    </span>
   </div>
 </form>

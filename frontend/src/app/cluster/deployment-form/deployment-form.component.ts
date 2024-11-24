@@ -9,7 +9,6 @@ import { AssetService } from '../../services/asset.service';
 @Component({
   selector: 'app-deployment-form',
   templateUrl: './deployment-form.component.html',
-  styleUrls: ['./deployment-form.component.scss'],
   providers: [AutoSaveService]
 })
 export class DeploymentFormComponent implements OnInit {
