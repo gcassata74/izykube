@@ -39,7 +39,7 @@ export class JobFormComponent {
 
   private loadAssets() {
     this.assets$ = this.assetService.getAssets().pipe(
-        map(assets => assets.filter(asset => asset.type === AssetType.PLAYBOOK)),
+        map(assets => assets.filter(asset => asset.type === AssetType.PLAYBOOK || asset.type === AssetType.SCRIPT)),
         tap(playbooks => console.log('Loaded playbooks:', playbooks)),
         catchError(error => {
             console.error('Error loading playbooks:', error);

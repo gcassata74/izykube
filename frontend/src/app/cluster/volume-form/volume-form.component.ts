@@ -9,7 +9,6 @@ import { TabPanel } from 'primeng/tabview';
 @Component({
   selector: 'app-volume-form',
   templateUrl: './volume-form.component.html',
-  styleUrls: ['./volume-form.component.scss'],
   providers: [AutoSaveService]
 })
 export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {

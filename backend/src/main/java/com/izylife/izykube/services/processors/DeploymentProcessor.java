@@ -1,10 +1,8 @@
 package com.izylife.izykube.services.processors;
 
 import com.izylife.izykube.dto.cluster.*;
-import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.repositories.AssetRepository;
 import com.izylife.izykube.utils.ConfigMapUtils;
-import com.izylife.izykube.utils.ContainerUtils;
 import com.izylife.izykube.utils.VolumeUtils;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
@@ -25,6 +23,7 @@ import java.util.stream.Collectors;
 public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
 
     private final AssetRepository assetRepository;
+    private final ContainerProcessor containerProcessor;
 
     @Override
     public String createTemplate(DeploymentDTO dto) {
@@ -115,11 +114,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         return dto.getSourceNodes().stream()
                 .filter(node -> node instanceof ContainerDTO)
                 .map(node -> (ContainerDTO) node)
-                .map(containerDTO -> {
-                    Asset asset = assetRepository.findById(containerDTO.getAssetId())
-                            .orElseThrow(() -> new IllegalArgumentException("Asset not found for id: " + containerDTO.getAssetId()));
-                    return ContainerUtils.createContainer(containerDTO, asset, volumeMounts);
-                })
+                .map(containerDTO -> containerProcessor.processContainer(containerDTO, volumeMounts))
                 .collect(Collectors.toList());
     }
 

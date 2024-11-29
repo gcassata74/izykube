@@ -6,7 +6,6 @@ import { Pod, RestartPolicy, DNSPolicy, PreemptionPolicy } from '../../model/pod
 @Component({
   selector: 'app-pod-form',
   templateUrl: './pod-form.component.html',
-  styleUrls: ['./pod-form.component.scss'],
   providers: [AutoSaveService]
 })
 export class PodFormComponent implements OnInit {

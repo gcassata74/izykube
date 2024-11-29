@@ -9,7 +9,6 @@ import { AssetService } from '../../services/asset.service';
 @Component({
   selector: 'app-ingress-form',
   templateUrl: './ingress-form.component.html',
-  styleUrls: ['./ingress-form.component.scss'],
   providers: [AutoSaveService]
 })
 export class IngressFormComponent implements OnInit {

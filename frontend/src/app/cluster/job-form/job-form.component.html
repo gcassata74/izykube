@@ -1,17 +1,47 @@
+<!--
+ * IzyKube - Enterprise Kubernetes Management Platform
+ * Copyright (C) 2024 IzyLife Corporation. All rights reserved.
+ *
+ * This file is part of IzyKube, an enterprise Kubernetes management platform
+ * developed by IzyLife Corporation. Unauthorized copying or redistribution of this file
+ * in source and binary forms via any medium is strictly prohibited.
+ *
+ * IzyKube is proprietary software of IzyLife Corporation.
+ * No warranty, explicit or implicit, provided.
+ *
+ * @author IzyLife Development Team
+ * @version 1.0.0
+ * @since March 2024
+-->
+
 <form [formGroup]="form" class="job-form">
   <div class="p-field mb-3">
-    <label for="name">Job Name:</label>
-    <input pInputText id="name" formControlName="name" class="w-full">
+    <span class="p-float-label">
+      <input
+        id="name"
+        type="text"
+        pInputText
+        formControlName="name"
+        class="w-full">
+      <label for="name" i18n="@@jobName">Job Name</label>
+    </span>
   </div>
 
   <div class="p-field mb-3">
-    <label for="assetId">Asset:</label>
-    <p-dropdown id="assetId" [options]="(assets$ | async) ?? []" formControlName="assetId"
-                optionLabel="name" optionValue="id" [showClear]="true"
-                placeholder="Select an asset" [required]="true">
-      <ng-template let-asset pTemplate="item">
-        <div>{{asset.name}} - {{asset.version}}</div>
-      </ng-template>
-    </p-dropdown>
+    <span class="p-float-label">
+      <p-dropdown
+        id="assetId"
+        [options]="(assets$ | async) ?? []"
+        formControlName="assetId"
+        optionLabel="name"
+        optionValue="id"
+        [showClear]="true"
+        [required]="true">
+        <ng-template let-asset pTemplate="item">
+          <div>{{asset.name}} - {{asset.version}}</div>
+        </ng-template>
+      </p-dropdown>
+      <label for="assetId" i18n="@@jobAsset">Asset</label>
+    </span>
   </div>
 </form>
