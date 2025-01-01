@@ -34,7 +34,7 @@ public class JobProcessor implements TemplateProcessor<JobDTO> {
         Asset asset = assetRepository.findById(dto.getAssetId())
                 .orElseThrow(() -> new NoSuchElementException("Asset not found: " + dto.getAssetId()));
 
-        ServiceDTO targetService = dto.getTargetNodes().stream()
+        ServiceDTO sourceService = dto.getSourceNodes().stream()
                 .filter(node -> node instanceof ServiceDTO)
                 .map(node -> (ServiceDTO) node)
                 .findFirst()
@@ -48,7 +48,7 @@ public class JobProcessor implements TemplateProcessor<JobDTO> {
         yaml.append("---\n");
 
         // Create Job with init container
-        yaml.append(createJobTemplate(dto, scriptConfigMap.getName(), targetService, asset));
+        yaml.append(createJobTemplate(dto, scriptConfigMap.getName(), sourceService, asset));
 
         return yaml.toString();
     }

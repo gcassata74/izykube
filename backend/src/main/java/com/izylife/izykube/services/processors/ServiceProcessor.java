@@ -36,13 +36,13 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
     }
 
     private String createKubernetesService(ServiceDTO dto) {
-        DeploymentDTO deploymentDTO = dto.getSourceNodes().stream()
+        DeploymentDTO deploymentDTO = dto.getTargetNodes().stream()
                 .filter(DeploymentDTO.class::isInstance)
                 .map(DeploymentDTO.class::cast)
                 .findFirst()
                 .orElse(null);
 
-        ContainerDTO containerDTO = deploymentDTO.getSourceNodes().stream()
+        ContainerDTO containerDTO = deploymentDTO.getTargetNodes().stream()
                 .filter(ContainerDTO.class::isInstance)
                 .map(ContainerDTO.class::cast)
                 .findFirst()

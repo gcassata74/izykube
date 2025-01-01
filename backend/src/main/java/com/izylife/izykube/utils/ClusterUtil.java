@@ -56,6 +56,44 @@ public class ClusterUtil {
                 .collect(Collectors.toList());
     }
 
+    //get all the ancesoors of a node
+    public static List<NodeDTO> getAncestorsOfNode(ClusterDTO cluster, NodeDTO node) {
+        List<NodeDTO> ancestors = findSourceNodesOf(cluster, node.getId());
+        for (NodeDTO ancestor : ancestors) {
+            ancestors.addAll(getAncestorsOfNode(cluster, ancestor));
+        }
+        return ancestors;
+    }
+
+    // get all the descendants of a node
+    public static List<NodeDTO> getDescendantsOfNode(ClusterDTO cluster, NodeDTO node) {
+        List<NodeDTO> descendants = findTargetNodesOf(cluster, node.getId());
+        for (NodeDTO descendant : descendants) {
+            descendants.addAll(getDescendantsOfNode(cluster, descendant));
+        }
+        return descendants;
+    }
+
+    // get a node by type in the ancestors of a node
+    public static NodeDTO getAncestorByType(ClusterDTO cluster, NodeDTO node, String type) {
+        List<NodeDTO> ancestors = getAncestorsOfNode(cluster, node);
+        return ancestors.stream()
+                .filter(ancestor -> ancestor.getKind().equalsIgnoreCase(type))
+                .findFirst()
+                .orElse(null);
+    }
+
+    // get a node by type in the descendants of a node
+    public static NodeDTO getDescendantByType(ClusterDTO cluster, NodeDTO node, String type) {
+        List<NodeDTO> descendants = getDescendantsOfNode(cluster, node);
+        return descendants.stream()
+                .filter(descendant -> descendant.getKind().equalsIgnoreCase(type))
+                .findFirst()
+                .orElse(null);
+    }
+
+
+
     public static ClusterDTO convertToDTO(Cluster cluster) {
         return ClusterDTO.builder()
                 .id(cluster.getId())

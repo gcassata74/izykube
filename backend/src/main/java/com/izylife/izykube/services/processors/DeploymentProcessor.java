@@ -32,7 +32,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         List<Volume> volumes = createVolumes(dto);
         HostAlias hostAlias = null;
 
-        ServiceDTO serviceDTO = dto.getTargetNodes().stream()
+        ServiceDTO serviceDTO = dto.getSourceNodes().stream()
                 .filter(ServiceDTO.class::isInstance)
                 .map(ServiceDTO.class::cast)
                 .findFirst()
@@ -97,7 +97,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
     }
 
     private List<EnvFromSource> createEnvFromSources(DeploymentDTO dto) {
-        return dto.getSourceNodes().stream()
+        return dto.getTargetNodes().stream()
                 .filter(node -> node instanceof ConfigMapDTO)
                 .map(node -> (ConfigMapDTO) node)
                 .map(ConfigMapUtils::createEnvFromSource)
@@ -105,13 +105,13 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
     }
 
     private List<Container> createContainers(DeploymentDTO dto) {
-        List<VolumeMount> volumeMounts = dto.getSourceNodes().stream()
+        List<VolumeMount> volumeMounts = dto.getTargetNodes().stream()
                 .filter(node -> node instanceof VolumeDTO)
                 .map(node -> (VolumeDTO) node)
                 .map(VolumeUtils::createVolumeMount)
                 .collect(Collectors.toList());
 
-        return dto.getSourceNodes().stream()
+        return dto.getTargetNodes().stream()
                 .filter(node -> node instanceof ContainerDTO)
                 .map(node -> (ContainerDTO) node)
                 .map(containerDTO -> containerProcessor.processContainer(containerDTO, volumeMounts))
@@ -119,7 +119,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
     }
 
     private List<Volume> createVolumes(DeploymentDTO dto) {
-        return dto.getSourceNodes().stream()
+        return dto.getTargetNodes().stream()
                 .filter(node -> node instanceof VolumeDTO)
                 .map(node -> (VolumeDTO) node)
                 .map(VolumeUtils::createVolume)

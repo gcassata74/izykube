@@ -1,0 +1,76 @@
+#!/usr/bin/env node
+
+const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+// Path to the Makefile
+const MAKEFILE = path.resolve(__dirname, 'Makefile');
+
+// Function to parse Makefile targets
+function parseMakefile() {
+    const makefileContent = fs.readFileSync(MAKEFILE, 'utf8');
+    const lines = makefileContent.split('\n');
+    const targets = [];
+
+    for (const line of lines) {
+        // Extract targets (lines with `:` that are not comments or indented)
+        if (line.includes(':') && !line.startsWith('\t') && !line.startsWith('#')) {
+            const target = line.split(':')[0].trim();
+            if (target) {
+                targets.push(target);
+            }
+        }
+    }
+
+    return targets;
+}
+
+// Function to run a Makefile target
+function runMakeTarget(target) {
+    const command = process.platform === 'win32' ? `sh -c "make ${target}"` : `make ${target}`;
+    const process = exec(command);
+
+    process.stdout.on('data', (data) => {
+        console.log(data.toString());
+    });
+
+    process.stderr.on('data', (data) => {
+        console.error(data.toString());
+    });
+
+    process.on('close', (code) => {
+        if (code !== 0) {
+            console.error(`Makefile target "${target}" failed with code ${code}`);
+        }
+    });
+}
+
+// Main CLI logic
+function main() {
+    const args = process.argv.slice(2);
+
+    if (args.length === 0) {
+        console.log('Usage: mytool <target>');
+        console.log('Available targets:');
+        parseMakefile().forEach((target) => {
+            console.log(`  ${target}`);
+        });
+        process.exit(1);
+    }
+
+    const target = args[0];
+    const availableTargets = parseMakefile();
+
+    if (!availableTargets.includes(target)) {
+        console.error(`Unknown target "${target}".`);
+        console.log('Available targets:');
+        availableTargets.forEach((t) => console.log(`  ${t}`));
+        process.exit(1);
+    }
+
+    runMakeTarget(target);
+}
+
+// Run the script
+main();

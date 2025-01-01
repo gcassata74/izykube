@@ -39,7 +39,8 @@ public class TemplateService {
                 .diagram(cluster.getDiagram())
                 .build();
 
-        createOrReplaceTemplate(id, clusterDTO);
+        ClusterTemplate template = createOrReplaceTemplate(id, clusterDTO);
+        clusterTemplateRepository.save(template);
         cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
         clusterRepository.save(cluster);
 
@@ -50,62 +51,77 @@ public class TemplateService {
         Set<String> processedNodes = new HashSet<>();
 
         try {
-            List<NodeDTO> orderedNodes = orderNodesAncestorsFirst(clusterDTO);
+            List<NodeDTO> templateableNodes = clusterDTO.getNodes().stream()
+                    .filter(this::isTemplateableResource)
+                    .toList();
 
-            for (NodeDTO node : orderedNodes) {
-                if (isTemplateableResource(node) && !processedNodes.contains(node.getId())) {
-                    processNodeAndLinkedNodes(clusterDTO, node, yamlList, processedNodes);
-                }
-            }
+            // Set dependencies for templatable nodes
+            templateableNodes.forEach(node -> {
+                node.setSourceNodes(ClusterUtil.findSourceNodesOf(clusterDTO, node.getId()));
+                node.setTargetNodes(ClusterUtil.findTargetNodesOf(clusterDTO, node.getId()));
+            });
 
-            Optional<ClusterTemplate> existingTemplate = clusterTemplateRepository.findByClusterId(id);
-            ClusterTemplate template = null;
-            if (existingTemplate.isPresent()) {
-                // Update the existing template
-                template = existingTemplate.get();
-                template.setYamlList(yamlList);
-            } else {
-                // Create a new template
-                template = new ClusterTemplate();
-                template.setClusterId(id);
-                template.setYamlList(yamlList);
-            }
-            return clusterTemplateRepository.save(template);
+            // Process nodes
+            templateableNodes.stream()
+                    .filter(node -> !processedNodes.contains(node.getId()))
+                    .forEach(node -> processNodeAndLinkedNodes(clusterDTO, node, yamlList, processedNodes));
+
+            // Create or update template
+            return clusterTemplateRepository.findByClusterId(id)
+                    .map(template -> {
+                        template.setYamlList(yamlList);
+                        return clusterTemplateRepository.save(template);
+                    })
+                    .orElseGet(() -> {
+                        ClusterTemplate template = new ClusterTemplate();
+                        template.setClusterId(id);
+                        template.setYamlList(yamlList);
+                        return clusterTemplateRepository.save(template);
+                    });
+
         } catch (Exception e) {
-            throw new RuntimeException("Failed to generate and save template for cluster: " + id, e);
+            throw new RuntimeException("Failed to generate template for cluster: " + id, e);
         }
     }
+
 
     private List<NodeDTO> orderNodesAncestorsFirst(ClusterDTO clusterDTO) {
         List<NodeDTO> result = new ArrayList<>();
         Set<String> visited = new HashSet<>();
         Set<String> visiting = new HashSet<>();
 
-        for (NodeDTO node : clusterDTO.getNodes()) {
+        // Start with nodes that have no dependencies (no source nodes)
+        List<NodeDTO> startNodes = clusterDTO.getNodes().stream()
+                .filter(node -> ClusterUtil.findSourceNodesOf(clusterDTO, node.getId()).isEmpty())
+                .toList();
+
+        for (NodeDTO node : startNodes) {
             if (!visited.contains(node.getId())) {
-                topologicalSortWithDependencyCheck(node, clusterDTO, result, visited, visiting);
+                topologicalSort(node, clusterDTO, result, visited, visiting);
             }
         }
+
         return result;
     }
 
-    private void topologicalSortWithDependencyCheck(NodeDTO node, ClusterDTO clusterDTO, List<NodeDTO> result,
-                                                    Set<String> visited, Set<String> visiting) {
+    private void topologicalSort(NodeDTO node, ClusterDTO clusterDTO, List<NodeDTO> result,
+                                 Set<String> visited, Set<String> visiting) {
         visiting.add(node.getId());
 
-        List<NodeDTO> sourceNodes = ClusterUtil.findSourceNodesOf(clusterDTO, node.getId());
-        for (NodeDTO sourceNode : sourceNodes) {
-            if (visiting.contains(sourceNode.getId())) {
-                throw new IllegalStateException("Circular dependency detected between " + node.getName() + " and " + sourceNode.getName());
+        List<NodeDTO> targetNodes = ClusterUtil.findTargetNodesOf(clusterDTO, node.getId());
+        for (NodeDTO targetNode : targetNodes) {
+            if (visiting.contains(targetNode.getId())) {
+                throw new IllegalStateException("Circular dependency detected between " +
+                        node.getName() + " and " + targetNode.getName());
             }
-            if (!visited.contains(sourceNode.getId())) {
-                topologicalSortWithDependencyCheck(sourceNode, clusterDTO, result, visited, visiting);
+            if (!visited.contains(targetNode.getId())) {
+                topologicalSort(targetNode, clusterDTO, result, visited, visiting);
             }
         }
 
         visiting.remove(node.getId());
         visited.add(node.getId());
-        result.add(node);
+        result.add(0, node); // Add to beginning for correct order
     }
 
     private boolean isTemplateableResource(NodeDTO node) {
@@ -116,20 +132,11 @@ public class TemplateService {
         if (processedNodes.contains(node.getId())) {
             return;
         }
-        List<NodeDTO> sourceNodes = ClusterUtil.findSourceNodesOf(clusterDTO, node.getId());
-        List<NodeDTO> targetNodes = ClusterUtil.findTargetNodesOf(clusterDTO, node.getId());
-
         processedNodes.add(node.getId());
-
-        // Now process the current node
-        node.setSourceNodes(sourceNodes);
-        node.setTargetNodes(targetNodes);
-
         String yaml = processSpecificNodeDTO(node);
         if (yaml != null && !yaml.isEmpty()) {
             yamlList.add(yaml);
         }
-
     }
 
     private String processSpecificNodeDTO(NodeDTO node) {

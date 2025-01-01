@@ -271,25 +271,21 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.diagram.toolManager.linkingTool.linkValidation = (fromNode, fromPort, toNode, toPort) => {
       const fromType = fromNode.data.type;
       const toType = toNode.data.type;
-  
+
       switch (fromType) {
-        case 'configmap':
-          return toType === 'deployment';
-        case 'volume':
-          return toType === 'deployment';  
-        case 'container':
-          return toType === 'deployment';
-        case 'job':
-          return toType === 'service';  
         case 'deployment':
-          return toType === 'service';
+          return toType === 'container' || toType === 'configmap' || toType === 'volume';  // Deployment punta a suoi componenti/dipendenze
         case 'service':
-          return toType === 'ingress' || toType === 'deployment';
+          return toType === 'deployment' || toType === 'job';  // Service punta a ciò che espone
         case 'ingress':
-          return false; // Ingress is typically the endpoint, so it doesn't link to anything
+          return toType === 'service';
+        //case 'init-container':  // Se vogliamo gestire il caso speciale degli init container
+         // return toType === 'deployment';  // Init container può puntare al deployment da monitorare
         default:
-          return false;
+          return false;  // Tutti gli altri tipi non possono iniziare collegamenti
       }
+
+
     };
 
     // Apply the same validation for relinking

@@ -1,0 +1,41 @@
+{
+  "prefix": "izy",
+  "makefile": "./Makefile",
+  "groups": {
+    "i18n": {
+      "description": "Internationalization commands",
+      "commands": {
+        "build": "run-i18n-build",
+        "serve": "run-i18n-serve",
+        "extract": "run-i18n-extract"
+      }
+    },
+    "dev": {
+      "description": "Development commands",
+      "commands": {
+        "chrome": "run-chrome-dev",
+        "angular": "run-angular-client",
+        "spring": "run-spring-boot-server"
+      }
+    },
+    "registry": {
+      "description": "Registry commands",
+      "commands": {
+        "create-docker": "create-docker-registry",
+        "create-k3d": "create-k3d-registry",
+        "delete-docker": "delete-docker-registry",
+        "delete-k3d": "delete-k3d-registry"
+      }
+    },
+    "cluster": {
+      "description": "Cluster commands",
+      "commands": {
+        "create": "create-k3d-cluster",
+        "delete": "delete-k3d-cluster",
+        "start": "start-k3d-cluster",
+        "restart": "restart-k3d-cluster",
+        "start-istio": "start-k3d-cluster-with-istio"
+      }
+    }
+  }
+}

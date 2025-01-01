@@ -37,3 +37,4 @@ izytool/node_modules/
 node_modules/*
 *.yaml
 *.tpl
+izytool/
