@@ -26,7 +26,7 @@ $toolbar-height: 70px;
   margin-left: $sidebar-width;
   padding: 20px;
   background-color: $izy-grey;
-  min-height: calc(100vh - #{$toolbar-height});
+  min-height: 100vh;
 }
 
 
