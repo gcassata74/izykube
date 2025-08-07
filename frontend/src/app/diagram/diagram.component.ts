@@ -203,6 +203,9 @@ export class DiagramComponent implements OnInit, OnDestroy {
     
     node.element = nodeElement;
     
+    // Add drag functionality for existing nodes
+    this.makeNodeDraggable(nodeElement, node);
+    
     // Add click handler for node selection
     nodeElement.addEventListener('click', () => {
       this.selectNode(node);
@@ -213,6 +216,50 @@ export class DiagramComponent implements OnInit, OnDestroy {
       node.name = label.textContent || node.name;
       this.updateDiagramData();
     });
+  }
+
+  private makeNodeDraggable(element: HTMLElement, node: DiagramNode) {
+    let isDragging = false;
+    let dragOffset = { x: 0, y: 0 };
+
+    const onMouseDown = (event: MouseEvent) => {
+      event.preventDefault();
+      isDragging = true;
+      
+      const rect = element.getBoundingClientRect();
+      dragOffset.x = event.clientX - rect.left;
+      dragOffset.y = event.clientY - rect.top;
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    };
+
+    const onMouseMove = (event: MouseEvent) => {
+      if (!isDragging) return;
+      
+      const canvas = this.diagramCanvas.nativeElement;
+      const canvasRect = canvas.getBoundingClientRect();
+      
+      node.x = event.clientX - canvasRect.left - dragOffset.x;
+      node.y = event.clientY - canvasRect.top - dragOffset.y;
+      
+      element.style.left = `${node.x}px`;
+      element.style.top = `${node.y}px`;
+      
+      this.updateLinks();
+    };
+
+    const onMouseUp = () => {
+      if (!isDragging) return;
+      
+      isDragging = false;
+      this.updateDiagramData();
+      
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    element.addEventListener('mousedown', onMouseDown);
   }
 
   private renderLinks() {
