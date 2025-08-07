@@ -52,6 +52,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
   isConnecting: boolean = false;
   connectionStartNode: DiagramNode | null = null;
   connectionStartPoint: ConnectionPoint | null = null;
+  isDraggingConnection: boolean = false;
+  tempLine: SVGLineElement | null = null;
   isResizing: boolean = false;
   firstColumnWidth: number = 180;
   minWidth: number = 200;
@@ -425,6 +427,85 @@ export class DiagramComponent implements OnInit, OnDestroy {
     }
   }
 
+  onConnectionPointMouseDown(node: DiagramNode, point: ConnectionPoint, event: MouseEvent) {
+    event.stopPropagation();
+    event.preventDefault();
+
+    this.isDraggingConnection = true;
+    this.connectionStartNode = node;
+    this.connectionStartPoint = point;
+
+    // Create temporary line for visual feedback
+    this.createTempLine(point.x, point.y, event.clientX, event.clientY);
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      if (this.isDraggingConnection && this.tempLine) {
+        const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
+        const x = moveEvent.clientX - canvasRect.left;
+        const y = moveEvent.clientY - canvasRect.top;
+        
+        this.tempLine.setAttribute('x2', x.toString());
+        this.tempLine.setAttribute('y2', y.toString());
+      }
+    };
+
+    const onMouseUp = (upEvent: MouseEvent) => {
+      if (this.isDraggingConnection) {
+        // Check if we're over a connection point
+        const targetElement = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
+        const connectionPoint = targetElement?.closest('.connection-point');
+        
+        if (connectionPoint) {
+          // Find the target node
+          const nodeElement = connectionPoint.closest('.diagram-node');
+          if (nodeElement) {
+            const targetNode = this.nodes.find(n => 
+              n.x.toString() === (nodeElement as HTMLElement).style.left.replace('px', '') &&
+              n.y.toString() === (nodeElement as HTMLElement).style.top.replace('px', '')
+            );
+            
+            if (targetNode && targetNode.id !== this.connectionStartNode?.id) {
+              this.createLink(this.connectionStartNode!.id, targetNode.id);
+            }
+          }
+        }
+
+        this.cancelConnectionDrag();
+      }
+
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
+  private createTempLine(x1: number, y1: number, x2: number, y2: number) {
+    this.tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    this.tempLine.setAttribute('x1', x1.toString());
+    this.tempLine.setAttribute('y1', y1.toString());
+    this.tempLine.setAttribute('x2', x2.toString());
+    this.tempLine.setAttribute('y2', y2.toString());
+    this.tempLine.setAttribute('stroke', '#28a745');
+    this.tempLine.setAttribute('stroke-width', '3');
+    this.tempLine.setAttribute('stroke-dasharray', '5,5');
+    this.tempLine.style.pointerEvents = 'none';
+    
+    this.svgElement.appendChild(this.tempLine);
+  }
+
+  private cancelConnectionDrag() {
+    this.isDraggingConnection = false;
+    this.connectionStartNode = null;
+    this.connectionStartPoint = null;
+    
+    if (this.tempLine) {
+      this.tempLine.remove();
+      this.tempLine = null;
+    }
+  }
+
   private cancelConnection() {
     this.isConnecting = false;
     this.connectionStartNode = null;
@@ -435,6 +516,9 @@ export class DiagramComponent implements OnInit, OnDestroy {
   onDocumentClick(event: MouseEvent) {
     if (this.isConnecting) {
       this.cancelConnection();
+    }
+    if (this.isDraggingConnection) {
+      this.cancelConnectionDrag();
     }
   }
 
