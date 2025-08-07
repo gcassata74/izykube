@@ -274,7 +274,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       if (fromNode && toNode && link.element) {
         const fromPoint = this.getNodeCenter(fromNode);
         const toPoint = this.getNodeCenter(toNode);
-        
+
         link.element.setAttribute('x1', fromPoint.x.toString());
         link.element.setAttribute('y1', fromPoint.y.toString());
         link.element.setAttribute('x2', toPoint.x.toString());
@@ -399,7 +399,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     };
   }
 
-  private getConnectionPoints(node: DiagramNode): ConnectionPoint[] {
+  getConnectionPoints(node: DiagramNode): ConnectionPoint[] {
     return [
       { side: 'top', x: node.x + 40, y: node.y },
       { side: 'right', x: node.x + 80, y: node.y + 40 },
@@ -410,7 +410,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   onConnectionPointClick(node: DiagramNode, point: ConnectionPoint, event: MouseEvent) {
     event.stopPropagation();
-    
+
     if (!this.isConnecting) {
       // Start connection
       this.isConnecting = true;
