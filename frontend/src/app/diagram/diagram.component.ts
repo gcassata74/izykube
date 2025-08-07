@@ -517,8 +517,14 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.isConnecting = true;
       this.connectionStartNode = node;
       this.connectionStartPoint = point;
+      
+      // Create temporary line for visual feedback
+      this.createTempLine(point.x, point.y, point.x, point.y);
+      
+      // Add mouse move listener to follow cursor
+      this.addConnectionMouseListeners();
     } else {
-      // End connection
+      // End connection - only allow if clicking on a different node's connection point
       if (this.connectionStartNode && this.connectionStartNode.id !== node.id) {
         this.createLinkWithPoints(
           this.connectionStartNode.id, 
@@ -529,6 +535,73 @@ export class DiagramComponent implements OnInit, OnDestroy {
       }
       this.cancelConnection();
     }
+  }
+
+  private addConnectionMouseListeners() {
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      if (this.isConnecting && this.tempLine) {
+        const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
+        const x = moveEvent.clientX - canvasRect.left;
+        const y = moveEvent.clientY - canvasRect.top;
+        
+        this.tempLine.setAttribute('x2', x.toString());
+        this.tempLine.setAttribute('y2', y.toString());
+        
+        // Highlight connection points when hovering over them
+        this.highlightNearbyConnectionPoints(moveEvent.clientX, moveEvent.clientY);
+      }
+    };
+
+    const onMouseUp = (upEvent: MouseEvent) => {
+      // Only allow connection completion through connection point clicks
+      // This prevents accidental connections when clicking elsewhere
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
+  private highlightNearbyConnectionPoints(clientX: number, clientY: number) {
+    const threshold = 20; // pixels
+    
+    this.nodes.forEach(node => {
+      if (node.id === this.connectionStartNode?.id) return; // Skip start node
+      
+      const connectionPoints = this.getConnectionPoints(node);
+      connectionPoints.forEach(point => {
+        const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
+        const pointScreenX = canvasRect.left + point.x;
+        const pointScreenY = canvasRect.top + point.y;
+        
+        const distance = Math.sqrt(
+          Math.pow(clientX - pointScreenX, 2) + 
+          Math.pow(clientY - pointScreenY, 2)
+        );
+        
+        // Add visual feedback for nearby connection points
+        const pointElement = this.getConnectionPointElement(node, point);
+        if (pointElement) {
+          if (distance <= threshold) {
+            pointElement.classList.add('connection-point-highlight');
+          } else {
+            pointElement.classList.remove('connection-point-highlight');
+          }
+        }
+      });
+    });
+  }
+
+  private getConnectionPointElement(node: DiagramNode, point: ConnectionPoint): HTMLElement | null {
+    const nodeElement = document.querySelector(`[style*="left: ${node.x}px"][style*="top: ${node.y}px"]`);
+    if (!nodeElement) return null;
+    
+    const connectionPoints = nodeElement.querySelectorAll('.connection-point');
+    const sides = ['top', 'right', 'bottom', 'left'];
+    const sideIndex = sides.indexOf(point.side);
+    
+    return connectionPoints[sideIndex] as HTMLElement || null;
   }
 
   private createTempLine(x1: number, y1: number, x2: number, y2: number) {
@@ -560,11 +633,31 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.isConnecting = false;
     this.connectionStartNode = null;
     this.connectionStartPoint = null;
+    
+    // Remove temporary line
+    if (this.tempLine) {
+      this.tempLine.remove();
+      this.tempLine = null;
+    }
+    
+    // Remove all connection point highlights
+    this.clearConnectionPointHighlights();
+  }
+
+  private clearConnectionPointHighlights() {
+    const highlightedPoints = document.querySelectorAll('.connection-point-highlight');
+    highlightedPoints.forEach(point => {
+      point.classList.remove('connection-point-highlight');
+    });
   }
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
-    if (this.isConnecting) {
+    // Only cancel connection if not clicking on a connection point
+    const target = event.target as HTMLElement;
+    const isConnectionPoint = target.classList.contains('connection-point');
+    
+    if (this.isConnecting && !isConnectionPoint) {
       this.cancelConnection();
     }
     if (this.isDraggingConnection) {
