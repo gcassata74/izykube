@@ -1,11 +1,9 @@
-FROM node:18-alpine
+FROM openjdk:21-jdk-slim
 
 WORKDIR /app
 
-COPY package*json ./
+COPY target/*.jar app.jar
 
-RUN npm i
+EXPOSE 8080
 
-COPY ./src ./src
-
-CMD ["npm", "start"]
+CMD ["java", "-jar", "app.jar"]
