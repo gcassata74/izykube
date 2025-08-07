@@ -57,6 +57,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
   isDraggingConnection: boolean = false;
   tempLine: SVGLineElement | null = null;
   isResizing: boolean = false;
+  undoStack: { nodes: DiagramNode[], links: DiagramLink[] }[] = [];
+  maxUndoSteps: number = 20;
   firstColumnWidth: number = 180;
   minWidth: number = 200;
   subscription: Subscription = new Subscription();
@@ -132,6 +134,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   private createNode(type: string, baseName: string, icon: string, x: number, y: number) {
+    this.saveToUndoStack();
+    
     const uniqueName = this.generateUniqueName(baseName);
     const node: DiagramNode = {
       id: uuidv4(),
@@ -195,6 +199,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     event.preventDefault();
 
     let isDragging = false;
+    let hasSavedToUndo = false;
     const startX = event.clientX;
     const startY = event.clientY;
     const startNodeX = node.x;
@@ -207,6 +212,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
         const deltaY = Math.abs(moveEvent.clientY - startY);
         if (deltaX > 5 || deltaY > 5) {
           isDragging = true;
+          if (!hasSavedToUndo) {
+            this.saveToUndoStack();
+            hasSavedToUndo = true;
+          }
         }
       }
 
@@ -354,11 +363,16 @@ export class DiagramComponent implements OnInit, OnDestroy {
         this.deleteSelectedNode();
         event.preventDefault();
       }
+    } else if (event.ctrlKey && event.key === 'z') {
+      this.undo();
+      event.preventDefault();
     }
   }
 
   private deleteSelectedLink() {
     if (!this.selectedLink) return;
+
+    this.saveToUndoStack();
 
     // Remove the SVG element
     if (this.selectedLink.element) {
@@ -373,6 +387,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   private deleteSelectedNode() {
     if (!this.selectedNode) return;
+
+    this.saveToUndoStack();
 
     // Remove all links connected to this node
     const connectedLinks = this.links.filter(link =>
@@ -442,6 +458,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
       console.log('Link already exists between these nodes');
       return;
     }
+
+    this.saveToUndoStack();
 
     const link: DiagramLink = {
       id: uuidv4(),
@@ -513,73 +531,6 @@ export class DiagramComponent implements OnInit, OnDestroy {
     }
   }
 
-  onConnectionPointMouseDown(node: DiagramNode, point: ConnectionPoint, event: MouseEvent) {
-    event.stopPropagation();
-    event.preventDefault();
-
-    this.isDraggingConnection = true;
-    this.connectionStartNode = node;
-    this.connectionStartPoint = point;
-
-    // Create temporary line for visual feedback
-    this.createTempLine(point.x, point.y, event.clientX, event.clientY);
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      if (this.isDraggingConnection && this.tempLine) {
-        const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
-        const x = moveEvent.clientX - canvasRect.left;
-        const y = moveEvent.clientY - canvasRect.top;
-        
-        this.tempLine.setAttribute('x2', x.toString());
-        this.tempLine.setAttribute('y2', y.toString());
-      }
-    };
-
-    const onMouseUp = (upEvent: MouseEvent) => {
-      if (this.isDraggingConnection) {
-        // Check if we're over a connection point
-        const targetElement = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
-        const connectionPoint = targetElement?.closest('.connection-point');
-        
-        if (connectionPoint) {
-          // Find the target node and connection point
-          const nodeElement = connectionPoint.closest('.diagram-node');
-          if (nodeElement) {
-            const targetNode = this.nodes.find(n => 
-              n.x.toString() === (nodeElement as HTMLElement).style.left.replace('px', '') &&
-              n.y.toString() === (nodeElement as HTMLElement).style.top.replace('px', '')
-            );
-            
-            if (targetNode && targetNode.id !== this.connectionStartNode?.id) {
-              // Determine which connection point was targeted
-              const targetConnectionPoints = this.getConnectionPoints(targetNode);
-              const targetPoint = this.findClosestConnectionPoint(
-                upEvent.clientX, 
-                upEvent.clientY, 
-                targetConnectionPoints
-              );
-              
-              this.createLinkWithPoints(
-                this.connectionStartNode!.id, 
-                targetNode.id,
-                this.connectionStartPoint!,
-                targetPoint
-              );
-            }
-          }
-        }
-
-        this.cancelConnectionDrag();
-      }
-
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    };
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }
-
   private createTempLine(x1: number, y1: number, x2: number, y2: number) {
     this.tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     this.tempLine.setAttribute('x1', x1.toString());
@@ -618,6 +569,60 @@ export class DiagramComponent implements OnInit, OnDestroy {
     }
     if (this.isDraggingConnection) {
       this.cancelConnectionDrag();
+    }
+  }
+
+  private saveToUndoStack() {
+    // Deep clone current state
+    const currentState = {
+      nodes: JSON.parse(JSON.stringify(this.nodes.map(n => ({ 
+        id: n.id, name: n.name, type: n.type, icon: n.icon, x: n.x, y: n.y 
+      })))),
+      links: JSON.parse(JSON.stringify(this.links.map(l => ({ 
+        id: l.id, from: l.from, to: l.to, fromPoint: l.fromPoint, toPoint: l.toPoint 
+      }))))
+    };
+
+    this.undoStack.push(currentState);
+
+    // Limit undo stack size
+    if (this.undoStack.length > this.maxUndoSteps) {
+      this.undoStack.shift();
+    }
+  }
+
+  private undo() {
+    if (this.undoStack.length === 0) return;
+
+    const previousState = this.undoStack.pop()!;
+    
+    // Clear current visual elements
+    this.clearDiagram();
+    
+    // Restore previous state
+    this.nodes = previousState.nodes;
+    this.links = previousState.links;
+    
+    // Clear selections
+    this.selectedNode = null;
+    this.selectedLink = null;
+    
+    // Re-render diagram
+    this.renderLinks();
+    this.updateDiagramData();
+  }
+
+  private clearDiagram() {
+    // Remove all SVG elements
+    this.links.forEach(link => {
+      if (link.element) {
+        link.element.remove();
+      }
+    });
+    
+    // Clear the SVG container
+    while (this.svgElement.firstChild) {
+      this.svgElement.removeChild(this.svgElement.firstChild);
     }
   }
 
