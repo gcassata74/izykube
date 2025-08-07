@@ -26,7 +26,7 @@
     "@ngrx/store-devtools": "^16.3.0",
     "ace-builds": "^1.36.3",
     "bootstrap": "^5.3.3",
-    "gojs": "^2.3.7",
+    "interactjs": "^1.10.19",
     "lodash": "^4.17.21",
     "primeicons": "^6.0.1",
     "primeng": "^16.0.0-rc.2",

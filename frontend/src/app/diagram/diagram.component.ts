@@ -2,7 +2,7 @@ import { ClusterState } from './../store/states/state';
 import { DiagramService } from './../services/diagram.service';
 import { IconService } from './../services/icon.service';
 import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild } from '@angular/core';
-import * as go from 'gojs';
+import interact from 'interactjs';
 import { Store, select } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
 import { BehaviorSubject, Subscription, debounceTime, distinctUntilChanged, filter, startWith, take, tap } from 'rxjs';
@@ -10,7 +10,22 @@ import * as actions from '../store/actions/actions';
 import { getCurrentCluster, selectClusterDiagram } from '../store/selectors/selectors';
 import { Cluster } from '../model/cluster.class';
 
-const $ = go.GraphObject.make;
+interface DiagramNode {
+  id: string;
+  name: string;
+  type: string;
+  icon: string;
+  x: number;
+  y: number;
+  element?: HTMLElement;
+}
+
+interface DiagramLink {
+  id: string;
+  from: string;
+  to: string;
+  element?: SVGElement;
+}
 
 @Component({
   selector: 'app-diagram',
@@ -20,11 +35,15 @@ const $ = go.GraphObject.make;
 export class DiagramComponent implements OnInit, OnDestroy {
 
   @ViewChild('container', { static: true }) container!: ElementRef;
-  diagram!: go.Diagram;
-  model!: go.Model;
+  @ViewChild('diagramCanvas', { static: true }) diagramCanvas!: ElementRef;
+  @ViewChild('paletteContainer', { static: true }) paletteContainer!: ElementRef;
+  
+  nodes: DiagramNode[] = [];
+  links: DiagramLink[] = [];
+  selectedNode: DiagramNode | null = null;
   isResizing: boolean = false;
   firstColumnWidth: number = 180;
-  minWidth: number = 200; // Minimum width of the first column in pixels
+  minWidth: number = 200;
   subscription: Subscription = new Subscription();
   layoutOptions = [
     { label: 'Default', value: 'default' },
@@ -32,6 +51,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     { label: 'Force-Directed', value: 'force-directed' }
   ];
   selectedLayout: string = 'default';
+  private svgElement!: SVGElement;
 
   constructor(
     private iconService: IconService,
@@ -42,216 +62,174 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
 
   ngOnInit(): void {
-
     this.createPalette();
     this.store.pipe(
       select(selectClusterDiagram),
       debounceTime(1000),
       tap(diagramData => {
-        if(diagramData!==null && diagramData!==undefined && diagramData!==""){
-        this.model = go.Model.fromJson(diagramData);
+        if(diagramData !== null && diagramData !== undefined && diagramData !== "") {
+          this.loadDiagramData(diagramData);
         }
-        this.createDiagram();
+        this.initializeDiagram();
       }),
-     take(1)
+      take(1)
     ).subscribe();
   }
 
 
-  private createDiagram() {
-
-    this.diagram = $(go.Diagram, 'myDiagramDiv',
-      {
-        'undoManager.isEnabled': true,
-        "linkingTool.isEnabled": true,
-        "relinkingTool.isEnabled": true,
-        "textEditingTool.isEnabled": true,
-        "allowMove": true,
-
-        grid:
-          $(go.Panel, "Grid",
-            { gridCellSize: new go.Size(10, 10) },
-            $(go.Shape, "LineH", { strokeDashArray: [1, 9] })
-          )
-      });
-
-    this.diagram.nodeTemplate = this.makeNodeTemplate();
-    this.diagram.commandHandler.deletesTree = false;
-    this.diagram.commandHandler.canDeleteSelection = () => true;
-
-     //create empty model if not present
-    this.model && (this.diagram.model = this.model);
-    const graphLinksModel: go.GraphLinksModel = this.diagram.model as go.GraphLinksModel;
-
-    this.diagram.linkTemplate =
-      $(go.Link,
-        {
-          reshapable: true,
-          resegmentable: true,
-          relinkableFrom: true,
-          relinkableTo: true,
-          adjusting: go.Link.Stretch
-        },
-        new go.Binding("points").makeTwoWay(),
-        new go.Binding("fromSpot", "fromSpot", go.Spot.parse).makeTwoWay(go.Spot.stringify),
-        new go.Binding("toSpot", "toSpot", go.Spot.parse).makeTwoWay(go.Spot.stringify),
-        $(go.Shape, { fill: 'lightblue', strokeWidth: 3 }),  // Link appearance
-        $(go.Shape, { fill: 'lightblue', strokeWidth: 3, toArrow: 'Standard' })
-      );
-
-    // Attach event handlers
-    this.addEventHanlders(graphLinksModel);
-    this.setLinkingRules();
-
+  private initializeDiagram() {
+    const canvas = this.diagramCanvas.nativeElement;
     
+    // Create SVG for links
+    this.svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.svgElement.style.position = 'absolute';
+    this.svgElement.style.top = '0';
+    this.svgElement.style.left = '0';
+    this.svgElement.style.width = '100%';
+    this.svgElement.style.height = '100%';
+    this.svgElement.style.pointerEvents = 'none';
+    this.svgElement.style.zIndex = '1';
+    canvas.appendChild(this.svgElement);
 
+    // Setup drag and drop from palette
+    this.setupPaletteDragDrop();
+    
+    // Setup canvas drop zone
+    this.setupCanvasDropZone();
+    
+    // Render existing nodes
+    this.renderNodes();
+    this.renderLinks();
   }
 
  
-  private addEventHanlders(graphLinksModel: go.GraphLinksModel) {
-    this.diagram.addDiagramListener('LinkDrawn', (e) => {
-      const link = e.subject;
-      const fromNode = link.fromNode;
-      const toNode = link.toNode;
-
-      if (fromNode && toNode && fromNode instanceof go.Node && toNode instanceof go.Node) {
-        graphLinksModel.addLinkData(link.data);
-      }
-      this.diagramService.onLinkDrawn(e)
-    });
-
-    this.diagram.addDiagramListener("SelectionMoved", (e) => {
-        this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
-    });
-
-    this.diagram.addDiagramListener('ChangedSelection', e => this.diagramService.onSelectionChanged(e));
-    this.diagram.addDiagramListener("TextEdited", e => this.diagramService.onNodeEdited(e));
-    this.diagram.addDiagramListener("ExternalObjectsDropped", e => {
-      this.diagram.startTransaction("dropExternalObjects");
-      try {
-        this.generateUUID(e);
-        this.chooseUniqueNameForNode(e);
-        this.diagramService.onNodeDropped(e);
-        this.diagram.clearSelection();
-        this.diagram.commitTransaction("dropExternalObjects");
-      } catch (error) {
-        console.error("Error during external object drop:", error);
-        this.diagram.rollbackTransaction();
-      }
-    });
-    this.diagram.addDiagramListener("SelectionDeleted", e => {
-      this.diagramService.onNodeDeleted(e);
-      this.diagram.clearSelection();
-    });
-
-
-    this.diagram.addDiagramListener('SelectionDeleting', e => this.diagramService.onNodeDeleted(e));
-
-    this.diagram.addModelChangedListener(evt => {
-      // ignore unimportant Transaction events
-      if (!evt.isTransactionFinished) return;
-      var txn = evt.object;  // a Transaction
-      if (txn === null) return;
-      // iterate over all of the actual ChangedEvents of the Transaction
-      txn['changes'].each((e: { modelChange: string; change: go.EnumValue; }) => {
-        // handle node changes
-        if (e.modelChange === "nodeDataArray") {
-          if (e.change === go.ChangedEvent.Insert) {
-            // Dispatch action for node added
-            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
-          } else if (e.change === go.ChangedEvent.Remove) {
-            // Dispatch action for node removed
-            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
-          }
-        }
-        // handle linkDTO changes
-        else if (e.modelChange === "linkDataArray") {
-          if (e.change === go.ChangedEvent.Insert) {
-            // Dispatch action for linkDTO added
-            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
-          } else if (e.change === go.ChangedEvent.Remove) {
-            // Dispatch action for linkDTO removed
-            this.store.dispatch(actions.updateDiagram({ diagramData: this.diagram.model.toJson() }));
-          }
-        }
-      });
-    });
-  }
-
-  generateUUID(e: go.DiagramEvent) {
-    const diagram = e.diagram;
-    const droppedNode = e.subject.first();
-    if (droppedNode instanceof go.Node) {
-      // Start a transaction to modify the model
-      diagram.startTransaction("assignUUID");
-      const data = droppedNode.data;
-      // Modify the model data within the transaction
-      diagram.model.setDataProperty(data, "key", uuidv4());
-      // Commit the transaction after making changes
-      diagram.commitTransaction("assignUUID");
-    }
-  }
-
-  chooseUniqueNameForNode(e: go.DiagramEvent) {
-    e.subject.each((part: any) => {
-      if (part instanceof go.Node) {
-        const baseName = part.data.name;
-
-        // Filter existing nodes in the diagram to find those with the same base name
-        const similarNodes = this.diagram.model.nodeDataArray.filter((node: any) =>
-          node.name && node.name.startsWith(baseName)
-        );
-
-        // Initialize the name with the base name
-        let newName = baseName;
-        let maxSuffixCharCode = 'a'.charCodeAt(0) - 1; // Start before 'a'
-
-        // Extract and find the maximum suffix character used
-        similarNodes.forEach(node => {
-          const result = node['name'].match(/^(.*?)-([a-zA-Z])$/); // Match the pattern with the suffix as a letter
-          if (result && result[2]) {
-            const charCode = result[2].charCodeAt(0);
-            if (charCode > maxSuffixCharCode) {
-              maxSuffixCharCode = charCode; // Update to the maximum suffix char code found
+  private setupPaletteDragDrop() {
+    const paletteItems = this.paletteContainer.nativeElement.querySelectorAll('.palette-item');
+    
+    paletteItems.forEach((item: HTMLElement) => {
+      interact(item)
+        .draggable({
+          inertia: true,
+          modifiers: [
+            interact.modifiers.restrictRect({
+              restriction: 'parent',
+              endOnly: true
+            })
+          ],
+          autoScroll: true,
+          listeners: {
+            start: (event) => {
+              event.target.style.opacity = '0.5';
+            },
+            move: (event) => {
+              const target = event.target;
+              const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+              const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+              
+              target.style.transform = `translate(${x}px, ${y}px)`;
+              target.setAttribute('data-x', x.toString());
+              target.setAttribute('data-y', y.toString());
+            },
+            end: (event) => {
+              event.target.style.opacity = '1';
+              event.target.style.transform = '';
+              event.target.removeAttribute('data-x');
+              event.target.removeAttribute('data-y');
             }
           }
         });
-
-        // Determine the new name based on the maximum suffix found
-        if (similarNodes.length > 0) {
-          const newSuffixChar = String.fromCharCode(maxSuffixCharCode + 1); // Increment to the next character
-          newName = `${baseName}-${newSuffixChar}`;
-        }
-
-        // Perform the renaming in a transaction
-        this.diagram.model.startTransaction("rename node");
-        this.diagram.model.setDataProperty(part.data, "name", newName);
-        this.diagram.model.commitTransaction("rename node");
-      }
     });
   }
 
+  private setupCanvasDropZone() {
+    const canvas = this.diagramCanvas.nativeElement;
+    
+    interact(canvas)
+      .dropzone({
+        accept: '.palette-item',
+        overlap: 0.1,
+        ondrop: (event) => {
+          const droppedElement = event.relatedTarget;
+          const nodeType = droppedElement.getAttribute('data-type');
+          const nodeName = droppedElement.getAttribute('data-name');
+          const nodeIcon = droppedElement.getAttribute('data-icon');
+          
+          const rect = canvas.getBoundingClientRect();
+          const x = event.dragEvent.clientX - rect.left;
+          const y = event.dragEvent.clientY - rect.top;
+          
+          this.createNode(nodeType, nodeName, nodeIcon, x, y);
+        }
+      });
+  }
+
+  private createNode(type: string, baseName: string, icon: string, x: number, y: number) {
+    const uniqueName = this.generateUniqueName(baseName);
+    const node: DiagramNode = {
+      id: uuidv4(),
+      name: uniqueName,
+      type: type,
+      icon: icon,
+      x: x,
+      y: y
+    };
+    
+    this.nodes.push(node);
+    this.renderNode(node);
+    this.updateDiagramData();
+  }
+
+  private generateUniqueName(baseName: string): string {
+    const similarNodes = this.nodes.filter(node => 
+      node.name && node.name.startsWith(baseName)
+    );
+
+    let newName = baseName;
+    let maxSuffixCharCode = 'a'.charCodeAt(0) - 1;
+
+    similarNodes.forEach(node => {
+      const result = node.name.match(/^(.*?)-([a-zA-Z])$/);
+      if (result && result[2]) {
+        const charCode = result[2].charCodeAt(0);
+        if (charCode > maxSuffixCharCode) {
+          maxSuffixCharCode = charCode;
+        }
+      }
+    });
+
+    if (similarNodes.length > 0) {
+      const newSuffixChar = String.fromCharCode(maxSuffixCharCode + 1);
+      newName = `${baseName}-${newSuffixChar}`;
+    }
+
+    return newName;
+  }
+
   private createPalette() {
-    const $ = go.GraphObject.make;
+    const paletteContainer = this.paletteContainer.nativeElement;
+    const nodeDataArray = this.createNodes();
 
-    // Node data array with icon URLs
-    var nodeDataArray = this.createNodes();
-
-
-    // Initialize the palette
-    const myPalette =
-      $(go.Palette, 'myPaletteDiv',
-        {
-          model: new go.GraphLinksModel(nodeDataArray,), // Pass the node data array to the model
-          layout: $(go.GridLayout, { wrappingColumn: 1, cellSize: new go.Size(1, 1) }),
-          grid: $(go.Panel, "Grid",
-            { gridCellSize: new go.Size(10, 10) },
-            $(go.Shape, "LineH", { strokeDashArray: [1, 9] })
-          )
-        },
-      );
-
-    myPalette.nodeTemplate = this.makeNodeTemplate();
+    nodeDataArray.forEach(nodeData => {
+      const paletteItem = document.createElement('div');
+      paletteItem.className = 'palette-item';
+      paletteItem.setAttribute('data-type', nodeData.type);
+      paletteItem.setAttribute('data-name', nodeData.name);
+      paletteItem.setAttribute('data-icon', nodeData.icon);
+      
+      const icon = document.createElement('img');
+      icon.src = nodeData.icon;
+      icon.alt = nodeData.name;
+      icon.style.width = '40px';
+      icon.style.height = '40px';
+      
+      const label = document.createElement('div');
+      label.textContent = nodeData.name;
+      label.className = 'palette-label';
+      
+      paletteItem.appendChild(icon);
+      paletteItem.appendChild(label);
+      paletteContainer.appendChild(paletteItem);
+    });
   }
 
   private createNodes() {
@@ -267,98 +245,144 @@ export class DiagramComponent implements OnInit, OnDestroy {
     ];
   }
 
-  private setLinkingRules() {
-    this.diagram.toolManager.linkingTool.linkValidation = (fromNode, fromPort, toNode, toPort) => {
-      const fromType = fromNode.data.type;
-      const toType = toNode.data.type;
+  private renderNodes() {
+    this.nodes.forEach(node => this.renderNode(node));
+  }
 
-      switch (fromType) {
-        case 'deployment':
-          return toType === 'container' || toType === 'configmap' || toType === 'volume';  // Deployment punta a suoi componenti/dipendenze
-        case 'service':
-          return toType === 'deployment' || toType === 'job';  // Service punta a ciò che espone
-        case 'ingress':
-          return toType === 'service';
-        //case 'init-container':  // Se vogliamo gestire il caso speciale degli init container
-         // return toType === 'deployment';  // Init container può puntare al deployment da monitorare
-        default:
-          return false;  // Tutti gli altri tipi non possono iniziare collegamenti
+  private renderNode(node: DiagramNode) {
+    const canvas = this.diagramCanvas.nativeElement;
+    
+    const nodeElement = document.createElement('div');
+    nodeElement.className = 'diagram-node';
+    nodeElement.style.position = 'absolute';
+    nodeElement.style.left = `${node.x}px`;
+    nodeElement.style.top = `${node.y}px`;
+    nodeElement.style.width = '80px';
+    nodeElement.style.height = '80px';
+    nodeElement.style.border = '3px solid #ccc';
+    nodeElement.style.borderRadius = '10px';
+    nodeElement.style.backgroundColor = 'white';
+    nodeElement.style.display = 'flex';
+    nodeElement.style.flexDirection = 'column';
+    nodeElement.style.alignItems = 'center';
+    nodeElement.style.justifyContent = 'center';
+    nodeElement.style.cursor = 'move';
+    nodeElement.style.zIndex = '2';
+    
+    const icon = document.createElement('img');
+    icon.src = node.icon;
+    icon.alt = node.name;
+    icon.style.width = '40px';
+    icon.style.height = '40px';
+    
+    const label = document.createElement('div');
+    label.textContent = node.name;
+    label.style.fontSize = '10px';
+    label.style.textAlign = 'center';
+    label.style.marginTop = '2px';
+    label.contentEditable = 'true';
+    
+    nodeElement.appendChild(icon);
+    nodeElement.appendChild(label);
+    canvas.appendChild(nodeElement);
+    
+    node.element = nodeElement;
+    
+    // Make node draggable
+    interact(nodeElement)
+      .draggable({
+        listeners: {
+          move: (event) => {
+            node.x += event.dx;
+            node.y += event.dy;
+            
+            nodeElement.style.left = `${node.x}px`;
+            nodeElement.style.top = `${node.y}px`;
+            
+            this.updateLinks();
+            this.updateDiagramData();
+          }
+        }
+      })
+      .on('tap', () => {
+        this.selectNode(node);
+      });
+    
+    // Handle label editing
+    label.addEventListener('blur', () => {
+      node.name = label.textContent || node.name;
+      this.updateDiagramData();
+    });
+  }
+
+  private renderLinks() {
+    this.links.forEach(link => this.renderLink(link));
+  }
+
+  private renderLink(link: DiagramLink) {
+    const fromNode = this.nodes.find(n => n.id === link.from);
+    const toNode = this.nodes.find(n => n.id === link.to);
+    
+    if (!fromNode || !toNode) return;
+    
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', (fromNode.x + 40).toString());
+    line.setAttribute('y1', (fromNode.y + 40).toString());
+    line.setAttribute('x2', (toNode.x + 40).toString());
+    line.setAttribute('y2', (toNode.y + 40).toString());
+    line.setAttribute('stroke', 'lightblue');
+    line.setAttribute('stroke-width', '3');
+    line.setAttribute('marker-end', 'url(#arrowhead)');
+    
+    this.svgElement.appendChild(line);
+    link.element = line;
+  }
+
+  private updateLinks() {
+    this.links.forEach(link => {
+      const fromNode = this.nodes.find(n => n.id === link.from);
+      const toNode = this.nodes.find(n => n.id === link.to);
+      
+      if (fromNode && toNode && link.element) {
+        link.element.setAttribute('x1', (fromNode.x + 40).toString());
+        link.element.setAttribute('y1', (fromNode.y + 40).toString());
+        link.element.setAttribute('x2', (toNode.x + 40).toString());
+        link.element.setAttribute('y2', (toNode.y + 40).toString());
       }
-
-
-    };
-
-    // Apply the same validation for relinking
-    this.diagram.toolManager.relinkingTool.linkValidation = this.diagram.toolManager.linkingTool.linkValidation;
+    });
   }
 
-  private makeNodeTemplate() {
-
-    return $(go.Node, "Spot",
-      {
-        locationSpot: go.Spot.Center,
-        movable: true
-      },
-      new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
-
-      // Outer transparent rectangle larger than the node, acts as the linkable area
-      this.makeLinkableArea(),
-      // Inner node visual representation
-      this.makeNodeBorder(),
-      // Place the Picture (icon) inside the node shape
-      this.makeNodeIcon(),
-      // Node label inside the shape, below the icon
-      this.makeNodeLabel()
-    )
+  private selectNode(node: DiagramNode) {
+    // Clear previous selection
+    if (this.selectedNode && this.selectedNode.element) {
+      this.selectedNode.element.style.borderColor = '#ccc';
+    }
+    
+    this.selectedNode = node;
+    if (node.element) {
+      node.element.style.borderColor = '#007bff';
+    }
   }
 
-  makeNodeBorder() {
-    return $(go.Shape, "RoundedRectangle",
-      {
-        width: 60, height: 60, fill: 'white', strokeWidth: 3,
-        cursor: "hand",
-      }
-    )
+  private loadDiagramData(diagramData: string) {
+    try {
+      const data = JSON.parse(diagramData);
+      this.nodes = data.nodes || [];
+      this.links = data.links || [];
+    } catch (error) {
+      console.error('Error loading diagram data:', error);
+      this.nodes = [];
+      this.links = [];
+    }
   }
 
-  makeLinkableArea() {
-    return $(go.Shape, "RoundedRectangle",
-      {
-        fill: "transparent",  // Transparent so it doesn't obscure the node
-        stroke: null,  // No visible stroke
-        strokeWidth: 0,
-        width: 80, height: 80,  // Larger than the node to act as a linkable area
-        portId: "",  // This shape acts as the port
-        fromLinkable: true,
-        toLinkable: true,
-        cursor: "pointer"
-      }
-    )
-  }
-
-  makeNodeIcon() {
-    return $(go.Picture,
-      {
-        width: 40, height: 40, margin: 5,
-      },
-     // new go.Binding("source", "icon") // Bind picture source to icon property in the node data
-      new go.Binding("source", "icon")
-    )
-  }
-
-  makeNodeLabel() {
-
-    return $(go.TextBlock,
-      {
-        alignment: go.Spot.BottomCenter,
-        margin: 5,
-        editable: true,
-        textAlign: "center",
-        wrap: go.TextBlock.WrapFit,
-        overflow: go.TextBlock.OverflowEllipsis
-      },
-      new go.Binding("text", "name")
-    )
+  private updateDiagramData() {
+    const diagramData = JSON.stringify({
+      nodes: this.nodes.map(n => ({ id: n.id, name: n.name, type: n.type, icon: n.icon, x: n.x, y: n.y })),
+      links: this.links.map(l => ({ id: l.id, from: l.from, to: l.to }))
+    });
+    
+    this.store.dispatch(actions.updateDiagram({ diagramData }));
   }
 
   ngOnDestroy(): void {
