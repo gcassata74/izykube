@@ -38,7 +38,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   @ViewChild('container', { static: true }) container!: ElementRef;
   @ViewChild('diagramCanvas', { static: true }) diagramCanvas!: ElementRef;
   @ViewChild('paletteContainer', { static: true }) paletteContainer!: ElementRef;
-  
+
   nodes: DiagramNode[] = [];
   links: DiagramLink[] = [];
   selectedNode: DiagramNode | null = null;
@@ -82,7 +82,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   private initializeDiagram() {
     const canvas = this.diagramCanvas.nativeElement;
-    
+
     // Create SVG for links
     this.svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.svgElement.style.position = 'absolute';
@@ -93,7 +93,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.svgElement.style.pointerEvents = 'none';
     this.svgElement.style.zIndex = '1';
     canvas.appendChild(this.svgElement);
-    
+
     // Render existing links
     this.renderLinks();
   }
@@ -128,13 +128,13 @@ export class DiagramComponent implements OnInit, OnDestroy {
       x: x,
       y: y
     };
-    
+
     this.nodes.push(node);
     this.updateDiagramData();
   }
 
   private generateUniqueName(baseName: string): string {
-    const similarNodes = this.nodes.filter(node => 
+    const similarNodes = this.nodes.filter(node =>
       node.name && node.name.startsWith(baseName)
     );
 
@@ -168,7 +168,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       { name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
       { name: 'configmap', type: 'configmap', icon: this.iconService.getIconPath('configmap') },
       { name: 'volume', type: 'volume', icon: this.iconService.getIconPath('volume') },
-      { name: 'job', type: 'job', icon: this.iconService.getIconPath('job') } 
+      { name: 'job', type: 'job', icon: this.iconService.getIconPath('job') }
     ];
   }
 
@@ -180,7 +180,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   onNodeMouseDown(event: MouseEvent, node: DiagramNode) {
     // Prevent default to avoid text selection
     event.preventDefault();
-    
+
     let isDragging = false;
     const startX = event.clientX;
     const startY = event.clientY;
@@ -200,10 +200,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
       if (isDragging) {
         const deltaX = moveEvent.clientX - startX;
         const deltaY = moveEvent.clientY - startY;
-        
+
         node.x = startNodeX + deltaX;
         node.y = startNodeY + deltaY;
-        
+
         this.updateLinks();
       }
     };
@@ -212,7 +212,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       if (isDragging) {
         this.updateDiagramData();
       }
-      
+
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
@@ -229,9 +229,9 @@ export class DiagramComponent implements OnInit, OnDestroy {
   private renderLink(link: DiagramLink) {
     const fromNode = this.nodes.find(n => n.id === link.from);
     const toNode = this.nodes.find(n => n.id === link.to);
-    
+
     if (!fromNode || !toNode) return;
-    
+
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', (fromNode.x + 40).toString());
     line.setAttribute('y1', (fromNode.y + 40).toString());
@@ -242,13 +242,13 @@ export class DiagramComponent implements OnInit, OnDestroy {
     line.setAttribute('marker-end', 'url(#arrowhead)');
     line.style.cursor = 'pointer';
     line.style.pointerEvents = 'stroke';
-    
+
     // Add click event listener for link selection
     line.addEventListener('click', (event) => {
       event.stopPropagation();
       this.selectLink(link);
     });
-    
+
     this.svgElement.appendChild(line);
     link.element = line;
   }
@@ -257,7 +257,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.links.forEach(link => {
       const fromNode = this.nodes.find(n => n.id === link.from);
       const toNode = this.nodes.find(n => n.id === link.to);
-      
+
       if (fromNode && toNode && link.element) {
         link.element.setAttribute('x1', (fromNode.x + 40).toString());
         link.element.setAttribute('y1', (fromNode.y + 40).toString());
@@ -279,7 +279,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.updateLinkStyles();
   }
 
-  private updateLinkStyles() {
+  updateLinkStyles() {
     this.links.forEach(link => {
       if (link.element) {
         const isSelected = this.selectedLink?.id === link.id;
@@ -304,12 +304,12 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   private deleteSelectedLink() {
     if (!this.selectedLink) return;
-    
+
     // Remove the SVG element
     if (this.selectedLink.element) {
       this.selectedLink.element.remove();
     }
-    
+
     // Remove from links array
     this.links = this.links.filter(link => link.id !== this.selectedLink!.id);
     this.selectedLink = null;
@@ -318,23 +318,23 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   private deleteSelectedNode() {
     if (!this.selectedNode) return;
-    
+
     // Remove all links connected to this node
-    const connectedLinks = this.links.filter(link => 
+    const connectedLinks = this.links.filter(link =>
       link.from === this.selectedNode!.id || link.to === this.selectedNode!.id
     );
-    
+
     connectedLinks.forEach(link => {
       if (link.element) {
         link.element.remove();
       }
     });
-    
+
     // Remove links from array
-    this.links = this.links.filter(link => 
+    this.links = this.links.filter(link =>
       link.from !== this.selectedNode!.id && link.to !== this.selectedNode!.id
     );
-    
+
     // Remove node from array
     this.nodes = this.nodes.filter(node => node.id !== this.selectedNode!.id);
     this.selectedNode = null;
@@ -355,22 +355,22 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   private createLink(fromNodeId: string, toNodeId: string) {
     // Check if link already exists
-    const existingLink = this.links.find(link => 
+    const existingLink = this.links.find(link =>
       (link.from === fromNodeId && link.to === toNodeId) ||
       (link.from === toNodeId && link.to === fromNodeId)
     );
-    
+
     if (existingLink) {
       console.log('Link already exists between these nodes');
       return;
     }
-    
+
     const link: DiagramLink = {
       id: uuidv4(),
       from: fromNodeId,
       to: toNodeId
     };
-    
+
     this.links.push(link);
     this.renderLink(link);
     this.updateDiagramData();
@@ -381,7 +381,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       nodes: this.nodes.map(n => ({ id: n.id, name: n.name, type: n.type, icon: n.icon, x: n.x, y: n.y })),
       links: this.links.map(l => ({ id: l.id, from: l.from, to: l.to }))
     });
-    
+
     this.store.dispatch(actions.updateDiagram({ diagramData }));
   }
 
