@@ -2,13 +2,13 @@ import { ClusterState } from './../store/states/state';
 import { DiagramService } from './../services/diagram.service';
 import { IconService } from './../services/icon.service';
 import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild } from '@angular/core';
-import interact from 'interactjs';
 import { Store, select } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
 import { BehaviorSubject, Subscription, debounceTime, distinctUntilChanged, filter, startWith, take, tap } from 'rxjs';
 import * as actions from '../store/actions/actions';
 import { getCurrentCluster, selectClusterDiagram } from '../store/selectors/selectors';
 import { Cluster } from '../model/cluster.class';
+import { DragDropData, DropEvent } from '../directives/drag-drop.directive';
 
 interface DiagramNode {
   id: string;
@@ -52,6 +52,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   ];
   selectedLayout: string = 'default';
   private svgElement!: SVGElement;
+  paletteItems: DragDropData[] = [];
 
   constructor(
     private iconService: IconService,
@@ -62,7 +63,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
 
   ngOnInit(): void {
-    this.createPalette();
+    this.initializePaletteItems();
     this.store.pipe(
       select(selectClusterDiagram),
       debounceTime(1000),
@@ -90,77 +91,18 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.svgElement.style.pointerEvents = 'none';
     this.svgElement.style.zIndex = '1';
     canvas.appendChild(this.svgElement);
-
-    // Setup drag and drop from palette
-    this.setupPaletteDragDrop();
-    
-    // Setup canvas drop zone
-    this.setupCanvasDropZone();
     
     // Render existing nodes
     this.renderNodes();
     this.renderLinks();
   }
 
- 
-  private setupPaletteDragDrop() {
-    const paletteItems = this.paletteContainer.nativeElement.querySelectorAll('.palette-item');
-    
-    paletteItems.forEach((item: HTMLElement) => {
-      interact(item)
-        .draggable({
-          inertia: true,
-          modifiers: [
-            interact.modifiers.restrictRect({
-              restriction: 'parent',
-              endOnly: true
-            })
-          ],
-          autoScroll: true,
-          listeners: {
-            start: (event) => {
-              event.target.style.opacity = '0.5';
-            },
-            move: (event) => {
-              const target = event.target;
-              const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
-              const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
-              
-              target.style.transform = `translate(${x}px, ${y}px)`;
-              target.setAttribute('data-x', x.toString());
-              target.setAttribute('data-y', y.toString());
-            },
-            end: (event) => {
-              event.target.style.opacity = '1';
-              event.target.style.transform = '';
-              event.target.removeAttribute('data-x');
-              event.target.removeAttribute('data-y');
-            }
-          }
-        });
-    });
+  onCanvasDrop(event: DropEvent) {
+    this.createNode(event.data.type, event.data.name, event.data.icon, event.x, event.y);
   }
 
-  private setupCanvasDropZone() {
-    const canvas = this.diagramCanvas.nativeElement;
-    
-    interact(canvas)
-      .dropzone({
-        accept: '.palette-item',
-        overlap: 0.1,
-        ondrop: (event) => {
-          const droppedElement = event.relatedTarget;
-          const nodeType = droppedElement.getAttribute('data-type');
-          const nodeName = droppedElement.getAttribute('data-name');
-          const nodeIcon = droppedElement.getAttribute('data-icon');
-          
-          const rect = canvas.getBoundingClientRect();
-          const x = event.dragEvent.clientX - rect.left;
-          const y = event.dragEvent.clientY - rect.top;
-          
-          this.createNode(nodeType, nodeName, nodeIcon, x, y);
-        }
-      });
+  private initializePaletteItems() {
+    this.paletteItems = this.createNodes();
   }
 
   private createNode(type: string, baseName: string, icon: string, x: number, y: number) {
@@ -205,34 +147,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     return newName;
   }
 
-  private createPalette() {
-    const paletteContainer = this.paletteContainer.nativeElement;
-    const nodeDataArray = this.createNodes();
-
-    nodeDataArray.forEach(nodeData => {
-      const paletteItem = document.createElement('div');
-      paletteItem.className = 'palette-item';
-      paletteItem.setAttribute('data-type', nodeData.type);
-      paletteItem.setAttribute('data-name', nodeData.name);
-      paletteItem.setAttribute('data-icon', nodeData.icon);
-      
-      const icon = document.createElement('img');
-      icon.src = nodeData.icon;
-      icon.alt = nodeData.name;
-      icon.style.width = '40px';
-      icon.style.height = '40px';
-      
-      const label = document.createElement('div');
-      label.textContent = nodeData.name;
-      label.className = 'palette-label';
-      
-      paletteItem.appendChild(icon);
-      paletteItem.appendChild(label);
-      paletteContainer.appendChild(paletteItem);
-    });
-  }
-
-  private createNodes() {
+  private createNodes(): DragDropData[] {
     return [
       { name: 'ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress') },
       { name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },
@@ -288,25 +203,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
     
     node.element = nodeElement;
     
-    // Make node draggable
-    interact(nodeElement)
-      .draggable({
-        listeners: {
-          move: (event) => {
-            node.x += event.dx;
-            node.y += event.dy;
-            
-            nodeElement.style.left = `${node.x}px`;
-            nodeElement.style.top = `${node.y}px`;
-            
-            this.updateLinks();
-            this.updateDiagramData();
-          }
-        }
-      })
-      .on('tap', () => {
-        this.selectNode(node);
-      });
+    // Add click handler for node selection
+    nodeElement.addEventListener('click', () => {
+      this.selectNode(node);
+    });
     
     // Handle label editing
     label.addEventListener('blur', () => {

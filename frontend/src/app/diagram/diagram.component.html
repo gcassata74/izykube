@@ -1,9 +1,22 @@
 <div class="container" #container>
   <div class="first-column" #paletteContainer>
-    <!-- Palette items will be dynamically created here -->
+    <div 
+      *ngFor="let item of paletteItems" 
+      class="palette-item"
+      appDragDrop
+      [isDraggable]="true"
+      [dragData]="item">
+      <img [src]="item.icon" [alt]="item.name" style="width: 40px; height: 40px;">
+      <div class="palette-label">{{ item.name }}</div>
+    </div>
   </div>
 
-  <div class="second-column" #diagramCanvas>
+  <div 
+    class="second-column" 
+    #diagramCanvas
+    appDragDrop
+    [isDropZone]="true"
+    (onDrop)="onCanvasDrop($event)">
     <!-- Diagram nodes will be dynamically created here -->
   </div>
 </div>
