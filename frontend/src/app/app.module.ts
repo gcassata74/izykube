@@ -51,6 +51,7 @@ import { EditorModule } from 'primeng/editor';
 import { SharedModule } from './shared/shared.module';
 import { JobFormComponent } from './cluster/job-form/job-form.component';
 import { DragDropDirective } from './directives/drag-drop.directive';
+import { NodeConnectorDirective } from './directives/node-connector.directive';
 
 @NgModule({
   declarations: [
@@ -72,6 +73,7 @@ import { DragDropDirective } from './directives/drag-drop.directive';
     AssetFormComponent,
     JobFormComponent,
     DragDropDirective,
+    NodeConnectorDirective,
   ],
   imports: [
     SharedModule,

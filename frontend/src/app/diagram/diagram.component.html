@@ -17,6 +17,39 @@
     appDragDrop
     [isDropZone]="true"
     (onDrop)="onCanvasDrop($event)">
-    <!-- Diagram nodes will be dynamically created here -->
+    
+    <!-- Diagram nodes rendered through Angular -->
+    <div 
+      *ngFor="let node of nodes" 
+      class="diagram-node"
+      appNodeConnector
+      [nodeId]="node.id"
+      (onConnectionStart)="onConnectionStart($event)"
+      (onConnectionEnd)="onConnectionEnd($event)"
+      (onConnectionCancel)="onConnectionCancel()"
+      [style.position]="'absolute'"
+      [style.left.px]="node.x"
+      [style.top.px]="node.y"
+      [style.width.px]="80"
+      [style.height.px]="80"
+      [style.border]="selectedNode?.id === node.id ? '3px solid #007bff' : '3px solid #ccc'"
+      [style.border-radius.px]="10"
+      [style.background-color]="'white'"
+      [style.display]="'flex'"
+      [style.flex-direction]="'column'"
+      [style.align-items]="'center'"
+      [style.justify-content]="'center'"
+      [style.cursor]="'move'"
+      [style.z-index]="2"
+      (click)="selectNode(node)">
+      
+      <img [src]="node.icon" [alt]="node.name" style="width: 40px; height: 40px;">
+      <div 
+        style="font-size: 10px; text-align: center; margin-top: 2px;"
+        contenteditable="true"
+        (blur)="onNodeLabelEdit(node, $event)">
+        {{ node.name }}
+      </div>
+    </div>
   </div>
 </div>

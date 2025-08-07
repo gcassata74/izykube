@@ -9,6 +9,7 @@ import * as actions from '../store/actions/actions';
 import { getCurrentCluster, selectClusterDiagram } from '../store/selectors/selectors';
 import { Cluster } from '../model/cluster.class';
 import { DragDropData, DropEvent } from '../directives/drag-drop.directive';
+import { ConnectionEvent } from '../directives/node-connector.directive';
 
 interface DiagramNode {
   id: string;
@@ -92,13 +93,24 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.svgElement.style.zIndex = '1';
     canvas.appendChild(this.svgElement);
     
-    // Render existing nodes
-    this.renderNodes();
+    // Render existing links
     this.renderLinks();
   }
 
   onCanvasDrop(event: DropEvent) {
     this.createNode(event.data.type, event.data.name, event.data.icon, event.x, event.y);
+  }
+
+  onConnectionStart(nodeId: string) {
+    console.log('Connection started from node:', nodeId);
+  }
+
+  onConnectionEnd(event: ConnectionEvent) {
+    this.createLink(event.fromNodeId, event.toNodeId);
+  }
+
+  onConnectionCancel() {
+    console.log('Connection cancelled');
   }
 
   private initializePaletteItems() {
@@ -160,62 +172,9 @@ export class DiagramComponent implements OnInit, OnDestroy {
     ];
   }
 
-  private renderNodes() {
-    this.nodes.forEach(node => this.renderNode(node));
-  }
-
-  private renderNode(node: DiagramNode) {
-    const canvas = this.diagramCanvas.nativeElement;
-    
-    const nodeElement = document.createElement('div');
-    nodeElement.className = 'diagram-node';
-    nodeElement.style.position = 'absolute';
-    nodeElement.style.left = `${node.x}px`;
-    nodeElement.style.top = `${node.y}px`;
-    nodeElement.style.width = '80px';
-    nodeElement.style.height = '80px';
-    nodeElement.style.border = '3px solid #ccc';
-    nodeElement.style.borderRadius = '10px';
-    nodeElement.style.backgroundColor = 'white';
-    nodeElement.style.display = 'flex';
-    nodeElement.style.flexDirection = 'column';
-    nodeElement.style.alignItems = 'center';
-    nodeElement.style.justifyContent = 'center';
-    nodeElement.style.cursor = 'move';
-    nodeElement.style.zIndex = '2';
-    
-    const icon = document.createElement('img');
-    icon.src = node.icon;
-    icon.alt = node.name;
-    icon.style.width = '40px';
-    icon.style.height = '40px';
-    
-    const label = document.createElement('div');
-    label.textContent = node.name;
-    label.style.fontSize = '10px';
-    label.style.textAlign = 'center';
-    label.style.marginTop = '2px';
-    label.contentEditable = 'true';
-    
-    nodeElement.appendChild(icon);
-    nodeElement.appendChild(label);
-    canvas.appendChild(nodeElement);
-    
-    node.element = nodeElement;
-    
-    // Add drag functionality for existing nodes
-    this.makeNodeDraggable(nodeElement, node);
-    
-    // Add click handler for node selection
-    nodeElement.addEventListener('click', () => {
-      this.selectNode(node);
-    });
-    
-    // Handle label editing
-    label.addEventListener('blur', () => {
-      node.name = label.textContent || node.name;
-      this.updateDiagramData();
-    });
+  onNodeLabelEdit(node: DiagramNode, event: any) {
+    node.name = event.target.textContent || node.name;
+    this.updateDiagramData();
   }
 
   private makeNodeDraggable(element: HTMLElement, node: DiagramNode) {
@@ -321,6 +280,29 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.nodes = [];
       this.links = [];
     }
+  }
+
+  private createLink(fromNodeId: string, toNodeId: string) {
+    // Check if link already exists
+    const existingLink = this.links.find(link => 
+      (link.from === fromNodeId && link.to === toNodeId) ||
+      (link.from === toNodeId && link.to === fromNodeId)
+    );
+    
+    if (existingLink) {
+      console.log('Link already exists between these nodes');
+      return;
+    }
+    
+    const link: DiagramLink = {
+      id: uuidv4(),
+      from: fromNodeId,
+      to: toNodeId
+    };
+    
+    this.links.push(link);
+    this.renderLink(link);
+    this.updateDiagramData();
   }
 
   private updateDiagramData() {
