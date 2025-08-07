@@ -3,7 +3,8 @@ $izy-blue: #0047AB;
 $izy-light-blue: #4169E1;
 $izy-white: #FFFFFF;
 $izy-black: #000000;
-$izy-grey: #F0F0F0;
+$izy-grey: #F8F9FA;
+$izy-light-grey: #E9ECEF;
 
 // Layout Variables
 $sidebar-width: 200px;
@@ -16,7 +17,7 @@ $toolbar-height: 70px;
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: $izy-white;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   color: $izy-black;
 }
 
@@ -25,8 +26,10 @@ $toolbar-height: 70px;
 .content-container {
   margin-left: $sidebar-width;
   padding: 20px;
-  background-color: $izy-grey;
+  background-color: $izy-white;
   min-height: 100vh;
+  border-radius: 8px 0 0 0;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 
