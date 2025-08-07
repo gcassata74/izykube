@@ -31,6 +31,8 @@ interface DiagramLink {
   id: string;
   from: string;
   to: string;
+  fromPoint?: ConnectionPoint;
+  toPoint?: ConnectionPoint;
   element?: SVGElement;
 }
 
@@ -243,9 +245,27 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
     if (!fromNode || !toNode) return;
 
-    // Calculate connection points (center of each node for now)
-    const fromPoint = this.getNodeCenter(fromNode);
-    const toPoint = this.getNodeCenter(toNode);
+    // Use specific connection points if available, otherwise use node centers
+    let fromPoint: { x: number, y: number };
+    let toPoint: { x: number, y: number };
+
+    if (link.fromPoint) {
+      // Update the connection point coordinates based on current node position
+      const updatedFromPoints = this.getConnectionPoints(fromNode);
+      const matchingFromPoint = updatedFromPoints.find(p => p.side === link.fromPoint!.side);
+      fromPoint = matchingFromPoint || this.getNodeCenter(fromNode);
+    } else {
+      fromPoint = this.getNodeCenter(fromNode);
+    }
+
+    if (link.toPoint) {
+      // Update the connection point coordinates based on current node position
+      const updatedToPoints = this.getConnectionPoints(toNode);
+      const matchingToPoint = updatedToPoints.find(p => p.side === link.toPoint!.side);
+      toPoint = matchingToPoint || this.getNodeCenter(toNode);
+    } else {
+      toPoint = this.getNodeCenter(toNode);
+    }
 
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', fromPoint.x.toString());
@@ -274,9 +294,26 @@ export class DiagramComponent implements OnInit, OnDestroy {
       const toNode = this.nodes.find(n => n.id === link.to);
 
       if (fromNode && toNode && link.element) {
-        const fromPoint = this.getNodeCenter(fromNode);
-        const toPoint = this.getNodeCenter(toNode);
+        // Use specific connection points if available, otherwise use node centers
+        let fromPoint: { x: number, y: number };
+        let toPoint: { x: number, y: number };
 
+        if (link.fromPoint) {
+          const updatedFromPoints = this.getConnectionPoints(fromNode);
+          const matchingFromPoint = updatedFromPoints.find(p => p.side === link.fromPoint!.side);
+          fromPoint = matchingFromPoint || this.getNodeCenter(fromNode);
+        } else {
+          fromPoint = this.getNodeCenter(fromNode);
+        }
+
+        if (link.toPoint) {
+          const updatedToPoints = this.getConnectionPoints(toNode);
+          const matchingToPoint = updatedToPoints.find(p => p.side === link.toPoint!.side);
+          toPoint = matchingToPoint || this.getNodeCenter(toNode);
+        } else {
+          toPoint = this.getNodeCenter(toNode);
+        }
+        
         link.element.setAttribute('x1', fromPoint.x.toString());
         link.element.setAttribute('y1', fromPoint.y.toString());
         link.element.setAttribute('x2', toPoint.x.toString());
@@ -394,6 +431,50 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.updateDiagramData();
   }
 
+  private createLinkWithPoints(fromNodeId: string, toNodeId: string, fromPoint: ConnectionPoint, toPoint: ConnectionPoint) {
+    // Check if link already exists
+    const existingLink = this.links.find(link =>
+      (link.from === fromNodeId && link.to === toNodeId) ||
+      (link.from === toNodeId && link.to === fromNodeId)
+    );
+
+    if (existingLink) {
+      console.log('Link already exists between these nodes');
+      return;
+    }
+
+    const link: DiagramLink = {
+      id: uuidv4(),
+      from: fromNodeId,
+      to: toNodeId,
+      fromPoint: fromPoint,
+      toPoint: toPoint
+    };
+
+    this.links.push(link);
+    this.renderLink(link);
+    this.updateDiagramData();
+  }
+
+  private findClosestConnectionPoint(clientX: number, clientY: number, connectionPoints: ConnectionPoint[]): ConnectionPoint {
+    const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
+    const x = clientX - canvasRect.left;
+    const y = clientY - canvasRect.top;
+
+    let closestPoint = connectionPoints[0];
+    let minDistance = Math.sqrt(Math.pow(x - closestPoint.x, 2) + Math.pow(y - closestPoint.y, 2));
+
+    connectionPoints.forEach(point => {
+      const distance = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(y - point.y, 2));
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestPoint = point;
+      }
+    });
+
+    return closestPoint;
+  }
+
   private getNodeCenter(node: DiagramNode): { x: number, y: number } {
     return {
       x: node.x + 40, // Half of node width (80px)
@@ -421,7 +502,12 @@ export class DiagramComponent implements OnInit, OnDestroy {
     } else {
       // End connection
       if (this.connectionStartNode && this.connectionStartNode.id !== node.id) {
-        this.createLink(this.connectionStartNode.id, node.id);
+        this.createLinkWithPoints(
+          this.connectionStartNode.id, 
+          node.id,
+          this.connectionStartPoint!,
+          point
+        );
       }
       this.cancelConnection();
     }
@@ -456,7 +542,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
         const connectionPoint = targetElement?.closest('.connection-point');
         
         if (connectionPoint) {
-          // Find the target node
+          // Find the target node and connection point
           const nodeElement = connectionPoint.closest('.diagram-node');
           if (nodeElement) {
             const targetNode = this.nodes.find(n => 
@@ -465,7 +551,20 @@ export class DiagramComponent implements OnInit, OnDestroy {
             );
             
             if (targetNode && targetNode.id !== this.connectionStartNode?.id) {
-              this.createLink(this.connectionStartNode!.id, targetNode.id);
+              // Determine which connection point was targeted
+              const targetConnectionPoints = this.getConnectionPoints(targetNode);
+              const targetPoint = this.findClosestConnectionPoint(
+                upEvent.clientX, 
+                upEvent.clientY, 
+                targetConnectionPoints
+              );
+              
+              this.createLinkWithPoints(
+                this.connectionStartNode!.id, 
+                targetNode.id,
+                this.connectionStartPoint!,
+                targetPoint
+              );
             }
           }
         }
@@ -525,7 +624,13 @@ export class DiagramComponent implements OnInit, OnDestroy {
   private updateDiagramData() {
     const diagramData = JSON.stringify({
       nodes: this.nodes.map(n => ({ id: n.id, name: n.name, type: n.type, icon: n.icon, x: n.x, y: n.y })),
-      links: this.links.map(l => ({ id: l.id, from: l.from, to: l.to }))
+      links: this.links.map(l => ({ 
+        id: l.id, 
+        from: l.from, 
+        to: l.to,
+        fromPoint: l.fromPoint,
+        toPoint: l.toPoint
+      }))
     });
 
     this.store.dispatch(actions.updateDiagram({ diagramData }));
