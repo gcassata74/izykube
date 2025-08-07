@@ -45,6 +45,19 @@
       (click)="selectNode(node); $event.stopPropagation()"
       (mousedown)="onNodeMouseDown($event, node)">
       
+      <!-- Connection points -->
+      <div 
+        *ngFor="let point of getConnectionPoints(node)"
+        class="connection-point"
+        [class.connection-point-top]="point.side === 'top'"
+        [class.connection-point-right]="point.side === 'right'"
+        [class.connection-point-bottom]="point.side === 'bottom'"
+        [class.connection-point-left]="point.side === 'left'"
+        [class.connection-point-active]="isConnecting && connectionStartNode?.id === node.id && connectionStartPoint?.side === point.side"
+        (click)="onConnectionPointClick(node, point, $event)"
+        (mousedown)="$event.stopPropagation()">
+      </div>
+      
       <img [src]="node.icon" [alt]="node.name" style="width: 40px; height: 40px;">
       <div 
         style="font-size: 10px; text-align: center; margin-top: 2px;"

@@ -21,6 +21,12 @@ interface DiagramNode {
   element?: HTMLElement;
 }
 
+interface ConnectionPoint {
+  side: 'top' | 'right' | 'bottom' | 'left';
+  x: number;
+  y: number;
+}
+
 interface DiagramLink {
   id: string;
   from: string;
@@ -43,6 +49,9 @@ export class DiagramComponent implements OnInit, OnDestroy {
   links: DiagramLink[] = [];
   selectedNode: DiagramNode | null = null;
   selectedLink: DiagramLink | null = null;
+  isConnecting: boolean = false;
+  connectionStartNode: DiagramNode | null = null;
+  connectionStartPoint: ConnectionPoint | null = null;
   isResizing: boolean = false;
   firstColumnWidth: number = 180;
   minWidth: number = 200;
@@ -232,11 +241,15 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
     if (!fromNode || !toNode) return;
 
+    // Calculate connection points (center of each node for now)
+    const fromPoint = this.getNodeCenter(fromNode);
+    const toPoint = this.getNodeCenter(toNode);
+
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', (fromNode.x + 40).toString());
-    line.setAttribute('y1', (fromNode.y + 40).toString());
-    line.setAttribute('x2', (toNode.x + 40).toString());
-    line.setAttribute('y2', (toNode.y + 40).toString());
+    line.setAttribute('x1', fromPoint.x.toString());
+    line.setAttribute('y1', fromPoint.y.toString());
+    line.setAttribute('x2', toPoint.x.toString());
+    line.setAttribute('y2', toPoint.y.toString());
     line.setAttribute('stroke', this.selectedLink?.id === link.id ? '#ff4444' : 'lightblue');
     line.setAttribute('stroke-width', this.selectedLink?.id === link.id ? '4' : '3');
     line.setAttribute('marker-end', 'url(#arrowhead)');
@@ -259,10 +272,13 @@ export class DiagramComponent implements OnInit, OnDestroy {
       const toNode = this.nodes.find(n => n.id === link.to);
 
       if (fromNode && toNode && link.element) {
-        link.element.setAttribute('x1', (fromNode.x + 40).toString());
-        link.element.setAttribute('y1', (fromNode.y + 40).toString());
-        link.element.setAttribute('x2', (toNode.x + 40).toString());
-        link.element.setAttribute('y2', (toNode.y + 40).toString());
+        const fromPoint = this.getNodeCenter(fromNode);
+        const toPoint = this.getNodeCenter(toNode);
+        
+        link.element.setAttribute('x1', fromPoint.x.toString());
+        link.element.setAttribute('y1', fromPoint.y.toString());
+        link.element.setAttribute('x2', toPoint.x.toString());
+        link.element.setAttribute('y2', toPoint.y.toString());
       }
     });
   }
@@ -374,6 +390,52 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.links.push(link);
     this.renderLink(link);
     this.updateDiagramData();
+  }
+
+  private getNodeCenter(node: DiagramNode): { x: number, y: number } {
+    return {
+      x: node.x + 40, // Half of node width (80px)
+      y: node.y + 40  // Half of node height (80px)
+    };
+  }
+
+  private getConnectionPoints(node: DiagramNode): ConnectionPoint[] {
+    return [
+      { side: 'top', x: node.x + 40, y: node.y },
+      { side: 'right', x: node.x + 80, y: node.y + 40 },
+      { side: 'bottom', x: node.x + 40, y: node.y + 80 },
+      { side: 'left', x: node.x, y: node.y + 40 }
+    ];
+  }
+
+  onConnectionPointClick(node: DiagramNode, point: ConnectionPoint, event: MouseEvent) {
+    event.stopPropagation();
+    
+    if (!this.isConnecting) {
+      // Start connection
+      this.isConnecting = true;
+      this.connectionStartNode = node;
+      this.connectionStartPoint = point;
+    } else {
+      // End connection
+      if (this.connectionStartNode && this.connectionStartNode.id !== node.id) {
+        this.createLink(this.connectionStartNode.id, node.id);
+      }
+      this.cancelConnection();
+    }
+  }
+
+  private cancelConnection() {
+    this.isConnecting = false;
+    this.connectionStartNode = null;
+    this.connectionStartPoint = null;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    if (this.isConnecting) {
+      this.cancelConnection();
+    }
   }
 
   private updateDiagramData() {
