@@ -511,9 +511,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   onConnectionPointClick(node: DiagramNode, point: ConnectionPoint, event: MouseEvent) {
     event.stopPropagation();
+    event.preventDefault();
 
     if (!this.isConnecting) {
-      // Start connection
+      // Start connection immediately with drag
       this.isConnecting = true;
       this.connectionStartNode = node;
       this.connectionStartPoint = point;
@@ -521,8 +522,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
       // Create temporary line for visual feedback
       this.createTempLine(point.x, point.y, point.x, point.y);
       
-      // Add mouse move listener to follow cursor
-      this.addConnectionMouseListeners();
+      // Start dragging immediately
+      this.startConnectionDrag(event);
     } else {
       // End connection - only allow if clicking on a different node's connection point
       if (this.connectionStartNode && this.connectionStartNode.id !== node.id) {
@@ -537,7 +538,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     }
   }
 
-  private addConnectionMouseListeners() {
+  private startConnectionDrag(startEvent: MouseEvent) {
     const onMouseMove = (moveEvent: MouseEvent) => {
       if (this.isConnecting && this.tempLine) {
         const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
@@ -553,14 +554,57 @@ export class DiagramComponent implements OnInit, OnDestroy {
     };
 
     const onMouseUp = (upEvent: MouseEvent) => {
-      // Only allow connection completion through connection point clicks
-      // This prevents accidental connections when clicking elsewhere
+      if (this.isConnecting) {
+        // Check if we're dropping on a connection point
+        const targetElement = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
+        const connectionPoint = targetElement?.closest('.connection-point');
+        
+        if (connectionPoint) {
+          // Find the target node and connection point
+          const nodeElement = connectionPoint.closest('.diagram-node');
+          if (nodeElement) {
+            const targetNode = this.findNodeByElement(nodeElement as HTMLElement);
+            
+            if (targetNode && targetNode.id !== this.connectionStartNode?.id) {
+              // Determine which connection point was targeted
+              const targetConnectionPoints = this.getConnectionPoints(targetNode);
+              const targetPoint = this.findClosestConnectionPoint(
+                upEvent.clientX, 
+                upEvent.clientY, 
+                targetConnectionPoints
+              );
+              
+              this.createLinkWithPoints(
+                this.connectionStartNode!.id, 
+                targetNode.id,
+                this.connectionStartPoint!,
+                targetPoint
+              );
+            }
+          }
+        }
+        
+        this.cancelConnection();
+      }
+
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
+  }
+
+  private findNodeByElement(nodeElement: HTMLElement): DiagramNode | null {
+    const leftStyle = nodeElement.style.left;
+    const topStyle = nodeElement.style.top;
+    
+    if (!leftStyle || !topStyle) return null;
+    
+    const x = parseInt(leftStyle.replace('px', ''));
+    const y = parseInt(topStyle.replace('px', ''));
+    
+    return this.nodes.find(node => node.x === x && node.y === y) || null;
   }
 
   private highlightNearbyConnectionPoints(clientX: number, clientY: number) {
