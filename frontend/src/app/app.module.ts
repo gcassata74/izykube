@@ -50,6 +50,7 @@ import { ClusterEffect } from './store/effects/effect';
 import { EditorModule } from 'primeng/editor';
 import { SharedModule } from './shared/shared.module';
 import { JobFormComponent } from './cluster/job-form/job-form.component';
+import { DragDropDirective } from './directives/drag-drop.directive';
 
 @NgModule({
   declarations: [
@@ -70,6 +71,7 @@ import { JobFormComponent } from './cluster/job-form/job-form.component';
     VolumeFormComponent,
     AssetFormComponent,
     JobFormComponent,
+    DragDropDirective,
   ],
   imports: [
     SharedModule,
