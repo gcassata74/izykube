@@ -42,6 +42,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   nodes: DiagramNode[] = [];
   links: DiagramLink[] = [];
   selectedNode: DiagramNode | null = null;
+  selectedLink: DiagramLink | null = null;
   isResizing: boolean = false;
   firstColumnWidth: number = 180;
   minWidth: number = 200;
@@ -236,9 +237,17 @@ export class DiagramComponent implements OnInit, OnDestroy {
     line.setAttribute('y1', (fromNode.y + 40).toString());
     line.setAttribute('x2', (toNode.x + 40).toString());
     line.setAttribute('y2', (toNode.y + 40).toString());
-    line.setAttribute('stroke', 'lightblue');
-    line.setAttribute('stroke-width', '3');
+    line.setAttribute('stroke', this.selectedLink?.id === link.id ? '#ff4444' : 'lightblue');
+    line.setAttribute('stroke-width', this.selectedLink?.id === link.id ? '4' : '3');
     line.setAttribute('marker-end', 'url(#arrowhead)');
+    line.style.cursor = 'pointer';
+    line.style.pointerEvents = 'stroke';
+    
+    // Add click event listener for link selection
+    line.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.selectLink(link);
+    });
     
     this.svgElement.appendChild(line);
     link.element = line;
@@ -260,6 +269,76 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   selectNode(node: DiagramNode) {
     this.selectedNode = node;
+    this.selectedLink = null; // Clear link selection when selecting a node
+    this.updateLinkStyles();
+  }
+
+  selectLink(link: DiagramLink) {
+    this.selectedLink = link;
+    this.selectedNode = null; // Clear node selection when selecting a link
+    this.updateLinkStyles();
+  }
+
+  private updateLinkStyles() {
+    this.links.forEach(link => {
+      if (link.element) {
+        const isSelected = this.selectedLink?.id === link.id;
+        link.element.setAttribute('stroke', isSelected ? '#ff4444' : 'lightblue');
+        link.element.setAttribute('stroke-width', isSelected ? '4' : '3');
+      }
+    });
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent) {
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (this.selectedLink) {
+        this.deleteSelectedLink();
+        event.preventDefault();
+      } else if (this.selectedNode) {
+        this.deleteSelectedNode();
+        event.preventDefault();
+      }
+    }
+  }
+
+  private deleteSelectedLink() {
+    if (!this.selectedLink) return;
+    
+    // Remove the SVG element
+    if (this.selectedLink.element) {
+      this.selectedLink.element.remove();
+    }
+    
+    // Remove from links array
+    this.links = this.links.filter(link => link.id !== this.selectedLink!.id);
+    this.selectedLink = null;
+    this.updateDiagramData();
+  }
+
+  private deleteSelectedNode() {
+    if (!this.selectedNode) return;
+    
+    // Remove all links connected to this node
+    const connectedLinks = this.links.filter(link => 
+      link.from === this.selectedNode!.id || link.to === this.selectedNode!.id
+    );
+    
+    connectedLinks.forEach(link => {
+      if (link.element) {
+        link.element.remove();
+      }
+    });
+    
+    // Remove links from array
+    this.links = this.links.filter(link => 
+      link.from !== this.selectedNode!.id && link.to !== this.selectedNode!.id
+    );
+    
+    // Remove node from array
+    this.nodes = this.nodes.filter(node => node.id !== this.selectedNode!.id);
+    this.selectedNode = null;
+    this.updateDiagramData();
   }
 
   private loadDiagramData(diagramData: string) {

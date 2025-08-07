@@ -16,7 +16,8 @@
     #diagramCanvas
     appDragDrop
     [isDropZone]="true"
-    (onDrop)="onCanvasDrop($event)">
+    (onDrop)="onCanvasDrop($event)"
+    (click)="selectedNode = null; selectedLink = null; updateLinkStyles()">
     
     <!-- Diagram nodes rendered through Angular -->
     <div 
@@ -41,7 +42,7 @@
       [style.justify-content]="'center'"
       [style.cursor]="'move'"
       [style.z-index]="2"
-      (click)="selectNode(node)"
+      (click)="selectNode(node); $event.stopPropagation()"
       (mousedown)="onNodeMouseDown($event, node)">
       
       <img [src]="node.icon" [alt]="node.name" style="width: 40px; height: 40px;">

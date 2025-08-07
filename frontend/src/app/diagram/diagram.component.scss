@@ -93,6 +93,18 @@
   }
 }
 
+// SVG link styles
+svg line {
+  transition: stroke 0.2s ease, stroke-width 0.2s ease;
+  
+  &:hover {
+    stroke: #0066cc !important;
+    stroke-width: 4 !important;
+  }
+}
+
+// Selected link styles are handled dynamically in TypeScript
+
 @media (max-width: 1200px) {
   .first-column {
     width: 180px;
