@@ -129,7 +129,6 @@ export class DiagramComponent implements OnInit, OnDestroy {
     };
     
     this.nodes.push(node);
-    this.renderNode(node);
     this.updateDiagramData();
   }
 
@@ -177,49 +176,50 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.updateDiagramData();
   }
 
-  private makeNodeDraggable(element: HTMLElement, node: DiagramNode) {
+  onNodeMouseDown(event: MouseEvent, node: DiagramNode) {
+    // Prevent default to avoid text selection
+    event.preventDefault();
+    
     let isDragging = false;
-    let dragOffset = { x: 0, y: 0 };
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startNodeX = node.x;
+    const startNodeY = node.y;
 
-    const onMouseDown = (event: MouseEvent) => {
-      event.preventDefault();
-      isDragging = true;
-      
-      const rect = element.getBoundingClientRect();
-      dragOffset.x = event.clientX - rect.left;
-      dragOffset.y = event.clientY - rect.top;
-      
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-    };
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      if (!isDragging) {
+        // Start dragging if mouse moved enough
+        const deltaX = Math.abs(moveEvent.clientX - startX);
+        const deltaY = Math.abs(moveEvent.clientY - startY);
+        if (deltaX > 5 || deltaY > 5) {
+          isDragging = true;
+        }
+      }
 
-    const onMouseMove = (event: MouseEvent) => {
-      if (!isDragging) return;
-      
-      const canvas = this.diagramCanvas.nativeElement;
-      const canvasRect = canvas.getBoundingClientRect();
-      
-      node.x = event.clientX - canvasRect.left - dragOffset.x;
-      node.y = event.clientY - canvasRect.top - dragOffset.y;
-      
-      element.style.left = `${node.x}px`;
-      element.style.top = `${node.y}px`;
-      
-      this.updateLinks();
+      if (isDragging) {
+        const deltaX = moveEvent.clientX - startX;
+        const deltaY = moveEvent.clientY - startY;
+        
+        node.x = startNodeX + deltaX;
+        node.y = startNodeY + deltaY;
+        
+        this.updateLinks();
+      }
     };
 
     const onMouseUp = () => {
-      if (!isDragging) return;
-      
-      isDragging = false;
-      this.updateDiagramData();
+      if (isDragging) {
+        this.updateDiagramData();
+      }
       
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
 
-    element.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   }
+
 
   private renderLinks() {
     this.links.forEach(link => this.renderLink(link));
@@ -258,16 +258,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
     });
   }
 
-  private selectNode(node: DiagramNode) {
-    // Clear previous selection
-    if (this.selectedNode && this.selectedNode.element) {
-      this.selectedNode.element.style.borderColor = '#ccc';
-    }
-    
+  selectNode(node: DiagramNode) {
     this.selectedNode = node;
-    if (node.element) {
-      node.element.style.borderColor = '#007bff';
-    }
   }
 
   private loadDiagramData(diagramData: string) {

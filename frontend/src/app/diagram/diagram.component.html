@@ -41,7 +41,8 @@
       [style.justify-content]="'center'"
       [style.cursor]="'move'"
       [style.z-index]="2"
-      (click)="selectNode(node)">
+      (click)="selectNode(node)"
+      (mousedown)="onNodeMouseDown($event, node)">
       
       <img [src]="node.icon" [alt]="node.name" style="width: 40px; height: 40px;">
       <div 
