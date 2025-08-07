@@ -27,12 +27,13 @@
 
   <!-- Sidebar -->
   <p-sidebar class="app-sidebar" [showCloseIcon]="false" [visible]="true" [modal]="false" position="left">
-    <ul>
-      <li><a (click)="navigate('/home')"><i class="pi pi-home"></i> Home</a></li>
-      <li><a (click)="navigate('/clusters')"><i class="pi pi-fw pi-th-large"></i> Clusters</a></li>
-      <li><a (click)="navigate('/assets')"><i class="pi pi-fw pi-briefcase"></i> Assets</a></li>
-      <!-- more items -->
-    </ul>
+    <nav class="sidebar-nav">
+      <ul class="nav-list">
+        <li class="nav-item"><a class="nav-link" (click)="navigate('/home')"><i class="pi pi-home"></i> <span>Home</span></a></li>
+        <li class="nav-item"><a class="nav-link" (click)="navigate('/clusters')"><i class="pi pi-fw pi-th-large"></i> <span>Clusters</span></a></li>
+        <li class="nav-item"><a class="nav-link" (click)="navigate('/assets')"><i class="pi pi-fw pi-briefcase"></i> <span>Assets</span></a></li>
+      </ul>
+    </nav>
   </p-sidebar>
 
   <!-- Main Content -->

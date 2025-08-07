@@ -30,6 +30,69 @@ $toolbar-height: 70px;
 }
 
 
+// Sidebar Styling
+.app-sidebar {
+  width: $sidebar-width !important;
+  
+  .sidebar-nav {
+    padding: 0;
+    margin: 0;
+    
+    .nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      
+      .nav-item {
+        margin: 0;
+        
+        .nav-link {
+          display: flex;
+          align-items: center;
+          padding: 12px 20px;
+          color: $izy-black;
+          text-decoration: none;
+          transition: all 0.3s ease;
+          border-left: 3px solid transparent;
+          
+          i {
+            margin-right: 12px;
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+            color: $izy-blue;
+          }
+          
+          span {
+            font-weight: 500;
+          }
+          
+          &:hover {
+            background-color: rgba($izy-blue, 0.1);
+            border-left-color: $izy-blue;
+            color: $izy-blue;
+            
+            i {
+              color: $izy-blue;
+            }
+          }
+          
+          &.active {
+            background-color: rgba($izy-blue, 0.15);
+            border-left-color: $izy-blue;
+            color: $izy-blue;
+            font-weight: 600;
+            
+            i {
+              color: $izy-blue;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 // Responsive Adjustments
 @media (max-width: 768px) {
   .app-sidebar {
