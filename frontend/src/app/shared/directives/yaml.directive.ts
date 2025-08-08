@@ -18,7 +18,7 @@ import * as yaml from 'js-yaml';
     }
   ]
 })
-export class YamlDirective implements OnInit, ControlValueAccessor, OnDestroy{
+export class YamlDirective implements OnInit, ControlValueAccessor, OnDestroy {
 
   private editor: any;
 
@@ -95,7 +95,7 @@ export class YamlDirective implements OnInit, ControlValueAccessor, OnDestroy{
         yaml.load(control.value);
         return null;
       } catch (e: any) {
-      if (e instanceof yaml.YAMLException) {
+        if (e instanceof yaml.YAMLException) {
           return {
             yamlError: {
               line: e.mark?.line,
@@ -116,9 +116,4 @@ export class YamlDirective implements OnInit, ControlValueAccessor, OnDestroy{
       this.editor = null;
     }
   }
-
-
-
-
-
 }

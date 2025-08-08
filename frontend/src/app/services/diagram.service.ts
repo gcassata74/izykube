@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import * as go from 'gojs';
 import { BehaviorSubject, Subject, tap, Subscription, catchError, of, throwError, Observable } from 'rxjs';
-import { addLink, addNode, removeLink, removeNode, updateCluster, updateNode } from '../store/actions/actions';
+import { addLink, addNode, removeLink, removeNode, updateCluster, updateNode, selectNode } from '../store/actions/actions';
 import { Store } from '@ngrx/store';
 
 import { Link } from '../model/link.class';
@@ -16,7 +16,7 @@ import { Node } from '../model/node.class';
 @Injectable({
   providedIn: 'root'
 })
-export class DiagramService implements OnDestroy{
+export class DiagramService implements OnDestroy {
 
   private subscription = new Subscription();
   private _selectedNode = new Subject<go.Node>();
@@ -32,6 +32,16 @@ export class DiagramService implements OnDestroy{
     const selectedNode = e.diagram.selection.first();
     if (selectedNode instanceof go.Node) {
       this._selectedNode.next(selectedNode);
+      // Dispatch action to open form for the selected node
+      this.store.dispatch(selectNode({ nodeId: selectedNode.data.key }));
+    }
+  }
+
+  onNodeClicked(e: go.DiagramEvent): void {
+    const clickedNode = e.targetObject?.part;
+    if (clickedNode instanceof go.Node) {
+      // Open form for the clicked node
+      this.store.dispatch(selectNode({ nodeId: clickedNode.data.key }));
     }
   }
 
@@ -108,9 +118,7 @@ export class DiagramService implements OnDestroy{
   }
 
   updateClusterNodes(nodeId: string, formValues: any) {
-   this.store.dispatch(updateNode({ nodeId, formValues }));
+    this.store.dispatch(updateNode({ nodeId, formValues }));
   }
-
 }
-
 

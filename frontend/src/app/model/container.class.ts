@@ -1,6 +1,6 @@
 import { Node } from "./node.class";
 
-export class Container extends Node{
+export class Container extends Node {
     assetId: string;
     containerPort: number;
 
@@ -9,5 +9,4 @@ export class Container extends Node{
         this.assetId = assetId;
         this.containerPort = containerPort;
     }
-
 }

@@ -41,4 +41,8 @@ export const getClusters = createSelector(
   (state) => state.clusters
 );
 
+export const getSelectedNodeId = createSelector(
+  getActionState,
+  (state: ActionState) => state?.currentAction
+);
 

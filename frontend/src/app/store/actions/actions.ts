@@ -87,10 +87,8 @@ export const loadClusters = createAction(
   props<{ clusters: Cluster[] }>()
 );
 
-
-
-
-
-
-
+export const selectNode = createAction(
+  SELECT_NODE,
+  props<{ nodeId: string }>()
+);
 

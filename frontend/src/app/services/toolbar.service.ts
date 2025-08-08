@@ -1,5 +1,5 @@
 // toolbar.service.ts
-import { BehaviorSubject, delay, Subject } from 'rxjs';
+import { BehaviorSubject, delay } from 'rxjs';
 import { Button } from '../model/button.interface';
 import { Injectable } from '@angular/core';
 
@@ -20,8 +20,5 @@ export class ToolbarService {
   clearButtons() {
     this.buttonsSource.next([]);
   }
-
-  
 }
-
 
