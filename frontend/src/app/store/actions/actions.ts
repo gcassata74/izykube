@@ -24,6 +24,7 @@ export const CREATE_TEMPLATE = '[Cluster] Create Template';
 export const DELETE_TEMPLATE = '[Cluster] Delete Template';
 export const DEPLOY = '[Cluster] Deploy';
 export const UNDEPLOY = '[Cluster] Undeploy';
+export const SELECT_NODE = '[Cluster] Select Node';
 
 
 //toolbar actions
