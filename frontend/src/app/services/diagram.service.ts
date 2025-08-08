@@ -38,7 +38,7 @@ export class DiagramService implements OnDestroy {
   }
 
   onNodeClicked(e: go.DiagramEvent): void {
-    const clickedNode = e.targetObject?.part;
+    const clickedNode = e.diagram.selection.first();
     if (clickedNode instanceof go.Node) {
       // Open form for the clicked node
       this.store.dispatch(selectNode({ nodeId: clickedNode.data.key }));
