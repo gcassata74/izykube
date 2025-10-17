@@ -1,0 +1,140 @@
+<div class="kube-explorer">
+  <div class="kube-explorer__toolbar">
+    <div class="toolbar-group">
+      <label for="namespaceSelect">Namespace</label>
+      <p-dropdown
+        inputId="namespaceSelect"
+        [options]="namespaces"
+        [(ngModel)]="selectedNamespace"
+        (onChange)="onNamespaceChange($event.value)"
+        [style.width.px]="220"
+        placeholder="Select namespace"
+        optionLabel="name"
+        optionValue="name"
+      ></p-dropdown>
+    </div>
+
+    <div class="toolbar-group toolbar-group--actions">
+      <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded" [disabled]="loading" (click)="manualRefresh()"></button>
+      <button
+        pButton
+        type="button"
+        [label]="autoRefreshEnabled ? 'Auto refresh: on' : 'Auto refresh: off'"
+        [icon]="autoRefreshEnabled ? 'pi pi-pause' : 'pi pi-play'"
+        [class.p-button-success]="autoRefreshEnabled"
+        [class.p-button-secondary]="!autoRefreshEnabled"
+        (click)="toggleAutoRefresh()"
+      ></button>
+    </div>
+  </div>
+
+  <p-tabView>
+    <p-tabPanel [header]="'Pods (' + (summary?.pods?.length || 0) + ')'">
+      <p-table #podsTable [value]="summary?.pods || []" [loading]="loading" [paginator]="true" [rows]="15"
+               [rowsPerPageOptions]="[10, 15, 25, 50]" [globalFilterFields]="['name', 'namespace', 'status', 'node']">
+        <ng-template pTemplate="caption">
+          <div class="table-caption">
+            <span class="caption-title">Pods</span>
+            <span class="caption-actions">
+              <input pInputText type="text" placeholder="Filter pods" (input)="podsTable.filterGlobal($any($event.target).value, 'contains')" />
+            </span>
+          </div>
+        </ng-template>
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Name</th>
+            <th>Namespace</th>
+            <th>Status</th>
+            <th>Ready</th>
+            <th>Restarts</th>
+            <th>Node</th>
+            <th>Age</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-pod>
+          <tr>
+            <td>{{ pod.name }}</td>
+            <td>{{ pod.namespace }}</td>
+            <td>{{ pod.status }}</td>
+            <td>{{ pod.ready }}</td>
+            <td>{{ pod.restarts }}</td>
+            <td>{{ pod.node || '-' }}</td>
+            <td>{{ pod.age }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </p-tabPanel>
+
+    <p-tabPanel [header]="'Deployments (' + (summary?.deployments?.length || 0) + ')'">
+      <p-table #deploymentTable [value]="summary?.deployments || []" [loading]="loading" [paginator]="true" [rows]="15"
+               [rowsPerPageOptions]="[10, 15, 25, 50]" [globalFilterFields]="['name', 'namespace']">
+        <ng-template pTemplate="caption">
+          <div class="table-caption">
+            <span class="caption-title">Deployments</span>
+            <span class="caption-actions">
+              <input pInputText type="text" placeholder="Filter deployments" (input)="deploymentTable.filterGlobal($any($event.target).value, 'contains')" />
+            </span>
+          </div>
+        </ng-template>
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Name</th>
+            <th>Namespace</th>
+            <th>Ready</th>
+            <th>Desired</th>
+            <th>Updated</th>
+            <th>Available</th>
+            <th>Age</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-deployment>
+          <tr>
+            <td>{{ deployment.name }}</td>
+            <td>{{ deployment.namespace }}</td>
+            <td>{{ deployment.readyReplicas }}</td>
+            <td>{{ deployment.replicas }}</td>
+            <td>{{ deployment.updatedReplicas }}</td>
+            <td>{{ deployment.availableReplicas }}</td>
+            <td>{{ deployment.age }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </p-tabPanel>
+
+    <p-tabPanel [header]="'Services (' + (summary?.services?.length || 0) + ')'">
+      <p-table #serviceTable [value]="summary?.services || []" [loading]="loading" [paginator]="true" [rows]="15"
+               [rowsPerPageOptions]="[10, 15, 25, 50]" [globalFilterFields]="['name', 'namespace', 'type', 'clusterIp', 'externalIp']">
+        <ng-template pTemplate="caption">
+          <div class="table-caption">
+            <span class="caption-title">Services</span>
+            <span class="caption-actions">
+              <input pInputText type="text" placeholder="Filter services" (input)="serviceTable.filterGlobal($any($event.target).value, 'contains')" />
+            </span>
+          </div>
+        </ng-template>
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Name</th>
+            <th>Namespace</th>
+            <th>Type</th>
+            <th>Cluster IP</th>
+            <th>External IP</th>
+            <th>Ports</th>
+            <th>Age</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-service>
+          <tr>
+            <td>{{ service.name }}</td>
+            <td>{{ service.namespace }}</td>
+            <td>{{ service.type }}</td>
+            <td>{{ service.clusterIp || '-' }}</td>
+            <td>{{ service.externalIp || '-' }}</td>
+            <td>{{ service.ports || '-' }}</td>
+            <td>{{ service.age }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </p-tabPanel>
+  </p-tabView>
+</div>
