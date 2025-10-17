@@ -15,7 +15,8 @@
     </div>
 
     <div class="toolbar-group toolbar-group--actions">
-      <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded" [disabled]="loading" (click)="manualRefresh()"></button>
+      <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded" [disabled]="loading"
+              (click)="manualRefresh()"></button>
       <button
         pButton
         type="button"
@@ -36,7 +37,8 @@
           <div class="table-caption">
             <span class="caption-title">Pods</span>
             <span class="caption-actions">
-              <input pInputText type="text" placeholder="Filter pods" (input)="podsTable.filterGlobal($any($event.target).value, 'contains')" />
+              <input pInputText type="text" placeholder="Filter pods"
+                     (input)="podsTable.filterGlobal($any($event.target).value, 'contains')"/>
             </span>
           </div>
         </ng-template>
@@ -72,7 +74,8 @@
           <div class="table-caption">
             <span class="caption-title">Deployments</span>
             <span class="caption-actions">
-              <input pInputText type="text" placeholder="Filter deployments" (input)="deploymentTable.filterGlobal($any($event.target).value, 'contains')" />
+              <input pInputText type="text" placeholder="Filter deployments"
+                     (input)="deploymentTable.filterGlobal($any($event.target).value, 'contains')"/>
             </span>
           </div>
         </ng-template>
@@ -103,12 +106,14 @@
 
     <p-tabPanel [header]="'Services (' + (summary?.services?.length || 0) + ')'">
       <p-table #serviceTable [value]="summary?.services || []" [loading]="loading" [paginator]="true" [rows]="15"
-               [rowsPerPageOptions]="[10, 15, 25, 50]" [globalFilterFields]="['name', 'namespace', 'type', 'clusterIp', 'externalIp']">
+               [rowsPerPageOptions]="[10, 15, 25, 50]"
+               [globalFilterFields]="['name', 'namespace', 'type', 'clusterIp', 'externalIp']">
         <ng-template pTemplate="caption">
           <div class="table-caption">
             <span class="caption-title">Services</span>
             <span class="caption-actions">
-              <input pInputText type="text" placeholder="Filter services" (input)="serviceTable.filterGlobal($any($event.target).value, 'contains')" />
+              <input pInputText type="text" placeholder="Filter services"
+                     (input)="serviceTable.filterGlobal($any($event.target).value, 'contains')"/>
             </span>
           </div>
         </ng-template>
