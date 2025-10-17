@@ -1,6 +1,6 @@
 import { Node } from './../../model/node.class';
 import { Store } from '@ngrx/store';
-import { Component, OnDestroy, OnInit, ViewContainerRef, ComponentRef, ViewChild, Type } from '@angular/core';
+import { Component, OnDestroy, OnInit, Type } from '@angular/core';
 import { switchMap, filter, tap, Subscription, distinctUntilChanged } from 'rxjs';
 import { DiagramService } from 'src/app/services/diagram.service';
 import { getNodeById } from 'src/app/store/selectors/selectors';
@@ -22,9 +22,9 @@ import { AssetFormComponent } from 'src/app/assets/asset-form/asset-form.compone
 })
 export class NodeFormComponent implements OnInit, OnDestroy {
 
-  @ViewChild('dynamicComponentContainer', { read: ViewContainerRef, static: true }) dynamicContainer!: ViewContainerRef;
-  selectedNodeType: string = '';
   node: Node | null = null;
+  activeComponentType: Type<any> | null = null;
+  componentInputs: Record<string, unknown> = {};
   private currentNodeId: string | null = null;
   subscription: Subscription = new Subscription();
   formMapper: Record<string, Type<any>> = {
@@ -38,8 +38,6 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     'job': JobFormComponent,
     'asset': AssetFormComponent
   };
-
-  componentRef: ComponentRef<any> | null = null;
 
   constructor(
     private diagramService: DiagramService,
@@ -67,7 +65,6 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     );
   }
 
-  //better replace with component-outlet
   loadForm(node: Node) {
     this.node = node;
 
@@ -79,54 +76,22 @@ export class NodeFormComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.selectedNodeType = componentKey;
-
-    const isSameComponentType = this.componentRef && this.componentRef.componentType === componentType;
+    const isSameComponentType = this.activeComponentType === componentType;
     const isSameNode = node.id === this.currentNodeId;
 
     if (!isSameComponentType || !isSameNode) {
-      this.clearDynamicForm();
-      this.componentRef = this.dynamicContainer.createComponent(componentType);
+      this.activeComponentType = componentType;
     }
 
     this.currentNodeId = node.id;
-
-    this.setComponentInputs(node);
-
-    if (this.componentRef) {
-      this.componentRef.changeDetectorRef.markForCheck();
-      this.componentRef.changeDetectorRef.detectChanges();
-    }
+    this.componentInputs = { selectedNode: node };
   }
 
   private clearDynamicForm() {
-    if (this.componentRef) {
-      this.componentRef.destroy();
-      this.componentRef = null;
-    }
-
     this.currentNodeId = null;
     this.node = null;
-    this.selectedNodeType = '';
-
-    if (this.dynamicContainer) {
-      this.dynamicContainer.clear();
-    }
-  }
-
-  private setComponentInputs(node: Node) {
-    if (!this.componentRef) {
-      return;
-    }
-
-    if ('selectedNode' in this.componentRef.instance) {
-      // setInput triggers ngOnChanges lifecycle when available (Angular >=14)
-      if (typeof this.componentRef.setInput === 'function') {
-        this.componentRef.setInput('selectedNode', node);
-      } else {
-        this.componentRef.instance.selectedNode = node;
-      }
-    }
+    this.activeComponentType = null;
+    this.componentInputs = {};
   }
 
   ngOnDestroy(): void {

@@ -1,4 +1,4 @@
-<div class="node-form-shell" [class.node-form-shell--empty]="!node">
+<div class="node-form-shell" [class.node-form-shell--empty]="!activeComponentType">
   <div class="node-form-header" *ngIf="node">
     <span class="node-form-kind">{{ node.kind | titlecase }}</span>
     <h3 class="node-form-title">{{ node.name }}</h3>
@@ -6,11 +6,15 @@
   </div>
 
   <div class="node-form-body">
-    <ng-template #dynamicComponentContainer></ng-template>
+    <ng-container *ngIf="activeComponentType as componentType; else nodeFormPlaceholder">
+      <ng-container *ngComponentOutlet="componentType; inputs: componentInputs"></ng-container>
+    </ng-container>
 
-    <div class="node-form-placeholder" *ngIf="!node">
-      <i class="pi pi-hand-pointer"></i>
-      <p>Select a node in the diagram to edit its settings.</p>
-    </div>
+    <ng-template #nodeFormPlaceholder>
+      <div class="node-form-placeholder">
+        <i class="pi pi-hand-pointer"></i>
+        <p>Select a node in the diagram to edit its settings.</p>
+      </div>
+    </ng-template>
   </div>
 </div>
