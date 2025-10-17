@@ -11,10 +11,11 @@
     <groupId>com.izylife</groupId>
     <artifactId>frontend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-   <packaging>jar</packaging>
+    <packaging>jar</packaging>
     <properties>
         <maven.compiler.source>19</maven.compiler.source>
         <maven.compiler.target>19</maven.compiler.target>
+        <skip.yarn.install>true</skip.yarn.install>
     </properties>
 
     <build>
@@ -46,6 +47,10 @@
                 <goals>
                   <goal>yarn</goal>
                 </goals>
+                <configuration>
+                  <arguments>install --ignore-optional --non-interactive --frozen-lockfile</arguments>
+                  <skip>${skip.yarn.install}</skip>
+                </configuration>
               </execution>
               <execution>
                 <id>yarn build</id>

@@ -1,3 +1,95 @@
-.form-component-contaner{
-    padding-top: 10px;
+:host {
+  display: block;
+  height: 100%;
+}
+
+.node-form-shell {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 12px 24px rgba(2, 28, 63, 0.08);
+  border: 1px solid rgba(2, 28, 63, 0.06);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+
+  &--empty {
+    border-style: dashed;
+    border-color: rgba(2, 28, 63, 0.12);
+  }
+}
+
+.node-form-header {
+  padding: 1.25rem 1.5rem 1rem;
+  border-bottom: 1px solid rgba(2, 28, 63, 0.08);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    'kind title'
+    'id id';
+  column-gap: 0.75rem;
+  row-gap: 0.4rem;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(65, 105, 225, 0.07), rgba(2, 28, 63, 0.04));
+}
+
+.node-form-kind {
+  grid-area: kind;
+  background: rgba(65, 105, 225, 0.12);
+  color: #1b3f8b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+}
+
+.node-form-title {
+  grid-area: title;
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #021c3f;
+}
+
+.node-form-id {
+  grid-area: id;
+  font-size: 0.8rem;
+  color: rgba(2, 28, 63, 0.55);
+  font-family: 'Roboto Mono', monospace;
+  letter-spacing: 0.04em;
+}
+
+.node-form-body {
+  position: relative;
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  background: linear-gradient(180deg, rgba(2, 28, 63, 0.02), transparent 60%);
+}
+
+.node-form-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: rgba(2, 28, 63, 0.45);
+  padding: 2rem;
+  gap: 1rem;
+  pointer-events: none;
+
+  i {
+    font-size: 2rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.95rem;
+    max-width: 16rem;
+  }
 }

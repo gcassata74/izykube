@@ -2,7 +2,6 @@ import { Deployment } from './../../model/deployment.class';
 import { ClusterService } from 'src/app/services/cluster.service';
 import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Store, select } from '@ngrx/store';
-import * as go from 'gojs';
 import { Button, ButtonAction } from '../../model/button.interface';
 import { EMPTY, Observable, Subscription, catchError, distinctUntilChanged, filter, finalize, first, of, switchMap, take, tap, throwError } from 'rxjs';
 import { DiagramComponent } from '../../diagram/diagram.component';

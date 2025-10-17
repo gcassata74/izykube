@@ -17,17 +17,12 @@
     appDragDrop
     [isDropZone]="true"
     (onDrop)="onCanvasDrop($event)"
-    (click)="selectedNode = null; selectedLink = null; updateLinkStyles()">
+    (click)="clearSelection()">
     
     <!-- Diagram nodes rendered through Angular -->
     <div 
       *ngFor="let node of nodes" 
       class="diagram-node"
-      appNodeConnector
-      [nodeId]="node.id"
-      (onConnectionStart)="onConnectionStart($event)"
-      (onConnectionEnd)="onConnectionEnd($event)"
-      (onConnectionCancel)="onConnectionCancel()"
       [style.position]="'absolute'"
       [style.left.px]="node.x"
       [style.top.px]="node.y"

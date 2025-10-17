@@ -1,7 +1,7 @@
 import { Node } from './../../model/node.class';
 import { Store } from '@ngrx/store';
-import { Component, OnDestroy, ViewContainerRef, ComponentRef, ViewChild } from '@angular/core';
-import { switchMap, of, filter, tap, Subscription, mergeMap, distinct, distinctUntilChanged, take, EMPTY } from 'rxjs';
+import { Component, OnDestroy, OnInit, ViewContainerRef, ComponentRef, ViewChild, Type } from '@angular/core';
+import { switchMap, filter, tap, Subscription, distinctUntilChanged } from 'rxjs';
 import { DiagramService } from 'src/app/services/diagram.service';
 import { getNodeById } from 'src/app/store/selectors/selectors';
 import { DeploymentFormComponent } from '../deployment-form/deployment-form.component';
@@ -20,13 +20,14 @@ import { AssetFormComponent } from 'src/app/assets/asset-form/asset-form.compone
   templateUrl: './node-form.component.html',
   styleUrls: ['./node-form.component.scss']
 })
-export class NodeFormComponent implements OnDestroy {
+export class NodeFormComponent implements OnInit, OnDestroy {
 
-  @ViewChild('dynamicComponentContainer', { read: ViewContainerRef }) dynamicContainer!: ViewContainerRef;
-  selectedNodeType!: string;
-  node!: Node;
+  @ViewChild('dynamicComponentContainer', { read: ViewContainerRef, static: true }) dynamicContainer!: ViewContainerRef;
+  selectedNodeType: string = '';
+  node: Node | null = null;
+  private currentNodeId: string | null = null;
   subscription: Subscription = new Subscription();
-  formMapper: any = {
+  formMapper: Record<string, Type<any>> = {
     'deployment': DeploymentFormComponent,
     'configmap': ConfigMapFormComponent,
     'pod': PodFormComponent,
@@ -34,43 +35,102 @@ export class NodeFormComponent implements OnDestroy {
     'ingress':IngressFormComponent,
     'container': ContainerFormComponent,
     'volume': VolumeFormComponent,
-    'job': JobFormComponent
+    'job': JobFormComponent,
+    'asset': AssetFormComponent
   };
 
-  componentRef!: ComponentRef<any>;
+  componentRef: ComponentRef<any> | null = null;
 
   constructor(
     private diagramService: DiagramService,
     private store: Store,
   ) { }
 
- 
- ngOnInit(): void {
+  ngOnInit(): void {
     this.subscription.add(
-      this.diagramService.selectedNode$.pipe(
-      filter((node: go.Node) => node !== null && node !== undefined),
-      distinctUntilChanged((prev, curr) => prev?.data?.key === curr?.data?.key),
-      switchMap((node: go.Node) => this.store.select(getNodeById(node.data.key)).pipe(
-        take(1),
-      )),
-      filter((node: Node | undefined): node is Node => !!node),
-      tap((node: Node) => this.loadForm(node))
+      this.diagramService.selectedNodeId$.pipe(
+        distinctUntilChanged(),
+        tap((nodeId: string | null) => {
+          if (!nodeId) {
+            this.clearDynamicForm();
+          }
+        }),
+        filter((nodeId: string | null): nodeId is string => !!nodeId),
+        switchMap((nodeId: string) =>
+          this.store.select(getNodeById(nodeId)).pipe(
+            // wait for the store to emit the node after it has been created/updated
+            filter((node: Node | undefined): node is Node => !!node)
+          )
+        ),
+        tap((node: Node) => this.loadForm(node))
       ).subscribe()
     );
   }
 
   //better replace with component-outlet
   loadForm(node: Node) {
-    {AssetFormComponent
-      this.node = node;
+    this.node = node;
+
+    const componentKey = node.kind?.toLowerCase?.() ?? node.kind;
+    const componentType = this.formMapper[componentKey] || this.formMapper[node.kind];
+    if (!componentType) {
+      console.warn(`No form component mapped for node kind: ${node.kind}`);
+      this.clearDynamicForm();
+      return;
+    }
+
+    this.selectedNodeType = componentKey;
+
+    const isSameComponentType = this.componentRef && this.componentRef.componentType === componentType;
+    const isSameNode = node.id === this.currentNodeId;
+
+    if (!isSameComponentType || !isSameNode) {
+      this.clearDynamicForm();
+      this.componentRef = this.dynamicContainer.createComponent(componentType);
+    }
+
+    this.currentNodeId = node.id;
+
+    this.setComponentInputs(node);
+
+    if (this.componentRef) {
+      this.componentRef.changeDetectorRef.markForCheck();
+      this.componentRef.changeDetectorRef.detectChanges();
+    }
+  }
+
+  private clearDynamicForm() {
+    if (this.componentRef) {
+      this.componentRef.destroy();
+      this.componentRef = null;
+    }
+
+    this.currentNodeId = null;
+    this.node = null;
+    this.selectedNodeType = '';
+
+    if (this.dynamicContainer) {
       this.dynamicContainer.clear();
-      this.componentRef = this.dynamicContainer.createComponent(this.formMapper[node.kind]);
-      this.componentRef.instance.selectedNode = node;
+    }
+  }
+
+  private setComponentInputs(node: Node) {
+    if (!this.componentRef) {
+      return;
+    }
+
+    if ('selectedNode' in this.componentRef.instance) {
+      // setInput triggers ngOnChanges lifecycle when available (Angular >=14)
+      if (typeof this.componentRef.setInput === 'function') {
+        this.componentRef.setInput('selectedNode', node);
+      } else {
+        this.componentRef.instance.selectedNode = node;
+      }
     }
   }
 
   ngOnDestroy(): void {
-    this.componentRef?.destroy();
+    this.clearDynamicForm();
     this.subscription.unsubscribe();
   }
 

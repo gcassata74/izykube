@@ -233,6 +233,47 @@ body {
 }
 
 //-----------------------------------------------------------------------------
+// Form Layout Helpers
+//-----------------------------------------------------------------------------
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-group,
+.p-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.form-group label,
+.p-field > label {
+  font-weight: 600;
+  color: rgba(2, 28, 63, 0.72);
+  letter-spacing: 0.01em;
+}
+
+.form-group input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.form-group input[type='number']::-webkit-outer-spin-button,
+.form-group input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.error-message {
+  font-size: 0.8rem;
+  color: $error-color;
+  letter-spacing: 0.01em;
+}
+
+//-----------------------------------------------------------------------------
 // Layout Components
 //-----------------------------------------------------------------------------
 

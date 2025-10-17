@@ -6,10 +6,9 @@ import { Store, select } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
 import { BehaviorSubject, Subscription, debounceTime, distinctUntilChanged, filter, startWith, take, tap } from 'rxjs';
 import * as actions from '../store/actions/actions';
-import { getCurrentCluster, selectClusterDiagram } from '../store/selectors/selectors';
+import { getCurrentCluster, getNodeById, selectClusterDiagram } from '../store/selectors/selectors';
 import { Cluster } from '../model/cluster.class';
 import { DragDropData, DropEvent } from '../directives/drag-drop.directive';
-import { ConnectionEvent } from '../directives/node-connector.directive';
 
 interface DiagramNode {
   id: string;
@@ -117,18 +116,6 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.createNode(event.data.type, event.data.name, event.data.icon, event.x, event.y);
   }
 
-  onConnectionStart(nodeId: string) {
-    console.log('Connection started from node:', nodeId);
-  }
-
-  onConnectionEnd(event: ConnectionEvent) {
-    this.createLink(event.fromNodeId, event.toNodeId);
-  }
-
-  onConnectionCancel() {
-    console.log('Connection cancelled');
-  }
-
   private initializePaletteItems() {
     this.paletteItems = this.createNodes();
   }
@@ -147,6 +134,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     };
 
     this.nodes.push(node);
+    this.diagramService.addClusterNode(type, node.id, uniqueName);
     this.updateDiagramData();
   }
 
@@ -191,6 +179,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   onNodeLabelEdit(node: DiagramNode, event: any) {
     node.name = event.target.textContent || node.name;
+    this.diagramService.updateClusterNodes(node.id, { name: node.name });
     this.updateDiagramData();
   }
 
@@ -335,12 +324,26 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.selectedNode = node;
     this.selectedLink = null; // Clear link selection when selecting a node
     this.updateLinkStyles();
+    this.store.select(getNodeById(node.id)).pipe(take(1)).subscribe(existingNode => {
+      if (!existingNode) {
+        this.diagramService.addClusterNode(node.type, node.id, node.name);
+      }
+      this.diagramService.setSelectedNode(node.id);
+    });
   }
 
   selectLink(link: DiagramLink) {
     this.selectedLink = link;
     this.selectedNode = null; // Clear node selection when selecting a link
     this.updateLinkStyles();
+    this.diagramService.clearSelectedNode();
+  }
+
+  clearSelection() {
+    this.selectedNode = null;
+    this.selectedLink = null;
+    this.updateLinkStyles();
+    this.diagramService.clearSelectedNode();
   }
 
   updateLinkStyles() {
@@ -406,9 +409,12 @@ export class DiagramComponent implements OnInit, OnDestroy {
       link.from !== this.selectedNode!.id && link.to !== this.selectedNode!.id
     );
 
+    const nodeId = this.selectedNode!.id;
+
     // Remove node from array
-    this.nodes = this.nodes.filter(node => node.id !== this.selectedNode!.id);
-    this.selectedNode = null;
+    this.nodes = this.nodes.filter(node => node.id !== nodeId);
+    this.diagramService.removeClusterNode(nodeId);
+    this.clearSelection();
     this.updateDiagramData();
   }
 
@@ -422,29 +428,6 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.nodes = [];
       this.links = [];
     }
-  }
-
-  private createLink(fromNodeId: string, toNodeId: string) {
-    // Check if link already exists
-    const existingLink = this.links.find(link =>
-      (link.from === fromNodeId && link.to === toNodeId) ||
-      (link.from === toNodeId && link.to === fromNodeId)
-    );
-
-    if (existingLink) {
-      console.log('Link already exists between these nodes');
-      return;
-    }
-
-    const link: DiagramLink = {
-      id: uuidv4(),
-      from: fromNodeId,
-      to: toNodeId
-    };
-
-    this.links.push(link);
-    this.renderLink(link);
-    this.updateDiagramData();
   }
 
   private createLinkWithPoints(fromNodeId: string, toNodeId: string, fromPoint: ConnectionPoint, toPoint: ConnectionPoint) {
@@ -523,7 +506,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.createTempLine(point.x, point.y, point.x, point.y);
       
       // Start dragging immediately
-      this.startConnectionDrag(event);
+      this.startConnectionDrag();
     } else {
       // End connection - only allow if clicking on a different node's connection point
       if (this.connectionStartNode && this.connectionStartNode.id !== node.id) {
@@ -538,7 +521,9 @@ export class DiagramComponent implements OnInit, OnDestroy {
     }
   }
 
-  private startConnectionDrag(startEvent: MouseEvent) {
+  private startConnectionDrag() {
+    this.isDraggingConnection = true;
+
     const onMouseMove = (moveEvent: MouseEvent) => {
       if (this.isConnecting && this.tempLine) {
         const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
@@ -675,6 +660,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   private cancelConnection() {
     this.isConnecting = false;
+    this.isDraggingConnection = false;
     this.connectionStartNode = null;
     this.connectionStartPoint = null;
     
@@ -741,9 +727,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.links = previousState.links;
     
     // Clear selections
-    this.selectedNode = null;
-    this.selectedLink = null;
-    
+    this.clearSelection();
+
     // Re-render diagram
     this.renderLinks();
     this.updateDiagramData();

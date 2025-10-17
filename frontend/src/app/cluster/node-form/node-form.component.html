@@ -1,3 +1,16 @@
-<div class="form-component-contaner">
-  <ng-template #dynamicComponentContainer></ng-template>
+<div class="node-form-shell" [class.node-form-shell--empty]="!node">
+  <div class="node-form-header" *ngIf="node">
+    <span class="node-form-kind">{{ node.kind | titlecase }}</span>
+    <h3 class="node-form-title">{{ node.name }}</h3>
+    <span class="node-form-id">ID: {{ node.id }}</span>
+  </div>
+
+  <div class="node-form-body">
+    <ng-template #dynamicComponentContainer></ng-template>
+
+    <div class="node-form-placeholder" *ngIf="!node">
+      <i class="pi pi-hand-pointer"></i>
+      <p>Select a node in the diagram to edit its settings.</p>
+    </div>
+  </div>
 </div>
