@@ -142,7 +142,8 @@ docker exec -it izykube-ollama ollama pull mistral
 ```
 
 By default the backend connects to `http://localhost:11434` and requests the `mistral` model.
-Adjust `ai.local.base-url` or `ai.local.model` in `backend/src/main/resources/application.yaml` if you run Ollama elsewhere
+Adjust `ai.local.base-url` or `ai.local.model` in `backend/src/main/resources/application.yaml` if you run Ollama
+elsewhere
 or want to use a different model. You can also tune the HTTP timeouts with `ai.local.connect-timeout-ms`
 and `ai.local.read-timeout-ms` when a heavier model needs longer to respond.
 

@@ -33,13 +33,13 @@
     type="file"
     accept=".yaml,.yml,text/yaml"
     hidden
-    (change)="onFileSelected($event, 'yaml')" />
+    (change)="onFileSelected($event, 'yaml')"/>
   <input
     #jsonInput
     type="file"
     accept=".json,application/json"
     hidden
-    (change)="onFileSelected($event, 'json')" />
+    (change)="onFileSelected($event, 'json')"/>
 
   <div appYaml formControlName="yaml" [width]="'250px'"></div>
   <div *ngIf="form.get('yaml')?.invalid && form.get('yaml')?.touched" class="text-danger">

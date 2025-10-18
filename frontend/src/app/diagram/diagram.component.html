@@ -18,8 +18,8 @@
         (click)="openChatDialog()">
       </button>
     </div>
-    <div 
-      *ngFor="let item of paletteItems" 
+    <div
+      *ngFor="let item of paletteItems"
       class="palette-item"
       appDragDrop
       [isDraggable]="true"
@@ -29,17 +29,17 @@
     </div>
   </div>
 
-  <div 
-    class="second-column" 
+  <div
+    class="second-column"
     #diagramCanvas
     appDragDrop
     [isDropZone]="true"
     (onDrop)="onCanvasDrop($event)"
     (click)="clearSelection()">
-    
+
     <!-- Diagram nodes rendered through Angular -->
-    <div 
-      *ngFor="let node of nodes" 
+    <div
+      *ngFor="let node of nodes"
       class="diagram-node"
       [style.position]="'absolute'"
       [style.left.px]="node.x"
@@ -57,9 +57,9 @@
       [style.z-index]="2"
       (click)="selectNode(node); $event.stopPropagation()"
       (mousedown)="onNodeMouseDown($event, node)">
-      
+
       <!-- Connection points -->
-      <div 
+      <div
         *ngFor="let point of getConnectionPoints(node)"
         class="connection-point"
         [class.connection-point-top]="point.side === 'top'"
@@ -69,9 +69,9 @@
         [class.connection-point-active]="isConnecting && connectionStartNode?.id === node.id && connectionStartPoint?.side === point.side"
         (mousedown)="onConnectionPointClick(node, point, $event)">
       </div>
-      
+
       <img [src]="node.icon" [alt]="node.name" style="width: 40px; height: 40px;">
-      <div 
+      <div
         style="font-size: 10px; text-align: center; margin-top: 2px;"
         contenteditable="true"
         (blur)="onNodeLabelEdit(node, $event)">
@@ -119,7 +119,8 @@
           <div *ngIf="suggestion.links?.length" class="diagram-ai-dialog__links">
             Links:
             <span *ngFor="let link of suggestion.links; let i = index">
-              {{ link?.type || 'relatesTo' }} → {{ link?.target || 'unknown' }}<span *ngIf="i < (suggestion.links?.length ?? 0) - 1">, </span>
+              {{ link?.type || 'relatesTo' }} → {{ link?.target || 'unknown' }}<span
+              *ngIf="i < (suggestion.links?.length ?? 0) - 1">, </span>
             </span>
           </div>
         </li>

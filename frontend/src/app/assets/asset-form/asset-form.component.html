@@ -118,7 +118,8 @@
           </small>
         </div>
 
-        <div class="mt-4 ml-4 mr-4" *ngIf="assetForm.get('type')?.value !== 'script' && assetForm.get('type')?.value !== assetType.IMAGE">
+        <div class="mt-4 ml-4 mr-4"
+             *ngIf="assetForm.get('type')?.value !== 'script' && assetForm.get('type')?.value !== assetType.IMAGE">
           <span class="p-float-label">
             <input id="image"
                    type="text"
