@@ -22,6 +22,19 @@
     </span>
   </div>
 
+  <div class="p-field" *ngIf="connectedDeploymentNames.length; else connectHint">
+    <label i18n="@@serviceForm.connectedDeployments.label">Connected deployments</label>
+    <ul class="service-form__connections">
+      <li *ngFor="let deploymentName of connectedDeploymentNames">{{ deploymentName }}</li>
+    </ul>
+  </div>
+
+  <ng-template #connectHint>
+    <p class="service-form__hint" i18n="@@serviceForm.connectHint">
+      Link this service to a deployment to auto-fill name and port.
+    </p>
+  </ng-template>
+
   <div class="p-field">
     <span class="p-float-label">
       <p-dropdown id="type"

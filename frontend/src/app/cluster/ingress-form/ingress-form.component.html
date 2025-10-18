@@ -26,6 +26,27 @@
     </small>
   </div>
 
+  <div class="p-field" *ngIf="services.length; else serviceHint">
+    <label for="serviceName">Service</label>
+    <p-dropdown id="serviceName"
+                [options]="serviceOptions"
+                formControlName="serviceName"
+                optionLabel="label"
+                optionValue="value"
+                class="w-full">
+    </p-dropdown>
+    <small class="p-error"
+           *ngIf="ingressForm.get('serviceName')?.invalid && (ingressForm.get('serviceName')?.dirty || ingressForm.get('serviceName')?.touched)">
+      A service connection is required.
+    </small>
+  </div>
+
+  <ng-template #serviceHint>
+    <p class="ingress-form__hint">
+      Link this ingress to a service in the diagram to select it here.
+    </p>
+  </ng-template>
+
   <div class="p-field">
     <label for="servicePort">Service Port</label>
     <p-inputNumber id="servicePort" formControlName="servicePort" [useGrouping]="false" [min]="1" [step]="1"

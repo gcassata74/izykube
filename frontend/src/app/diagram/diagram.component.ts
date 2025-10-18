@@ -1,4 +1,3 @@
-import { ClusterState } from './../store/states/state';
 import { DiagramService } from './../services/diagram.service';
 import { IconService } from './../services/icon.service';
 import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild } from '@angular/core';
@@ -9,6 +8,8 @@ import * as actions from '../store/actions/actions';
 import { getCurrentCluster, getNodeById, selectClusterDiagram } from '../store/selectors/selectors';
 import { Cluster } from '../model/cluster.class';
 import { DragDropData, DropEvent } from '../directives/drag-drop.directive';
+import { AiAssistantService, AiChatMessage, AiImportYamlResponse } from '../services/ai-assistant.service';
+import { NotificationService } from '../services/notification.service';
 
 interface DiagramNode {
   id: string;
@@ -33,6 +34,21 @@ interface DiagramLink {
   fromPoint?: ConnectionPoint;
   toPoint?: ConnectionPoint;
   element?: SVGElement;
+}
+
+interface AiSuggestedNode {
+  type: string;
+  name: string;
+  description?: string;
+  links?: { target: string; type?: string }[];
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+  pending?: boolean;
+  error?: boolean;
 }
 
 @Component({
@@ -69,11 +85,24 @@ export class DiagramComponent implements OnInit, OnDestroy {
   selectedLayout: string = 'default';
   private svgElement!: SVGElement;
   paletteItems: DragDropData[] = [];
+  aiDialogVisible = false;
+  aiPrompt = '';
+  aiLoading = false;
+  aiSuggestions: AiSuggestedNode[] = [];
+  aiError: string | null = null;
+  chatDialogVisible = false;
+  chatMessages: ChatMessage[] = [];
+  chatInput = '';
+  chatLoading = false;
+  lastAssistantMessage: ChatMessage | null = null;
+  importingFromChat = false;
 
   constructor(
     private iconService: IconService,
     private store: Store,
-    private diagramService: DiagramService
+    private diagramService: DiagramService,
+    private aiAssistantService: AiAssistantService,
+    private notificationService: NotificationService
   ) { }
 
 
@@ -120,13 +149,354 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.paletteItems = this.createNodes();
   }
 
-  private createNode(type: string, baseName: string, icon: string, x: number, y: number) {
+  openAiDialog(): void {
+    this.aiPrompt = '';
+    this.aiSuggestions = [];
+    this.aiError = null;
+    this.aiDialogVisible = true;
+  }
+
+  closeAiDialog(): void {
+    if (this.aiLoading) {
+      return;
+    }
+    this.aiDialogVisible = false;
+  }
+
+  submitAiPrompt(): void {
+    if (!this.aiPrompt || !this.aiPrompt.trim()) {
+      this.notificationService.warn('Add an instruction', 'Describe the blocks you want the assistant to create.');
+      return;
+    }
+
+    this.aiLoading = true;
+    this.aiError = null;
+    this.aiSuggestions = [];
+
+    this.aiAssistantService.generate({
+      task: 'diagram_nodes',
+      prompt: this.aiPrompt.trim(),
+      context: this.buildDiagramContext(),
+      format: 'json'
+    }).subscribe({
+      next: response => {
+        this.handleAiSuggestions(response.content);
+        this.aiLoading = false;
+      },
+      error: error => {
+        const detail = error?.error || error?.message || 'Local AI request failed.';
+        this.aiError = typeof detail === 'string' ? detail : 'Local AI request failed.';
+        this.notificationService.error('AI request failed', this.aiError || undefined);
+        this.aiLoading = false;
+      }
+    });
+  }
+
+  applyAiSuggestions(): void {
+    if (!this.aiSuggestions.length) {
+      this.notificationService.warn('Nothing to add', 'Ask the assistant to produce blocks before applying.');
+      return;
+    }
+
+    const nodeSpacingX = 150;
+    const nodeSpacingY = 140;
+    const startX = 120;
+    const startY = 120;
+
     this.saveToUndoStack();
-    
-    const uniqueName = this.generateUniqueName(baseName);
+
+    const createdNodes = new Map<string, DiagramNode>();
+    this.aiSuggestions.forEach((suggestion, index) => {
+      const normalizedType = suggestion.type?.toLowerCase?.() || suggestion.type;
+      const icon = this.iconService.getIconPath(normalizedType);
+      if (!icon) {
+        this.notificationService.warn('Unsupported block type', `Skipping ${suggestion.name} (${normalizedType}).`);
+        return;
+      }
+
+      const column = index % 3;
+      const row = Math.floor(index / 3);
+      const x = startX + column * nodeSpacingX;
+      const y = startY + row * nodeSpacingY;
+
+      const node = this.createNode(
+        normalizedType,
+        normalizedType,
+        icon,
+        x,
+        y,
+        { preferredName: suggestion.name, skipUndo: true, deferUpdate: true }
+      );
+
+      createdNodes.set(suggestion.name, node);
+    });
+
+    this.updateDiagramData();
+
+    // Create links based on AI suggestions
+    this.aiSuggestions.forEach(suggestion => {
+      if (!suggestion.links?.length) {
+        return;
+      }
+      const sourceNode = createdNodes.get(suggestion.name);
+      if (!sourceNode) {
+        return;
+      }
+
+      const sourcePoints = this.getConnectionPoints(sourceNode);
+      const defaultSourcePoint = sourcePoints.find(point => point.side === 'right') || sourcePoints[0];
+
+      suggestion.links.forEach(link => {
+        const targetNode = createdNodes.get(link.target);
+        if (!targetNode) {
+          return;
+        }
+        const targetPoints = this.getConnectionPoints(targetNode);
+        const defaultTargetPoint = targetPoints.find(point => point.side === 'left') || targetPoints[0];
+        this.createLinkWithPoints(
+          sourceNode.id,
+          targetNode.id,
+          defaultSourcePoint,
+          defaultTargetPoint,
+          { skipUndo: true, deferUpdate: true }
+        );
+      });
+    });
+
+    this.updateDiagramData();
+    this.notificationService.success('Diagram updated', 'AI generated blocks were added to the canvas.');
+    this.aiDialogVisible = false;
+    this.aiSuggestions = [];
+    this.aiPrompt = '';
+  }
+
+  openChatDialog(): void {
+    this.chatDialogVisible = true;
+    if (!this.chatMessages.length) {
+      this.chatMessages.push({
+        role: 'system',
+        content: 'How can I help with your Kubernetes architecture today?',
+        timestamp: new Date()
+      });
+    }
+  }
+
+  closeChatDialog(): void {
+    if (this.chatLoading) {
+      return;
+    }
+    this.chatDialogVisible = false;
+  }
+
+  sendChatMessage(): void {
+    if (!this.chatInput || !this.chatInput.trim()) {
+      return;
+    }
+
+    const content = this.chatInput.trim();
+    const timestamp = new Date();
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content,
+      timestamp
+    };
+    this.chatMessages.push(userMessage);
+
+    this.chatInput = '';
+    this.chatLoading = true;
+
+    const history: AiChatMessage[] = this.chatMessages
+      .filter(message => message.role !== 'system' || message.content.trim() !== '')
+      .map(message => ({
+        role: message.role as AiChatMessage['role'],
+        content: message.content
+      }));
+
+    this.aiAssistantService.chat({
+      task: 'diagram_helper',
+      messages: history,
+      context: this.buildChatContext()
+    }).subscribe({
+      next: response => {
+        (response.messages || []).forEach(msg => {
+          const assistantMessage: ChatMessage = {
+            role: msg.role,
+            content: msg.content,
+            timestamp: new Date()
+          };
+          this.chatMessages.push(assistantMessage);
+          if (assistantMessage.role === 'assistant') {
+            this.lastAssistantMessage = assistantMessage;
+          }
+        });
+        if (!response.messages?.length) {
+          this.chatMessages.push({
+            role: 'assistant',
+            content: 'I could not generate a reply. Please try again.',
+            timestamp: new Date(),
+            error: true
+          });
+        }
+        this.chatLoading = false;
+      },
+      error: error => {
+        const detail = error?.error || error?.message || 'Local AI chat request failed.';
+        this.chatMessages.push({
+          role: 'assistant',
+          content: typeof detail === 'string' ? detail : 'Local AI chat request failed.',
+          timestamp: new Date(),
+          error: true
+        });
+        this.notificationService.error('Chat failed', typeof detail === 'string' ? detail : undefined);
+        this.chatLoading = false;
+      }
+    });
+  }
+
+  private buildDiagramContext(): string {
+    const context = {
+      nodes: this.nodes.map(node => ({ name: node.name, type: node.type })),
+      links: this.links.map(link => ({ from: link.from, to: link.to }))
+    };
+    return JSON.stringify(context, null, 2);
+  }
+
+  private buildChatContext(): string {
+    const selected = this.selectedNode
+      ? {
+        id: this.selectedNode.id,
+        name: this.selectedNode.name,
+        type: this.selectedNode.type
+      }
+      : null;
+
+    return JSON.stringify({
+      selectedNode: selected,
+      nodes: this.nodes.map(node => ({ id: node.id, name: node.name, type: node.type })),
+      links: this.links.map(link => ({ from: link.from, to: link.to }))
+    });
+  }
+
+  canImportLastAssistantReply(): boolean {
+    if (!this.lastAssistantMessage || this.lastAssistantMessage.role !== 'assistant') {
+      return false;
+    }
+    const yaml = this.extractYamlFromMessage(this.lastAssistantMessage.content);
+    return yaml.length > 0;
+  }
+
+  importLastAssistantMessage(): void {
+    if (!this.canImportLastAssistantReply() || !this.lastAssistantMessage) {
+      return;
+    }
+    const yaml = this.extractYamlFromMessage(this.lastAssistantMessage.content);
+    if (!yaml) {
+      this.notificationService.warn('No YAML found', 'Ask the assistant to provide YAML before importing.');
+      return;
+    }
+
+    this.importingFromChat = true;
+    this.aiAssistantService.importYaml({ yaml, name: 'AI Generated Cluster' }).subscribe({
+      next: (response) => {
+        this.applyImportedCluster(response);
+        this.notificationService.success('Cluster imported', 'Diagram updated from YAML.');
+        this.importingFromChat = false;
+      },
+      error: (error) => {
+        const detail = error?.error || error?.message || 'YAML import failed.';
+        this.notificationService.error('Import failed', typeof detail === 'string' ? detail : undefined);
+        this.importingFromChat = false;
+      }
+    });
+  }
+
+  private extractYamlFromMessage(content: string): string {
+    if (!content) {
+      return '';
+    }
+    const fencedMatch = content.match(/```(?:yaml|yml)?\s*([\s\S]*?)```/i);
+    if (fencedMatch && fencedMatch[1]) {
+      return fencedMatch[1].trim();
+    }
+    return content.trim();
+  }
+
+  private applyImportedCluster(imported: AiImportYamlResponse): void {
+    const cluster = Cluster.fromJSON(imported);
+    this.store.dispatch(actions.loadCluster({ cluster }));
+
+    this.clearDiagram();
+    this.nodes = [];
+    this.links = [];
+    this.undoStack = [];
+    this.selectedNode = null;
+    this.selectedLink = null;
+
+    if (cluster.diagram) {
+      this.loadDiagramData(cluster.diagram);
+    } else {
+      this.nodes = (cluster.nodes as any) || [];
+      this.links = (cluster.links as any) || [];
+    }
+
+    this.renderLinks();
+    this.updateLinkStyles();
+    this.diagramService.clearSelectedNode();
+  }
+
+  private handleAiSuggestions(content: string): void {
+    try {
+      const parsed = JSON.parse(content);
+      if (!parsed || !Array.isArray(parsed.nodes)) {
+        throw new Error('Response does not include a nodes array.');
+      }
+
+      const suggestions: AiSuggestedNode[] = parsed.nodes
+        .filter((node: any) => node && node.type && node.name)
+        .map((node: any) => ({
+          type: String(node.type).toLowerCase(),
+          name: String(node.name),
+          description: node.description ? String(node.description) : undefined,
+          links: Array.isArray(node.links) ? node.links.map((link: any) => ({
+            target: String(link.target ?? ''),
+            type: link.type ? String(link.type) : undefined
+          })).filter((link: any) => link.target) : []
+        }));
+
+      if (!suggestions.length) {
+        this.aiSuggestions = [];
+        this.aiError = 'The assistant did not return any valid nodes.';
+        return;
+      }
+
+      this.aiSuggestions = suggestions;
+      this.aiError = null;
+    } catch (error: any) {
+      this.aiSuggestions = [];
+      this.aiError = 'Failed to parse AI response. Ensure the local model returns valid JSON.';
+      this.notificationService.error('Invalid AI response', this.aiError);
+    }
+  }
+
+  private createNode(
+    type: string,
+    baseName: string,
+    icon: string,
+    x: number,
+    y: number,
+    options?: { preferredName?: string; skipUndo?: boolean; deferUpdate?: boolean }
+  ): DiagramNode {
+    if (!options?.skipUndo) {
+      this.saveToUndoStack();
+    }
+
+    const resolvedName = options?.preferredName
+      ? this.ensureUniqueName(options.preferredName)
+      : this.generateUniqueName(baseName);
+
     const node: DiagramNode = {
       id: uuidv4(),
-      name: uniqueName,
+      name: resolvedName,
       type: type,
       icon: icon,
       x: x,
@@ -134,8 +504,27 @@ export class DiagramComponent implements OnInit, OnDestroy {
     };
 
     this.nodes.push(node);
-    this.diagramService.addClusterNode(type, node.id, uniqueName);
-    this.updateDiagramData();
+    this.diagramService.addClusterNode(type, node.id, resolvedName);
+
+    if (!options?.deferUpdate) {
+      this.updateDiagramData();
+    }
+
+    return node;
+  }
+
+  private ensureUniqueName(desiredName: string): string {
+    if (!this.nodes.some(node => node.name === desiredName)) {
+      return desiredName;
+    }
+
+    let suffix = 1;
+    let candidate = `${desiredName}-${suffix}`;
+    while (this.nodes.some(node => node.name === candidate)) {
+      suffix += 1;
+      candidate = `${desiredName}-${suffix}`;
+    }
+    return candidate;
   }
 
   private generateUniqueName(baseName: string): string {
@@ -430,7 +819,13 @@ export class DiagramComponent implements OnInit, OnDestroy {
     }
   }
 
-  private createLinkWithPoints(fromNodeId: string, toNodeId: string, fromPoint: ConnectionPoint, toPoint: ConnectionPoint) {
+  private createLinkWithPoints(
+    fromNodeId: string,
+    toNodeId: string,
+    fromPoint: ConnectionPoint,
+    toPoint: ConnectionPoint,
+    options?: { skipUndo?: boolean; deferUpdate?: boolean }
+  ) {
     // Check if link already exists
     const existingLink = this.links.find(link =>
       (link.from === fromNodeId && link.to === toNodeId) ||
@@ -442,7 +837,9 @@ export class DiagramComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.saveToUndoStack();
+    if (!options?.skipUndo) {
+      this.saveToUndoStack();
+    }
 
     const link: DiagramLink = {
       id: uuidv4(),
@@ -454,7 +851,9 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
     this.links.push(link);
     this.renderLink(link);
-    this.updateDiagramData();
+    if (!options?.deferUpdate) {
+      this.updateDiagramData();
+    }
   }
 
   private findClosestConnectionPoint(clientX: number, clientY: number, connectionPoints: ConnectionPoint[]): ConnectionPoint {

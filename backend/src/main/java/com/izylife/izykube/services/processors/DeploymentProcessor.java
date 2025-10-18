@@ -7,6 +7,7 @@ import com.izylife.izykube.utils.VolumeUtils;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
+import io.fabric8.kubernetes.api.model.apps.RollingUpdateDeploymentBuilder;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -53,6 +54,8 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         Map<String, String> labels = new HashMap<>();
         labels.put("app", dto.getName());
 
+        String strategyType = dto.getStrategyType() != null ? dto.getStrategyType() : "RollingUpdate";
+
         Deployment deployment = new DeploymentBuilder()
                 .withNewMetadata()
                 .withName(dto.getName())
@@ -73,14 +76,19 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .endSpec()
                 .endTemplate()
                 .withNewStrategy()
-                .withType("RollingUpdate")
-                .withNewRollingUpdate()
-                .withMaxSurge(new IntOrString(1))
-                .withMaxUnavailable(new IntOrString(0))
-                .endRollingUpdate()
+                .withType(strategyType)
                 .endStrategy()
                 .endSpec()
                 .build();
+
+        if ("RollingUpdate".equalsIgnoreCase(strategyType)) {
+            deployment.getSpec().getStrategy().setRollingUpdate(
+                    new RollingUpdateDeploymentBuilder()
+                            .withMaxSurge(new IntOrString(1))
+                            .withMaxUnavailable(new IntOrString(0))
+                            .build()
+            );
+        }
 
         deployment.getSpec().getTemplate().getSpec().getContainers()
                 .forEach(container -> container.setEnvFrom(envFromSources));

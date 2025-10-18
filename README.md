@@ -122,6 +122,30 @@ make run-i18n-build LOCALE=fr
 make run-i18n-serve LOCALE=fr
 ```
 
+### Local AI Assist (Ollama)
+
+The ConfigMap editor and diagram builder can leverage a local large language model through Ollama. We ship a helper
+Compose file that runs the official Ollama image and exposes the API expected by IzyKube.
+
+```bash
+# Start Ollama in the background (downloads the image on first run)
+docker compose -f docker-compose.ollama.yaml up -d
+
+# Verify the container is healthy
+docker compose -f docker-compose.ollama.yaml ps
+```
+
+Once the container is running you can pull models, for example:
+
+```bash
+docker exec -it izykube-ollama ollama pull mistral
+```
+
+By default the backend connects to `http://localhost:11434` and requests the `mistral` model.
+Adjust `ai.local.base-url` or `ai.local.model` in `backend/src/main/resources/application.yaml` if you run Ollama elsewhere
+or want to use a different model. You can also tune the HTTP timeouts with `ai.local.connect-timeout-ms`
+and `ai.local.read-timeout-ms` when a heavier model needs longer to respond.
+
 ## Architecture
 
 IzyKube consists of:

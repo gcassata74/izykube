@@ -22,10 +22,61 @@
 
 .button-row {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
-.button-row .p-button {
-  flex: 1;
+.button-row .action-split {
+  flex: 1 1 180px;
+}
+
+.button-row .action-split ::ng-deep .p-button {
+  width: 100%;
+  font-size: 0.85rem;
+  font-weight: 400;
+  text-transform: none;
+  padding: 0.4rem 0.9rem;
+}
+
+.button-row .ai-button {
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+  font-weight: 400;
+  padding: 0.4rem 0.9rem;
+}
+
+.button-row .action-split ::ng-deep .p-button-label {
+  font-weight: 400;
+}
+
+.button-row .action-split ::ng-deep .p-button-icon {
+  font-size: 0.85rem;
+}
+
+:host ::ng-deep .p-splitbutton-panel .p-menuitem-link {
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.ai-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ai-dialog__hint {
+  font-size: 0.85rem;
+  margin: 0;
+  color: #6c757d;
+}
+
+.ai-dialog textarea {
+  font-size: 0.9rem;
+}
+
+.ai-dialog__spinner {
+  display: inline-flex;
+  align-items: center;
 }

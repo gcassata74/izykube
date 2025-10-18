@@ -7,6 +7,7 @@ import io.fabric8.kubernetes.client.utils.Serialization;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,22 +24,47 @@ public class IngressProcessor implements TemplateProcessor<IngressDTO> {
                 .map(ServiceDTO.class::cast)
                 .collect(Collectors.toList());
 
+        if (services.isEmpty() && dto.getServiceName() != null && !dto.getServiceName().isBlank()) {
+            int port = dto.getServicePort() > 0 ? dto.getServicePort() : 80;
+            services = Collections.singletonList(new ServiceDTO(dto.getServiceName(), dto.getServiceName(), "ClusterIP", port));
+        }
+
+        if (services.isEmpty()) {
+            throw new IllegalStateException("Ingress must be connected to at least one service or define serviceName/servicePort");
+        }
+
+        if (dto.getServiceName() != null && !dto.getServiceName().isBlank()) {
+            final String desiredService = dto.getServiceName();
+            List<ServiceDTO> filtered = services.stream()
+                    .filter(service -> service.getName().equals(desiredService))
+                    .collect(Collectors.toList());
+            if (!filtered.isEmpty()) {
+                services = filtered;
+            }
+        }
+
+        String basePath = normalizePath(dto.getPath());
+        boolean appendServiceName = services.size() > 1 || dto.getServiceName() == null || dto.getServiceName().isBlank();
+
         for (ServiceDTO serviceDTO : services) {
+            String path = appendServiceName ? appendServiceName(basePath, serviceDTO.getName()) : basePath;
+            int port = dto.getServicePort() > 0 ? dto.getServicePort() : serviceDTO.getPort();
+
             HTTPIngressPath httpIngressPath = new HTTPIngressPathBuilder()
-                    .withPath(dto.getPath() + serviceDTO.getName())  // Add service name to path
+                    .withPath(path)
                     .withPathType("Prefix")
                     .withBackend(new IngressBackendBuilder()
                             .withService(new IngressServiceBackendBuilder()
                                     .withName(serviceDTO.getName())
                                     .withPort(new ServiceBackendPortBuilder()
-                                            .withNumber(serviceDTO.getPort())
+                                            .withNumber(port)
                                             .build())
                                     .build())
                             .build())
                     .build();
 
             IngressRule ingressRule = new IngressRuleBuilder()
-                    .withHost(dto.getHost())
+                    .withHost(resolveHost(dto, serviceDTO))
                     .withHttp(new HTTPIngressRuleValueBuilder()
                             .withPaths(httpIngressPath)
                             .build())
@@ -58,5 +84,33 @@ public class IngressProcessor implements TemplateProcessor<IngressDTO> {
                 .build();
 
         return Serialization.asYaml(ingress);
+    }
+
+    private String normalizePath(String path) {
+        if (path == null || path.isBlank()) {
+            return "/";
+        }
+        return path.startsWith("/") ? path : "/" + path;
+    }
+
+    private String appendServiceName(String basePath, String serviceName) {
+        String normalized = basePath.endsWith("/") ? basePath : basePath + "/";
+        return normalized + serviceName;
+    }
+
+    private String resolveHost(IngressDTO dto, ServiceDTO serviceDTO) {
+        if (dto.getHost() != null && !dto.getHost().isBlank()) {
+            return dto.getHost();
+        }
+
+        if (serviceDTO.getFrontendUrl() != null && !serviceDTO.getFrontendUrl().isBlank()) {
+            return stripHttpPrefix(serviceDTO.getFrontendUrl());
+        }
+
+        return "example.com";
+    }
+
+    private String stripHttpPrefix(String url) {
+        return url.replaceAll("^(http://|https://)", "");
     }
 }

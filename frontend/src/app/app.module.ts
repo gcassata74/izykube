@@ -6,6 +6,9 @@ import { MenuModule } from 'primeng/menu';
 import { DropdownModule } from 'primeng/dropdown';
 import { TableModule } from 'primeng/table';
 import { SplitButtonModule } from 'primeng/splitbutton';
+import { DialogModule } from 'primeng/dialog';
+import { InputTextareaModule } from 'primeng/inputtextarea';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { HomeComponent } from './home/home.component';
@@ -87,6 +90,9 @@ import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
     TabViewModule,
     InputNumberModule,
     SplitButtonModule,
+    DialogModule,
+    InputTextareaModule,
+    ProgressSpinnerModule,
     ContextMenuModule,
     CheckboxModule,
     EditorModule,
@@ -100,7 +106,6 @@ import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
     MessageModule,
     BrowserAnimationsModule,
     FormsModule,
-    ReactiveFormsModule,
     HttpClientModule,
     StoreModule.forRoot(reducers),
     EffectsModule.forRoot([ClusterEffect]),

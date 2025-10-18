@@ -23,3 +23,10 @@ mongock:
 app:
   docker:
     local-repository-uri: "localhost:5000"
+
+ai:
+  local:
+    base-url: http://localhost:11434
+    model: mistral
+    connect-timeout-ms: 5000
+    read-timeout-ms: 120000

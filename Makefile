@@ -67,3 +67,17 @@ install-istio:
 
 # Updated target to include Istio installation
 start-k3d-cluster-with-istio: create-k3d-registry create-k3d-cluster install-istio
+
+# Local Ollama helpers
+OLLAMA_COMPOSE ?= docker-compose.ollama.yaml
+OLLAMA_SERVICE ?= ollama
+OLLAMA_MODEL ?= mistral
+
+ollama-up:
+	docker compose -f $(OLLAMA_COMPOSE) up -d
+
+ollama-down:
+	docker compose -f $(OLLAMA_COMPOSE) down
+
+ollama-pull:
+	docker compose -f $(OLLAMA_COMPOSE) exec $(OLLAMA_SERVICE) ollama pull $(OLLAMA_MODEL)

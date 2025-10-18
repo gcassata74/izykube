@@ -1,5 +1,23 @@
 <div class="container" #container>
   <div class="first-column" #paletteContainer>
+    <div class="palette-actions">
+      <button
+        pButton
+        type="button"
+        label="AI Blocks"
+        icon="pi pi-sparkles"
+        class="p-button-outlined palette-ai-button"
+        (click)="openAiDialog()">
+      </button>
+      <button
+        pButton
+        type="button"
+        label="AI Chat"
+        icon="pi pi-comments"
+        class="p-button-text palette-chat-button"
+        (click)="openChatDialog()">
+      </button>
+    </div>
     <div 
       *ngFor="let item of paletteItems" 
       class="palette-item"
@@ -62,3 +80,157 @@
     </div>
   </div>
 </div>
+
+<p-dialog
+  header="Design with Local AI"
+  [(visible)]="aiDialogVisible"
+  [modal]="true"
+  [dismissableMask]="!aiLoading"
+  [closable]="!aiLoading"
+  [style]="{ width: '520px' }"
+  (onHide)="closeAiDialog()">
+  <div class="diagram-ai-dialog">
+    <p class="diagram-ai-dialog__hint">
+      Describe the architecture blocks you need. The assistant will propose nodes and links you can add to the canvas.
+    </p>
+    <textarea
+      pInputTextarea
+      [(ngModel)]="aiPrompt"
+      [autoResize]="true"
+      rows="4"
+      placeholder="Example: Create an ingress, a web deployment with two replicas, a service, and a configmap for environment variables.">
+    </textarea>
+
+    <div *ngIf="aiError" class="diagram-ai-dialog__error">
+      {{ aiError }}
+    </div>
+
+    <div *ngIf="aiSuggestions.length" class="diagram-ai-dialog__preview">
+      <h4>Suggested blocks</h4>
+      <ul>
+        <li *ngFor="let suggestion of aiSuggestions">
+          <span class="diagram-ai-dialog__node">
+            <strong>{{ suggestion.name }}</strong>
+            <span>({{ suggestion.type }})</span>
+          </span>
+          <span *ngIf="suggestion.description" class="diagram-ai-dialog__description">
+            {{ suggestion.description }}
+          </span>
+          <div *ngIf="suggestion.links?.length" class="diagram-ai-dialog__links">
+            Links:
+            <span *ngFor="let link of suggestion.links; let i = index">
+              {{ link?.type || 'relatesTo' }} → {{ link?.target || 'unknown' }}<span *ngIf="i < (suggestion.links?.length ?? 0) - 1">, </span>
+            </span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button
+      pButton
+      type="button"
+      label="Cancel"
+      class="p-button-text"
+      [disabled]="aiLoading"
+      (click)="closeAiDialog()">
+    </button>
+    <button
+      pButton
+      type="button"
+      label="Ask AI"
+      icon="pi pi-sparkles"
+      class="p-button-outlined"
+      [disabled]="aiLoading"
+      (click)="submitAiPrompt()">
+    </button>
+    <button
+      pButton
+      type="button"
+      label="Add To Diagram"
+      icon="pi pi-plus"
+      [disabled]="!aiSuggestions.length || aiLoading"
+      (click)="applyAiSuggestions()">
+    </button>
+    <p-progressSpinner
+      *ngIf="aiLoading"
+      styleClass="diagram-ai-dialog__spinner"
+      strokeWidth="4"
+      [style]="{ width: '30px', height: '30px' }">
+    </p-progressSpinner>
+  </ng-template>
+</p-dialog>
+
+<p-dialog
+  header="Chat with Local AI"
+  [(visible)]="chatDialogVisible"
+  [modal]="true"
+  [dismissableMask]="!chatLoading"
+  [closable]="!chatLoading"
+  [style]="{ width: '520px' }"
+  (onHide)="closeChatDialog()">
+  <div class="diagram-ai-chat">
+    <div class="diagram-ai-chat__messages">
+      <div
+        *ngFor="let message of chatMessages"
+        class="diagram-ai-chat__message"
+        [ngClass]="{
+          'diagram-ai-chat__message--user': message.role === 'user',
+          'diagram-ai-chat__message--assistant': message.role === 'assistant',
+          'diagram-ai-chat__message--system': message.role === 'system',
+          'diagram-ai-chat__message--error': message.error
+        }">
+        <div class="diagram-ai-chat__message-meta">
+          <span class="diagram-ai-chat__message-role">{{ message.role }}</span>
+          <span class="diagram-ai-chat__message-time">{{ message.timestamp | date:'shortTime' }}</span>
+        </div>
+        <div class="diagram-ai-chat__message-content">
+          {{ message.content }}
+        </div>
+      </div>
+    </div>
+    <textarea
+      pInputTextarea
+      [(ngModel)]="chatInput"
+      [ngModelOptions]="{ standalone: true }"
+      [autoResize]="true"
+      rows="3"
+      placeholder="Ask about architecture, resource configuration, or best practices..."
+      [disabled]="chatLoading">
+    </textarea>
+  </div>
+  <ng-template pTemplate="footer">
+    <button
+      pButton
+      type="button"
+      label="Close"
+      class="p-button-text"
+      [disabled]="chatLoading || importingFromChat"
+      (click)="closeChatDialog()">
+    </button>
+    <button
+      pButton
+      type="button"
+      label="Import Reply"
+      icon="pi pi-upload"
+      class="p-button-outlined"
+      [disabled]="!canImportLastAssistantReply() || importingFromChat || chatLoading"
+      (click)="importLastAssistantMessage()">
+    </button>
+    <button
+      pButton
+      type="button"
+      label="Send"
+      icon="pi pi-send"
+      [disabled]="!chatInput.trim() || chatLoading || importingFromChat"
+      (click)="sendChatMessage()">
+    </button>
+    <p-progressSpinner
+      *ngIf="chatLoading || importingFromChat"
+      styleClass="diagram-ai-dialog__spinner"
+      strokeWidth="4"
+      [style]="{ width: '30px', height: '30px' }">
+    </p-progressSpinner>
+  </ng-template>
+</p-dialog>

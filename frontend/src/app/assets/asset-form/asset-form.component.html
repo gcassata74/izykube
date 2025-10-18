@@ -82,7 +82,43 @@
           </small>
         </div>
 
-        <div class="mt-4 ml-4 mr-4" *ngIf="assetForm.get('type')?.value !== 'script'">
+        <div class="mt-4 ml-4 mr-4" *ngIf="assetForm.get('type')?.value === assetType.IMAGE">
+          <div class="d-flex flex-column gap-2">
+            <span class="p-float-label">
+              <p-dropdown
+                id="imageSelect"
+                [options]="localImages"
+                optionLabel="label"
+                optionValue="value"
+                formControlName="image"
+                [editable]="true"
+                [filter]="true"
+                filterBy="label"
+                [showClear]="true"
+                placeholder="Select or type image"
+                styleClass="p-inputtext-lg w-full">
+              </p-dropdown>
+              <label for="imageSelect" i18n="@@imagePlaceholder">Image</label>
+            </span>
+            <div class="d-flex align-items-center gap-2">
+              <small class="text-muted">Select a local image or type a custom reference.</small>
+              <button pButton
+                      type="button"
+                      icon="pi pi-refresh"
+                      class="p-button-rounded p-button-text"
+                      [disabled]="loadingImages"
+                      (click)="refreshLocalImages()">
+              </button>
+            </div>
+          </div>
+          <small *ngIf="assetForm.get('image')?.invalid && assetForm.get('image')?.touched"
+                 class="p-error"
+                 i18n="@@imageRequired">
+            Image is required
+          </small>
+        </div>
+
+        <div class="mt-4 ml-4 mr-4" *ngIf="assetForm.get('type')?.value !== 'script' && assetForm.get('type')?.value !== assetType.IMAGE">
           <span class="p-float-label">
             <input id="image"
                    type="text"

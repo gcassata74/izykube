@@ -7,6 +7,7 @@ import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.BuildResponseItem;
 import com.github.dockerjava.api.model.PullResponseItem;
 import com.github.dockerjava.core.DockerClientImpl;
+import com.izylife.izykube.dto.docker.LocalImageDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -125,6 +131,38 @@ public class DockerImageService {
         return "Image removed successfully!";
     }
 
+    public List<LocalImageDTO> listLocalImages() {
+        Set<String> seenTags = new LinkedHashSet<>();
+        List<LocalImageDTO> images = new ArrayList<>();
+
+        dockerClient.listImagesCmd().exec().forEach(image -> {
+            String[] repoTags = image.getRepoTags();
+            if (repoTags == null) {
+                return;
+            }
+
+            Arrays.stream(repoTags)
+                    .filter(tag -> tag != null && !tag.equals("<none>:<none>") && !tag.isBlank())
+                    .forEach(fullTag -> {
+                        String repository = fullTag;
+                        String resolvedTag = "latest";
+
+                        int lastColon = fullTag.lastIndexOf(':');
+                        if (lastColon > fullTag.indexOf('/')) {
+                            repository = fullTag.substring(0, lastColon);
+                            resolvedTag = fullTag.substring(lastColon + 1);
+                        }
+
+                        String key = repository + ":" + resolvedTag;
+                        if (seenTags.add(key)) {
+                            images.add(new LocalImageDTO(repository, resolvedTag));
+                        }
+                    });
+        });
+
+        return images;
+    }
+
     private void unzipDockerArchive(MultipartFile dockerArchive, Path destination) throws IOException {
         // Convert MultipartFile to java.io.File
         File archiveFile = new File(destination.toFile(), dockerArchive.getOriginalFilename());
@@ -155,4 +193,3 @@ public class DockerImageService {
         }
     }
 }
-

@@ -1,61 +1,119 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AutoSaveService } from '../../services/auto-save.service';
 import { Node } from '../../model/node.class';
 import { Ingress } from '../../model/ingress.class';
-import { Observable } from 'rxjs';
-import { AssetService } from '../../services/asset.service';
+import { Service } from '../../model/service.class';
 
 @Component({
   selector: 'app-ingress-form',
   templateUrl: './ingress-form.component.html',
   providers: [AutoSaveService]
 })
-export class IngressFormComponent implements OnInit {
+export class IngressFormComponent implements OnInit, OnChanges {
   @Input() selectedNode!: Node;
+  @Input() sourceNodes: Node[] = [];
+
   ingressForm!: FormGroup;
-  filteredAssets$!: Observable<any[]>;
+  services: Service[] = [];
+  serviceOptions: { label: string; value: string }[] = [];
+  private servicePortManuallyEdited = false;
 
   constructor(
     private fb: FormBuilder,
-    private autoSaveService: AutoSaveService,
-    private assetService: AssetService
+    private autoSaveService: AutoSaveService
   ) {}
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.initForm();
     this.setupAutoSave();
-    this.loadAssets();
+    this.applyLinkedServiceDefaults();
   }
 
-  private initForm() {
+  ngOnChanges(changes: SimpleChanges): void {
+    if ((changes['sourceNodes'] || changes['cluster']) && this.ingressForm) {
+      this.applyLinkedServiceDefaults();
+    }
+  }
+
+  private initForm(): void {
     const ingress = this.selectedNode as Ingress;
     this.ingressForm = this.fb.group({
       name: [ingress.name, Validators.required],
       host: [ingress.host, Validators.required],
       path: [ingress.path, Validators.required],
-      servicePort: [ingress.servicePort, Validators.required]
+      serviceName: [ingress.serviceName || '', Validators.required],
+      servicePort: [ingress.servicePort || 80, [Validators.required, Validators.min(1), Validators.max(65535)]]
+    });
+
+    this.ingressForm.get('servicePort')?.valueChanges.subscribe(() => {
+      if (this.ingressForm.get('servicePort')?.dirty) {
+        this.servicePortManuallyEdited = true;
+      }
+    });
+
+    this.ingressForm.get('serviceName')?.valueChanges.subscribe((serviceName) => {
+      this.updateServicePortFor(serviceName);
     });
   }
 
-  private loadAssets() {
-    this.filteredAssets$ = this.assetService.getAssets();
+  private setupAutoSave(): void {
+    this.autoSaveService.enableAutoSave(this.ingressForm, this.selectedNode.id, this.ingressForm.valueChanges);
   }
 
-  emitChange(event: any) {
-    // Handle the asset selection change event
-    console.log('Selected asset:', event.value);
-    // You might want to update other form fields based on the selected asset
+  private applyLinkedServiceDefaults(): void {
+    if (!this.ingressForm) {
+      return;
+    }
+
+    this.services = (this.sourceNodes || [])
+      .filter(node => node.kind?.toLowerCase() === 'service')
+      .map(node => node as Service);
+
+    this.serviceOptions = this.services.map(service => ({
+      label: service.name,
+      value: service.name
+    }));
+
+    if (!this.services.length) {
+      return;
+    }
+
+    const serviceNameControl = this.ingressForm.get('serviceName');
+    const currentName = serviceNameControl?.value;
+    const hasMatchingService = currentName && this.services.some(service => service.name === currentName);
+
+    if (!hasMatchingService) {
+      serviceNameControl?.patchValue(this.services[0].name, { emitEvent: false });
+      this.servicePortManuallyEdited = false;
+    }
+
+    this.updateServicePortFor(serviceNameControl?.value, !hasMatchingService);
   }
 
-  onSubmit() {
-    if (this.ingressForm.valid) {
-      // Handle form submission logic here
-      console.log(this.ingressForm.value);
+  private updateServicePortFor(serviceName: string, forceUpdate = false): void {
+    if (!serviceName) {
+      return;
+    }
+
+    const matchingService = this.services.find(service => service.name === serviceName);
+    const portControl = this.ingressForm.get('servicePort');
+
+    if (!matchingService || !portControl) {
+      return;
+    }
+
+    if (!this.servicePortManuallyEdited || forceUpdate || portControl.pristine) {
+      portControl.patchValue(matchingService.port, { emitEvent: false });
+    }
+
+    const hostControl = this.ingressForm.get('host');
+    if (hostControl && (!hostControl.value || hostControl.pristine) && matchingService.frontendUrl) {
+      hostControl.patchValue(this.stripHttpPrefix(matchingService.frontendUrl), { emitEvent: false });
     }
   }
 
-  private setupAutoSave() {
-    this.autoSaveService.enableAutoSave(this.ingressForm, this.selectedNode.id, this.ingressForm.valueChanges);
+  private stripHttpPrefix(url: string): string {
+    return url.replace(/^(http:\/\/|https:\/\/)/, '');
   }
 }

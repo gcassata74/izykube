@@ -1,5 +1,6 @@
 package com.izylife.izykube.configuration;
 
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,9 +23,8 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/authenticate", "/api/**", "/api-docs/**", "/", "/static/**",
-                                "/favicon.ico", "/**/*.png", "/**/*.gif", "/**/*.svg", "/**/*.jpg",
-                                "/**/*.html", "/**/*.css", "/**/*.js").permitAll()
+                        .requestMatchers("/authenticate", "/api/**", "/api-docs/**").permitAll()
+                        .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

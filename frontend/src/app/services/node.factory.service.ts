@@ -69,6 +69,7 @@ export class NodeFactoryService {
           name,
           'example.com',  // default host
           '/',            // default path
+          '',
           80              // default servicePort
         );
       default:

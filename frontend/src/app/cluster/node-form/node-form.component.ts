@@ -3,7 +3,7 @@ import { Store } from '@ngrx/store';
 import { Component, OnDestroy, OnInit, Type } from '@angular/core';
 import { switchMap, filter, tap, Subscription, distinctUntilChanged } from 'rxjs';
 import { DiagramService } from 'src/app/services/diagram.service';
-import { getNodeById } from 'src/app/store/selectors/selectors';
+import { getCurrentCluster, getNodeById } from 'src/app/store/selectors/selectors';
 import { DeploymentFormComponent } from '../deployment-form/deployment-form.component';
 import { ConfigMapFormComponent } from '../config-map-form/config-map-form.component';
 import { PodFormComponent } from '../pod-form/pod-form.component';
@@ -13,6 +13,9 @@ import { ContainerFormComponent } from '../container-form/container-form.compone
 import { VolumeFormComponent } from '../volume-form/volume-form.component';
 import { JobFormComponent } from '../job-form/job-form.component';
 import { AssetFormComponent } from 'src/app/assets/asset-form/asset-form.component';
+import { Cluster } from 'src/app/model/cluster.class';
+import { Link } from 'src/app/model/link.class';
+import { take } from 'rxjs/operators';
 
 
 @Component({
@@ -84,7 +87,28 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     }
 
     this.currentNodeId = node.id;
-    this.componentInputs = { selectedNode: node };
+
+    this.store.select(getCurrentCluster).pipe(take(1)).subscribe((cluster: Cluster) => {
+      if (!cluster) {
+        this.componentInputs = { selectedNode: node };
+        return;
+      }
+
+      const sourceNodes = this.findLinkedNodes(cluster, node.id, 'incoming');
+      const targetNodes = this.findLinkedNodes(cluster, node.id, 'outgoing');
+
+      const inputs: Record<string, unknown> = { selectedNode: node };
+
+      if (componentType === ServiceFormComponent) {
+        inputs['sourceNodes'] = sourceNodes;
+        inputs['targetNodes'] = targetNodes;
+        inputs['cluster'] = cluster;
+      } else if (componentType === IngressFormComponent) {
+        inputs['sourceNodes'] = sourceNodes;
+      }
+
+      this.componentInputs = inputs;
+    });
   }
 
   private clearDynamicForm() {
@@ -92,6 +116,23 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     this.node = null;
     this.activeComponentType = null;
     this.componentInputs = {};
+  }
+
+  private findLinkedNodes(cluster: Cluster, nodeId: string, direction: 'incoming' | 'outgoing'): Node[] {
+    if (!cluster?.links?.length) {
+      return [];
+    }
+
+    const links: Link[] = cluster.links;
+    const linkedIds = direction === 'incoming'
+      ? links.filter(link => link.target === nodeId).map(link => link.source)
+      : links.filter(link => link.source === nodeId).map(link => link.target);
+
+    if (!linkedIds.length) {
+      return [];
+    }
+
+    return (cluster.nodes ?? []).filter((n: Node) => linkedIds.includes(n.id));
   }
 
   ngOnDestroy(): void {

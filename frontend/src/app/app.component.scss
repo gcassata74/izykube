@@ -36,11 +36,14 @@ $toolbar-height: 70px;
 // Sidebar Styling
 .app-sidebar {
   width: $sidebar-width !important;
-  
+  background-color: $izy-blue;
+  color: $izy-white;
+
   .sidebar-nav {
     padding: 0;
     margin: 0;
-    
+    height: 100%;
+
     .nav-list {
       list-style: none;
       padding: 0;
@@ -53,7 +56,7 @@ $toolbar-height: 70px;
           display: flex;
           align-items: center;
           padding: 12px 20px;
-          color: $izy-black;
+          color: $izy-white;
           text-decoration: none;
           transition: all 0.3s ease;
           border-left: 3px solid transparent;
@@ -63,7 +66,7 @@ $toolbar-height: 70px;
             font-size: 16px;
             width: 20px;
             text-align: center;
-            color: $izy-blue;
+            color: $izy-white;
           }
           
           span {
@@ -71,29 +74,33 @@ $toolbar-height: 70px;
           }
           
           &:hover {
-            background-color: rgba($izy-blue, 0.1);
-            border-left-color: $izy-blue;
-            color: $izy-blue;
+            background-color: rgba($izy-white, 0.15);
+            border-left-color: $izy-white;
+            color: $izy-white;
             
             i {
-              color: $izy-blue;
+              color: $izy-white;
             }
           }
           
           &.active {
-            background-color: rgba($izy-blue, 0.15);
-            border-left-color: $izy-blue;
-            color: $izy-blue;
+            background-color: rgba($izy-white, 0.2);
+            border-left-color: $izy-white;
+            color: $izy-white;
             font-weight: 600;
             
             i {
-              color: $izy-blue;
+              color: $izy-white;
             }
           }
         }
       }
     }
   }
+}
+
+:host ::ng-deep .app-sidebar .p-sidebar-content {
+  background-color: transparent;
 }
 
 // Responsive Adjustments
