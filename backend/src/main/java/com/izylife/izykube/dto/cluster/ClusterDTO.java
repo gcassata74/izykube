@@ -23,5 +23,7 @@ public class ClusterDTO {
     private List<LinkDTO> links = new ArrayList<>();
     private String diagram;
     private ClusterStatusEnum status;
+    @Builder.Default
+    private ExportMode exportMode = ExportMode.FLAT_YAML;
 
 }

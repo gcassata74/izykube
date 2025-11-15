@@ -6,14 +6,20 @@ import com.izylife.izykube.dto.ai.AiChatResponse;
 import com.izylife.izykube.dto.ai.AiGenerateRequest;
 import com.izylife.izykube.dto.ai.AiGenerateResponse;
 import com.izylife.izykube.dto.ai.AiImportRequest;
+import com.izylife.izykube.dto.ai.AiExportResponse;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
+import com.izylife.izykube.dto.cluster.ExportMode;
 import com.izylife.izykube.services.ai.LocalAiService;
 import com.izylife.izykube.services.ai.LocalAiService.LocalAiServiceException;
-import com.izylife.izykube.services.ai.YamlImportService;
+import com.izylife.izykube.services.ai.ClusterYamlService;
+import com.izylife.izykube.services.ai.ClusterYamlException;
+import com.izylife.izykube.services.ai.HelmChartArchive;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/ai")
@@ -30,11 +37,11 @@ public class AiController {
     private static final Logger log = LoggerFactory.getLogger(AiController.class);
 
     private final LocalAiService localAiService;
-    private final YamlImportService yamlImportService;
+    private final ClusterYamlService clusterYamlService;
 
-    public AiController(LocalAiService localAiService, YamlImportService yamlImportService) {
+    public AiController(LocalAiService localAiService, ClusterYamlService clusterYamlService) {
         this.localAiService = localAiService;
-        this.yamlImportService = yamlImportService;
+        this.clusterYamlService = clusterYamlService;
     }
 
     @PostMapping("/generate")
@@ -51,8 +58,22 @@ public class AiController {
 
     @PostMapping("/import-yaml")
     public ResponseEntity<ClusterDTO> importYaml(@Valid @RequestBody AiImportRequest request) {
-        ClusterDTO cluster = yamlImportService.importCluster(request.getYaml(), request.getName());
+        ClusterDTO cluster = clusterYamlService.importCluster(request.getYaml(), request.getName());
         return ResponseEntity.ok(cluster);
+    }
+
+    @PostMapping("/export-yaml")
+    public ResponseEntity<?> exportYaml(@RequestBody ClusterDTO cluster) {
+        ExportMode exportMode = Optional.ofNullable(cluster.getExportMode()).orElse(ExportMode.FLAT_YAML);
+        if (exportMode == ExportMode.HELM_CHART) {
+            HelmChartArchive archive = clusterYamlService.exportHelmChart(cluster);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + archive.fileName() + "\"")
+                    .contentType(MediaType.parseMediaType("application/zip"))
+                    .body(archive.content());
+        }
+        String yaml = clusterYamlService.exportCluster(cluster);
+        return ResponseEntity.ok(new AiExportResponse(yaml));
     }
 
     @PostMapping("/chat")
@@ -71,5 +92,11 @@ public class AiController {
     public ResponseEntity<String> handleLocalAi(LocalAiServiceException ex) {
         log.error("Local AI error: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(ClusterYamlException.class)
+    public ResponseEntity<String> handleInvalidYaml(ClusterYamlException ex) {
+        log.warn("Invalid cluster YAML import: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
     }
 }

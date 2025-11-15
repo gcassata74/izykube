@@ -27,9 +27,13 @@ $toolbar-height: 70px;
   margin-left: $sidebar-width;
   padding: 20px;
   background-color: $izy-white;
-  min-height: 100vh;
+  flex: 1;
+  min-height: 0;
+  height: calc(100vh - $toolbar-height);
   border-radius: 8px 0 0 0;
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 

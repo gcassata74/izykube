@@ -1,16 +1,14 @@
 import { Deployment } from './../../model/deployment.class';
 import { ClusterService } from 'src/app/services/cluster.service';
-import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Store, select } from '@ngrx/store';
 import { Button, ButtonAction } from '../../model/button.interface';
-import { EMPTY, Observable, Subscription, catchError, distinctUntilChanged, filter, finalize, first, of, switchMap, take, tap, throwError } from 'rxjs';
+import { EMPTY, Observable, Subscription, catchError, filter, finalize, of, switchMap, take, tap, throwError } from 'rxjs';
 import { DiagramComponent } from '../../diagram/diagram.component';
-import { DiagramService } from '../../services/diagram.service';
 import { ToolbarService } from '../../services/toolbar.service';
 import { getCurrentAction, getCurrentCluster } from '../../store/selectors/selectors';
 import *  as actions from '../../store/actions/actions';
-import { provideAnimations } from '@angular/platform-browser/animations';
-import { ActivatedRoute, Params } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { Cluster } from 'src/app/model/cluster.class';
 import { NotificationService } from 'src/app/services/notification.service';
 import { ClusterStatusEnum } from '../enum/cluster.-status-enum';
@@ -30,7 +28,6 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
   constructor(
     private toolbarService: ToolbarService,
     private store: Store,
-    private diagramService: DiagramService,
     protected notificationService: NotificationService,
     private clusterService: ClusterService,
     private templateService: TemplateService,
@@ -39,7 +36,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadCluster();
-    this.setupSaveActions();
+    this.setupActionHandlers();
   }
 
 
@@ -79,10 +76,10 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
     }
   }
 
-  private setupSaveActions(): void {
+  private setupActionHandlers(): void {
     this.subscription.add(
       this.store.select(getCurrentAction).pipe(
-        filter(action => ['save-diagram', 'update-template', 'update-cluster'].includes(action as string)),
+        filter((action): action is string => !!action),
         switchMap(action => {
           switch (action) {
             case 'save-diagram':
@@ -91,8 +88,17 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
               return this.updateTemplate();
             case 'update-cluster':
               return this.updateCluster();
+            case 'import-cluster-yaml':
+              this.diagramComponent?.openClusterYamlDialog('import');
+              return of(null);
+            case 'export-cluster-yaml':
+              this.diagramComponent?.openClusterYamlDialog('export');
+              return of(null);
+            case 'open-ai-chat':
+              this.diagramComponent?.openChatDialog();
+              return of(null);
             default:
-              return EMPTY;
+              return of(null);
           }
         }),
         finalize(() => this.store.dispatch(actions.resetCurrentAction())),
@@ -142,7 +148,10 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
     return this.store.select(getCurrentCluster).pipe(
       take(1),
       switchMap(clusterData => this.clusterService.saveCluster(clusterData).pipe(
-        tap(() => {
+        tap((savedCluster) => {
+          if (savedCluster) {
+            this.store.dispatch(actions.loadCluster({ cluster: savedCluster }));
+          }
           this.notificationService.success('Cluster saved successfully');
           this.store.dispatch(actions.resetCurrentAction());
         }),
@@ -156,14 +165,32 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
   }
 
   createButtons(action: string | ButtonAction[]): void {
-    const button = {
-      label: "Save",
-      icon: "pi pi-save",
-      actions: action,
-      styleClass: "p-button-success",
-    };
+    const buttons: Button[] = [
+      {
+        label: 'AI Chat',
+        icon: 'pi pi-comments',
+        actions: 'open-ai-chat',
+        styleClass: 'p-button-secondary'
+      },
+      {
+        label: 'Save',
+        icon: 'pi pi-save',
+        actions: action,
+        styleClass: 'p-button-success'
+      },
+      {
+        label: 'Actions',
+        icon: 'pi pi-file-code',
+        actions: 'open-actions-menu',
+        styleClass: 'p-button-secondary',
+        menuItems: [
+          { label: 'Import YAML', action: 'import-cluster-yaml', icon: 'pi pi-upload' },
+          { label: 'Export YAML', action: 'export-cluster-yaml', icon: 'pi pi-download' }
+        ]
+      }
+    ];
 
-    this.toolbarService.setButtons([button]);
+    this.toolbarService.setButtons(buttons);
   }
 
   ngOnDestroy(): void {

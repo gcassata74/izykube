@@ -2,6 +2,8 @@ import { Node } from './node.class';
 import { Link } from './link.class';
 import { ClusterStatusEnum } from '../cluster/enum/cluster.-status-enum';
 
+export type ClusterExportMode = 'FLAT_YAML' | 'HELM_CHART';
+
 export class Cluster {
     constructor(
         public id: string | null = null,
@@ -10,7 +12,8 @@ export class Cluster {
         public links: Link[] = [],
         public diagram: string = '',
         public nameSpace: string = 'default',
-        public status: ClusterStatusEnum = ClusterStatusEnum.CREATED
+        public status: ClusterStatusEnum = ClusterStatusEnum.CREATED,
+        public exportMode: ClusterExportMode = 'FLAT_YAML'
     ) {}
 
     static fromJSON(apiResponse: any): Cluster {
@@ -23,7 +26,8 @@ export class Cluster {
          Array.isArray(apiResponse.links) ? apiResponse.links : [],
          apiResponse.diagram || '',
          apiResponse.nameSpace || 'default',
-         ClusterStatusEnum[apiResponse.status as keyof typeof ClusterStatusEnum] || ClusterStatusEnum.CREATED
+         ClusterStatusEnum[apiResponse.status as keyof typeof ClusterStatusEnum] || ClusterStatusEnum.CREATED,
+         apiResponse.exportMode === 'HELM_CHART' ? 'HELM_CHART' : 'FLAT_YAML'
      );
  }
 

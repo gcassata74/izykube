@@ -1,14 +1,15 @@
 import { TemplateService } from './../../services/template.service';
-import { DataService } from './../../services/data.service';
 import { Component, ViewChild } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { ClusterService } from '../../services/cluster.service';
-import { Cluster } from '../../model/cluster.class';
-import { catchError, combineLatest, EMPTY, filter, find, map, Observable, of, Subscription, switchMap, take, tap, throwError } from 'rxjs';
+import { Cluster, ClusterExportMode } from '../../model/cluster.class';
+import { AiAssistantService, AiExportYamlResponse, AiHelmChartExportResponse } from '../../services/ai-assistant.service';
+import { catchError, EMPTY, map, Observable, of, Subscription, switchMap, take, tap } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { ContextMenu } from 'primeng/contextmenu';
 import { Store } from '@ngrx/store';
-import { getClusters, getStatus } from '../../store/selectors/selectors';
+import { getClusters } from '../../store/selectors/selectors';
 import { loadClusters } from 'src/app/store/actions/actions';
 import { ClusterStatusEnum } from '../enum/cluster.-status-enum';
 import { NotificationService } from 'src/app/services/notification.service';
@@ -24,13 +25,15 @@ export class ClusterListComponent {
   cols!: any[];
   items!: MenuItem[];
   selectedId!: string;
+  exportingClusterId: string | null = null;
+  exportingMode: ClusterExportMode | null = null;
   private subscriptions = new Subscription();
 
   constructor(
     private clusterService: ClusterService,
     private templateService: TemplateService,
-    private dataService: DataService,
     private notificationService: NotificationService,
+    private aiAssistantService: AiAssistantService,
     private router: Router,
     private store: Store
   ) {}
@@ -103,6 +106,22 @@ export class ClusterListComponent {
         icon: 'pi pi-stop',
         command: () => cluster.id !== null && this.undeploy(cluster.id),
         visible: cluster.status === ClusterStatusEnum.DEPLOYED
+      },
+      {
+        label: 'Export',
+        icon: 'pi pi-download',
+        items: [
+          {
+            label: 'YAML manifest',
+            icon: 'pi pi-file',
+            command: () => this.exportCluster(cluster, 'FLAT_YAML')
+          },
+          {
+            label: 'Helm chart (.zip)',
+            icon: 'pi pi-box',
+            command: () => this.exportCluster(cluster, 'HELM_CHART')
+          }
+        ]
       }
     ];
   }
@@ -198,6 +217,82 @@ export class ClusterListComponent {
   onContextMenu($event: MouseEvent, id: any) {
     $event.preventDefault();
     this.updateContextMenuItems($event, id);
+  }
+
+  private exportCluster(cluster: Cluster, mode: ClusterExportMode): void {
+    if (!cluster?.id) {
+      return;
+    }
+    if (this.exportingClusterId) {
+      this.notificationService.warn('Export in progress', 'Wait for the current export to finish.');
+      return;
+    }
+
+    const payload = JSON.parse(JSON.stringify({ ...cluster, exportMode: mode }));
+    this.exportingClusterId = cluster.id;
+    this.exportingMode = mode;
+
+    const export$: Observable<AiExportYamlResponse | AiHelmChartExportResponse> = mode === 'HELM_CHART'
+      ? this.aiAssistantService.exportHelmChart(payload)
+      : this.aiAssistantService.exportYaml(payload);
+
+    this.subscriptions.add(
+      export$.pipe(
+        finalize(() => {
+          this.exportingClusterId = null;
+          this.exportingMode = null;
+        })
+      ).subscribe({
+        next: (response: AiExportYamlResponse | AiHelmChartExportResponse) => {
+          if (mode === 'HELM_CHART') {
+            this.handleHelmExport(cluster, response as AiHelmChartExportResponse);
+          } else {
+            this.handleYamlExport(cluster, response as AiExportYamlResponse);
+          }
+        },
+        error: (error: any) => {
+          const detail = error?.error || error?.message || 'Cluster export failed.';
+          this.notificationService.error('Export failed', typeof detail === 'string' ? detail : undefined);
+        }
+      })
+    );
+  }
+
+  private handleYamlExport(cluster: Cluster, response: AiExportYamlResponse): void {
+    if (!response?.yaml) {
+      this.notificationService.warn('No YAML returned', 'The export response was empty.');
+      return;
+    }
+    const fileName = `${this.sanitizeFileName(cluster?.name || 'izykube-cluster')}.yaml`;
+    this.downloadBlob(new Blob([response.yaml], { type: 'text/yaml;charset=utf-8' }), fileName);
+    this.notificationService.success('YAML ready', `${fileName} downloaded.`);
+  }
+
+  private handleHelmExport(cluster: Cluster, response: AiHelmChartExportResponse): void {
+    if (!response?.blob) {
+      this.notificationService.warn('No chart returned', 'The Helm export response was empty.');
+      return;
+    }
+    const fallbackName = `${this.sanitizeFileName(cluster?.name || 'izykube-cluster')}-chart.zip`;
+    const fileName = response.fileName || fallbackName;
+    this.downloadBlob(response.blob, fileName);
+    this.notificationService.success('Helm chart ready', `${fileName} downloaded.`);
+  }
+
+  private downloadBlob(blob: Blob, fileName: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private sanitizeFileName(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'izykube-cluster';
   }
 
   ngOnDestroy() {

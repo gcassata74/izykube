@@ -17,6 +17,8 @@
         <java.version>21</java.version>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
+        <skip.frontend.build>false</skip.frontend.build>
+        <skip.frontend.yarn.install>true</skip.frontend.yarn.install>
     </properties>
 
     <dependencies>
@@ -203,6 +205,48 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.15.0</version>
+                <configuration>
+                    <workingDirectory>${project.parent.basedir}/frontend</workingDirectory>
+                    <nodeVersion>v20.12.2</nodeVersion>
+                    <yarnVersion>v1.22.22</yarnVersion>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-yarn</id>
+                        <goals>
+                            <goal>install-node-and-yarn</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${skip.frontend.build}</skip>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>yarn-install</id>
+                        <goals>
+                            <goal>yarn</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>install --ignore-optional --non-interactive --frozen-lockfile</arguments>
+                            <skip>${skip.frontend.yarn.install}</skip>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>yarn-build</id>
+                        <goals>
+                            <goal>yarn</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>build</arguments>
+                            <skip>${skip.frontend.build}</skip>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
@@ -220,9 +264,10 @@
                 <executions>
                     <execution>
                         <id>copy-resources</id>
-                        <phase>validate</phase>
+                        <phase>process-resources</phase>
                         <goals><goal>copy-resources</goal></goals>
                         <configuration>
+                            <skip>${skip.frontend.build}</skip>
                             <outputDirectory>${project.build.directory}/classes/static/</outputDirectory>
                             <resources>
                                 <resource>

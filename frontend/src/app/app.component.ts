@@ -1,12 +1,13 @@
 import { ToolbarModule } from 'primeng/toolbar';
 import { ToolbarService } from './services/toolbar.service';
-import { AfterViewInit, ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
-import { MenuItem, MenuItemCommandEvent } from 'primeng/api';
+import { MenuItem } from 'primeng/api';
+import { Menu } from 'primeng/menu';
 import { Store } from '@ngrx/store';
 import * as actions from './store/actions/actions';
-import { Observable, filter, map, of, startWith, switchMap, tap } from 'rxjs';
-import { Button, ButtonAction } from './model/button.interface';
+import { Observable, tap } from 'rxjs';
+import { Button, ButtonAction, ButtonMenuItem } from './model/button.interface';
 
 @Component({
   selector: 'app-root',
@@ -17,10 +18,9 @@ export class AppComponent implements OnInit {
 
   title = 'Izykube';
   displaySidebar = true;
-  Array: any;
-  action: any;
-  items: MenuItem[] = [];
   buttons$!: Observable<Button[]>;
+  @ViewChild('toolbarMenu') toolbarMenu?: Menu;
+  menuItems: MenuItem[] = [];
 
   constructor(
     private router: Router,
@@ -30,21 +30,8 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     this.buttons$ = this.toolBarService.buttons$.pipe(
-      tap(buttons => {
-        this.items = this.convertActionsToMenuItems(buttons.flatMap(button => Array.isArray(button.actions) ? button.actions : []));
-      })
+      tap()
     );
-  }
-
-  convertActionsToMenuItems(actions: string | ButtonAction[]): any {
-    if (this.isArray(actions)) {
-      return (actions as ButtonAction[]).splice(1).map(action => {
-        return {
-          label: action.label,
-          command: (event: MenuItemCommandEvent) => this.performAction(action.action),
-        };
-      });
-    }
   }
 
 
@@ -53,20 +40,30 @@ export class AppComponent implements OnInit {
   }
 
   performAction(action: string | ButtonAction[]): void {
-    if(typeof action === 'string') {
+    if (typeof action === 'string' && action) {
       this.store.dispatch(actions.setCurrentAction({ action }));
     }
   }
 
-  handleSplitButtonClick(actions: string | ButtonAction[]): void {
-    if (Array.isArray(actions) && actions.length > 0) {
-      this.performAction(actions[0].action);
+  openActions(event: MouseEvent, items: ButtonMenuItem[] | undefined): void {
+    if (!this.toolbarMenu) {
+      return;
     }
+    this.menuItems = this.buildMenuItems(items);
+    this.toolbarMenu.model = this.menuItems;
+    this.toolbarMenu.toggle(event);
   }
 
 
-  isArray(action: string | ButtonAction[]): any {
-    return Array.isArray(action);
+  buildMenuItems(items: ButtonMenuItem[] | undefined): MenuItem[] {
+    if (!items) {
+      return [];
+    }
+    return items.map(item => ({
+      label: item.label,
+      icon: item.icon,
+      command: () => this.performAction(item.action)
+    }));
   }
 
 }

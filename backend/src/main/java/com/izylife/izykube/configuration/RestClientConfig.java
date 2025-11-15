@@ -15,7 +15,7 @@ public class RestClientConfig {
     public RestTemplate restTemplate(
             RestTemplateBuilder builder,
             @Value("${ai.local.connect-timeout-ms:5000}") long connectTimeoutMs,
-            @Value("${ai.local.read-timeout-ms:120000}") long readTimeoutMs) {
+            @Value("${ai.local.read-timeout-ms:300000}") long readTimeoutMs) {
         return builder
                 .setConnectTimeout(Duration.ofMillis(connectTimeoutMs))
                 .setReadTimeout(Duration.ofMillis(readTimeoutMs))

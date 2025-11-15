@@ -3,12 +3,12 @@ import { IconService } from './../services/icon.service';
 import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild } from '@angular/core';
 import { Store, select } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
-import { BehaviorSubject, Subscription, debounceTime, distinctUntilChanged, filter, startWith, take, tap } from 'rxjs';
+import { Subscription, debounceTime, filter, finalize, take, tap } from 'rxjs';
 import * as actions from '../store/actions/actions';
 import { getCurrentCluster, getNodeById, selectClusterDiagram } from '../store/selectors/selectors';
-import { Cluster } from '../model/cluster.class';
+import { Cluster, ClusterExportMode } from '../model/cluster.class';
 import { DragDropData, DropEvent } from '../directives/drag-drop.directive';
-import { AiAssistantService, AiChatMessage, AiImportYamlResponse } from '../services/ai-assistant.service';
+import { AiAssistantService, AiChatMessage, AiImportYamlResponse, AiExportYamlResponse, AiHelmChartExportResponse } from '../services/ai-assistant.service';
 import { NotificationService } from '../services/notification.service';
 
 interface DiagramNode {
@@ -72,7 +72,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   isDraggingConnection: boolean = false;
   tempLine: SVGLineElement | null = null;
   isResizing: boolean = false;
-  undoStack: { nodes: DiagramNode[], links: DiagramLink[] }[] = [];
+  undoStack: { nodes: DiagramNode[], links: DiagramLink[], rawManifests: any[] }[] = [];
   maxUndoSteps: number = 20;
   firstColumnWidth: number = 180;
   minWidth: number = 200;
@@ -96,6 +96,23 @@ export class DiagramComponent implements OnInit, OnDestroy {
   chatLoading = false;
   lastAssistantMessage: ChatMessage | null = null;
   importingFromChat = false;
+  clusterYamlDialogVisible = false;
+  clusterYamlMode: 'import' | 'export' = 'import';
+  clusterYamlText = '';
+  clusterYamlError: string | null = null;
+  clusterYamlLoading = false;
+  clusterYamlFileName = '';
+  clusterExportMode: ClusterExportMode = 'FLAT_YAML';
+  clusterExportModeOptions = [
+    { label: 'Flat YAML', value: 'FLAT_YAML' as ClusterExportMode },
+    { label: 'Helm Chart (.zip)', value: 'HELM_CHART' as ClusterExportMode }
+  ];
+  helmChartBlob: Blob | null = null;
+  @ViewChild('yamlFileInput') yamlFileInput?: ElementRef<HTMLInputElement>;
+  private currentClusterSnapshot: Cluster | null = null;
+  private rawManifests: any[] = [];
+  private readonly nodeContentSize = 80;
+  private readonly nodeBorderWidth = 3;
 
   constructor(
     private iconService: IconService,
@@ -120,6 +137,14 @@ export class DiagramComponent implements OnInit, OnDestroy {
       }),
       take(1)
     ).subscribe();
+
+    this.subscription.add(
+      this.store.select(getCurrentCluster).pipe(
+        tap(cluster => {
+          this.currentClusterSnapshot = cluster ? Cluster.fromJSON(cluster) : null;
+        })
+      ).subscribe()
+    );
   }
 
 
@@ -268,6 +293,149 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.aiDialogVisible = false;
     this.aiSuggestions = [];
     this.aiPrompt = '';
+  }
+
+  openClusterYamlDialog(mode: 'import' | 'export'): void {
+    this.clusterYamlMode = mode;
+    this.clusterYamlError = null;
+    this.clusterYamlText = '';
+    this.clusterYamlLoading = false;
+    this.clusterYamlDialogVisible = true;
+
+    if (mode === 'export') {
+      this.clusterExportMode = 'FLAT_YAML';
+      this.clusterYamlFileName = '';
+      this.helmChartBlob = null;
+      this.fetchClusterExport();
+    } else {
+      this.clusterYamlText = '';
+      this.clusterYamlFileName = '';
+      this.helmChartBlob = null;
+    }
+  }
+
+  private fetchClusterExport(): void {
+    if (!this.currentClusterSnapshot) {
+      this.notificationService.warn('No cluster to export', 'Create or load a cluster before exporting YAML.');
+      this.clusterYamlDialogVisible = false;
+      return;
+    }
+
+    const payload = JSON.parse(JSON.stringify(this.currentClusterSnapshot));
+    this.clusterYamlLoading = true;
+    this.clusterYamlError = null;
+    if (this.clusterExportMode === 'HELM_CHART') {
+      this.aiAssistantService.exportHelmChart(payload).pipe(
+        finalize(() => this.clusterYamlLoading = false)
+      ).subscribe({
+        next: (response: AiHelmChartExportResponse) => {
+          this.clusterYamlText = '';
+          this.helmChartBlob = response.blob;
+          const fallbackName = `${this.sanitizeFileName(this.currentClusterSnapshot?.name || 'izykube-cluster')}-chart.zip`;
+          this.clusterYamlFileName = response.fileName || fallbackName;
+        },
+        error: (error) => {
+          this.handleClusterExportError(error);
+        }
+      });
+      return;
+    }
+
+    this.aiAssistantService.exportYaml(payload).pipe(
+      finalize(() => this.clusterYamlLoading = false)
+    ).subscribe({
+      next: (response: AiExportYamlResponse) => {
+        this.helmChartBlob = null;
+        this.clusterYamlText = response.yaml;
+        this.clusterYamlFileName = `${this.sanitizeFileName(this.currentClusterSnapshot?.name || 'izykube-cluster')}.yaml`;
+      },
+      error: (error) => {
+        this.handleClusterExportError(error);
+      }
+    });
+  }
+
+  private handleClusterExportError(error: any): void {
+    const detail = error?.error || error?.message || 'Cluster export failed.';
+    this.notificationService.error('Export failed', typeof detail === 'string' ? detail : undefined);
+    this.clusterYamlDialogVisible = false;
+  }
+
+  handleExportModeChange(mode: ClusterExportMode): void {
+    if (this.clusterExportMode === mode) {
+      return;
+    }
+    this.clusterExportMode = mode;
+    this.clusterYamlText = '';
+    this.clusterYamlFileName = '';
+    this.clusterYamlError = null;
+    this.helmChartBlob = null;
+    this.fetchClusterExport();
+  }
+
+  importClusterYaml(): void {
+    const yaml = this.clusterYamlText?.trim();
+    if (!yaml) {
+      this.notificationService.warn('Add YAML', 'Paste cluster YAML before importing.');
+      return;
+    }
+
+    this.clusterYamlLoading = true;
+    this.aiAssistantService.importYaml({
+      yaml,
+      name: this.currentClusterSnapshot?.name ?? undefined
+    }).pipe(
+      finalize(() => this.clusterYamlLoading = false)
+    ).subscribe({
+      next: (response: AiImportYamlResponse) => {
+        this.applyImportedCluster(response);
+        this.notificationService.success('Cluster imported', 'Diagram updated from YAML.');
+        this.clusterYamlDialogVisible = false;
+      },
+      error: (error) => {
+        const detail = error?.error || error?.message || 'Cluster import failed.';
+        this.clusterYamlError = typeof detail === 'string' ? detail : 'Cluster import failed.';
+      }
+    });
+  }
+
+  copyExportedYaml(): void {
+    if (!this.clusterYamlText) {
+      return;
+    }
+    if (navigator && navigator.clipboard) {
+      navigator.clipboard.writeText(this.clusterYamlText).then(
+        () => this.notificationService.success('Copied', 'Cluster YAML copied to clipboard.'),
+        () => this.notificationService.error('Copy failed', 'Unable to copy YAML to clipboard.')
+      );
+    } else {
+      this.notificationService.warn('Clipboard unavailable', 'Copy not supported in this environment.');
+    }
+  }
+
+  downloadExportedYaml(): void {
+    if (!this.clusterYamlText) {
+      return;
+    }
+    const blob = new Blob([this.clusterYamlText], { type: 'text/yaml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = this.clusterYamlFileName || 'izykube-cluster.yaml';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  downloadHelmChart(): void {
+    if (!this.helmChartBlob) {
+      return;
+    }
+    const url = URL.createObjectURL(this.helmChartBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = this.clusterYamlFileName || `${this.sanitizeFileName(this.currentClusterSnapshot?.name || 'izykube-cluster')}-chart.zip`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   openChatDialog(): void {
@@ -431,17 +599,51 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.undoStack = [];
     this.selectedNode = null;
     this.selectedLink = null;
+    this.rawManifests = [];
 
     if (cluster.diagram) {
       this.loadDiagramData(cluster.diagram);
     } else {
       this.nodes = (cluster.nodes as any) || [];
       this.links = (cluster.links as any) || [];
+      this.rawManifests = [];
     }
 
     this.renderLinks();
     this.updateLinkStyles();
     this.diagramService.clearSelectedNode();
+  }
+
+  onYamlFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) {
+      return;
+    }
+
+    const file = input.files[0];
+    this.clusterYamlFileName = file.name;
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = reader.result;
+      this.clusterYamlText = typeof result === 'string'
+        ? result
+        : new TextDecoder().decode(result as ArrayBuffer);
+    };
+
+    reader.onerror = () => {
+      this.notificationService.error('File read failed', 'Unable to read the selected YAML file.');
+    };
+
+    reader.readAsText(file);
+    input.value = '';
+  }
+
+  private sanitizeFileName(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'izykube-cluster';
   }
 
   private handleAiSuggestions(content: string): void {
@@ -812,10 +1014,14 @@ export class DiagramComponent implements OnInit, OnDestroy {
       const data = JSON.parse(diagramData);
       this.nodes = data.nodes || [];
       this.links = data.links || [];
+      if (Array.isArray(data.rawManifests)) {
+        this.rawManifests = data.rawManifests;
+      }
     } catch (error) {
       console.error('Error loading diagram data:', error);
       this.nodes = [];
       this.links = [];
+      this.rawManifests = [];
     }
   }
 
@@ -876,18 +1082,21 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   private getNodeCenter(node: DiagramNode): { x: number, y: number } {
+    const halfSize = this.nodeContentSize / 2 + this.nodeBorderWidth;
     return {
-      x: node.x + 40, // Half of node width (80px)
-      y: node.y + 40  // Half of node height (80px)
+      x: node.x + halfSize,
+      y: node.y + halfSize
     };
   }
 
   getConnectionPoints(node: DiagramNode): ConnectionPoint[] {
+    const halfSize = this.nodeContentSize / 2 + this.nodeBorderWidth;
+    const totalSize = this.nodeContentSize + this.nodeBorderWidth * 2;
     return [
-      { side: 'top', x: node.x + 40, y: node.y },
-      { side: 'right', x: node.x + 80, y: node.y + 40 },
-      { side: 'bottom', x: node.x + 40, y: node.y + 80 },
-      { side: 'left', x: node.x, y: node.y + 40 }
+      { side: 'top', x: node.x + halfSize, y: node.y },
+      { side: 'right', x: node.x + totalSize, y: node.y + halfSize },
+      { side: 'bottom', x: node.x + halfSize, y: node.y + totalSize },
+      { side: 'left', x: node.x, y: node.y + halfSize }
     ];
   }
 
@@ -1102,7 +1311,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
       })))),
       links: JSON.parse(JSON.stringify(this.links.map(l => ({ 
         id: l.id, from: l.from, to: l.to, fromPoint: l.fromPoint, toPoint: l.toPoint 
-      }))))
+      })))),
+      rawManifests: JSON.parse(JSON.stringify(this.rawManifests))
     };
 
     this.undoStack.push(currentState);
@@ -1124,6 +1334,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     // Restore previous state
     this.nodes = previousState.nodes;
     this.links = previousState.links;
+    this.rawManifests = previousState.rawManifests || [];
     
     // Clear selections
     this.clearSelection();
@@ -1148,6 +1359,15 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   private updateDiagramData() {
+    const validIds = new Set(this.nodes.map(n => n.id));
+    this.rawManifests = (this.rawManifests || []).filter(entry => {
+      if (!entry || typeof entry !== 'object') {
+        return false;
+      }
+      const name = (entry as any).name;
+      return typeof name === 'string' && validIds.has(name);
+    });
+
     const diagramData = JSON.stringify({
       nodes: this.nodes.map(n => ({ id: n.id, name: n.name, type: n.type, icon: n.icon, x: n.x, y: n.y })),
       links: this.links.map(l => ({ 
@@ -1156,7 +1376,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
         to: l.to,
         fromPoint: l.fromPoint,
         toPoint: l.toPoint
-      }))
+      })),
+      rawManifests: this.rawManifests
     });
 
     this.store.dispatch(actions.updateDiagram({ diagramData }));

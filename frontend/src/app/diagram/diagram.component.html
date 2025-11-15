@@ -9,14 +9,6 @@
         class="p-button-outlined palette-ai-button"
         (click)="openAiDialog()">
       </button>
-      <button
-        pButton
-        type="button"
-        label="AI Chat"
-        icon="pi pi-comments"
-        class="p-button-text palette-chat-button"
-        (click)="openChatDialog()">
-      </button>
     </div>
     <div
       *ngFor="let item of paletteItems"
@@ -229,6 +221,130 @@
     </button>
     <p-progressSpinner
       *ngIf="chatLoading || importingFromChat"
+      styleClass="diagram-ai-dialog__spinner"
+      strokeWidth="4"
+      [style]="{ width: '30px', height: '30px' }">
+    </p-progressSpinner>
+  </ng-template>
+</p-dialog>
+
+<p-dialog
+  header="Cluster YAML"
+  [(visible)]="clusterYamlDialogVisible"
+  [modal]="true"
+  [dismissableMask]="!clusterYamlLoading"
+  [closable]="!clusterYamlLoading"
+  [style]="{ width: '620px' }"
+  (onHide)="clusterYamlDialogVisible = false">
+  <div class="diagram-yaml-dialog">
+    <p class="diagram-ai-dialog__hint" *ngIf="clusterYamlMode === 'import'">
+      Paste Kubernetes manifests separated by <code>---</code> to replace the current diagram.
+    </p>
+    <div class="diagram-yaml-dialog__actions" *ngIf="clusterYamlMode === 'import'">
+      <button
+        pButton
+        type="button"
+        label="Select YAML file"
+        icon="pi pi-folder-open"
+        class="p-button-outlined diagram-yaml-dialog__file-btn"
+        (click)="yamlFileInput?.click()">
+      </button>
+      <input #yamlFileInput type="file" accept=".yml,.yaml,text/yaml" hidden (change)="onYamlFileSelected($event)" />
+      <span class="diagram-yaml-dialog__file-name" *ngIf="clusterYamlFileName">{{ clusterYamlFileName }}</span>
+    </div>
+    <div class="diagram-yaml-dialog__mode" *ngIf="clusterYamlMode === 'export'">
+      <label for="cluster-export-mode" class="diagram-yaml-dialog__mode-label">Export as</label>
+      <p-dropdown
+        inputId="cluster-export-mode"
+        [options]="clusterExportModeOptions"
+        [ngModel]="clusterExportMode"
+        [ngModelOptions]="{ standalone: true }"
+        optionLabel="label"
+        optionValue="value"
+        [disabled]="clusterYamlLoading"
+        (onChange)="handleExportModeChange($event.value)">
+      </p-dropdown>
+    </div>
+    <p class="diagram-ai-dialog__hint" *ngIf="clusterYamlMode === 'export' && clusterExportMode === 'FLAT_YAML'">
+      Copy or download the manifests below (<code>---</code> separated) to recreate this diagram later.
+    </p>
+    <p class="diagram-ai-dialog__hint" *ngIf="clusterYamlMode === 'export' && clusterExportMode === 'HELM_CHART'">
+      Download a Helm chart ZIP that contains <code>Chart.yaml</code>, <code>values.yaml</code>, and templated manifests.
+    </p>
+    <ng-container [ngSwitch]="clusterExportMode">
+      <textarea
+        *ngSwitchCase="'FLAT_YAML'"
+        pInputTextarea
+        [(ngModel)]="clusterYamlText"
+        [ngModelOptions]="{ standalone: true }"
+        [autoResize]="false"
+        [readonly]="true"
+        rows="12"
+        class="diagram-yaml-textarea">
+      </textarea>
+      <div *ngSwitchCase="'HELM_CHART'" class="diagram-yaml-dialog__helm">
+        <p class="diagram-yaml-dialog__helm-description">
+          Use the download button below to save the generated chart and install it with <code>helm install</code>.
+        </p>
+        <p class="diagram-yaml-dialog__helm-file" *ngIf="clusterYamlFileName">
+          Ready: <strong>{{ clusterYamlFileName }}</strong>
+        </p>
+      </div>
+    </ng-container>
+    <div *ngIf="clusterYamlError" class="diagram-ai-dialog__error">
+      {{ clusterYamlError }}
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button
+      pButton
+      type="button"
+      label="Cancel"
+      class="p-button-text"
+      [disabled]="clusterYamlLoading"
+      (click)="clusterYamlDialogVisible = false">
+    </button>
+    <button
+      *ngIf="clusterYamlMode === 'import'"
+      pButton
+      type="button"
+      label="Import"
+      icon="pi pi-upload"
+      [disabled]="clusterYamlLoading || !clusterYamlText.trim()"
+      (click)="importClusterYaml()">
+    </button>
+    <ng-container *ngIf="clusterYamlMode === 'export' && clusterExportMode === 'FLAT_YAML'">
+      <button
+        pButton
+        type="button"
+        label="Copy"
+        icon="pi pi-copy"
+        class="p-button-outlined"
+        [disabled]="clusterYamlLoading || !clusterYamlText"
+        (click)="copyExportedYaml()">
+      </button>
+      <button
+        pButton
+        type="button"
+        label="Download"
+        icon="pi pi-download"
+        [disabled]="clusterYamlLoading || !clusterYamlText"
+        (click)="downloadExportedYaml()">
+      </button>
+    </ng-container>
+    <ng-container *ngIf="clusterYamlMode === 'export' && clusterExportMode === 'HELM_CHART'">
+      <button
+        pButton
+        type="button"
+        label="Download Chart"
+        icon="pi pi-download"
+        [disabled]="clusterYamlLoading || !helmChartBlob"
+        (click)="downloadHelmChart()">
+      </button>
+    </ng-container>
+    <p-progressSpinner
+      *ngIf="clusterYamlLoading"
       styleClass="diagram-ai-dialog__spinner"
       strokeWidth="4"
       [style]="{ width: '30px', height: '30px' }">

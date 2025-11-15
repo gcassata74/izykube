@@ -17,7 +17,7 @@ run-i18n-extract:
 
 run-chrome-dev:
 	google-chrome \
-      --new-window "http://127.0.0.1:4200" \
+      --new-window "http://localhost:4200" \
       --remote-debugging-port=9222 \
       --disable-web-security \
       --no-sandbox \

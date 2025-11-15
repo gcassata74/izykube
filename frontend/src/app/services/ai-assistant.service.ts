@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { DataService } from './data.service';
 
 export interface AiGenerateRequest {
@@ -49,6 +50,15 @@ export interface AiImportYamlResponse {
   nameSpace?: string;
 }
 
+export interface AiExportYamlResponse {
+  yaml: string;
+}
+
+export interface AiHelmChartExportResponse {
+  blob: Blob;
+  fileName: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -66,5 +76,35 @@ export class AiAssistantService {
 
   importYaml(request: AiImportYamlRequest): Observable<AiImportYamlResponse> {
     return this.dataService.post<AiImportYamlResponse>('ai/import-yaml', request);
+  }
+
+  exportYaml(cluster: any): Observable<AiExportYamlResponse> {
+    const payload = { ...cluster, exportMode: 'FLAT_YAML' };
+    return this.dataService.post<AiExportYamlResponse>('ai/export-yaml', payload);
+  }
+
+  exportHelmChart(cluster: any): Observable<AiHelmChartExportResponse> {
+    const payload = { ...cluster, exportMode: 'HELM_CHART' };
+    return this.dataService.postBlob('ai/export-yaml', payload).pipe(
+      map(response => ({
+        blob: response.body ?? new Blob(),
+        fileName: this.extractFileName(response.headers.get('content-disposition')) || 'cluster-chart.zip'
+      }))
+    );
+  }
+
+  private extractFileName(dispositionHeader: string | null): string | null {
+    if (!dispositionHeader) {
+      return null;
+    }
+    const fileNameMatch = /filename\*?=(?:UTF-8''|")?([^\";]+)/i.exec(dispositionHeader);
+    if (!fileNameMatch || !fileNameMatch[1]) {
+      return null;
+    }
+    try {
+      return decodeURIComponent(fileNameMatch[1].replace(/\"/g, '').trim());
+    } catch {
+      return fileNameMatch[1].replace(/\"/g, '').trim();
+    }
   }
 }

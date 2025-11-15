@@ -8,6 +8,7 @@ import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.repositories.ClusterTemplateRepository;
+import com.izylife.izykube.services.ai.ClusterYamlService;
 import com.izylife.izykube.services.processors.TemplateProcessor;
 import com.izylife.izykube.utils.ClusterUtil;
 import com.izylife.izykube.utils.TemplatableResourceUtil;
@@ -26,6 +27,7 @@ public class TemplateService {
     private final TemplateFactory templateFactory;
     private final ClusterRepository clusterRepository;
     private final ClusterTemplateRepository clusterTemplateRepository;
+    private final ClusterYamlService clusterYamlService;
 
     public void createTemplate(String id) throws ObjectNotFoundException {
         Cluster cluster = clusterRepository.findById(id)
@@ -55,32 +57,21 @@ public class TemplateService {
                     .filter(this::isTemplateableResource)
                     .toList();
 
-            // Set dependencies for templatable nodes
             templateableNodes.forEach(node -> {
                 node.setSourceNodes(ClusterUtil.findSourceNodesOf(clusterDTO, node.getId()));
                 node.setTargetNodes(ClusterUtil.findTargetNodesOf(clusterDTO, node.getId()));
             });
 
-            // Process nodes
             templateableNodes.stream()
                     .filter(node -> !processedNodes.contains(node.getId()))
                     .forEach(node -> processNodeAndLinkedNodes(clusterDTO, node, yamlList, processedNodes));
 
-            // Create or update template
-            return clusterTemplateRepository.findByClusterId(id)
-                    .map(template -> {
-                        template.setYamlList(yamlList);
-                        return clusterTemplateRepository.save(template);
-                    })
-                    .orElseGet(() -> {
-                        ClusterTemplate template = new ClusterTemplate();
-                        template.setClusterId(id);
-                        template.setYamlList(yamlList);
-                        return clusterTemplateRepository.save(template);
-                    });
+            return saveTemplateForCluster(id, yamlList);
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to generate template for cluster: " + id, e);
+        } catch (Exception primaryException) {
+            log.warn("Primary template generation failed for cluster {}: {}. Falling back to raw manifests.",
+                    id, primaryException.getMessage());
+            return createTemplateFromRawManifests(id, clusterDTO, primaryException);
         }
     }
 
@@ -156,6 +147,35 @@ public class TemplateService {
 
     public void updateTemplate(String id, ClusterDTO clusterDTO) {
         createOrReplaceTemplate(id, clusterDTO);
+    }
+
+    private ClusterTemplate saveTemplateForCluster(String clusterId, LinkedList<String> yamlList) {
+        return clusterTemplateRepository.findByClusterId(clusterId)
+                .map(existing -> {
+                    existing.setYamlList(yamlList);
+                    return clusterTemplateRepository.save(existing);
+                })
+                .orElseGet(() -> {
+                    ClusterTemplate template = new ClusterTemplate();
+                    template.setClusterId(clusterId);
+                    template.setYamlList(yamlList);
+                    return clusterTemplateRepository.save(template);
+                });
+    }
+
+    private ClusterTemplate createTemplateFromRawManifests(String clusterId, ClusterDTO clusterDTO, Exception originalCause) {
+        if (clusterDTO.getDiagram() == null || clusterDTO.getDiagram().isBlank()) {
+            throw new RuntimeException("Failed to generate template for cluster: " + clusterId, originalCause);
+        }
+        try {
+            String exportedYaml = clusterYamlService.exportCluster(clusterDTO);
+            LinkedList<String> fallbackYaml = new LinkedList<>();
+            fallbackYaml.add(exportedYaml);
+            return saveTemplateForCluster(clusterId, fallbackYaml);
+        } catch (Exception fallbackException) {
+            originalCause.addSuppressed(fallbackException);
+            throw new RuntimeException("Failed to generate template for cluster: " + clusterId, originalCause);
+        }
     }
 
     private Cluster createDetachedCluster(ClusterDTO cluster) {

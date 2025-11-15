@@ -74,6 +74,9 @@ Alternatively, run the applications directly:
 # Backend
 cd backend
 ./mvnw spring-boot:run
+# This command automatically builds the Angular UI (via the Maven frontend plugin)
+# and serves the compiled assets directly from the Spring Boot backend. Set
+# -Dskip.frontend.build=true to skip the UI build when not needed.
 
 # Frontend
 cd frontend

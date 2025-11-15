@@ -725,7 +725,13 @@ body {
   &-container {
     width: 100%;
     padding: 0 20px 0 $sidebar-width;
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100%;
+    box-sizing: border-box;
+    position: relative;
+    gap: 1.25rem;
   }
 
   &-content {
@@ -739,35 +745,48 @@ body {
     font-weight: bold;
   }
 
-  .button-container button {
-    background-color: $primary-color;
-    color: $izy-white;
-    border: none;
-    padding: 8px 15px;
-    margin-left: 10px;
-    border-radius: 4px;
-    transition: all 0.3s ease;
+  .button-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+}
 
-    &:hover {
-      background-color: $izy-blue-light;
-    }
+.p-menu {
+  .p-menuitem-link {
+    text-decoration: none;
   }
 }
 
 // Logo
 .logo-div {
-  position: fixed;
-  background: {
-    image: url('assets/images/logo/izylife.png');
-    size: 100px 35px;
-    position: center;
-    repeat: no-repeat;
-  }
+  position: absolute;
   top: 0;
   left: 0;
-  width: 201px;
+  width: $sidebar-width;
   height: $toolbar-height;
-  z-index: 999;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 16px;
+  box-sizing: border-box;
+  background-color: $izy-white;
+  border-right: 1px solid rgba($izy-black, 0.1);
+
+  img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+  }
+
+  span {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: $primary-color;
+  }
 }
 
 //-----------------------------------------------------------------------------

@@ -14,12 +14,18 @@
  * @since March 2024
  */
 
+:host {
+  display: block;
+  height: 100%;
+}
+
  .container {
   display: flex;
   height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
 
 .first-column {
@@ -31,6 +37,7 @@
   border: 1px solid black;
   padding: 10px;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .palette-actions {
@@ -43,16 +50,8 @@
 .palette-ai-button {
   font-size: 0.85rem;
   font-weight: 400;
-  padding: 0.4rem 0.6rem;
+  padding: 0.35rem 0.6rem;
   width: 100%;
-}
-
-.palette-chat-button {
-  font-size: 0.8rem;
-  font-weight: 400;
-  width: 100%;
-  justify-content: flex-start;
-  padding: 0.35rem 0.4rem;
 }
 
 .second-column {
@@ -66,6 +65,7 @@
     linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px),
     linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px);
   background-size: 20px 20px;
+  box-sizing: border-box;
 }
 
 .palette-item {
@@ -248,6 +248,66 @@
 .diagram-ai-chat__message-content {
   white-space: pre-wrap;
   line-height: 1.35;
+}
+
+.diagram-yaml-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.diagram-yaml-dialog__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.diagram-yaml-dialog__mode {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.diagram-yaml-dialog__mode-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.diagram-yaml-dialog__file-btn {
+  --button-border-color: var(--surface-outline, #ccc);
+}
+
+.diagram-yaml-dialog__file-name {
+  font-size: 0.85rem;
+  color: var(--text-muted, #6c757d);
+}
+
+.diagram-yaml-dialog__helm {
+  border: 1px dashed var(--surface-outline, #ced4da);
+  border-radius: 6px;
+  padding: 0.75rem;
+  background: var(--surface-100, #f8f9fa);
+}
+
+.diagram-yaml-dialog__helm-description {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-color, #495057);
+}
+
+.diagram-yaml-dialog__helm-file {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-color, #495057);
+}
+
+.diagram-yaml-textarea {
+  width: 100%;
+  min-height: 320px;
+  font-family: 'Source Code Pro', Consolas, 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 
 .diagram-node {

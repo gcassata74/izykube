@@ -23,6 +23,14 @@ mongock:
 app:
   docker:
     local-repository-uri: "localhost:5000"
+  cors:
+    allowed-origin-patterns:
+      - http://localhost:*
+      - http://127.0.0.1:*
+      - http://0.0.0.0:*
+      - http://[::1]:*
+      - ionic://localhost
+      - capacitor://localhost
 
 ai:
   local:
