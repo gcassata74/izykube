@@ -1,6 +1,7 @@
 package com.izylife.izykube.services.processors;
 
 import com.izylife.izykube.dto.cluster.ContainerDTO;
+import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.repositories.AssetRepository;
 import io.fabric8.kubernetes.api.model.Container;
@@ -34,6 +35,28 @@ public class ContainerProcessor implements TemplateProcessor<ContainerDTO> {
                 .withVolumeMounts(volumeMounts)
                 .addNewPort()
                 .withContainerPort(dto.getContainerPort())
+                .endPort()
+                .build();
+    }
+
+    public Container buildPrimaryContainer(DeploymentDTO deployment, List<VolumeMount> volumeMounts) {
+        if (deployment.getAssetId() == null || deployment.getAssetId().isBlank()) {
+            throw new IllegalArgumentException("Deployment " + deployment.getName() + " must specify an asset");
+        }
+
+        Asset asset = assetRepository.findById(deployment.getAssetId())
+                .orElseThrow(() -> new IllegalArgumentException("Asset not found for deployment: " + deployment.getName()));
+
+        int port = deployment.getContainerPort() != null && deployment.getContainerPort() > 0
+                ? deployment.getContainerPort()
+                : 80;
+
+        return new ContainerBuilder()
+                .withName(deployment.getName())
+                .withImage(asset.getImage())
+                .withVolumeMounts(volumeMounts)
+                .addNewPort()
+                .withContainerPort(port)
                 .endPort()
                 .build();
     }

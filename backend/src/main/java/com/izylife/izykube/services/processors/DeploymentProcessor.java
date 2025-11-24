@@ -1,7 +1,6 @@
 package com.izylife.izykube.services.processors;
 
 import com.izylife.izykube.dto.cluster.*;
-import com.izylife.izykube.repositories.AssetRepository;
 import com.izylife.izykube.utils.ConfigMapUtils;
 import com.izylife.izykube.utils.VolumeUtils;
 import io.fabric8.kubernetes.api.model.*;
@@ -13,6 +12,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
 
-    private final AssetRepository assetRepository;
     private final ContainerProcessor containerProcessor;
 
     @Override
@@ -40,15 +39,11 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .orElse(null);
 
 
-        if (serviceDTO != null && !serviceDTO.getFrontendUrl().isEmpty()) {
+        if (serviceDTO != null && serviceDTO.getFrontendUrl() != null && !serviceDTO.getFrontendUrl().isEmpty()) {
             InetAddress loopbackAddress = InetAddress.getLoopbackAddress();
             hostAlias = new HostAlias();
             hostAlias.setIp(loopbackAddress.getHostAddress());
             hostAlias.setHostnames(List.of(stripHttpPrefix(serviceDTO.getFrontendUrl())));
-        }
-
-        if (containers.isEmpty()) {
-            throw new IllegalArgumentException("Deployment must have at least one linked Container");
         }
 
         Map<String, String> labels = new HashMap<>();
@@ -119,11 +114,25 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .map(VolumeUtils::createVolumeMount)
                 .collect(Collectors.toList());
 
-        return dto.getTargetNodes().stream()
+        List<Container> containers = new ArrayList<>();
+
+        if (dto.getAssetId() == null || dto.getAssetId().isBlank()) {
+            throw new IllegalArgumentException("Deployment " + dto.getName() + " must specify an asset/image");
+        }
+
+        containers.add(containerProcessor.buildPrimaryContainer(dto, volumeMounts));
+
+        containers.addAll(dto.getTargetNodes().stream()
                 .filter(node -> node instanceof ContainerDTO)
                 .map(node -> (ContainerDTO) node)
                 .map(containerDTO -> containerProcessor.processContainer(containerDTO, volumeMounts))
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
+
+        if (containers.isEmpty()) {
+            throw new IllegalArgumentException("Deployment must define at least one container image");
+        }
+
+        return containers;
     }
 
     private List<Volume> createVolumes(DeploymentDTO dto) {

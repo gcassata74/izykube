@@ -25,6 +25,11 @@ export class ConfigMapFormComponent implements OnInit {
   aiPrompt = '';
   aiLoading = false;
 
+  get isSecretNode(): boolean {
+    const node = this.selectedNode as ConfigMap;
+    return node?.kind === 'secret' || (node as any)?.secret === true;
+  }
+
   constructor(
     private fb: FormBuilder,
     private autoSaveService: AutoSaveService,

@@ -23,6 +23,7 @@ import java.util.List;
         @JsonSubTypes.Type(value = DeploymentDTO.class, name = "deployment"),
         @JsonSubTypes.Type(value = ServiceDTO.class, name = "service"),
         @JsonSubTypes.Type(value = ConfigMapDTO.class, name = "configmap"),
+        @JsonSubTypes.Type(value = SecretDTO.class, name = "secret"),
         @JsonSubTypes.Type(value = VolumeDTO.class, name = "volume"),
         @JsonSubTypes.Type(value = IngressDTO.class, name = "ingress"),
         @JsonSubTypes.Type(value = JobDTO.class, name = "job")

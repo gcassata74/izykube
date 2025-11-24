@@ -28,6 +28,10 @@
     </button>
   </div>
 
+  <p class="secret-hint" *ngIf="isSecretNode">
+    Secret values are kept in plain text here but will be base64-encoded when exported as a Kubernetes Secret.
+  </p>
+
   <input
     #yamlInput
     type="file"

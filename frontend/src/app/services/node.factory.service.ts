@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { Pod, RestartPolicy } from '../model/pod.class';
 import { Container } from '../model/container.class';
 import { Node } from '../model/node.class';
 import { Service } from '../model/service.class';
@@ -18,12 +17,6 @@ export class NodeFactoryService {
 
   createNode(type: string, id: string, name: string): Node {
     switch (type.toLowerCase()) {
-      case 'pod':
-        return new Pod(
-          id,
-          name,
-          'Always' as RestartPolicy
-        );
       case 'container':
         return new Container(
           id,
@@ -38,18 +31,28 @@ export class NodeFactoryService {
           'ClusterIP',
           80
         );
-        case 'deployment':
-          return new Deployment(
-            id,
-            name,
-            1,  // default replicas
-            'RollingUpdate'  // default strategy type
-          );
+      case 'deployment':
+        return new Deployment(
+          id,
+          name,
+          1,             // default replicas
+          'RollingUpdate',
+          '',            // default assetId
+          80             // default container port
+        );
       case 'configmap':
         return new ConfigMap(
           id,
           name,
-          ''
+          '',
+          'configmap'
+        );
+      case 'secret':
+        return new ConfigMap(
+          id,
+          name,
+          '',
+          'secret'
         );
         case 'job':
           return new Job(

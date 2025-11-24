@@ -341,6 +341,7 @@
   cursor: crosshair;
   opacity: 0;
   transform: scale(0.5);
+  transform-origin: center;
   transition: all 0.2s ease;
   z-index: 10;
 
@@ -367,41 +368,30 @@
 
   &.connection-point-top {
     top: -6px;
-    left: 50%;
-    transform: translateX(-50%) scale(0.5);
-    
-    &:hover, &.connection-point-active {
-      transform: translateX(-50%) scale(1.2);
-    }
+    left: calc(50% - 6px);
   }
 
   &.connection-point-right {
-    top: 50%;
+    top: calc(50% - 6px);
     right: -6px;
-    transform: translateY(-50%) scale(0.5);
-    
-    &:hover, &.connection-point-active {
-      transform: translateY(-50%) scale(1.2);
-    }
   }
 
   &.connection-point-bottom {
     bottom: -6px;
-    left: 50%;
-    transform: translateX(-50%) scale(0.5);
-    
-    &:hover, &.connection-point-active {
-      transform: translateX(-50%) scale(1.2);
-    }
+    left: calc(50% - 6px);
   }
 
   &.connection-point-left {
-    top: 50%;
+    top: calc(50% - 6px);
     left: -6px;
-    transform: translateY(-50%) scale(0.5);
-    
+  }
+
+  &.connection-point-top,
+  &.connection-point-right,
+  &.connection-point-bottom,
+  &.connection-point-left {
     &:hover, &.connection-point-active {
-      transform: translateY(-50%) scale(1.2);
+      transform: scale(1.2);
     }
   }
 }

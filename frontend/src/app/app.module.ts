@@ -27,7 +27,6 @@ import { HttpClientModule } from '@angular/common/http';
 import { DiagramService } from './services/diagram.service';
 import { ClusterEditorComponent } from './cluster/cluster-editor/cluster-editor.component';
 import { NodeFormComponent } from './cluster/node-form/node-form.component';
-import { PodFormComponent } from './cluster/pod-form/pod-form.component';
 import { DeploymentFormComponent } from './cluster/deployment-form/deployment-form.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
@@ -65,7 +64,6 @@ import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
     AssetListComponent,
     ClusterEditorComponent,
     NodeFormComponent,
-    PodFormComponent,
     DeploymentFormComponent,
     ConfigMapFormComponent,
     ClusterFormComponent,

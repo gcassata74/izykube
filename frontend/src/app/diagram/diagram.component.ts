@@ -10,6 +10,7 @@ import { Cluster, ClusterExportMode } from '../model/cluster.class';
 import { DragDropData, DropEvent } from '../directives/drag-drop.directive';
 import { AiAssistantService, AiChatMessage, AiImportYamlResponse, AiExportYamlResponse, AiHelmChartExportResponse } from '../services/ai-assistant.service';
 import { NotificationService } from '../services/notification.service';
+import { Link } from '../model/link.class';
 
 interface DiagramNode {
   id: string;
@@ -96,6 +97,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   chatLoading = false;
   lastAssistantMessage: ChatMessage | null = null;
   importingFromChat = false;
+  connectionHelpText = 'Trascina per collegare questo blocco con la sua dipendenza UML';
   clusterYamlDialogVisible = false;
   clusterYamlMode: 'import' | 'export' = 'import';
   clusterYamlText = '';
@@ -113,6 +115,17 @@ export class DiagramComponent implements OnInit, OnDestroy {
   private rawManifests: any[] = [];
   private readonly nodeContentSize = 80;
   private readonly nodeBorderWidth = 3;
+  private readonly dependencyPriority: Record<string, number> = {
+    ingress: 6,
+    service: 5,
+    deployment: 4,
+    job: 4,
+    container: 2,
+    volume: 1,
+    configmap: 1,
+    secret: 1
+  };
+  private readonly fallbackIconType = 'container';
 
   constructor(
     private iconService: IconService,
@@ -161,6 +174,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.svgElement.style.pointerEvents = 'none';
     this.svgElement.style.zIndex = '1';
     canvas.appendChild(this.svgElement);
+    this.ensureArrowMarker();
 
     // Render existing links
     this.renderLinks();
@@ -603,9 +617,14 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
     if (cluster.diagram) {
       this.loadDiagramData(cluster.diagram);
+      if ((!this.links || this.links.length === 0) && Array.isArray(cluster.links) && cluster.links.length) {
+        this.links = this.rebuildLinksFromClusterLinks(cluster.links as Link[]);
+      }
     } else {
-      this.nodes = (cluster.nodes as any) || [];
-      this.links = (cluster.links as any) || [];
+      const snapshot = this.buildDiagramFromClusterData(cluster);
+      this.nodes = snapshot.nodes;
+      this.links = snapshot.links;
+      this.enforceUmlDependencyOrientationOnLinks();
       this.rawManifests = [];
     }
 
@@ -759,10 +778,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
     return [
       { name: 'ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress') },
       { name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },
-      { name: 'pod', type: 'pod', icon: this.iconService.getIconPath('pod') },
       { name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
       { name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
       { name: 'configmap', type: 'configmap', icon: this.iconService.getIconPath('configmap') },
+      { name: 'secret', type: 'secret', icon: this.iconService.getIconPath('secret') },
       { name: 'volume', type: 'volume', icon: this.iconService.getIconPath('volume') },
       { name: 'job', type: 'job', icon: this.iconService.getIconPath('job') }
     ];
@@ -829,6 +848,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   private renderLink(link: DiagramLink) {
+    if (!this.svgElement) {
+      console.error('SVG element is not initialized.');
+      return;
+    }
     const fromNode = this.nodes.find(n => n.id === link.from);
     const toNode = this.nodes.find(n => n.id === link.to);
 
@@ -856,6 +879,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       toPoint = this.getNodeCenter(toNode);
     }
 
+    this.ensureArrowMarker();
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', fromPoint.x.toString());
     line.setAttribute('y1', fromPoint.y.toString());
@@ -875,6 +899,33 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
     this.svgElement.appendChild(line);
     link.element = line;
+  }
+
+  private ensureArrowMarker(): void {
+    if (!this.svgElement) {
+      return;
+    }
+    const existingMarker = this.svgElement.querySelector('marker#arrowhead');
+    if (existingMarker) {
+      return;
+    }
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    marker.setAttribute('id', 'arrowhead');
+    marker.setAttribute('markerWidth', '4');
+    marker.setAttribute('markerHeight', '4');
+    marker.setAttribute('refX', '3.6');
+    marker.setAttribute('refY', '2');
+    marker.setAttribute('orient', 'auto');
+    marker.setAttribute('markerUnits', 'strokeWidth');
+    marker.setAttribute('viewBox', '0 0 4 4');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M0 0 L4 2 L0 4 z');
+    path.setAttribute('fill', 'context-stroke');
+    path.setAttribute('stroke', 'none');
+    marker.appendChild(path);
+    defs.appendChild(marker);
+    this.svgElement.appendChild(defs);
   }
 
   private updateLinks() {
@@ -1012,8 +1063,19 @@ export class DiagramComponent implements OnInit, OnDestroy {
   private loadDiagramData(diagramData: string) {
     try {
       const data = JSON.parse(diagramData);
-      this.nodes = data.nodes || [];
-      this.links = data.links || [];
+      const parsedNodes = Array.isArray(data.nodes) ? data.nodes : [];
+      this.nodes = parsedNodes
+        .filter((node: any) =>
+        ((node?.type || node?.kind || '') as string).toLowerCase() !== 'pod'
+      ) as DiagramNode[];
+
+      const parsedLinks = Array.isArray(data.links) ? data.links : [];
+      this.links = parsedLinks.filter((link: any) => {
+        return link.from && link.to &&
+          this.nodes.some(node => node.id === link.from) &&
+          this.nodes.some(node => node.id === link.to);
+      }) as DiagramLink[];
+      this.enforceUmlDependencyOrientationOnLinks();
       if (Array.isArray(data.rawManifests)) {
         this.rawManifests = data.rawManifests;
       }
@@ -1032,10 +1094,21 @@ export class DiagramComponent implements OnInit, OnDestroy {
     toPoint: ConnectionPoint,
     options?: { skipUndo?: boolean; deferUpdate?: boolean }
   ) {
-    // Check if link already exists
+    const fromNode = this.nodes.find(node => node.id === fromNodeId);
+    const toNode = this.nodes.find(node => node.id === toNodeId);
+
+    if (!fromNode || !toNode) {
+      return;
+    }
+
+    const oriented = this.orientLinkByDependency(fromNode, toNode, fromPoint, toPoint);
+    const sourceId = oriented.fromNode.id;
+    const targetId = oriented.toNode.id;
+
+    // Check if link already exists (regardless of drawing direction)
     const existingLink = this.links.find(link =>
-      (link.from === fromNodeId && link.to === toNodeId) ||
-      (link.from === toNodeId && link.to === fromNodeId)
+      (link.from === sourceId && link.to === targetId) ||
+      (link.from === targetId && link.to === sourceId)
     );
 
     if (existingLink) {
@@ -1049,10 +1122,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
     const link: DiagramLink = {
       id: uuidv4(),
-      from: fromNodeId,
-      to: toNodeId,
-      fromPoint: fromPoint,
-      toPoint: toPoint
+      from: sourceId,
+      to: targetId,
+      fromPoint: oriented.fromPoint,
+      toPoint: oriented.toPoint
     };
 
     this.links.push(link);
@@ -1060,6 +1133,183 @@ export class DiagramComponent implements OnInit, OnDestroy {
     if (!options?.deferUpdate) {
       this.updateDiagramData();
     }
+  }
+
+  private getDependencyPriority(type?: string): number {
+    if (!type) {
+      return 0;
+    }
+    const normalized = type.toLowerCase();
+    return this.dependencyPriority[normalized] ?? 0;
+  }
+
+  private orientLinkByDependency(
+    startNode: DiagramNode,
+    endNode: DiagramNode,
+    startPoint?: ConnectionPoint,
+    endPoint?: ConnectionPoint
+  ): {
+    fromNode: DiagramNode;
+    toNode: DiagramNode;
+    fromPoint?: ConnectionPoint;
+    toPoint?: ConnectionPoint;
+  } {
+    const startPriority = this.getDependencyPriority(startNode.type);
+    const endPriority = this.getDependencyPriority(endNode.type);
+
+    if (startPriority > endPriority) {
+      return { fromNode: startNode, toNode: endNode, fromPoint: startPoint, toPoint: endPoint };
+    }
+
+    if (startPriority < endPriority) {
+      return { fromNode: endNode, toNode: startNode, fromPoint: endPoint, toPoint: startPoint };
+    }
+
+    return { fromNode: startNode, toNode: endNode, fromPoint: startPoint, toPoint: endPoint };
+  }
+
+  private resolveIconPath(type?: string): string {
+    const normalized = type?.toLowerCase() || this.fallbackIconType;
+    return this.iconService.getIconPath(normalized) || this.iconService.getIconPath(this.fallbackIconType) || '';
+  }
+
+  private resolveLinkEndpoint(link: any, endpoint: 'source' | 'target'): string | undefined {
+    if (!link) {
+      return undefined;
+    }
+    const altKey = endpoint === 'source' ? 'from' : 'to';
+    const nodeIdKey = `${endpoint}NodeId`;
+    const legacyKey = endpoint === 'source' ? 'src' : 'dst';
+    return link[endpoint] ?? link[nodeIdKey] ?? link[altKey] ?? link[legacyKey];
+  }
+
+  private buildDiagramFromClusterData(cluster: Cluster): { nodes: DiagramNode[]; links: DiagramLink[] } {
+    const spacingX = 200;
+    const spacingY = 160;
+    const startX = 160;
+    const startY = 160;
+    const columns = 4;
+
+    const baseNodes: any[] = Array.isArray(cluster.nodes) ? cluster.nodes : [];
+    const diagramNodes: DiagramNode[] = baseNodes.map((node, index) => {
+      const type = (node.type || node.kind || this.fallbackIconType).toLowerCase();
+      const icon = node.icon || this.resolveIconPath(type);
+      const hasX = typeof node.x === 'number';
+      const hasY = typeof node.y === 'number';
+
+      return {
+        id: node.id || uuidv4(),
+        name: node.name || type,
+        type,
+        icon,
+        x: hasX ? node.x : startX + (index % columns) * spacingX,
+        y: hasY ? node.y : startY + Math.floor(index / columns) * spacingY
+      };
+    });
+
+    const diagramLinks: DiagramLink[] = [];
+    const seenLinks = new Set<string>();
+    const baseLinks: Link[] = Array.isArray(cluster.links) ? cluster.links : [];
+
+    baseLinks.forEach(link => {
+      const sourceId = this.resolveLinkEndpoint(link, 'source');
+      const targetId = this.resolveLinkEndpoint(link, 'target');
+
+      if (!sourceId || !targetId) {
+        return;
+      }
+
+      const sourceNode = diagramNodes.find(node => node.id === sourceId);
+      const targetNode = diagramNodes.find(node => node.id === targetId);
+      if (!sourceNode || !targetNode) {
+        return;
+      }
+
+      const oriented = this.orientLinkByDependency(sourceNode, targetNode);
+      const fromPoints = this.getConnectionPoints(oriented.fromNode);
+      const toPoints = this.getConnectionPoints(oriented.toNode);
+      const fromPoint = oriented.fromPoint || fromPoints.find(point => point.side === 'right') || fromPoints[0];
+      const toPoint = oriented.toPoint || toPoints.find(point => point.side === 'left') || toPoints[0];
+
+      const key = `${oriented.fromNode.id}->${oriented.toNode.id}`;
+      if (seenLinks.has(key)) {
+        return;
+      }
+      seenLinks.add(key);
+
+      diagramLinks.push({
+        id: uuidv4(),
+        from: oriented.fromNode.id,
+        to: oriented.toNode.id,
+        fromPoint,
+        toPoint
+      });
+    });
+
+    return { nodes: diagramNodes, links: diagramLinks };
+  }
+
+  private rebuildLinksFromClusterLinks(clusterLinks: Link[]): DiagramLink[] {
+    const diagramLinks: DiagramLink[] = [];
+    const seenLinks = new Set<string>();
+
+    clusterLinks.forEach(link => {
+      const sourceId = this.resolveLinkEndpoint(link, 'source');
+      const targetId = this.resolveLinkEndpoint(link, 'target');
+
+      if (!sourceId || !targetId) {
+        return;
+      }
+
+      const sourceNode = this.nodes.find(node => node.id === sourceId);
+      const targetNode = this.nodes.find(node => node.id === targetId);
+      if (!sourceNode || !targetNode) {
+        return;
+      }
+      const oriented = this.orientLinkByDependency(sourceNode, targetNode);
+      const fromPoints = this.getConnectionPoints(oriented.fromNode);
+      const toPoints = this.getConnectionPoints(oriented.toNode);
+      const fromPoint = oriented.fromPoint || fromPoints.find(point => point.side === 'right') || fromPoints[0];
+      const toPoint = oriented.toPoint || toPoints.find(point => point.side === 'left') || toPoints[0];
+      const key = `${oriented.fromNode.id}->${oriented.toNode.id}`;
+      if (seenLinks.has(key)) {
+        return;
+      }
+      seenLinks.add(key);
+      diagramLinks.push({
+        id: uuidv4(),
+        from: oriented.fromNode.id,
+        to: oriented.toNode.id,
+        fromPoint,
+        toPoint
+      });
+    });
+
+    return diagramLinks;
+  }
+
+  private enforceUmlDependencyOrientationOnLinks(): void {
+    this.links = this.links.map(link => {
+      const fromNode = this.nodes.find(node => node.id === link.from);
+      const toNode = this.nodes.find(node => node.id === link.to);
+
+      if (!fromNode || !toNode) {
+        return link;
+      }
+
+      const oriented = this.orientLinkByDependency(fromNode, toNode, link.fromPoint, link.toPoint);
+      if (oriented.fromNode.id === link.from && oriented.toNode.id === link.to) {
+        return link;
+      }
+
+      return {
+        ...link,
+        from: oriented.fromNode.id,
+        to: oriented.toNode.id,
+        fromPoint: oriented.fromPoint,
+        toPoint: oriented.toPoint
+      };
+    });
   }
 
   private findClosestConnectionPoint(clientX: number, clientY: number, connectionPoints: ConnectionPoint[]): ConnectionPoint {
@@ -1359,13 +1609,13 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   private updateDiagramData() {
-    const validIds = new Set(this.nodes.map(n => n.id));
-    this.rawManifests = (this.rawManifests || []).filter(entry => {
+    const validNames = new Set(this.nodes.map(n => n.name));
+    this.rawManifests = (this.rawManifests || []).filter((entry: any) => {
       if (!entry || typeof entry !== 'object') {
         return false;
       }
-      const name = (entry as any).name;
-      return typeof name === 'string' && validIds.has(name);
+      const name = typeof entry.name === 'string' ? entry.name : undefined;
+      return !!name && validNames.has(name);
     });
 
     const diagramData = JSON.stringify({

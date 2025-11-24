@@ -29,14 +29,12 @@ export const clusterReducer = createReducer(
 
 
   on(actions.addNode, (state, { node }) => { 
-    
-    console.log("state", node)
-
+    const currentNodes = state.currentCluster.nodes || [];
     const updated_state:any = {
       ...state,
       currentCluster: {
         ...state.currentCluster,
-        nodes: [...state.currentCluster.nodes, node]
+        nodes: [...currentNodes, node]
       }
     }
   
@@ -48,7 +46,7 @@ export const clusterReducer = createReducer(
     ...state,
     currentCluster: {
       ...state.currentCluster,
-      nodes: state.currentCluster.nodes.filter((node: { id: string; }) => node.id !== nodeId),
+      nodes: (state.currentCluster.nodes || []).filter((node: { id: string; }) => node.id !== nodeId),
     },
   })),
 
@@ -56,7 +54,7 @@ export const clusterReducer = createReducer(
     ...state,
     currentCluster: {
       ...state.currentCluster,
-      nodes: state.currentCluster.nodes.map((node: { id: string; }) =>
+      nodes: (state.currentCluster.nodes || []).map((node: { id: string; }) =>
         node.id === nodeId ? { ...node, ...formValues } : node
       )
     }
@@ -66,7 +64,7 @@ export const clusterReducer = createReducer(
     ...state,
     currentCluster: {
       ...state.currentCluster,
-      links: [...state.currentCluster.links, link]
+      links: [...(state.currentCluster.links || []), link]
     }
   })),
 
@@ -74,7 +72,7 @@ export const clusterReducer = createReducer(
     ...state,
     currentCluster: {
       ...state.currentCluster,
-      links: state.currentCluster.links.filter((link: { source: string; target: string; }) => link.source !== source || link.target !== target)
+      links: (state.currentCluster.links || []).filter((link: { source: string; target: string; }) => link.source !== source || link.target !== target)
     }
   })),
 
@@ -114,4 +112,3 @@ export const clusterReducer = createReducer(
     })),
 
 );
-

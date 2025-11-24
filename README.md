@@ -23,6 +23,16 @@ through visual representation of resources and their relationships.
 - 🔍 **Template Preview** - See the generated YAML before deployment
 - 📊 **Status Monitoring** - Keep track of deployed resources
 
+### Diagram Connection Guidelines
+
+When linking nodes in the diagram, follow these UML-style dependency rules:
+
+- `Ingress → Service → Deployment` handles incoming traffic.
+- `Service → Deployment` routes cluster-internal traffic to workloads.
+- `ConfigMap` / `Secret` / `Volume → Deployment` provide configuration and mounts.
+- `Job → Deployment` (or Container) models episodic workflows triggered by existing workloads.
+- Connections should always point from the dependent to the dependency (arrow points toward what is required).
+
 ## Getting Started
 
 ### Prerequisites

@@ -2,6 +2,8 @@ package com.izylife.izykube.services.ai;
 
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
+import com.izylife.izykube.dto.cluster.LinkDTO;
+import com.izylife.izykube.dto.cluster.SecretDTO;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -58,6 +60,28 @@ class ClusterYamlServiceTest {
     }
 
     @Test
+    void importClusterDecodesSecretData() {
+        String yaml = """
+                apiVersion: v1
+                kind: Secret
+                metadata:
+                  name: demo-secret
+                data:
+                  username: YWRtaW4=
+                  password: cGFzc3dvcmQ=
+                """;
+
+        ClusterDTO cluster = service.importCluster(yaml, null);
+
+        assertFalse(cluster.getNodes().isEmpty());
+        assertTrue(cluster.getNodes().get(0) instanceof SecretDTO);
+        SecretDTO secret = (SecretDTO) cluster.getNodes().get(0);
+        Map<String, Object> values = new Yaml().load(secret.getYaml());
+        assertEquals("admin", values.get("username"));
+        assertEquals("password", values.get("password"));
+    }
+
+    @Test
     void exportHelmChartProducesZipWithTemplates() throws Exception {
         ClusterDTO cluster = ClusterDTO.builder()
                 .name("Demo Cluster")
@@ -87,7 +111,7 @@ class ClusterYamlServiceTest {
                         }
                         """)
                 .build();
-        cluster.getNodes().add(new DeploymentDTO("web", "web", 2, "RollingUpdate"));
+        cluster.getNodes().add(new DeploymentDTO("web", "web", 2, "RollingUpdate", "", 80));
 
         HelmChartArchive archive = service.exportHelmChart(cluster);
 
@@ -134,6 +158,90 @@ class ClusterYamlServiceTest {
         assertTrue(templateYaml.contains("{{ .Values.deployments.web.containers.web.image }}"));
     }
 
+    @Test
+    void exportClusterEncodesSecretData() {
+        ClusterDTO cluster = ClusterDTO.builder()
+                .diagram("{}")
+                .build();
+        cluster.getNodes().add(new SecretDTO("db-secret", "db-secret", "password: super-secret"));
+
+        String exported = service.exportCluster(cluster);
+
+        assertTrue(exported.contains("kind: Secret"));
+        assertTrue(exported.contains("c3VwZXItc2VjcmV0"));
+    }
+
+    @Test
+    void importClusterCreatesDirectionalTrafficLinks() {
+        String yaml = """
+                apiVersion: v1
+                kind: ConfigMap
+                metadata:
+                  name: app-config
+                data:
+                  mode: prod
+                ---
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: web-app
+                spec:
+                  selector:
+                    matchLabels:
+                      app: web-app
+                  template:
+                    metadata:
+                      labels:
+                        app: web-app
+                    spec:
+                      containers:
+                        - name: web
+                          image: nginx
+                          ports:
+                            - containerPort: 8080
+                ---
+                apiVersion: v1
+                kind: Service
+                metadata:
+                  name: web-app
+                spec:
+                  selector:
+                    app: web-app
+                  ports:
+                    - port: 80
+                      targetPort: 8080
+                ---
+                apiVersion: networking.k8s.io/v1
+                kind: Ingress
+                metadata:
+                  name: web-app
+                spec:
+                  rules:
+                    - host: example.com
+                      http:
+                        paths:
+                          - path: /
+                            pathType: Prefix
+                            backend:
+                              service:
+                                name: web-app
+                                port:
+                                  number: 80
+                """;
+
+        ClusterDTO cluster = service.importCluster(yaml, null);
+        List<LinkDTO> links = cluster.getLinks();
+
+        assertTrue(links.stream().anyMatch(link ->
+                "ingress:web-app".equals(link.getSource()) && "service:web-app".equals(link.getTarget())),
+                "Expected ingress to point to service");
+        assertTrue(links.stream().anyMatch(link ->
+                "service:web-app".equals(link.getSource()) && "deployment:web-app".equals(link.getTarget())),
+                "Expected service to link to deployment");
+        assertTrue(cluster.getNodes().stream().noneMatch(node -> "pod".equalsIgnoreCase(node.getKind())),
+                "Pod nodes should not be present in the imported cluster");
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> castMap(Object value) {
         return (Map<String, Object>) value;
@@ -149,4 +257,3 @@ class ClusterYamlServiceTest {
         return outputStream.toString(StandardCharsets.UTF_8);
     }
 }
-

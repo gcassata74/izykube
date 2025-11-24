@@ -6,7 +6,6 @@ import { DiagramService } from 'src/app/services/diagram.service';
 import { getCurrentCluster, getNodeById } from 'src/app/store/selectors/selectors';
 import { DeploymentFormComponent } from '../deployment-form/deployment-form.component';
 import { ConfigMapFormComponent } from '../config-map-form/config-map-form.component';
-import { PodFormComponent } from '../pod-form/pod-form.component';
 import { ServiceFormComponent } from '../service-form/service-form.component';
 import { IngressFormComponent } from '../ingress-form/ingress-form.component';
 import { ContainerFormComponent } from '../container-form/container-form.component';
@@ -33,7 +32,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
   formMapper: Record<string, Type<any>> = {
     'deployment': DeploymentFormComponent,
     'configmap': ConfigMapFormComponent,
-    'pod': PodFormComponent,
+    'secret': ConfigMapFormComponent,
     'service': ServiceFormComponent,
     'ingress':IngressFormComponent,
     'container': ContainerFormComponent,

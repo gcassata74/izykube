@@ -19,6 +19,7 @@
       <img [src]="item.icon" [alt]="item.name" style="width: 40px; height: 40px;">
       <div class="palette-label">{{ item.name }}</div>
     </div>
+
   </div>
 
   <div
@@ -59,6 +60,7 @@
         [class.connection-point-bottom]="point.side === 'bottom'"
         [class.connection-point-left]="point.side === 'left'"
         [class.connection-point-active]="isConnecting && connectionStartNode?.id === node.id && connectionStartPoint?.side === point.side"
+        [attr.title]="connectionHelpText"
         (mousedown)="onConnectionPointClick(node, point, $event)">
       </div>
 

@@ -12,11 +12,14 @@ import lombok.AllArgsConstructor;
 public class DeploymentDTO extends NodeDTO {
     private int replicas;
     private String strategyType;
+    private String assetId;
+    private Integer containerPort;
 
-    public DeploymentDTO(String id, String name, int replicas, String strategyType) {
+    public DeploymentDTO(String id, String name, int replicas, String strategyType, String assetId, Integer containerPort) {
         super(id, name, "deployment");
         this.replicas = replicas;
         this.strategyType = strategyType;
+        this.assetId = assetId;
+        this.containerPort = containerPort;
     }
 }
-

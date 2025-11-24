@@ -19,11 +19,20 @@ export class Cluster {
     static fromJSON(apiResponse: any): Cluster {
      if (!apiResponse) return new Cluster(); 
      
+     const filteredNodes = Array.isArray(apiResponse.nodes)
+         ? apiResponse.nodes.filter((node: any) => (node?.kind ?? node?.type)?.toLowerCase() !== 'pod')
+         : [];
+
+     const nodeIds = new Set(filteredNodes.map((node: any) => node?.id));
+     const filteredLinks = Array.isArray(apiResponse.links)
+         ? apiResponse.links.filter((link: any) => nodeIds.has(link?.source) && nodeIds.has(link?.target))
+         : [];
+
      return new Cluster(
          apiResponse.id || null,
          apiResponse.name || '',
-         Array.isArray(apiResponse.nodes) ? apiResponse.nodes : [],
-         Array.isArray(apiResponse.links) ? apiResponse.links : [],
+         filteredNodes,
+         filteredLinks,
          apiResponse.diagram || '',
          apiResponse.nameSpace || 'default',
          ClusterStatusEnum[apiResponse.status as keyof typeof ClusterStatusEnum] || ClusterStatusEnum.CREATED,

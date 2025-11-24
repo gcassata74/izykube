@@ -9,9 +9,9 @@ export class IconService {
   // Define a configuration object with icon names and file paths
   private iconConfig = {
     'ingress': 'assets/images/diagram/ingress.svg',
-    'pod': 'assets/images/diagram/pod.svg',
     'service': 'assets/images/diagram/service.svg',
     'configmap': 'assets/images/diagram/config-map.svg',
+    'secret': 'assets/images/diagram/secret.svg',
     'container': 'assets/images/diagram/container.svg',
     'deployment': 'assets/images/diagram/deployment.svg',
     'volume': 'assets/images/diagram/volume.svg',

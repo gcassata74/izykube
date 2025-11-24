@@ -11,23 +11,15 @@ public class NodeFactory {
             case "configmap":
                 ConfigMapDTO configMap = (ConfigMapDTO) node;
                 return new ConfigMapDTO(configMap.getId(), configMap.getName(), configMap.getYaml());
+            case "secret":
+                ConfigMapDTO secret = (ConfigMapDTO) node;
+                return new SecretDTO(secret.getId(), secret.getName(), secret.getYaml());
             case "job":
                 JobDTO job = (JobDTO) node;
                 return new JobDTO(job.getId(), job.getName(), job.getAssetId());
             case "pod":
                 PodDTO pod = (PodDTO) node;
-                return new PodDTO(
-                        pod.getId(),
-                        pod.getName(),
-                        pod.getRestartPolicy(),
-                        pod.getServiceAccountName(),
-                        pod.getNodeSelector(),
-                        pod.getHostNetwork(),
-                        pod.getDnsPolicy(),
-                        pod.getSchedulerName(),
-                        pod.getPriority(),
-                        pod.getPreemptionPolicy()
-                );
+                return convertPodToDeployment(pod);
             case "container":
                 ContainerDTO container = (ContainerDTO) node;
                 return new ContainerDTO(
@@ -42,7 +34,9 @@ public class NodeFactory {
                         deployment.getId(),
                         deployment.getName(),
                         deployment.getReplicas(),
-                        deployment.getStrategyType()
+                        deployment.getStrategyType(),
+                        deployment.getAssetId(),
+                        deployment.getContainerPort()
                 );
             case "service":
                 ServiceDTO service = (ServiceDTO) node;
@@ -84,12 +78,12 @@ public class NodeFactory {
         switch (type.toLowerCase()) {
             case "configmap":
                 return new ConfigMapDTO(id, name, "");
-            case "pod":
-                return new PodDTO(id, name, "Always");
+            case "secret":
+                return new SecretDTO(id, name, "");
             case "container":
                 return new ContainerDTO(id, name, "", 80);
             case "deployment":
-                return new DeploymentDTO(id, name, 1, "RollingUpdate");
+                return new DeploymentDTO(id, name, 1, "RollingUpdate", "", 80);
             case "service":
                 return new ServiceDTO(id, name, "ClusterIP", 80);
             case "ingress":
@@ -104,5 +98,11 @@ public class NodeFactory {
             default:
                 throw new IllegalArgumentException("Unsupported node type: " + type);
         }
+    }
+
+    private static DeploymentDTO convertPodToDeployment(PodDTO pod) {
+        String deploymentId = pod.getId() != null ? pod.getId() : ("deployment-" + System.nanoTime());
+        String name = pod.getName() != null ? pod.getName() : deploymentId;
+        return new DeploymentDTO(deploymentId, name, 1, "RollingUpdate", "", 80);
     }
 }

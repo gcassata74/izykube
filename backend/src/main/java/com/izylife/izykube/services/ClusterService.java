@@ -2,7 +2,10 @@ package com.izylife.izykube.services;
 
 import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
+import com.izylife.izykube.dto.cluster.DeploymentDTO;
+import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
+import com.izylife.izykube.dto.cluster.PodDTO;
 import com.izylife.izykube.factory.ClientFactory;
 import com.izylife.izykube.factory.NodeFactory;
 import com.izylife.izykube.factory.TemplateFactory;
@@ -10,6 +13,7 @@ import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.repositories.ClusterTemplateRepository;
+import com.izylife.izykube.services.ai.ClusterYamlService;
 import com.izylife.izykube.utils.ClusterUtil;
 import io.fabric8.istio.api.networking.v1beta1.Gateway;
 import io.fabric8.istio.api.networking.v1beta1.VirtualService;
@@ -26,7 +30,12 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
@@ -39,16 +48,22 @@ public class ClusterService {
     private final ClusterTemplateRepository clusterTemplateRepository;
     private final TemplateFactory templateFactory;
     private final TemplateService templateService;
+    private final ClusterYamlService clusterYamlService;
 
 
     public ClusterDTO createCluster(ClusterDTO clusterDTO) {
 
         try {
+            SanitizedCluster sanitized = sanitizeClusterData(clusterDTO.getNodes(), clusterDTO.getLinks());
+
+            clusterDTO.setNodes(sanitized.nodes());
+            clusterDTO.setLinks(sanitized.links());
+
             Cluster cluster = new Cluster();
             cluster.setName(clusterDTO.getName());
-            cluster.setNodes(clusterDTO.getNodes());
-            cluster.setLinks(clusterDTO.getLinks());
-            cluster.setDiagram(clusterDTO.getDiagram());
+            cluster.setNodes(sanitized.nodes());
+            cluster.setLinks(sanitized.links());
+            cluster.setDiagram(resolveDiagram(clusterDTO));
             cluster.setStatus(ClusterStatusEnum.INITIALIZED);
             Cluster savedCluster = clusterRepository.save(cluster);
 
@@ -68,13 +83,18 @@ public class ClusterService {
 
     public ClusterDTO updateCluster(ClusterDTO clusterDTO) throws Exception {
         try {
+            SanitizedCluster sanitized = sanitizeClusterData(clusterDTO.getNodes(), clusterDTO.getLinks());
+
+            clusterDTO.setNodes(sanitized.nodes());
+            clusterDTO.setLinks(sanitized.links());
+
             Cluster cluster = clusterRepository.findById(clusterDTO.getId()).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
             cluster.setId(clusterDTO.getId());
             cluster.setName(clusterDTO.getName());
             cluster.setNameSpace(clusterDTO.getNameSpace());
-            cluster.setNodes(clusterDTO.getNodes());
-            cluster.setLinks(clusterDTO.getLinks());
-            cluster.setDiagram(clusterDTO.getDiagram());
+            cluster.setNodes(sanitized.nodes());
+            cluster.setLinks(sanitized.links());
+            cluster.setDiagram(resolveDiagram(clusterDTO));
             cluster.setStatus(ClusterStatusEnum.CREATED);
             Cluster updatedCluster = clusterRepository.save(cluster);
 
@@ -115,18 +135,22 @@ public class ClusterService {
         try {
             Cluster cluster = clusterRepository.findById(id)
                     .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
+            ensureDiagram(cluster);
+
+            SanitizedCluster sanitized = sanitizeClusterData(cluster.getNodes(), cluster.getLinks());
 
             // Use the factory to create appropriate NodeDTOs
-            List<NodeDTO> nodeDTOs = cluster.getNodes().stream()
+            List<NodeDTO> nodeDTOs = sanitized.nodes().stream()
                     .map(NodeFactory::createNodeDTO)
                     .collect(Collectors.toList());
+            List<LinkDTO> sanitizedLinks = sanitized.links();
 
             ClusterDTO clusterDTO = ClusterDTO.builder()
                     .id(cluster.getId())
                     .name(cluster.getName())
                     .nameSpace(cluster.getNameSpace())
                     .nodes(nodeDTOs)
-                    .links(cluster.getLinks())
+                    .links(sanitizedLinks)
                     .diagram(cluster.getDiagram())
                     .status(cluster.getStatus())
                     .build();
@@ -267,15 +291,19 @@ public class ClusterService {
                 throw new IllegalStateException("Failed to generate template for cluster: " + id);
             }
 
+            SanitizedCluster sanitized = sanitizeClusterData(clusterDTO.getNodes(), clusterDTO.getLinks());
+            clusterDTO.setNodes(sanitized.nodes());
+            clusterDTO.setLinks(sanitized.links());
+
             applyTemplate(template);
             triggerDeploymentUpdates(clusterDTO);
 
             // Update the cluster entity with new data
             existingCluster.setName(clusterDTO.getName());
             existingCluster.setNameSpace(clusterDTO.getNameSpace());
-            existingCluster.setNodes(clusterDTO.getNodes());
-            existingCluster.setLinks(clusterDTO.getLinks());
-            existingCluster.setDiagram(clusterDTO.getDiagram());
+            existingCluster.setNodes(sanitized.nodes());
+            existingCluster.setLinks(sanitized.links());
+            existingCluster.setDiagram(resolveDiagram(clusterDTO));
             //keep the status as it is
             existingCluster.setStatus(existingCluster.getStatus());
             // Save the updated cluster
@@ -291,7 +319,8 @@ public class ClusterService {
     }
 
     private void triggerDeploymentUpdates(ClusterDTO clusterDTO) {
-        List<NodeDTO> configMaps = ClusterUtil.findNodesByKind(clusterDTO, "configmap");
+        List<NodeDTO> configMaps = new ArrayList<>(ClusterUtil.findNodesByKind(clusterDTO, "configmap"));
+        configMaps.addAll(ClusterUtil.findNodesByKind(clusterDTO, "secret"));
 
         for (NodeDTO configMap : configMaps) {
             List<NodeDTO> connectedDeployments = ClusterUtil.findTargetNodesOf(clusterDTO, configMap.getId())
@@ -318,6 +347,125 @@ public class ClusterService {
                         .endMetadata().endTemplate().endSpec()
                         .build());
     }
+
+    private SanitizedCluster sanitizeClusterData(List<NodeDTO> nodes, List<LinkDTO> links) {
+        List<NodeDTO> inputNodes = nodes != null ? nodes : List.of();
+        List<LinkDTO> inputLinks = links != null ? links : List.of();
+
+        Map<String, NodeDTO> sanitizedNodeMap = new LinkedHashMap<>();
+        Map<String, String> podReplacement = new HashMap<>();
+
+        // Keep non-pod nodes
+        for (NodeDTO node : inputNodes) {
+            if (node == null) {
+                continue;
+            }
+            if (!"pod".equalsIgnoreCase(node.getKind())) {
+                sanitizedNodeMap.put(node.getId(), node);
+            }
+        }
+
+        // Convert or map pod nodes
+        for (NodeDTO node : inputNodes) {
+            if (!(node instanceof PodDTO pod)) {
+                continue;
+            }
+
+            String linkedDeploymentId = findLinkedDeploymentId(pod.getId(), inputLinks, sanitizedNodeMap);
+            if (linkedDeploymentId != null) {
+                podReplacement.put(pod.getId(), linkedDeploymentId);
+                continue;
+            }
+
+            String newId = pod.getId();
+            if (newId == null || newId.isBlank()) {
+                newId = "deployment-" + System.nanoTime();
+            }
+            while (sanitizedNodeMap.containsKey(newId)) {
+                newId = newId + "-dep";
+            }
+
+            DeploymentDTO replacement = convertPodToDeployment(pod, newId);
+            sanitizedNodeMap.put(replacement.getId(), replacement);
+            podReplacement.put(pod.getId(), replacement.getId());
+        }
+
+        List<LinkDTO> sanitizedLinks = new ArrayList<>();
+        for (LinkDTO link : inputLinks) {
+            if (link == null) {
+                continue;
+            }
+            String source = podReplacement.getOrDefault(link.getSource(), link.getSource());
+            String target = podReplacement.getOrDefault(link.getTarget(), link.getTarget());
+            if (!sanitizedNodeMap.containsKey(source) || !sanitizedNodeMap.containsKey(target)) {
+                continue;
+            }
+            LinkDTO sanitizedLink = new LinkDTO();
+            sanitizedLink.setSource(source);
+            sanitizedLink.setTarget(target);
+            sanitizedLinks.add(sanitizedLink);
+        }
+
+        return new SanitizedCluster(new ArrayList<>(sanitizedNodeMap.values()), sanitizedLinks);
+    }
+
+    private String findLinkedDeploymentId(String podId, List<LinkDTO> links, Map<String, NodeDTO> nodeLookup) {
+        if (podId == null || links == null) {
+            return null;
+        }
+        for (LinkDTO link : links) {
+            if (link == null) {
+                continue;
+            }
+            if (podId.equals(link.getTarget())) {
+                NodeDTO sourceNode = nodeLookup.get(link.getSource());
+                if (sourceNode != null && "deployment".equalsIgnoreCase(sourceNode.getKind())) {
+                    return sourceNode.getId();
+                }
+            }
+        }
+        return null;
+    }
+
+    private DeploymentDTO convertPodToDeployment(PodDTO pod, String deploymentId) {
+        String name = pod.getName() != null ? pod.getName() : deploymentId;
+        return new DeploymentDTO(deploymentId, name, 1, "RollingUpdate", "", 80);
+    }
+
+    private record SanitizedCluster(List<NodeDTO> nodes, List<LinkDTO> links) {}
+
+    private String resolveDiagram(ClusterDTO clusterDTO) {
+        if (clusterDTO == null) {
+            return "";
+        }
+        if (clusterDTO.getDiagram() != null && !clusterDTO.getDiagram().isBlank()) {
+            return clusterDTO.getDiagram();
+        }
+        List<NodeDTO> nodes = clusterDTO.getNodes() != null ? clusterDTO.getNodes() : List.of();
+        List<LinkDTO> links = clusterDTO.getLinks() != null ? clusterDTO.getLinks() : List.of();
+        try {
+            return clusterYamlService.buildDiagramSnapshot(nodes, links, List.of());
+        } catch (Exception ex) {
+            log.warn("Failed to build diagram snapshot for cluster {}: {}", clusterDTO.getName(), ex.getMessage());
+            return "";
+        }
+    }
+
+    private void ensureDiagram(Cluster cluster) {
+        if (cluster == null) {
+            return;
+        }
+        if (cluster.getDiagram() != null && !cluster.getDiagram().isBlank()) {
+            return;
+        }
+        List<NodeDTO> nodes = cluster.getNodes() != null ? cluster.getNodes() : List.of();
+        List<LinkDTO> links = cluster.getLinks() != null ? cluster.getLinks() : List.of();
+        try {
+            String diagram = clusterYamlService.buildDiagramSnapshot(nodes, links, List.of());
+            cluster.setDiagram(diagram);
+            clusterRepository.save(cluster);
+        } catch (Exception ex) {
+            log.warn("Failed to regenerate diagram for cluster {}: {}", cluster.getId(), ex.getMessage());
+        }
+    }
 }
-
-

@@ -134,6 +134,10 @@ export class ServiceFormComponent implements OnInit, OnChanges {
   }
 
   private derivePortFromDeployment(deployment: Deployment): number | null {
+    if (deployment?.containerPort) {
+      return deployment.containerPort;
+    }
+
     if (!this.cluster || !this.cluster.links?.length) {
       return null;
     }

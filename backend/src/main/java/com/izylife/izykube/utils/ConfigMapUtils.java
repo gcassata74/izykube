@@ -6,10 +6,16 @@ import io.fabric8.kubernetes.api.model.EnvFromSourceBuilder;
 
 public class ConfigMapUtils {
     public static EnvFromSource createEnvFromSource(ConfigMapDTO configMap) {
-        return new EnvFromSourceBuilder()
-                .withNewConfigMapRef()
-                .withName(configMap.getName())
-                .endConfigMapRef()
-                .build();
+        EnvFromSourceBuilder builder = new EnvFromSourceBuilder();
+        if (configMap.isSecret()) {
+            builder.withNewSecretRef()
+                    .withName(configMap.getName())
+                    .endSecretRef();
+        } else {
+            builder.withNewConfigMapRef()
+                    .withName(configMap.getName())
+                    .endConfigMapRef();
+        }
+        return builder.build();
     }
 }

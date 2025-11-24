@@ -42,17 +42,26 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
                 .findFirst()
                 .orElse(null);
 
-        ContainerDTO containerDTO = deploymentDTO.getTargetNodes().stream()
+        if (deploymentDTO == null) {
+            throw new IllegalStateException("Service " + dto.getName() + " must be linked to a deployment");
+        }
+
+        ContainerDTO containerDTO = deploymentDTO.getTargetNodes() != null
+                ? deploymentDTO.getTargetNodes().stream()
                 .filter(ContainerDTO.class::isInstance)
                 .map(ContainerDTO.class::cast)
                 .findFirst()
-                .orElse(null);
+                .orElse(null)
+                : null;
 
         Map<String, String> selectors = Collections.singletonMap("app", deploymentDTO.getName());
 
         ServicePort servicePort = new ServicePort();
         servicePort.setPort(dto.getPort());
-        servicePort.setTargetPort(new IntOrString(containerDTO.getContainerPort()));
+        int targetPort = containerDTO != null
+                ? containerDTO.getContainerPort()
+                : (deploymentDTO.getContainerPort() != null ? deploymentDTO.getContainerPort() : dto.getPort());
+        servicePort.setTargetPort(new IntOrString(targetPort));
 
         if ("NodePort".equals(dto.getType()) && dto.getNodePort() != null) {
             servicePort.setNodePort(dto.getNodePort());
