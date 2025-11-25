@@ -1,9 +1,9 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { catchError, EMPTY, Subscription, finalize, of, tap } from 'rxjs';
+import { catchError, EMPTY, Subscription, tap } from 'rxjs';
 import { Asset, AssetType } from 'src/app/model/asset.class';
-import { AssetService, DockerImageOption } from 'src/app/services/asset.service';
+import { AssetService } from 'src/app/services/asset.service';
 import { NotificationService } from 'src/app/services/notification.service';
 
 @Component({
@@ -25,9 +25,6 @@ export class AssetFormComponent implements OnInit, OnDestroy {
   asset?: Asset;
   subscription = new Subscription();
   readonly assetType = AssetType;
-  localImages: DockerImageOption[] = [];
-  loadingImages = false;
-  private localImagesLoaded = false;
 
   assetTypes = [
     { label: 'Playbook', value: AssetType.PLAYBOOK },
@@ -174,13 +171,7 @@ export class AssetFormComponent implements OnInit, OnDestroy {
     }
     if (image) {
       image.setValidators([Validators.required]);
-      if (this.localImages.length && typeof image.value === 'string') {
-        this.ensureImageOptionPresent(image.value);
-      }
     }
-
-    this.loadLocalImages();
-    this.watchImageControl();
   }
 
   private watchImageControl(): void {
@@ -190,11 +181,7 @@ export class AssetFormComponent implements OnInit, OnDestroy {
     }
 
     const sub = imageControl.valueChanges.pipe(
-      tap(value => {
-        if (typeof value === 'string') {
-          this.ensureImageOptionPresent(value);
-        }
-      })
+      tap(value => this.syncVersionWithImage(value))
     ).subscribe();
 
     this.subscription.add(sub);
@@ -221,7 +208,6 @@ export class AssetFormComponent implements OnInit, OnDestroy {
             version: asset.version
           }, { emitEvent: false });
 
-          this.ensureImageOptionPresent(asset.image ?? null);
         }),
         catchError(error => {
           this.notify.error('Error', 'Failed to load asset');
@@ -289,93 +275,26 @@ export class AssetFormComponent implements OnInit, OnDestroy {
     this.subscription.unsubscribe();
   }
 
-  refreshLocalImages(): void {
-    this.localImagesLoaded = false;
-    this.loadLocalImages(true);
-  }
-
-  private loadLocalImages(force = false): void {
-    if (this.loadingImages) {
-      return;
-    }
-
-    if (this.localImagesLoaded && !force) {
-      this.ensureImageOptionPresent(this.assetForm.get('image')?.value ?? null);
-      return;
-    }
-
-    this.loadingImages = true;
-    this.subscription.add(
-      this.assetService.getLocalDockerImages().pipe(
-        tap(images => {
-          this.localImages = images;
-          this.localImagesLoaded = true;
-          this.ensureImageOptionPresent(this.assetForm.get('image')?.value ?? null);
-        }),
-        catchError(error => {
-          console.error('Error loading local Docker images:', error);
-          this.notify.error('Error', 'Failed to load local Docker images');
-          return of([] as DockerImageOption[]);
-        }),
-        finalize(() => {
-          this.loadingImages = false;
-        })
-      ).subscribe()
-    );
-  }
-
-  private ensureImageOptionPresent(imageValue: string | null): void {
-    if (!imageValue || typeof imageValue !== 'string') {
-      return;
-    }
-
-    const [repository, tag = 'latest'] = imageValue.split(':', 2);
-    if (!this.localImages.some(option => option.value === imageValue)) {
-      this.localImages = [
-        {
-          repository,
-          tag,
-          label: imageValue,
-          value: imageValue
-        },
-        ...this.localImages
-      ];
-    }
-
-    this.refreshImageControlDisplay();
-  }
-
-  private handleImageSelection(value: unknown): void {
+  private syncVersionWithImage(value: unknown): void {
     if (this.assetForm.get('type')?.value !== AssetType.IMAGE) {
       return;
     }
 
-    if (typeof value !== 'string' || value.trim() === '') {
+    if (typeof value !== 'string') {
       return;
     }
 
-    const [repository, tag] = value.split(':', 2);
-    if (!tag || tag.trim() === '') {
+    const trimmed = value.trim();
+    if (!trimmed) {
       return;
     }
 
-    this.ensureImageOptionPresent(`${repository}:${tag}`);
-
+    const [, tag] = trimmed.split(':', 2);
     if (tag) {
       const versionControl = this.assetForm.get('version');
       if (versionControl && versionControl.value !== tag) {
         versionControl.setValue(tag, { emitEvent: false });
       }
     }
-  }
-
-  private refreshImageControlDisplay(): void {
-    const imageControl = this.assetForm.get('image');
-    if (!imageControl) {
-      return;
-    }
-
-    const currentValue = imageControl.value;
-    imageControl.setValue(currentValue, { emitEvent: false });
   }
 }

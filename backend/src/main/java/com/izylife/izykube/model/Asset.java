@@ -1,5 +1,6 @@
 package com.izylife.izykube.model;
 
+import com.izylife.izykube.enums.AssetSource;
 import com.izylife.izykube.enums.AssetType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -19,8 +20,12 @@ public class Asset extends BaseEntity implements Persistable<String> {
     private String script;
     private String version;
     private String description;
+    /**
+     * Full image reference (repository/name:tag) when the asset type is IMAGE.
+     */
     private String image;
     private int port;
+    private AssetSource source = AssetSource.USER;
 
     @Transient
     private boolean persisted = false;
@@ -36,5 +41,8 @@ public class Asset extends BaseEntity implements Persistable<String> {
         this.persisted = true;
     }
 
+    public AssetSource getSource() {
+        return source != null ? source : AssetSource.USER;
+    }
 
 }

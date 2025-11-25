@@ -1,16 +1,8 @@
 import { Injectable } from '@angular/core';
+import { HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { Asset } from '../model/asset.class';
-import { DiagramService } from './diagram.service';
 import { DataService } from './data.service';
-import { Node } from '../model/node.class';
-
-export interface DockerImageOption {
-  repository: string;
-  tag: string;
-  label: string;
-  value: string;
-}
 
 @Injectable({
   providedIn: 'root'
@@ -19,7 +11,6 @@ export class AssetService {
 
   constructor(
     private dataService: DataService,
-    private diagramService: DiagramService,
   ) {}
 
   getAsset(id: string): Observable<Asset> {
@@ -51,26 +42,12 @@ export class AssetService {
     )
   }
 
-  getLocalDockerImages(): Observable<DockerImageOption[]> {
-    return this.dataService.get<{ repository: string; tag: string; }[]>('docker/image/local').pipe(
-      map(images => {
-        const seen = new Set<string>();
-        return images
-          .map(image => ({
-            repository: image.repository,
-            tag: image.tag,
-            label: `${image.repository}:${image.tag}`,
-            value: `${image.repository}:${image.tag}`
-          }))
-          .filter(image => {
-            if (seen.has(image.value)) {
-              return false;
-            }
-            seen.add(image.value);
-            return true;
-          });
-      })
-    );
+  getImageAssets(search?: string): Observable<Asset[]> {
+    let params: HttpParams | undefined;
+    if (search && search.trim().length) {
+      params = new HttpParams().set('search', search.trim());
+    }
+    return this.dataService.get<Asset[]>('/image-assets', params);
   }
 
 }

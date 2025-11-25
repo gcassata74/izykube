@@ -21,8 +21,6 @@ mongock:
   migration-scan-package: com.izylife.izykube.changelogs
 
 app:
-  docker:
-    local-repository-uri: "localhost:5000"
   cors:
     allowed-origin-patterns:
       - http://localhost:*

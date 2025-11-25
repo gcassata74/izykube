@@ -12,6 +12,7 @@ export class Asset {
     port?: number;
     image?: string;
     version!: string;
+    source?: string;
   }
 
  

@@ -36,7 +36,6 @@
         <jjwt.version>0.11.5</jjwt.version>
         <jackson-databind-nullable.version>0.2.6</jackson-databind-nullable.version>
         <springdoc-openapi.version>2.3.0</springdoc-openapi.version>
-        <docker-java.version>3.3.5</docker-java.version>
         <fabric8.kubernetes-client.version>6.9.2</fabric8.kubernetes-client.version>
         <istio-model.version>6.9.2</istio-model.version>
         <!-- Plugin versions -->

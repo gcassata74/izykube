@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { FormGroup, FormBuilder, Validators, FormControl } from '@angular/forms';
-import { catchError, map, Observable, of, tap } from 'rxjs';
-import { AssetType } from 'src/app/model/asset.class';
+import { catchError, map, Observable, of } from 'rxjs';
+import { Asset } from 'src/app/model/asset.class';
 import { Container, ContainerRole, toContainerRole } from 'src/app/model/container.class';
 import { AssetService } from 'src/app/services/asset.service';
 import { AutoSaveService } from 'src/app/services/auto-save.service';
@@ -15,7 +15,7 @@ import { NotificationService } from 'src/app/services/notification.service';
 export class ContainerFormComponent {
   @Input() selectedNode!: Container;
   form!: FormGroup;
-  assets$!: Observable<any[]>;
+  assets$!: Observable<Asset[]>;
   readonly roleOptions = [
     { label: 'Init container', value: 'INIT' as ContainerRole },
     { label: 'Sidecar', value: 'SIDECAR' as ContainerRole }
@@ -46,14 +46,12 @@ export class ContainerFormComponent {
 
 
   private loadAssets() {
-    this.assets$ = this.assetService.getAssets().pipe(
-        map(assets => assets.filter(asset => asset.type === AssetType.IMAGE)),
-        tap(playbooks => console.log('Loaded playbooks:', playbooks)),
-        catchError(error => {
-            console.error('Error loading playbooks:', error);
-            this.notificationService.error('Error', 'Failed to load playbooks');
-            return of([]);
-        })
+    this.assets$ = this.assetService.getImageAssets().pipe(
+      catchError(error => {
+        console.error('Error loading image assets:', error);
+        this.notificationService.error('Error', 'Failed to load image assets');
+        return of([]);
+      })
     );
   }
 

@@ -1,6 +1,7 @@
 package com.izylife.izykube.dto.cluster;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.izylife.izykube.enums.AssetSource;
 import com.izylife.izykube.enums.AssetType;
 import lombok.Data;
 
@@ -15,4 +16,5 @@ public class AssetDTO {
     private int port;
     private String image;
     private String version;
+    private AssetSource source;
 }
