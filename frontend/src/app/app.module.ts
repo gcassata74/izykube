@@ -52,6 +52,7 @@ import { ClusterEffect } from './store/effects/effect';
 import { EditorModule } from 'primeng/editor';
 import { SharedModule } from './shared/shared.module';
 import { JobFormComponent } from './cluster/job-form/job-form.component';
+import { IstioFormComponent } from './cluster/istio-form/istio-form.component';
 import { DragDropDirective } from './directives/drag-drop.directive';
 import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
 
@@ -73,6 +74,7 @@ import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
     VolumeFormComponent,
     AssetFormComponent,
     JobFormComponent,
+    IstioFormComponent,
     DragDropDirective,
     KubeExplorerComponent,
   ],

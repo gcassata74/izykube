@@ -58,4 +58,21 @@
     </small>
   </div>
 
+  <div class="p-field">
+    <label for="tls">TLS Secret</label>
+    <input id="tls" type="text" pInputText formControlName="tls" placeholder="Optional secret name">
+  </div>
+
+  <div class="p-field">
+    <label>Annotations</label>
+    <div formArrayName="annotations" class="annotation-list">
+      <div class="annotation-row" *ngFor="let control of annotationsArray.controls; let i = index; trackBy: trackByIndex" [formGroupName]="i">
+        <input type="text" pInputText placeholder="key" formControlName="key">
+        <input type="text" pInputText placeholder="value" formControlName="value">
+        <button type="button" pButton icon="pi pi-times" class="p-button-text p-button-danger"
+                (click)="removeAnnotation(i)" [disabled]="annotationsArray.length === 1"></button>
+      </div>
+    </div>
+    <button type="button" pButton label="Add annotation" class="p-button-text" (click)="addAnnotation()"></button>
+  </div>
 </form>

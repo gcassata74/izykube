@@ -1,8 +1,8 @@
 import { Component, Input } from '@angular/core';
-import { FormGroup, FormBuilder, Validators } from '@angular/forms';
+import { FormGroup, FormBuilder, Validators, FormControl } from '@angular/forms';
 import { catchError, map, Observable, of, tap } from 'rxjs';
 import { AssetType } from 'src/app/model/asset.class';
-import { Container } from 'src/app/model/container.class';
+import { Container, ContainerRole, toContainerRole } from 'src/app/model/container.class';
 import { AssetService } from 'src/app/services/asset.service';
 import { AutoSaveService } from 'src/app/services/auto-save.service';
 import { NotificationService } from 'src/app/services/notification.service';
@@ -16,6 +16,10 @@ export class ContainerFormComponent {
   @Input() selectedNode!: Container;
   form!: FormGroup;
   assets$!: Observable<any[]>;
+  readonly roleOptions = [
+    { label: 'Init container', value: 'INIT' as ContainerRole },
+    { label: 'Sidecar', value: 'SIDECAR' as ContainerRole }
+  ];
 
   constructor(
     private fb: FormBuilder,
@@ -31,10 +35,12 @@ export class ContainerFormComponent {
   }
 
   private initForm() {
+    const selectedRole = toContainerRole(this.selectedNode?.role);
     this.form = this.fb.group({
       name: [this.selectedNode.name, Validators.required],
       assetId: [this.selectedNode.assetId, Validators.required],
-      containerPort: [this.selectedNode.containerPort, [Validators.required, Validators.min(1)]]
+      containerPort: [this.selectedNode.containerPort, [Validators.required, Validators.min(1)]],
+      role: new FormControl<ContainerRole | null>(selectedRole ?? null)
     });
   }
 
@@ -52,6 +58,15 @@ export class ContainerFormComponent {
   }
 
   private setupAutoSave() {
-    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.form.valueChanges);
+    const normalizedChanges = this.form.valueChanges.pipe(
+      map(value => {
+        const normalized = { ...value } as any;
+        if (!normalized.role) {
+          delete normalized.role;
+        }
+        return normalized;
+      })
+    );
+    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, normalizedChanges);
   }
 }

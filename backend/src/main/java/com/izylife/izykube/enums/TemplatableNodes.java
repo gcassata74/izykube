@@ -7,6 +7,7 @@ public enum TemplatableNodes {
     CONFIG_MAP("configmap"),
     SECRET("secret"),
     INGRESS("ingress"),
+    ISTIO("istio"),
     PERSISTENT_VOLUME_CLAIM("persistentvolumeclaim"),
     STATEFUL_SET("statefulset"),
     DAEMON_SET("daemonset"),

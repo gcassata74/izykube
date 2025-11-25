@@ -64,6 +64,15 @@
         (mousedown)="onConnectionPointClick(node, point, $event)">
       </div>
 
+      <ng-container *ngIf="getContainerBadge(node) as badge">
+        <span
+          class="diagram-node__badge"
+          [ngClass]="badge.cssClass"
+          [attr.title]="badge.title">
+          {{ badge.label }}
+        </span>
+      </ng-container>
+
       <img [src]="node.icon" [alt]="node.name" style="width: 40px; height: 40px;">
       <div
         style="font-size: 10px; text-align: center; margin-top: 2px;"

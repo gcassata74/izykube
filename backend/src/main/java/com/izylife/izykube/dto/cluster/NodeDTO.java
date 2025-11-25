@@ -26,6 +26,7 @@ import java.util.List;
         @JsonSubTypes.Type(value = SecretDTO.class, name = "secret"),
         @JsonSubTypes.Type(value = VolumeDTO.class, name = "volume"),
         @JsonSubTypes.Type(value = IngressDTO.class, name = "ingress"),
+        @JsonSubTypes.Type(value = VirtualServiceDTO.class, name = "istio"),
         @JsonSubTypes.Type(value = JobDTO.class, name = "job")
 })
 public abstract class NodeDTO {

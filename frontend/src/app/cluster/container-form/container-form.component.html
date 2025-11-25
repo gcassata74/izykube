@@ -62,4 +62,19 @@
       <label for="containerPort" i18n="@@containerPort">Container Port</label>
     </span>
   </div>
+
+  <div class="p-field">
+    <span class="p-float-label">
+      <p-dropdown
+        id="containerRole"
+        formControlName="role"
+        [options]="roleOptions"
+        optionLabel="label"
+        optionValue="value"
+        [showClear]="true"
+        placeholder="Standard container">
+      </p-dropdown>
+      <label for="containerRole">Container Role (optional)</label>
+    </span>
+  </div>
 </form>

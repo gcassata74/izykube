@@ -11,6 +11,7 @@ import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.dto.cluster.SecretDTO;
 import com.izylife.izykube.dto.cluster.ServiceDTO;
+import com.izylife.izykube.dto.cluster.VirtualServiceDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.DumperOptions;
@@ -50,7 +51,8 @@ public class ClusterYamlService {
             Map.entry("ingress", "assets/images/diagram/ingress.svg"),
             Map.entry("container", "assets/images/diagram/container.svg"),
             Map.entry("volume", "assets/images/diagram/volume.svg"),
-            Map.entry("job", "assets/images/diagram/wrench.svg")
+            Map.entry("job", "assets/images/diagram/wrench.svg"),
+            Map.entry("istio", "assets/images/diagram/istio.svg")
     );
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -83,6 +85,7 @@ public class ClusterYamlService {
         Map<String, DeploymentInfo> deploymentInfoMap = new HashMap<>();
         Map<String, ServiceInfo> serviceInfoMap = new HashMap<>();
         List<IngressInfo> ingressInfoList = new ArrayList<>();
+        List<VirtualServiceInfo> virtualServiceInfoList = new ArrayList<>();
 
         String namespace = "default";
 
@@ -125,9 +128,9 @@ public class ClusterYamlService {
                         ingressInfoList.add(artifacts.info);
                     }
                     case "virtualservice" -> {
-                        IngressArtifacts artifacts = buildVirtualServiceNode(name, manifest);
+                        VirtualServiceArtifacts artifacts = buildVirtualServiceNode(name, manifest);
                         nodes.add(artifacts.node);
-                        ingressInfoList.add(artifacts.info);
+                        virtualServiceInfoList.add(artifacts.info);
                     }
                     default -> log.info("Skipping unsupported manifest kind: {}", kind);
                 }
@@ -139,6 +142,7 @@ public class ClusterYamlService {
         linkConfigAndSecretResources(links, manifests, deploymentInfoMap);
         linkServicesToWorkloads(links, serviceInfoMap, deploymentInfoMap);
         linkIngressTargets(links, ingressInfoList, serviceInfoMap);
+        linkVirtualServiceTargets(links, virtualServiceInfoList, serviceInfoMap);
 
         List<LinkDTO> mergedLinks = mergeDuplicates(links);
         List<Map<String, Object>> manifestSnapshots = manifests.stream()
@@ -202,6 +206,10 @@ public class ClusterYamlService {
                 .collect(Collectors.toMap(ManifestEntry::getName, entry -> entry, (a, b) -> a, LinkedHashMap::new));
 
         List<NodeDTO> nodes = cluster.getNodes() != null ? cluster.getNodes() : List.of();
+        Map<String, NodeDTO> nodesById = nodes.stream()
+                .filter(node -> node.getId() != null)
+                .collect(Collectors.toMap(NodeDTO::getId, node -> node, (a, b) -> a, LinkedHashMap::new));
+        Map<String, List<NodeDTO>> targetsBySource = buildTargetsBySource(nodesById, cluster.getLinks());
         for (NodeDTO node : nodes) {
             if (node.getKind() == null) {
                 continue;
@@ -211,7 +219,14 @@ public class ClusterYamlService {
                 case "secret" -> updateSecretManifest((SecretDTO) node, manifestsByName);
                 case "deployment" -> updateDeploymentManifest((DeploymentDTO) node, manifestsByName);
                 case "service" -> updateServiceManifest((ServiceDTO) node, manifestsByName);
-                case "ingress" -> updateIngressLikeManifest((IngressDTO) node, manifestsByName);
+                case "ingress" -> {
+                    resolveIngressTargetsFromLinks((IngressDTO) node, targetsBySource);
+                    updateIngressLikeManifest((IngressDTO) node, manifestsByName);
+                }
+                case "istio", "virtualservice" -> {
+                    resolveVirtualServiceTargetsFromLinks((VirtualServiceDTO) node, targetsBySource);
+                    updateVirtualServiceManifestEntry((VirtualServiceDTO) node, manifestsByName);
+                }
                 default -> log.debug("Skipping export update for node kind: {}", node.getKind());
             }
         }
@@ -287,10 +302,12 @@ public class ClusterYamlService {
 
     private IngressArtifacts buildIngressNode(String name, Map<String, Object> manifest) {
         Map<String, Object> spec = getMap(manifest, "spec");
+        Map<String, Object> metadata = getMap(manifest, "metadata");
         String host = null;
         String path = "/";
         String serviceName = null;
         int servicePort = 80;
+        String tlsSecret = null;
 
         List<Map<String, Object>> rules = getList(spec, "rules");
         if (rules != null && !rules.isEmpty()) {
@@ -317,43 +334,71 @@ public class ClusterYamlService {
             }
         }
 
-        IngressDTO node = new IngressDTO(generateNodeId("ingress", name), name, host != null ? host : "example.com", path, serviceName != null ? serviceName : "", servicePort);
+        List<Map<String, Object>> tls = getList(spec, "tls");
+        if (tls != null && !tls.isEmpty()) {
+            tlsSecret = getString(tls.get(0), "secretName", null);
+        }
+
+        Map<String, String> annotations = extractAnnotations(metadata);
+
+        IngressDTO node = new IngressDTO(
+                generateNodeId("ingress", name),
+                name,
+                host != null ? host : "example.com",
+                path,
+                serviceName != null ? serviceName : "",
+                servicePort,
+                tlsSecret,
+                annotations
+        );
         IngressInfo info = new IngressInfo(node.getId(), serviceName, host);
         info.manifest = manifest;
         return new IngressArtifacts(node, info);
     }
 
-    private IngressArtifacts buildVirtualServiceNode(String name, Map<String, Object> manifest) {
+    private VirtualServiceArtifacts buildVirtualServiceNode(String name, Map<String, Object> manifest) {
         Map<String, Object> spec = getMap(manifest, "spec");
-        List<String> hosts = Optional.ofNullable(this.<String>getList(spec, "hosts"))
-                .orElseGet(() -> new ArrayList<>());
+        List<String> hosts = Optional.ofNullable(this.<String>getList(spec, "hosts")).orElseGet(ArrayList::new);
         String host = hosts.isEmpty() ? "example.com" : hosts.get(0);
-        String serviceName = null;
-        int servicePort = 80;
+        List<String> targetServices = new ArrayList<>();
+        int fallbackPort = 80;
 
         List<Map<String, Object>> http = getList(spec, "http");
-        if (http != null && !http.isEmpty()) {
-            Map<String, Object> firstHttp = http.get(0);
-            List<Map<String, Object>> route = getList(firstHttp, "route");
-            if (route != null && !route.isEmpty()) {
-                Map<String, Object> destination = getMap(route.get(0), "destination");
-                if (destination != null) {
+        if (http != null) {
+            for (Map<String, Object> httpEntry : http) {
+                List<Map<String, Object>> routes = getList(httpEntry, "route");
+                if (routes == null) {
+                    continue;
+                }
+                for (Map<String, Object> route : routes) {
+                    Map<String, Object> destination = getMap(route, "destination");
+                    if (destination == null) {
+                        continue;
+                    }
                     String hostValue = getString(destination, "host", null);
                     if (hostValue != null) {
-                        serviceName = hostValue.split("\\.")[0];
+                        targetServices.add(extractServiceShortName(hostValue));
                     }
                     Map<String, Object> portMap = getMap(destination, "port");
                     if (portMap != null) {
-                        servicePort = getInt(portMap, "number", servicePort);
+                        fallbackPort = getInt(portMap, "number", fallbackPort);
                     }
                 }
             }
         }
 
-        IngressDTO node = new IngressDTO(generateNodeId("ingress", name), name, host, "/", serviceName != null ? serviceName : "", servicePort);
-        IngressInfo info = new IngressInfo(node.getId(), serviceName, host);
+        String primaryService = targetServices.isEmpty() ? "" : targetServices.get(0);
+        VirtualServiceDTO node = new VirtualServiceDTO(
+                generateNodeId("istio", name),
+                name,
+                host,
+                "/",
+                primaryService,
+                fallbackPort
+        );
+        VirtualServiceInfo info = new VirtualServiceInfo(node.getId(), targetServices, host);
         info.manifest = manifest;
-        return new IngressArtifacts(node, info);
+        return new VirtualServiceArtifacts(node, info);
     }
 
     private Set<String> extractConfigAndSecretReferences(Map<String, Object> podSpec) {
@@ -514,6 +559,23 @@ public class ClusterYamlService {
             serviceNode.setExposeService(true);
             if (info.host != null) {
                 serviceNode.setFrontendUrl(buildFrontendUrl(info.host));
+            }
+        });
+    }
+
+    private void linkVirtualServiceTargets(List<LinkDTO> links,
+                                           List<VirtualServiceInfo> virtualServiceInfoList,
+                                           Map<String, ServiceInfo> serviceInfoMap) {
+        if (virtualServiceInfoList.isEmpty() || serviceInfoMap.isEmpty()) {
+            return;
+        }
+        virtualServiceInfoList.forEach(info -> {
+            for (String serviceName : info.targetServiceNames) {
+                ServiceInfo serviceInfo = serviceInfoMap.get(serviceName);
+                if (serviceInfo == null) {
+                    continue;
+                }
+                links.add(createLink(info.nodeId, serviceInfo.node.getId()));
             }
         });
     }
@@ -783,23 +845,20 @@ public class ClusterYamlService {
 
     private void updateIngressLikeManifest(IngressDTO node, Map<String, ManifestEntry> manifests) {
         ManifestEntry entry = manifests.get(node.getId());
-        if (entry == null) {
+        if (entry == null || !"ingress".equals(entry.kind)) {
             entry = new ManifestEntry("ingress", node.getId(), createBaseIngressManifest(node));
             manifests.put(node.getId(), entry);
         }
         Map<String, Object> manifest = entry.manifest;
-        manifest.put("apiVersion", manifest.getOrDefault("apiVersion", entry.kind.equals("virtualservice") ? "networking.istio.io/v1alpha3" : "networking.k8s.io/v1"));
-        manifest.put("kind", entry.kind.equals("virtualservice") ? "VirtualService" : "Ingress");
+        manifest.put("apiVersion", "networking.k8s.io/v1");
+        manifest.put("kind", "Ingress");
 
         Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
         metadata.put("name", node.getName());
+        applyAnnotations(metadata, node.getAnnotations());
         manifest.put("metadata", metadata);
 
-        if (entry.kind.equals("virtualservice")) {
-            updateVirtualServiceManifest(manifest, node);
-        } else {
-            updateIngressManifest(manifest, node);
-        }
+        updateIngressManifest(manifest, node);
     }
 
     private void updateIngressManifest(Map<String, Object> manifest, IngressDTO node) {
@@ -808,6 +867,10 @@ public class ClusterYamlService {
                 .orElseGet(() -> new ArrayList<>());
         Map<String, Object> rule = rules.isEmpty() ? new LinkedHashMap<>() : rules.get(0);
         rule.put("host", node.getHost());
+        Set<String> tlsHosts = new LinkedHashSet<>();
+        if (node.getHost() != null && !node.getHost().isBlank()) {
+            tlsHosts.add(node.getHost());
+        }
         Map<String, Object> http = Optional.ofNullable(getMap(rule, "http")).orElseGet(LinkedHashMap::new);
         List<Map<String, Object>> paths = Optional.ofNullable(this.<Map<String, Object>>getList(http, "paths"))
                 .orElseGet(() -> new ArrayList<>());
@@ -831,10 +894,85 @@ public class ClusterYamlService {
             rules.add(rule);
         }
         spec.put("rules", rules);
+
+        if (node.getTls() != null && !node.getTls().isBlank()) {
+            Map<String, Object> tlsEntry = new LinkedHashMap<>();
+            tlsEntry.put("secretName", node.getTls());
+            if (!tlsHosts.isEmpty()) {
+                tlsEntry.put("hosts", new ArrayList<>(tlsHosts));
+            }
+            spec.put("tls", List.of(tlsEntry));
+        } else {
+            spec.remove("tls");
+        }
+
         manifest.put("spec", spec);
     }
 
-    private void updateVirtualServiceManifest(Map<String, Object> manifest, IngressDTO node) {
+    private void updateVirtualServiceManifestEntry(VirtualServiceDTO node, Map<String, ManifestEntry> manifests) {
+        ManifestEntry entry = manifests.get(node.getId());
+        if (entry == null || !"virtualservice".equals(entry.kind)) {
+            entry = new ManifestEntry("virtualservice", node.getId(), createBaseVirtualServiceManifest(node));
+            manifests.put(node.getId(), entry);
+        }
+        Map<String, Object> manifest = entry.manifest;
+        manifest.put("apiVersion", "networking.istio.io/v1beta1");
+        manifest.put("kind", "VirtualService");
+
+        Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
+        metadata.put("name", node.getName());
+        manifest.put("metadata", metadata);
+
+        updateVirtualServiceManifest(manifest, node);
+    }
+
+    private void applyAnnotations(Map<String, Object> metadata, Map<String, String> annotations) {
+        if (metadata == null) {
+            return;
+        }
+        if (annotations == null || annotations.isEmpty()) {
+            metadata.remove("annotations");
+            return;
+        }
+        Map<String, Object> normalized = new LinkedHashMap<>();
+        annotations.forEach((key, value) -> {
+            if (key != null && !key.isBlank()) {
+                normalized.put(key, value != null ? value : "");
+            }
+        });
+        if (normalized.isEmpty()) {
+            metadata.remove("annotations");
+        } else {
+            metadata.put("annotations", normalized);
+        }
+    }
+
+    private Map<String, String> extractAnnotations(Map<String, Object> metadata) {
+        Map<String, String> annotations = new LinkedHashMap<>();
+        if (metadata == null) {
+            return annotations;
+        }
+        Map<String, Object> rawAnnotations = getMap(metadata, "annotations");
+        if (rawAnnotations == null) {
+            return annotations;
+        }
+        rawAnnotations.forEach((key, value) -> {
+            if (key != null) {
+                annotations.put(key, value != null ? String.valueOf(value) : "");
+            }
+        });
+        return annotations;
+    }
+
+    private String extractServiceShortName(String hostValue) {
+        if (hostValue == null || hostValue.isBlank()) {
+            return "";
+        }
+        int dotIndex = hostValue.indexOf('.');
+        return dotIndex == -1 ? hostValue : hostValue.substring(0, dotIndex);
+    }
+
+    private void updateVirtualServiceManifest(Map<String, Object> manifest, VirtualServiceDTO node) {
         Map<String, Object> spec = Optional.ofNullable(getMap(manifest, "spec")).orElseGet(LinkedHashMap::new);
         List<String> hosts = Optional.ofNullable(this.<String>getList(spec, "hosts"))
                 .orElseGet(() -> new ArrayList<>());
@@ -921,6 +1059,21 @@ public class ClusterYamlService {
         return manifest;
     }
 
+    private Map<String, Object> createBaseVirtualServiceManifest(VirtualServiceDTO node) {
+        Map<String, Object> manifest = new LinkedHashMap<>();
+        manifest.put("apiVersion", "networking.istio.io/v1beta1");
+        manifest.put("kind", "VirtualService");
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("name", node.getName());
+        manifest.put("metadata", metadata);
+        Map<String, Object> spec = new LinkedHashMap<>();
+        String host = Optional.ofNullable(node.getHost()).orElse("example.com");
+        spec.put("hosts", new ArrayList<>(List.of(host)));
+        spec.put("http", new ArrayList<>());
+        manifest.put("spec", spec);
+        return manifest;
+    }
+
     private String buildChartYaml(String chartName, String clusterName) {
         String description = Optional.ofNullable(clusterName)
                 .filter(name -> !name.isBlank())
@@ -994,7 +1147,7 @@ public class ClusterYamlService {
             case "deployment" -> applyDeploymentHelmValues(manifest, entry.getName(), context);
             case "service" -> applyServiceHelmValues(manifest, entry.getName(), context);
             case "ingress" -> applyIngressHelmValues(manifest, entry.getName(), context);
-            case "virtualservice" -> applyVirtualServiceHelmValues(manifest, entry.getName(), context);
+            case "virtualservice", "istio" -> applyVirtualServiceHelmValues(manifest, entry.getName(), context);
             default -> templateResourceName(manifest, entry.getName(), context);
         }
     }
@@ -1088,6 +1241,16 @@ public class ClusterYamlService {
             context.values.put("servicePort", servicePort);
             port.put("number", context.valueRef("servicePort"));
         }
+
+        List<Map<String, Object>> tls = this.<Map<String, Object>>getList(spec, "tls");
+        if (tls != null && !tls.isEmpty()) {
+            Map<String, Object> tlsEntry = tls.get(0);
+            String secretName = getString(tlsEntry, "secretName", null);
+            if (secretName != null && !secretName.isBlank()) {
+                context.values.put("tlsSecretName", secretName);
+                tlsEntry.put("secretName", context.valueRef("tlsSecretName"));
+            }
+        }
     }
 
     private void applyVirtualServiceHelmValues(Map<String, Object> manifest, String fallbackName, HelmValuesContext context) {
@@ -1165,7 +1328,7 @@ public class ClusterYamlService {
         return switch (kind) {
             case "deployment" -> "deployments";
             case "service" -> "services";
-            case "ingress", "virtualservice" -> "ingresses";
+            case "ingress", "virtualservice", "istio" -> "ingresses";
             case "configmap" -> "configmaps";
             case "secret" -> "secrets";
             default -> "resources";
@@ -1195,6 +1358,70 @@ public class ClusterYamlService {
             value = "r_" + value;
         }
         return value;
+    }
+
+    private Map<String, List<NodeDTO>> buildTargetsBySource(Map<String, NodeDTO> nodesById, List<LinkDTO> links) {
+        Map<String, List<NodeDTO>> targetsBySource = new HashMap<>();
+        if (links == null || links.isEmpty() || nodesById.isEmpty()) {
+            return targetsBySource;
+        }
+        for (LinkDTO link : links) {
+            NodeDTO target = nodesById.get(link.getTarget());
+            if (target == null) {
+                continue;
+            }
+            targetsBySource.computeIfAbsent(link.getSource(), key -> new ArrayList<>()).add(target);
+        }
+        return targetsBySource;
+    }
+
+    private void resolveIngressTargetsFromLinks(IngressDTO ingress, Map<String, List<NodeDTO>> targetsBySource) {
+        if (ingress == null || ingress.getId() == null || targetsBySource.isEmpty()) {
+            return;
+        }
+        List<NodeDTO> targets = targetsBySource.get(ingress.getId());
+        if (targets == null || targets.isEmpty()) {
+            return;
+        }
+        List<ServiceDTO> services = targets.stream()
+                .filter(ServiceDTO.class::isInstance)
+                .map(ServiceDTO.class::cast)
+                .collect(Collectors.toList());
+        if (services.isEmpty()) {
+            return;
+        }
+        ServiceDTO primary = services.get(0);
+        if (ingress.getServiceName() == null || ingress.getServiceName().isBlank()) {
+            ingress.setServiceName(primary.getName());
+        }
+        if (ingress.getServicePort() <= 0 && primary.getPort() > 0) {
+            ingress.setServicePort(primary.getPort());
+        }
+    }
+
+    private void resolveVirtualServiceTargetsFromLinks(VirtualServiceDTO virtualService,
+                                                       Map<String, List<NodeDTO>> targetsBySource) {
+        if (virtualService == null || virtualService.getId() == null || targetsBySource.isEmpty()) {
+            return;
+        }
+        List<NodeDTO> targets = targetsBySource.get(virtualService.getId());
+        if (targets == null || targets.isEmpty()) {
+            return;
+        }
+        List<ServiceDTO> services = targets.stream()
+                .filter(ServiceDTO.class::isInstance)
+                .map(ServiceDTO.class::cast)
+                .collect(Collectors.toList());
+        if (services.isEmpty()) {
+            return;
+        }
+        ServiceDTO primary = services.get(0);
+        if (virtualService.getServiceName() == null || virtualService.getServiceName().isBlank()) {
+            virtualService.setServiceName(primary.getName());
+        }
+        if (virtualService.getServicePort() <= 0 && primary.getPort() > 0) {
+            virtualService.setServicePort(primary.getPort());
+        }
     }
 
     private LinkDTO createLink(String from, String to) {
@@ -1483,6 +1710,29 @@ public class ClusterYamlService {
         final IngressInfo info;
 
         IngressArtifacts(IngressDTO node, IngressInfo info) {
+            this.node = node;
+            this.info = info;
+        }
+    }
+
+    private static class VirtualServiceInfo {
+        final String nodeId;
+        final List<String> targetServiceNames;
+        final String host;
+        Map<String, Object> manifest;
+
+        VirtualServiceInfo(String nodeId, List<String> targetServiceNames, String host) {
+            this.nodeId = nodeId;
+            this.targetServiceNames = targetServiceNames;
+            this.host = host;
+        }
+    }
+
+    private static class VirtualServiceArtifacts {
+        final VirtualServiceDTO node;
+        final VirtualServiceInfo info;
+
+        VirtualServiceArtifacts(VirtualServiceDTO node, VirtualServiceInfo info) {
             this.node = node;
             this.info = info;
         }

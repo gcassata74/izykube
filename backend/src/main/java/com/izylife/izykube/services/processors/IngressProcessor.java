@@ -8,7 +8,11 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Processor(IngressDTO.class)
@@ -45,6 +49,7 @@ public class IngressProcessor implements TemplateProcessor<IngressDTO> {
 
         String basePath = normalizePath(dto.getPath());
         boolean appendServiceName = services.size() > 1 || dto.getServiceName() == null || dto.getServiceName().isBlank();
+        Set<String> tlsHosts = new LinkedHashSet<>();
 
         for (ServiceDTO serviceDTO : services) {
             String path = appendServiceName ? appendServiceName(basePath, serviceDTO.getName()) : basePath;
@@ -63,8 +68,13 @@ public class IngressProcessor implements TemplateProcessor<IngressDTO> {
                             .build())
                     .build();
 
+            String host = resolveHost(dto, serviceDTO);
+            if (host != null && !host.isBlank()) {
+                tlsHosts.add(host);
+            }
+
             IngressRule ingressRule = new IngressRuleBuilder()
-                    .withHost(resolveHost(dto, serviceDTO))
+                    .withHost(host)
                     .withHttp(new HTTPIngressRuleValueBuilder()
                             .withPaths(httpIngressPath)
                             .build())
@@ -73,13 +83,23 @@ public class IngressProcessor implements TemplateProcessor<IngressDTO> {
             rules.add(ingressRule);
         }
 
+        List<IngressTLS> tlsEntries = new ArrayList<>();
+        if (dto.getTls() != null && !dto.getTls().isBlank()) {
+            tlsEntries.add(new IngressTLSBuilder()
+                    .withSecretName(dto.getTls())
+                    .withHosts(tlsHosts.isEmpty() ? null : new ArrayList<>(tlsHosts))
+                    .build());
+        }
+
         Ingress ingress = new IngressBuilder()
                 .withNewMetadata()
                 .withName(dto.getName())
                 .withNamespace("default")
+                .withAnnotations(normalizeAnnotations(dto.getAnnotations()))
                 .endMetadata()
                 .withNewSpec()
                 .withRules(rules)
+                .withTls(tlsEntries.isEmpty() ? null : tlsEntries)
                 .endSpec()
                 .build();
 
@@ -112,5 +132,19 @@ public class IngressProcessor implements TemplateProcessor<IngressDTO> {
 
     private String stripHttpPrefix(String url) {
         return url.replaceAll("^(http://|https://)", "");
+    }
+
+    private Map<String, String> normalizeAnnotations(Map<String, String> annotations) {
+        if (annotations == null || annotations.isEmpty()) {
+            return null;
+        }
+        return annotations.entrySet().stream()
+                .filter(entry -> entry.getKey() != null && !entry.getKey().isBlank())
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue() != null ? entry.getValue() : "",
+                        (a, b) -> b,
+                        LinkedHashMap::new
+                ));
     }
 }

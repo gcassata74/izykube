@@ -1,0 +1,60 @@
+<form [formGroup]="form" class="p-fluid ingress-form">
+  <div class="p-field">
+    <label for="name">Name</label>
+    <input id="name" type="text" pInputText formControlName="name">
+    <small class="p-error"
+           *ngIf="form.get('name')?.invalid && (form.get('name')?.dirty || form.get('name')?.touched)">
+      Name is required.
+    </small>
+  </div>
+
+  <div class="p-field">
+    <label for="host">Host</label>
+    <input id="host" type="text" pInputText formControlName="host">
+    <small class="p-error"
+           *ngIf="form.get('host')?.invalid && (form.get('host')?.dirty || form.get('host')?.touched)">
+      Host is required.
+    </small>
+  </div>
+
+  <div class="p-field">
+    <label for="path">Path</label>
+    <input id="path" type="text" pInputText formControlName="path">
+    <small class="p-error"
+           *ngIf="form.get('path')?.invalid && (form.get('path')?.dirty || form.get('path')?.touched)">
+      Path is required.
+    </small>
+  </div>
+
+  <div class="p-field" *ngIf="services.length; else serviceHint">
+    <label for="serviceName">Service</label>
+    <p-dropdown id="serviceName"
+                [options]="serviceOptions"
+                formControlName="serviceName"
+                optionLabel="label"
+                optionValue="value"
+                class="w-full">
+    </p-dropdown>
+    <small class="p-error"
+           *ngIf="form.get('serviceName')?.invalid && (form.get('serviceName')?.dirty || form.get('serviceName')?.touched)">
+      A service connection is required.
+    </small>
+  </div>
+
+  <ng-template #serviceHint>
+    <p class="ingress-form__hint">
+      Link this Istio route to services in the diagram to select them here.
+    </p>
+  </ng-template>
+
+  <div class="p-field">
+    <label for="servicePort">Service Port</label>
+    <p-inputNumber id="servicePort" formControlName="servicePort" [useGrouping]="false" [min]="1" [step]="1"
+                   mode="decimal" [minFractionDigits]="0" [maxFractionDigits]="0">
+    </p-inputNumber>
+    <small class="p-error"
+           *ngIf="form.get('servicePort')?.invalid && (form.get('servicePort')?.dirty || form.get('servicePort')?.touched)">
+      Service Port is required.
+    </small>
+  </div>
+</form>

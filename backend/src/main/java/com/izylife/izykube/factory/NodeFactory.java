@@ -3,6 +3,7 @@ package com.izylife.izykube.factory;
 import com.izylife.izykube.dto.cluster.*;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 public class NodeFactory {
 
@@ -26,7 +27,8 @@ public class NodeFactory {
                         container.getId(),
                         container.getName(),
                         container.getAssetId(),
-                        container.getContainerPort()
+                        container.getContainerPort(),
+                        container.getRole()
                 );
             case "deployment":
                 DeploymentDTO deployment = (DeploymentDTO) node;
@@ -57,7 +59,19 @@ public class NodeFactory {
                         ingress.getHost(),
                         ingress.getPath(),
                         ingress.getServiceName(),
-                        ingress.getServicePort()
+                        ingress.getServicePort(),
+                        ingress.getTls(),
+                        ingress.getAnnotations()
+                );
+            case "istio":
+                VirtualServiceDTO virtualService = (VirtualServiceDTO) node;
+                return new VirtualServiceDTO(
+                        virtualService.getId(),
+                        virtualService.getName(),
+                        virtualService.getHost(),
+                        virtualService.getPath(),
+                        virtualService.getServiceName(),
+                        virtualService.getServicePort()
                 );
 
             case "volume":
@@ -81,13 +95,15 @@ public class NodeFactory {
             case "secret":
                 return new SecretDTO(id, name, "");
             case "container":
-                return new ContainerDTO(id, name, "", 80);
+                return new ContainerDTO(id, name, "", 80, null);
             case "deployment":
                 return new DeploymentDTO(id, name, 1, "RollingUpdate", "", 80);
             case "service":
                 return new ServiceDTO(id, name, "ClusterIP", 80);
             case "ingress":
-                return new IngressDTO(id, name, "example.com", "/", "default-service", 80);
+                return new IngressDTO(id, name, "example.com", "/", "default-service", 80, null, new LinkedHashMap<>());
+            case "istio":
+                return new VirtualServiceDTO(id, name, "example.com", "/", "default-service", 80);
             case "volume":
                 HashMap<String, Object> defaultConfig = new HashMap<>();
                 defaultConfig.put("type", "emptyDir");

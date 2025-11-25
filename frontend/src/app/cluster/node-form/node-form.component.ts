@@ -8,6 +8,7 @@ import { DeploymentFormComponent } from '../deployment-form/deployment-form.comp
 import { ConfigMapFormComponent } from '../config-map-form/config-map-form.component';
 import { ServiceFormComponent } from '../service-form/service-form.component';
 import { IngressFormComponent } from '../ingress-form/ingress-form.component';
+import { IstioFormComponent } from '../istio-form/istio-form.component';
 import { ContainerFormComponent } from '../container-form/container-form.component';
 import { VolumeFormComponent } from '../volume-form/volume-form.component';
 import { JobFormComponent } from '../job-form/job-form.component';
@@ -34,7 +35,8 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     'configmap': ConfigMapFormComponent,
     'secret': ConfigMapFormComponent,
     'service': ServiceFormComponent,
-    'ingress':IngressFormComponent,
+    'ingress': IngressFormComponent,
+    'istio': IstioFormComponent,
     'container': ContainerFormComponent,
     'volume': VolumeFormComponent,
     'job': JobFormComponent,
@@ -102,7 +104,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
         inputs['sourceNodes'] = sourceNodes;
         inputs['targetNodes'] = targetNodes;
         inputs['cluster'] = cluster;
-      } else if (componentType === IngressFormComponent) {
+      } else if (componentType === IngressFormComponent || componentType === IstioFormComponent) {
         inputs['sourceNodes'] = sourceNodes;
       }
 

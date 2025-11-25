@@ -15,7 +15,8 @@ export class IconService {
     'container': 'assets/images/diagram/container.svg',
     'deployment': 'assets/images/diagram/deployment.svg',
     'volume': 'assets/images/diagram/volume.svg',
-    'job': 'assets/images/diagram/wrench.svg'
+    'job': 'assets/images/diagram/wrench.svg',
+    'istio': 'assets/images/diagram/istio.svg'
     // Add more entries as needed
   };
 

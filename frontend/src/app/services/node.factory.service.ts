@@ -7,6 +7,7 @@ import { ConfigMap } from '../model/config-map.class';
 import { Ingress } from '../model/ingress.class';
 import { Volume, VolumeConfig } from '../model/volume.class';
 import { Job } from '../model/job.class';
+import { Istio } from '../model/istio.class';
 
 @Injectable({
   providedIn: 'root'
@@ -73,7 +74,18 @@ export class NodeFactoryService {
           'example.com',  // default host
           '/',            // default path
           '',
-          80              // default servicePort
+          80,             // default servicePort
+          '',
+          {}
+        );
+      case 'istio':
+        return new Istio(
+          id,
+          name,
+          'example.com',
+          '/',
+          '',
+          80
         );
       default:
         throw new Error(`Unhandled node type: ${type}`);

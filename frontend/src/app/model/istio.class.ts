@@ -1,12 +1,10 @@
-import { Node } from "./node.class";
+import { Node } from './node.class';
 
-export class Ingress extends Node {
+export class Istio extends Node {
   host: string;
   path: string;
   serviceName: string;
   servicePort: number;
-  tls?: string;
-  annotations: Record<string, string>;
 
   constructor(
     id: string,
@@ -15,15 +13,11 @@ export class Ingress extends Node {
     path: string,
     serviceName: string,
     servicePort: number,
-    tls: string = '',
-    annotations: Record<string, string> = {}
   ) {
-    super(id, name, "ingress");
+    super(id, name, 'istio');
     this.host = host;
     this.path = path;
     this.serviceName = serviceName;
     this.servicePort = servicePort;
-    this.tls = tls;
-    this.annotations = annotations || {};
   }
 }

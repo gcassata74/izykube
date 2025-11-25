@@ -2,8 +2,11 @@ package com.izylife.izykube.services.ai;
 
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
+import com.izylife.izykube.dto.cluster.IngressDTO;
 import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.SecretDTO;
+import com.izylife.izykube.dto.cluster.ServiceDTO;
+import com.izylife.izykube.dto.cluster.VirtualServiceDTO;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -166,6 +169,7 @@ class ClusterYamlServiceTest {
         cluster.getNodes().add(new SecretDTO("db-secret", "db-secret", "password: super-secret"));
 
         String exported = service.exportCluster(cluster);
+        System.out.println(exported);
 
         assertTrue(exported.contains("kind: Secret"));
         assertTrue(exported.contains("c3VwZXItc2VjcmV0"));
@@ -240,6 +244,186 @@ class ClusterYamlServiceTest {
                 "Expected service to link to deployment");
         assertTrue(cluster.getNodes().stream().noneMatch(node -> "pod".equalsIgnoreCase(node.getKind())),
                 "Pod nodes should not be present in the imported cluster");
+    }
+
+    @Test
+    void importClusterCapturesIngressMetadata() {
+        String yaml = """
+                apiVersion: networking.k8s.io/v1
+                kind: Ingress
+                metadata:
+                  name: secure-app
+                  annotations:
+                    nginx.ingress.kubernetes.io/rewrite-target: /
+                spec:
+                  tls:
+                    - hosts:
+                        - secure.example.com
+                      secretName: secure-secret
+                  rules:
+                    - host: secure.example.com
+                      http:
+                        paths:
+                          - path: /
+                            pathType: Prefix
+                            backend:
+                              service:
+                                name: secure-service
+                                port:
+                                  number: 443
+                """;
+
+        ClusterDTO cluster = service.importCluster(yaml, null);
+
+        IngressDTO ingress = cluster.getNodes().stream()
+                .filter(node -> node instanceof IngressDTO)
+                .map(IngressDTO.class::cast)
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("secure-secret", ingress.getTls());
+        assertEquals("secure-service", ingress.getServiceName());
+        assertEquals(443, ingress.getServicePort());
+        assertEquals("/", ingress.getPath());
+        assertEquals("secure.example.com", ingress.getHost());
+        assertEquals("/", ingress.getAnnotations().get("nginx.ingress.kubernetes.io/rewrite-target"));
+    }
+
+    @Test
+    void exportClusterResolvesIngressServiceFromLinks() {
+        ClusterDTO cluster = ClusterDTO.builder()
+                .diagram("""
+                        {
+                          "rawManifests": [
+                            {
+                              "kind": "service",
+                              "name": "web-service",
+                              "manifest": {
+                                "apiVersion": "v1",
+                                "kind": "Service",
+                                "metadata": { "name": "web-service" },
+                                "spec": { "ports": [{ "port": 80 }] }
+                              }
+                            },
+                            {
+                              "kind": "ingress",
+                              "name": "web-ingress",
+                              "manifest": {
+                                "apiVersion": "networking.k8s.io/v1",
+                                "kind": "Ingress",
+                                "metadata": { "name": "web-ingress" }
+                              }
+                            }
+                          ]
+                        }
+                        """)
+                .build();
+
+        ServiceDTO serviceNode = new ServiceDTO("service:web-service", "web-service", "ClusterIP", 80);
+        IngressDTO ingressNode = new IngressDTO(
+                "ingress:web-ingress",
+                "web-ingress",
+                "demo.example.com",
+                "/",
+                "",
+                0,
+                "demo-secret",
+                Map.of("nginx.ingress.kubernetes.io/rewrite-target", "/")
+        );
+        cluster.getNodes().add(serviceNode);
+        cluster.getNodes().add(ingressNode);
+
+        LinkDTO link = new LinkDTO();
+        link.setSource(ingressNode.getId());
+        link.setTarget(serviceNode.getId());
+        cluster.getLinks().add(link);
+
+        assertFalse(ingressNode.getAnnotations().isEmpty());
+        String exported = service.exportCluster(cluster);
+
+        Yaml parser = new Yaml();
+        Map<String, Object> ingressManifest = null;
+        for (Object document : parser.loadAll(exported)) {
+            Map<String, Object> manifest = castMap(document);
+            if (!"Ingress".equals(manifest.get("kind"))) {
+                continue;
+            }
+            Map<String, Object> specCandidate = castMap(manifest.get("spec"));
+            if (specCandidate == null || specCandidate.get("rules") == null) {
+                continue;
+            }
+            ingressManifest = manifest;
+            break;
+        }
+
+        assertNotNull(ingressManifest, "Expected to find ingress manifest in export");
+        Map<String, Object> metadata = castMap(ingressManifest.get("metadata"));
+        Map<String, Object> annotations = castMap(metadata.get("annotations"));
+        assertEquals("/", annotations.get("nginx.ingress.kubernetes.io/rewrite-target"));
+
+        Map<String, Object> spec = castMap(ingressManifest.get("spec"));
+        List<Map<String, Object>> rules = (List<Map<String, Object>>) spec.get("rules");
+        Map<String, Object> rule = castMap(rules.get(0));
+        Map<String, Object> http = castMap(rule.get("http"));
+        List<Map<String, Object>> paths = (List<Map<String, Object>>) http.get("paths");
+        Map<String, Object> backend = castMap(paths.get(0).get("backend"));
+        Map<String, Object> service = castMap(backend.get("service"));
+        assertEquals("web-service", service.get("name"));
+        Map<String, Object> port = castMap(service.get("port"));
+        assertEquals(80, ((Number) port.get("number")).intValue());
+
+        List<Map<String, Object>> tls = (List<Map<String, Object>>) spec.get("tls");
+        assertEquals("demo-secret", tls.get(0).get("secretName"));
+    }
+
+    @Test
+    void exportClusterHandlesVirtualServiceNodes() {
+        ClusterDTO cluster = ClusterDTO.builder()
+                .diagram("""
+                        {
+                          "rawManifests": []
+                        }
+                        """)
+                .build();
+
+        ServiceDTO serviceNode = new ServiceDTO("service:api", "api", "ClusterIP", 8080);
+        VirtualServiceDTO virtualServiceNode = new VirtualServiceDTO(
+                "istio:api",
+                "api-vs",
+                "api.example.com",
+                "/",
+                "",
+                0
+        );
+        cluster.getNodes().add(serviceNode);
+        cluster.getNodes().add(virtualServiceNode);
+
+        LinkDTO link = new LinkDTO();
+        link.setSource(virtualServiceNode.getId());
+        link.setTarget(serviceNode.getId());
+        cluster.getLinks().add(link);
+
+        String exported = service.exportCluster(cluster);
+        Yaml parser = new Yaml();
+        Map<String, Object> virtualService = null;
+        for (Object document : parser.loadAll(exported)) {
+            Map<String, Object> manifest = castMap(document);
+            if ("VirtualService".equals(manifest.get("kind"))) {
+                virtualService = manifest;
+                break;
+            }
+        }
+
+        assertNotNull(virtualService, "Expected VirtualService manifest");
+        Map<String, Object> spec = castMap(virtualService.get("spec"));
+        List<String> hosts = (List<String>) spec.get("hosts");
+        assertEquals("api.example.com", hosts.get(0));
+        List<Map<String, Object>> http = (List<Map<String, Object>>) spec.get("http");
+        List<Map<String, Object>> routes = (List<Map<String, Object>>) http.get(0).get("route");
+        Map<String, Object> destination = castMap(routes.get(0).get("destination"));
+        assertEquals("api", destination.get("host"));
+        Map<String, Object> port = castMap(destination.get("port"));
+        assertEquals(8080, ((Number) port.get("number")).intValue());
     }
 
     @SuppressWarnings("unchecked")

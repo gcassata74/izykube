@@ -11,6 +11,7 @@ import { DragDropData, DropEvent } from '../directives/drag-drop.directive';
 import { AiAssistantService, AiChatMessage, AiImportYamlResponse, AiExportYamlResponse, AiHelmChartExportResponse } from '../services/ai-assistant.service';
 import { NotificationService } from '../services/notification.service';
 import { Link } from '../model/link.class';
+import { ContainerRole, toContainerRole } from '../model/container.class';
 
 interface DiagramNode {
   id: string;
@@ -19,6 +20,7 @@ interface DiagramNode {
   icon: string;
   x: number;
   y: number;
+  role?: ContainerRole;
   element?: HTMLElement;
 }
 
@@ -155,6 +157,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.store.select(getCurrentCluster).pipe(
         tap(cluster => {
           this.currentClusterSnapshot = cluster ? Cluster.fromJSON(cluster) : null;
+          this.syncContainerRolesFromCluster();
         })
       ).subscribe()
     );
@@ -711,6 +714,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.saveToUndoStack();
     }
 
+    const normalizedType = type.toLowerCase();
     const resolvedName = options?.preferredName
       ? this.ensureUniqueName(options.preferredName)
       : this.generateUniqueName(baseName);
@@ -718,7 +722,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     const node: DiagramNode = {
       id: uuidv4(),
       name: resolvedName,
-      type: type,
+      type: normalizedType,
       icon: icon,
       x: x,
       y: y
@@ -774,9 +778,38 @@ export class DiagramComponent implements OnInit, OnDestroy {
     return newName;
   }
 
+  private normalizeDiagramNode(rawNode: any, overrides?: Partial<DiagramNode>): DiagramNode {
+    const type = (rawNode?.type || rawNode?.kind || this.fallbackIconType).toLowerCase();
+    const normalized: DiagramNode = {
+      id: rawNode?.id || uuidv4(),
+      name: rawNode?.name || type,
+      type,
+      icon: rawNode?.icon || this.resolveIconPath(type),
+      x: typeof rawNode?.x === 'number' ? rawNode.x : 0,
+      y: typeof rawNode?.y === 'number' ? rawNode.y : 0,
+      ...overrides
+    };
+
+    if (type === 'container') {
+      const overrideRole = overrides?.role;
+      const rawRole = overrideRole ?? rawNode?.role;
+      const normalizedRole = toContainerRole(rawRole);
+      if (normalizedRole) {
+        normalized.role = normalizedRole;
+      } else {
+        delete normalized.role;
+      }
+    } else if ('role' in normalized) {
+      delete normalized.role;
+    }
+
+    return normalized;
+  }
+
   private createNodes(): DragDropData[] {
     return [
       { name: 'ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress') },
+      { name: 'Istio', type: 'istio', icon: this.iconService.getIconPath('istio') },
       { name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },
       { name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
       { name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
@@ -785,6 +818,40 @@ export class DiagramComponent implements OnInit, OnDestroy {
       { name: 'volume', type: 'volume', icon: this.iconService.getIconPath('volume') },
       { name: 'job', type: 'job', icon: this.iconService.getIconPath('job') }
     ];
+  }
+
+  getContainerBadge(node: DiagramNode): { label: string; cssClass: string; title: string } | null {
+    if (node.type !== 'container') {
+      return null;
+    }
+
+    const role = this.resolveContainerRole(node);
+    switch (role) {
+      case 'INIT':
+        return { label: 'I', cssClass: 'diagram-node__badge--init', title: 'Init container' };
+      case 'SIDECAR':
+        return { label: 'S', cssClass: 'diagram-node__badge--sidecar', title: 'Sidecar container' };
+      default:
+        return null;
+    }
+  }
+
+  private resolveContainerRole(node: DiagramNode): ContainerRole | undefined {
+    if (node.type !== 'container') {
+      return undefined;
+    }
+
+    const inlineRole = node.role ? toContainerRole(node.role) : undefined;
+    if (inlineRole) {
+      return inlineRole;
+    }
+
+    const snapshotNode = this.currentClusterSnapshot?.nodes?.find((n: any) => n.id === node.id);
+    if (snapshotNode) {
+      return toContainerRole((snapshotNode as any).role);
+    }
+
+    return undefined;
   }
 
   onNodeLabelEdit(node: DiagramNode, event: any) {
@@ -1067,7 +1134,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.nodes = parsedNodes
         .filter((node: any) =>
         ((node?.type || node?.kind || '') as string).toLowerCase() !== 'pod'
-      ) as DiagramNode[];
+      )
+        .map((node: any) => this.normalizeDiagramNode(node));
 
       const parsedLinks = Array.isArray(data.links) ? data.links : [];
       this.links = parsedLinks.filter((link: any) => {
@@ -1098,6 +1166,11 @@ export class DiagramComponent implements OnInit, OnDestroy {
     const toNode = this.nodes.find(node => node.id === toNodeId);
 
     if (!fromNode || !toNode) {
+      return;
+    }
+
+    if (!this.isContainerLinkAllowed(fromNode, toNode)) {
+      this.notificationService.warn('Invalid connection', 'Containers can only be linked to Deployments.');
       return;
     }
 
@@ -1133,6 +1206,69 @@ export class DiagramComponent implements OnInit, OnDestroy {
     if (!options?.deferUpdate) {
       this.updateDiagramData();
     }
+  }
+
+  private syncContainerRolesFromCluster(): void {
+    if (!this.currentClusterSnapshot?.nodes?.length || !this.nodes?.length) {
+      return;
+    }
+
+    const roleMap = new Map<string, ContainerRole>();
+    this.currentClusterSnapshot.nodes.forEach((node: any) => {
+      const kind = (node?.kind ?? node?.type ?? '').toLowerCase();
+      if (kind === 'container' && node?.id) {
+        const normalizedRole = toContainerRole(node?.role);
+        if (normalizedRole) {
+          roleMap.set(node.id, normalizedRole);
+        }
+      }
+    });
+
+    const shouldClearRoles = this.nodes.some(node => node.type === 'container' && node.role);
+    if (!roleMap.size && !shouldClearRoles) {
+      return;
+    }
+
+    let hasChanges = false;
+    const updatedNodes = this.nodes.map(node => {
+      if (node.type !== 'container') {
+        return node;
+      }
+      const mappedRole = roleMap.get(node.id);
+      if (!mappedRole) {
+        if (!node.role) {
+          return node;
+        }
+        hasChanges = true;
+        const clone = { ...node } as DiagramNode;
+        delete (clone as any).role;
+        return clone;
+      }
+
+      if (node.role === mappedRole) {
+        return node;
+      }
+
+      hasChanges = true;
+      return { ...node, role: mappedRole };
+    });
+
+    if (hasChanges) {
+      this.nodes = updatedNodes;
+      this.updateDiagramData();
+    }
+  }
+
+  private isContainerLinkAllowed(nodeA: DiagramNode, nodeB: DiagramNode): boolean {
+    const typeA = nodeA.type?.toLowerCase();
+    const typeB = nodeB.type?.toLowerCase();
+
+    if (typeA !== 'container' && typeB !== 'container') {
+      return true;
+    }
+
+    const otherType = typeA === 'container' ? typeB : typeA;
+    return otherType === 'deployment';
   }
 
   private getDependencyPriority(type?: string): number {
@@ -1192,19 +1328,13 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
     const baseNodes: any[] = Array.isArray(cluster.nodes) ? cluster.nodes : [];
     const diagramNodes: DiagramNode[] = baseNodes.map((node, index) => {
-      const type = (node.type || node.kind || this.fallbackIconType).toLowerCase();
-      const icon = node.icon || this.resolveIconPath(type);
       const hasX = typeof node.x === 'number';
       const hasY = typeof node.y === 'number';
 
-      return {
-        id: node.id || uuidv4(),
-        name: node.name || type,
-        type,
-        icon,
+      return this.normalizeDiagramNode(node, {
         x: hasX ? node.x : startX + (index % columns) * spacingX,
         y: hasY ? node.y : startY + Math.floor(index / columns) * spacingY
-      };
+      });
     });
 
     const diagramLinks: DiagramLink[] = [];
@@ -1557,7 +1687,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     // Deep clone current state
     const currentState = {
       nodes: JSON.parse(JSON.stringify(this.nodes.map(n => ({ 
-        id: n.id, name: n.name, type: n.type, icon: n.icon, x: n.x, y: n.y 
+        id: n.id, name: n.name, type: n.type, icon: n.icon, x: n.x, y: n.y, role: n.role 
       })))),
       links: JSON.parse(JSON.stringify(this.links.map(l => ({ 
         id: l.id, from: l.from, to: l.to, fromPoint: l.fromPoint, toPoint: l.toPoint 
@@ -1619,7 +1749,15 @@ export class DiagramComponent implements OnInit, OnDestroy {
     });
 
     const diagramData = JSON.stringify({
-      nodes: this.nodes.map(n => ({ id: n.id, name: n.name, type: n.type, icon: n.icon, x: n.x, y: n.y })),
+      nodes: this.nodes.map(n => ({
+        id: n.id,
+        name: n.name,
+        type: n.type,
+        icon: n.icon,
+        x: n.x,
+        y: n.y,
+        ...(n.type === 'container' && n.role ? { role: n.role } : {})
+      })),
       links: this.links.map(l => ({ 
         id: l.id, 
         from: l.from, 

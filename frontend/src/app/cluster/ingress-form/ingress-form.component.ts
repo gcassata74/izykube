@@ -1,9 +1,10 @@
 import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AutoSaveService } from '../../services/auto-save.service';
 import { Node } from '../../model/node.class';
 import { Ingress } from '../../model/ingress.class';
 import { Service } from '../../model/service.class';
+import { map, startWith } from 'rxjs/operators';
 
 @Component({
   selector: 'app-ingress-form',
@@ -43,8 +44,11 @@ export class IngressFormComponent implements OnInit, OnChanges {
       host: [ingress.host, Validators.required],
       path: [ingress.path, Validators.required],
       serviceName: [ingress.serviceName || '', Validators.required],
-      servicePort: [ingress.servicePort || 80, [Validators.required, Validators.min(1), Validators.max(65535)]]
+      servicePort: [ingress.servicePort || 80, [Validators.required, Validators.min(1), Validators.max(65535)]],
+      tls: [ingress.tls || ''],
+      annotations: this.fb.array([])
     });
+    this.initializeAnnotationsArray(ingress.annotations || {});
 
     this.ingressForm.get('servicePort')?.valueChanges.subscribe(() => {
       if (this.ingressForm.get('servicePort')?.dirty) {
@@ -58,7 +62,14 @@ export class IngressFormComponent implements OnInit, OnChanges {
   }
 
   private setupAutoSave(): void {
-    this.autoSaveService.enableAutoSave(this.ingressForm, this.selectedNode.id, this.ingressForm.valueChanges);
+    const formValue$ = this.ingressForm.valueChanges.pipe(
+      startWith(this.ingressForm.value),
+      map(value => ({
+        ...value,
+        annotations: this.mapAnnotationsToRecord()
+      }))
+    );
+    this.autoSaveService.enableAutoSave(this.ingressForm, this.selectedNode.id, formValue$);
   }
 
   private applyLinkedServiceDefaults(): void {
@@ -115,5 +126,50 @@ export class IngressFormComponent implements OnInit, OnChanges {
 
   private stripHttpPrefix(url: string): string {
     return url.replace(/^(http:\/\/|https:\/\/)/, '');
+  }
+
+  get annotationsArray(): FormArray {
+    return (this.ingressForm?.get('annotations') as FormArray) || this.fb.array([]);
+  }
+
+  addAnnotation(entry: { key?: string; value?: string } = {}): void {
+    this.annotationsArray.push(
+      this.fb.group({
+        key: [entry.key || ''],
+        value: [entry.value || '']
+      })
+    );
+  }
+
+  removeAnnotation(index: number): void {
+    this.annotationsArray.removeAt(index);
+    if (!this.annotationsArray.length) {
+      this.addAnnotation();
+    }
+  }
+
+  trackByIndex(index: number): number {
+    return index;
+  }
+
+  private initializeAnnotationsArray(annotations: Record<string, string>): void {
+    const entries = Object.entries(annotations || {});
+    if (!entries.length) {
+      this.addAnnotation();
+      return;
+    }
+    entries.forEach(([key, value]) => this.addAnnotation({ key, value }));
+  }
+
+  private mapAnnotationsToRecord(): Record<string, string> {
+    const record: Record<string, string> = {};
+    this.annotationsArray.controls.forEach(control => {
+      const key = (control.get('key')?.value || '').trim();
+      if (!key) {
+        return;
+      }
+      record[key] = control.get('value')?.value ?? '';
+    });
+    return record;
   }
 }

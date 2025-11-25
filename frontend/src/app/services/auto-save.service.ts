@@ -1,7 +1,7 @@
 import { DiagramService } from './diagram.service';
-import { Observable, Subscription, debounceTime, distinctUntilChanged, tap, withLatestFrom } from 'rxjs';
+import { Observable, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { Injectable, OnDestroy } from '@angular/core';
-import { FormGroup, FormGroupName } from '@angular/forms';
+import { FormGroup } from '@angular/forms';
 
 @Injectable()
 export class AutoSaveService {
@@ -13,7 +13,7 @@ export class AutoSaveService {
     
   ) {}
 
-  enableAutoSave(form: FormGroup, nodeId: string, change$: Observable<Event>) {
+  enableAutoSave(form: FormGroup, nodeId: string, change$: Observable<any>) {
     this.subscription.add(change$.pipe(
       debounceTime(500),
       distinctUntilChanged(),
