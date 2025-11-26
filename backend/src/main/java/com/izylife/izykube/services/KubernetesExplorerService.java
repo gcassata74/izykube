@@ -1,16 +1,33 @@
 package com.izylife.izykube.services;
 
+import com.izylife.izykube.dto.kube.ConfigMapSummaryDTO;
+import com.izylife.izykube.dto.kube.CronJobSummaryDTO;
+import com.izylife.izykube.dto.kube.DaemonSetSummaryDTO;
 import com.izylife.izykube.dto.kube.DeploymentLogsDTO;
 import com.izylife.izykube.dto.kube.DeploymentSummaryDTO;
+import com.izylife.izykube.dto.kube.IngressSummaryDTO;
+import com.izylife.izykube.dto.kube.JobSummaryDTO;
 import com.izylife.izykube.dto.kube.NamespaceDTO;
 import com.izylife.izykube.dto.kube.NamespaceSummaryDTO;
 import com.izylife.izykube.dto.kube.PodLogDTO;
 import com.izylife.izykube.dto.kube.PodSummaryDTO;
+import com.izylife.izykube.dto.kube.SecretSummaryDTO;
 import com.izylife.izykube.dto.kube.ServiceSummaryDTO;
+import com.izylife.izykube.dto.kube.StatefulSetSummaryDTO;
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Namespace;
+import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.apps.DaemonSet;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
+import io.fabric8.kubernetes.api.model.apps.StatefulSet;
+import io.fabric8.kubernetes.api.model.batch.v1.CronJob;
+import io.fabric8.kubernetes.api.model.batch.v1.CronJobStatus;
+import io.fabric8.kubernetes.api.model.batch.v1.Job;
+import io.fabric8.kubernetes.api.model.networking.v1.HTTPIngressPath;
+import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
+import io.fabric8.kubernetes.api.model.networking.v1.IngressRule;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.PodResource;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +43,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -80,7 +98,75 @@ public class KubernetesExplorerService {
                 .sorted(Comparator.comparing(ServiceSummaryDTO::namespace).thenComparing(ServiceSummaryDTO::name))
                 .toList();
 
-        return new NamespaceSummaryDTO(effectiveNamespace, pods, deployments, services);
+        List<IngressSummaryDTO> ingresses = (includeAll ? kubernetesClient.network().v1().ingresses().inAnyNamespace() : kubernetesClient.network().v1().ingresses().inNamespace(namespace))
+                .list()
+                .getItems()
+                .stream()
+                .map(this::mapIngress)
+                .sorted(Comparator.comparing(IngressSummaryDTO::namespace).thenComparing(IngressSummaryDTO::name))
+                .toList();
+
+        List<ConfigMapSummaryDTO> configMaps = (includeAll ? kubernetesClient.configMaps().inAnyNamespace() : kubernetesClient.configMaps().inNamespace(namespace))
+                .list()
+                .getItems()
+                .stream()
+                .map(this::mapConfigMap)
+                .sorted(Comparator.comparing(ConfigMapSummaryDTO::namespace).thenComparing(ConfigMapSummaryDTO::name))
+                .toList();
+
+        List<SecretSummaryDTO> secrets = (includeAll ? kubernetesClient.secrets().inAnyNamespace() : kubernetesClient.secrets().inNamespace(namespace))
+                .list()
+                .getItems()
+                .stream()
+                .map(this::mapSecret)
+                .sorted(Comparator.comparing(SecretSummaryDTO::namespace).thenComparing(SecretSummaryDTO::name))
+                .toList();
+
+        List<JobSummaryDTO> jobs = (includeAll ? kubernetesClient.batch().v1().jobs().inAnyNamespace() : kubernetesClient.batch().v1().jobs().inNamespace(namespace))
+                .list()
+                .getItems()
+                .stream()
+                .map(this::mapJob)
+                .sorted(Comparator.comparing(JobSummaryDTO::namespace).thenComparing(JobSummaryDTO::name))
+                .toList();
+
+        List<CronJobSummaryDTO> cronJobs = (includeAll ? kubernetesClient.batch().v1().cronjobs().inAnyNamespace() : kubernetesClient.batch().v1().cronjobs().inNamespace(namespace))
+                .list()
+                .getItems()
+                .stream()
+                .map(this::mapCronJob)
+                .sorted(Comparator.comparing(CronJobSummaryDTO::namespace).thenComparing(CronJobSummaryDTO::name))
+                .toList();
+
+        List<DaemonSetSummaryDTO> daemonSets = (includeAll ? kubernetesClient.apps().daemonSets().inAnyNamespace() : kubernetesClient.apps().daemonSets().inNamespace(namespace))
+                .list()
+                .getItems()
+                .stream()
+                .map(this::mapDaemonSet)
+                .sorted(Comparator.comparing(DaemonSetSummaryDTO::namespace).thenComparing(DaemonSetSummaryDTO::name))
+                .toList();
+
+        List<StatefulSetSummaryDTO> statefulSets = (includeAll ? kubernetesClient.apps().statefulSets().inAnyNamespace() : kubernetesClient.apps().statefulSets().inNamespace(namespace))
+                .list()
+                .getItems()
+                .stream()
+                .map(this::mapStatefulSet)
+                .sorted(Comparator.comparing(StatefulSetSummaryDTO::namespace).thenComparing(StatefulSetSummaryDTO::name))
+                .toList();
+
+        return new NamespaceSummaryDTO(
+                effectiveNamespace,
+                pods,
+                deployments,
+                services,
+                ingresses,
+                configMaps,
+                secrets,
+                jobs,
+                cronJobs,
+                daemonSets,
+                statefulSets
+        );
     }
 
     public PodLogDTO getPodLogs(String namespace, String podName, int tailLines) {
@@ -201,6 +287,120 @@ public class KubernetesExplorerService {
         String age = formatAge(service);
 
         return new ServiceSummaryDTO(name, namespace, type, clusterIp, externalIp, ports, age);
+    }
+
+    private IngressSummaryDTO mapIngress(Ingress ingress) {
+        String name = Optional.ofNullable(ingress.getMetadata()).map(meta -> StringUtils.hasText(meta.getName()) ? meta.getName() : "").orElse("");
+        String namespace = Optional.ofNullable(ingress.getMetadata()).map(meta -> StringUtils.hasText(meta.getNamespace()) ? meta.getNamespace() : "").orElse("");
+        String hosts = Optional.ofNullable(ingress.getSpec())
+                .map(spec -> spec.getRules())
+                .orElse(List.of())
+                .stream()
+                .map(rule -> StringUtils.hasText(rule.getHost()) ? rule.getHost() : "<all hosts>")
+                .collect(Collectors.joining(", "));
+
+        String services = Optional.ofNullable(ingress.getSpec())
+                .map(spec -> spec.getRules())
+                .orElse(List.of())
+                .stream()
+                .map(IngressRule::getHttp)
+                .filter(Objects::nonNull)
+                .flatMap(http -> Optional.ofNullable(http.getPaths()).orElse(List.of()).stream())
+                .map(HTTPIngressPath::getBackend)
+                .filter(Objects::nonNull)
+                .map(backend -> Optional.ofNullable(backend.getService())
+                        .map(serviceBackend -> {
+                            String svcName = serviceBackend.getName();
+                            Integer port = Optional.ofNullable(serviceBackend.getPort()).map(portSpec -> portSpec.getNumber()).orElse(null);
+                            return port != null ? svcName + ":" + port : svcName;
+                        })
+                        .orElse("Custom backend"))
+                .collect(Collectors.joining(", "));
+
+        String tls = Optional.ofNullable(ingress.getSpec())
+                .map(spec -> spec.getTls())
+                .orElse(List.of())
+                .stream()
+                .map(entry -> {
+                    String secretName = StringUtils.hasText(entry.getSecretName()) ? entry.getSecretName() : "no-secret";
+                    String hostsEntry = Optional.ofNullable(entry.getHosts()).orElse(List.of())
+                            .stream()
+                            .filter(StringUtils::hasText)
+                            .collect(Collectors.joining(", "));
+                    return secretName + " (" + (StringUtils.hasText(hostsEntry) ? hostsEntry : "all hosts") + ")";
+                })
+                .collect(Collectors.joining("; "));
+
+        String age = formatAge(ingress);
+
+        return new IngressSummaryDTO(name, namespace, hosts, services, tls, age);
+    }
+
+    private ConfigMapSummaryDTO mapConfigMap(ConfigMap configMap) {
+        String name = Optional.ofNullable(configMap.getMetadata()).map(meta -> StringUtils.hasText(meta.getName()) ? meta.getName() : "").orElse("");
+        String namespace = Optional.ofNullable(configMap.getMetadata()).map(meta -> StringUtils.hasText(meta.getNamespace()) ? meta.getNamespace() : "").orElse("");
+        int dataEntries = Optional.ofNullable(configMap.getData()).map(Map::size).orElse(0)
+                + Optional.ofNullable(configMap.getBinaryData()).map(Map::size).orElse(0);
+        return new ConfigMapSummaryDTO(name, namespace, dataEntries, formatAge(configMap));
+    }
+
+    private SecretSummaryDTO mapSecret(Secret secret) {
+        String name = Optional.ofNullable(secret.getMetadata()).map(meta -> StringUtils.hasText(meta.getName()) ? meta.getName() : "").orElse("");
+        String namespace = Optional.ofNullable(secret.getMetadata()).map(meta -> StringUtils.hasText(meta.getNamespace()) ? meta.getNamespace() : "").orElse("");
+        String type = Optional.ofNullable(secret.getType()).filter(StringUtils::hasText).orElse("Opaque");
+        int dataEntries = Optional.ofNullable(secret.getData()).map(Map::size).orElse(0);
+        return new SecretSummaryDTO(name, namespace, type, dataEntries, formatAge(secret));
+    }
+
+    private JobSummaryDTO mapJob(Job job) {
+        String name = Optional.ofNullable(job.getMetadata()).map(meta -> StringUtils.hasText(meta.getName()) ? meta.getName() : "").orElse("");
+        String namespace = Optional.ofNullable(job.getMetadata()).map(meta -> StringUtils.hasText(meta.getNamespace()) ? meta.getNamespace() : "").orElse("");
+        var spec = Optional.ofNullable(job.getSpec());
+        var status = Optional.ofNullable(job.getStatus());
+        Integer completions = spec.map(s -> s.getCompletions()).orElse(null);
+        Integer succeeded = status.map(s -> s.getSucceeded()).orElse(null);
+        Integer failed = status.map(s -> s.getFailed()).orElse(null);
+        Integer active = status.map(s -> s.getActive()).orElse(null);
+        return new JobSummaryDTO(name, namespace, completions, succeeded, failed, active, formatAge(job));
+    }
+
+    private CronJobSummaryDTO mapCronJob(CronJob cronJob) {
+        String name = Optional.ofNullable(cronJob.getMetadata()).map(meta -> StringUtils.hasText(meta.getName()) ? meta.getName() : "").orElse("");
+        String namespace = Optional.ofNullable(cronJob.getMetadata()).map(meta -> StringUtils.hasText(meta.getNamespace()) ? meta.getNamespace() : "").orElse("");
+        var spec = Optional.ofNullable(cronJob.getSpec());
+        CronJobStatus status = cronJob.getStatus();
+        String schedule = spec.map(s -> StringUtils.hasText(s.getSchedule()) ? s.getSchedule() : "-").orElse("-");
+        boolean suspended = spec.map(s -> Optional.ofNullable(s.getSuspend()).orElse(false)).orElse(false);
+        String lastScheduleTime = Optional.ofNullable(status)
+                .map(CronJobStatus::getLastScheduleTime)
+                .map(Object::toString)
+                .orElse("-");
+        int activeJobs = Optional.ofNullable(status)
+                .map(s -> Optional.ofNullable(s.getActive()).orElse(List.of()).size())
+                .orElse(0);
+        return new CronJobSummaryDTO(name, namespace, schedule, suspended, lastScheduleTime, activeJobs, formatAge(cronJob));
+    }
+
+    private DaemonSetSummaryDTO mapDaemonSet(DaemonSet daemonSet) {
+        String name = Optional.ofNullable(daemonSet.getMetadata()).map(meta -> StringUtils.hasText(meta.getName()) ? meta.getName() : "").orElse("");
+        String namespace = Optional.ofNullable(daemonSet.getMetadata()).map(meta -> StringUtils.hasText(meta.getNamespace()) ? meta.getNamespace() : "").orElse("");
+        var status = Optional.ofNullable(daemonSet.getStatus());
+        Integer desired = status.map(s -> s.getDesiredNumberScheduled()).orElse(null);
+        Integer current = status.map(s -> s.getCurrentNumberScheduled()).orElse(null);
+        Integer ready = status.map(s -> s.getNumberReady()).orElse(null);
+        Integer available = status.map(s -> s.getNumberAvailable()).orElse(null);
+        Integer updated = status.map(s -> s.getUpdatedNumberScheduled()).orElse(null);
+        return new DaemonSetSummaryDTO(name, namespace, desired, current, ready, available, updated, formatAge(daemonSet));
+    }
+
+    private StatefulSetSummaryDTO mapStatefulSet(StatefulSet statefulSet) {
+        String name = Optional.ofNullable(statefulSet.getMetadata()).map(meta -> StringUtils.hasText(meta.getName()) ? meta.getName() : "").orElse("");
+        String namespace = Optional.ofNullable(statefulSet.getMetadata()).map(meta -> StringUtils.hasText(meta.getNamespace()) ? meta.getNamespace() : "").orElse("");
+        var status = Optional.ofNullable(statefulSet.getStatus());
+        Integer readyReplicas = status.map(s -> s.getReadyReplicas()).orElse(null);
+        Integer replicas = Optional.ofNullable(statefulSet.getSpec()).map(spec -> spec.getReplicas()).orElse(null);
+        Integer updatedReplicas = status.map(s -> s.getUpdatedReplicas()).orElse(null);
+        return new StatefulSetSummaryDTO(name, namespace, readyReplicas, replicas, updatedReplicas, formatAge(statefulSet));
     }
 
     private String formatAge(HasMetadata resource) {
