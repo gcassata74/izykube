@@ -21,6 +21,7 @@ public class IngressProcessor implements TemplateProcessor<IngressDTO> {
 
     @Override
     public String createTemplate(IngressDTO dto) {
+        String namespace = dto.getNamespace() == null || dto.getNamespace().isBlank() ? "default" : dto.getNamespace();
         List<IngressRule> rules = new ArrayList<>();
 
         List<ServiceDTO> services = dto.getSourceNodes().stream()
@@ -94,7 +95,7 @@ public class IngressProcessor implements TemplateProcessor<IngressDTO> {
         Ingress ingress = new IngressBuilder()
                 .withNewMetadata()
                 .withName(dto.getName())
-                .withNamespace("default")
+                .withNamespace(namespace)
                 .withAnnotations(normalizeAnnotations(dto.getAnnotations()))
                 .endMetadata()
                 .withNewSpec()

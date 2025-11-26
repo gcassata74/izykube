@@ -36,6 +36,8 @@ public abstract class NodeDTO {
     String name;
     @JsonProperty("kind")
     String kind;
+    @JsonIgnore
+    String namespace;
     @Setter
     @Transient
     @JsonIgnore

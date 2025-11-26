@@ -13,12 +13,13 @@ public class ConfigMapProcessor implements TemplateProcessor<ConfigMapDTO> {
 
     @Override
     public String createTemplate(ConfigMapDTO dto) {
+        String namespace = dto.getNamespace() == null || dto.getNamespace().isBlank() ? "default" : dto.getNamespace();
         Map<String, String> data = YamlKeyValueExtractor.extractPlainKeyValueData(dto.getYaml());
 
         ConfigMap configMap = new ConfigMapBuilder()
                 .withNewMetadata()
                 .withName(dto.getName())
-                .withNamespace("default")
+                .withNamespace(namespace)
                 .endMetadata()
                 .withData(data)
                 .build();

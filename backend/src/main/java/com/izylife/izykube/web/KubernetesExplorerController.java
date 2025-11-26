@@ -1,7 +1,9 @@
 package com.izylife.izykube.web;
 
+import com.izylife.izykube.dto.kube.DeploymentLogsDTO;
 import com.izylife.izykube.dto.kube.NamespaceDTO;
 import com.izylife.izykube.dto.kube.NamespaceSummaryDTO;
+import com.izylife.izykube.dto.kube.PodLogDTO;
 import com.izylife.izykube.services.KubernetesExplorerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,5 +33,27 @@ public class KubernetesExplorerController {
     public ResponseEntity<NamespaceSummaryDTO> getSummary(@RequestParam(value = "namespace", defaultValue = "all") String namespace) {
         NamespaceSummaryDTO summary = explorerService.getNamespaceSummary(namespace);
         return ResponseEntity.ok(summary);
+    }
+
+    @GetMapping("/logs/pod")
+    public ResponseEntity<PodLogDTO> getPodLogs(@RequestParam String namespace,
+                                                @RequestParam String name,
+                                                @RequestParam(defaultValue = "500") int tail) {
+        PodLogDTO logs = explorerService.getPodLogs(namespace, name, tail);
+        if (logs == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(logs);
+    }
+
+    @GetMapping("/logs/deployment")
+    public ResponseEntity<DeploymentLogsDTO> getDeploymentLogs(@RequestParam String namespace,
+                                                               @RequestParam String name,
+                                                               @RequestParam(defaultValue = "500") int tail) {
+        DeploymentLogsDTO logs = explorerService.getDeploymentLogs(namespace, name, tail);
+        if (logs == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(logs);
     }
 }

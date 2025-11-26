@@ -53,11 +53,14 @@ public class TemplateService {
         Set<String> processedNodes = new HashSet<>();
 
         try {
+            String namespace = Optional.ofNullable(clusterDTO.getNameSpace()).filter(ns -> !ns.isBlank()).orElse("default");
+
             List<NodeDTO> templateableNodes = clusterDTO.getNodes().stream()
                     .filter(this::isTemplateableResource)
                     .toList();
 
             templateableNodes.forEach(node -> {
+                node.setNamespace(namespace);
                 node.setSourceNodes(ClusterUtil.findSourceNodesOf(clusterDTO, node.getId()));
                 node.setTargetNodes(ClusterUtil.findTargetNodesOf(clusterDTO, node.getId()));
             });

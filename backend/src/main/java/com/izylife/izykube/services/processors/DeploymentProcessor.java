@@ -27,6 +27,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
 
     @Override
     public String createTemplate(DeploymentDTO dto) {
+        String namespace = dto.getNamespace() == null || dto.getNamespace().isBlank() ? "default" : dto.getNamespace();
         List<Container> containers = createContainers(dto);
         List<EnvFromSource> envFromSources = createEnvFromSources(dto);
         List<Volume> volumes = createVolumes(dto);
@@ -54,7 +55,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         Deployment deployment = new DeploymentBuilder()
                 .withNewMetadata()
                 .withName(dto.getName())
-                .withNamespace("default")
+                .withNamespace(namespace)
                 .endMetadata()
                 .withNewSpec()
                 .withReplicas(dto.getReplicas())

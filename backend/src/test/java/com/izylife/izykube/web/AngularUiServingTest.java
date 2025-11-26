@@ -28,7 +28,7 @@ class AngularUiServingTest {
 
     @Test
     void shouldServeSpaIndexForAngularRoutes() throws Exception {
-        mockMvc.perform(get("/clusters/overview"))
+        mockMvc.perform(get("/namespaces/overview"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/html"))
                 .andExpect(content().string(containsString("<app-root")));

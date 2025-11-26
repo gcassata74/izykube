@@ -12,7 +12,10 @@ import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.dto.cluster.SecretDTO;
 import com.izylife.izykube.dto.cluster.ServiceDTO;
 import com.izylife.izykube.dto.cluster.VirtualServiceDTO;
+import com.izylife.izykube.model.Asset;
+import com.izylife.izykube.repositories.AssetRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -55,15 +58,29 @@ public class ClusterYamlService {
             Map.entry("istio", "assets/images/diagram/istio.svg")
     );
 
+    private final AssetRepository assetRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Yaml yaml;
 
+    @Autowired
+    public ClusterYamlService(AssetRepository assetRepository) {
+        this.assetRepository = assetRepository;
+        DumperOptions options = initOptions();
+        this.yaml = new Yaml(options);
+    }
+
     public ClusterYamlService() {
+        this.assetRepository = null;
+        DumperOptions options = initOptions();
+        this.yaml = new Yaml(options);
+    }
+
+    private DumperOptions initOptions() {
         DumperOptions options = new DumperOptions();
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         options.setPrettyFlow(true);
         options.setDefaultScalarStyle(DumperOptions.ScalarStyle.PLAIN);
-        this.yaml = new Yaml(options);
+        return options;
     }
 
     public ClusterDTO importCluster(String yamlContent, String overrideName) {
@@ -201,11 +218,13 @@ public class ClusterYamlService {
             throw new IllegalArgumentException("Cluster cannot be null");
         }
 
+        String namespace = resolveNamespace(cluster);
         List<ManifestEntry> manifestEntries = extractManifestEntries(cluster.getDiagram());
         Map<String, ManifestEntry> manifestsByName = manifestEntries.stream()
                 .collect(Collectors.toMap(ManifestEntry::getName, entry -> entry, (a, b) -> a, LinkedHashMap::new));
 
         List<NodeDTO> nodes = cluster.getNodes() != null ? cluster.getNodes() : List.of();
+        nodes.forEach(node -> node.setNamespace(namespace));
         Map<String, NodeDTO> nodesById = nodes.stream()
                 .filter(node -> node.getId() != null)
                 .collect(Collectors.toMap(NodeDTO::getId, node -> node, (a, b) -> a, LinkedHashMap::new));
@@ -675,16 +694,17 @@ public class ClusterYamlService {
     }
 
     private Map<String, Object> buildKeyValueManifest(ConfigMapDTO node, String resourceName, boolean secret) {
+        String namespace = resolveNamespace(node);
         Map<String, Object> manifest = Optional.ofNullable(loadManifestFromYaml(node.getYaml()))
                 .map(this::deepCopy)
-                .orElseGet(() -> createBaseManifest(resourceName, secret ? "Secret" : "ConfigMap"));
+                .orElseGet(() -> createBaseManifest(resourceName, secret ? "Secret" : "ConfigMap", namespace));
 
         manifest.put("apiVersion", manifest.getOrDefault("apiVersion", "v1"));
         manifest.put("kind", secret ? "Secret" : "ConfigMap");
 
         Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
         metadata.putIfAbsent("name", resourceName);
-        metadata.putIfAbsent("namespace", "default");
+        metadata.putIfAbsent("namespace", namespace);
         manifest.put("metadata", metadata);
 
         Map<String, String> values = extractPlainKeyValueData(node.getYaml(), secret);
@@ -699,6 +719,54 @@ public class ClusterYamlService {
 
     private String resolveResourceName(ConfigMapDTO node) {
         return Optional.ofNullable(node.getName()).filter(name -> !name.isBlank()).orElse(node.getId());
+    }
+
+    private void applyPrimaryContainerSpec(DeploymentDTO node, Map<String, Object> templateSpec) {
+        if (templateSpec == null) {
+            return;
+        }
+        List<Map<String, Object>> containers = this.<Map<String, Object>>getList(templateSpec, "containers");
+        if (containers == null) {
+            containers = new ArrayList<>();
+            templateSpec.put("containers", containers);
+        }
+        Map<String, Object> primary = containers.isEmpty() ? new LinkedHashMap<>() : containers.get(0);
+        primary.put("name", Optional.ofNullable(node.getName()).filter(name -> !name.isBlank()).orElse(node.getId()));
+        String image = resolveAssetImage(node);
+        if (image != null && !image.isBlank()) {
+            primary.put("image", image);
+        }
+        int port = node.getContainerPort() != null && node.getContainerPort() > 0 ? node.getContainerPort() : 80;
+        List<Map<String, Object>> ports = this.<Map<String, Object>>getList(primary, "ports");
+        if (ports == null) {
+            ports = new ArrayList<>();
+            primary.put("ports", ports);
+        }
+        Map<String, Object> primaryPort = ports.isEmpty() ? new LinkedHashMap<>() : ports.get(0);
+        primaryPort.put("containerPort", port);
+        if (ports.isEmpty()) {
+            ports.add(primaryPort);
+        }
+        if (containers.isEmpty()) {
+            containers.add(primary);
+        }
+    }
+
+    private String resolveAssetImage(DeploymentDTO node) {
+        if (node == null || node.getAssetId() == null || node.getAssetId().isBlank()) {
+            return "";
+        }
+        if (assetRepository == null) {
+            return "";
+        }
+        try {
+            return assetRepository.findById(node.getAssetId())
+                    .map(Asset::getImage)
+                    .orElse("");
+        } catch (Exception ex) {
+            log.warn("Unable to resolve asset {} for deployment {}: {}", node.getAssetId(), node.getName(), ex.getMessage());
+            return "";
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -750,13 +818,13 @@ public class ClusterYamlService {
         return new LinkedHashMap<>((Map<String, Object>) map);
     }
 
-    private Map<String, Object> createBaseManifest(String name, String kind) {
+    private Map<String, Object> createBaseManifest(String name, String kind, String namespace) {
         Map<String, Object> manifest = new LinkedHashMap<>();
         manifest.put("apiVersion", "v1");
         manifest.put("kind", kind);
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("name", name);
-        metadata.put("namespace", "default");
+        metadata.put("namespace", namespace);
         manifest.put("metadata", metadata);
         manifest.put("data", new LinkedHashMap<>());
         return manifest;
@@ -801,6 +869,7 @@ public class ClusterYamlService {
         manifest.put("kind", "Deployment");
         Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
         metadata.put("name", node.getName());
+        metadata.putIfAbsent("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
 
         Map<String, Object> spec = Optional.ofNullable(getMap(manifest, "spec")).orElseGet(LinkedHashMap::new);
@@ -808,6 +877,11 @@ public class ClusterYamlService {
         Map<String, Object> strategy = Optional.ofNullable(getMap(spec, "strategy")).orElseGet(LinkedHashMap::new);
         strategy.put("type", node.getStrategyType());
         spec.put("strategy", strategy);
+        Map<String, Object> template = Optional.ofNullable(getMap(spec, "template")).orElseGet(LinkedHashMap::new);
+        Map<String, Object> templateSpec = Optional.ofNullable(getMap(template, "spec")).orElseGet(LinkedHashMap::new);
+        applyPrimaryContainerSpec(node, templateSpec);
+        template.put("spec", templateSpec);
+        spec.put("template", template);
         manifest.put("spec", spec);
     }
 
@@ -823,6 +897,7 @@ public class ClusterYamlService {
         manifest.put("kind", "Service");
         Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
         metadata.put("name", node.getName());
+        metadata.putIfAbsent("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
 
         Map<String, Object> spec = Optional.ofNullable(getMap(manifest, "spec")).orElseGet(LinkedHashMap::new);
@@ -855,6 +930,7 @@ public class ClusterYamlService {
 
         Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
         metadata.put("name", node.getName());
+        metadata.putIfAbsent("namespace", resolveNamespace(node));
         applyAnnotations(metadata, node.getAnnotations());
         manifest.put("metadata", metadata);
 
@@ -921,6 +997,7 @@ public class ClusterYamlService {
 
         Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
         metadata.put("name", node.getName());
+        metadata.putIfAbsent("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
 
         updateVirtualServiceManifest(manifest, node);
@@ -1012,6 +1089,7 @@ public class ClusterYamlService {
         manifest.put("kind", "Deployment");
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("name", node.getName());
+        metadata.put("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
 
         Map<String, Object> spec = new LinkedHashMap<>();
@@ -1024,11 +1102,11 @@ public class ClusterYamlService {
         tempMeta.put("labels", Map.of("app", node.getName()));
         template.put("metadata", tempMeta);
         Map<String, Object> tempSpec = new LinkedHashMap<>();
-        int containerPort = node.getContainerPort() != null ? node.getContainerPort() : 80;
-        tempSpec.put("containers", List.of(Map.of("name", node.getName(), "image", "", "ports", List.of(Map.of("containerPort", containerPort)))));
+        tempSpec.put("containers", new ArrayList<Map<String, Object>>());
         template.put("spec", tempSpec);
         spec.put("template", template);
         manifest.put("spec", spec);
+        applyPrimaryContainerSpec(node, tempSpec);
         return manifest;
     }
 
@@ -1038,6 +1116,7 @@ public class ClusterYamlService {
         manifest.put("kind", "Service");
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("name", node.getName());
+        metadata.put("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
 
         Map<String, Object> spec = new LinkedHashMap<>();
@@ -1055,6 +1134,7 @@ public class ClusterYamlService {
         manifest.put("kind", "Ingress");
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("name", node.getName());
+        metadata.put("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
         return manifest;
     }
@@ -1065,6 +1145,7 @@ public class ClusterYamlService {
         manifest.put("kind", "VirtualService");
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("name", node.getName());
+        metadata.put("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
         Map<String, Object> spec = new LinkedHashMap<>();
         String host = Optional.ofNullable(node.getHost()).orElse("example.com");
@@ -1072,6 +1153,21 @@ public class ClusterYamlService {
         spec.put("http", new ArrayList<>());
         manifest.put("spec", spec);
         return manifest;
+    }
+
+    private String resolveNamespace(ClusterDTO cluster) {
+        return cluster == null ? "default" : resolveNamespace(cluster.getNameSpace());
+    }
+
+    private String resolveNamespace(NodeDTO node) {
+        return node == null ? "default" : resolveNamespace(node.getNamespace());
+    }
+
+    private String resolveNamespace(String namespace) {
+        if (namespace == null || namespace.isBlank()) {
+            return "default";
+        }
+        return namespace.trim().toLowerCase(Locale.ROOT);
     }
 
     private String buildChartYaml(String chartName, String clusterName) {

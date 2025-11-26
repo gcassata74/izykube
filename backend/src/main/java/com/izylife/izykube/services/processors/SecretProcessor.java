@@ -16,6 +16,7 @@ public class SecretProcessor implements TemplateProcessor<SecretDTO> {
 
     @Override
     public String createTemplate(SecretDTO dto) {
+        String namespace = dto.getNamespace() == null || dto.getNamespace().isBlank() ? "default" : dto.getNamespace();
         Map<String, String> decoded = decodeIfNeeded(YamlKeyValueExtractor.extractPlainKeyValueData(dto.getYaml()));
         Map<String, String> encoded = encodeSecretData(decoded);
 
@@ -23,7 +24,7 @@ public class SecretProcessor implements TemplateProcessor<SecretDTO> {
                 new SecretBuilder()
                         .withNewMetadata()
                         .withName(dto.getName())
-                        .withNamespace("default")
+                        .withNamespace(namespace)
                         .endMetadata()
                         .withType("Opaque")
                         .withData(encoded)

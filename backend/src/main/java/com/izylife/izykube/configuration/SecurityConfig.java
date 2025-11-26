@@ -45,7 +45,7 @@ public class SecurityConfig {
             return false;
         }
 
-        // Only allow routes without a dot (e.g., /clusters/overview) or the root path.
+        // Only allow routes without a dot (e.g., /namespaces/overview) or the root path.
         return "/".equals(path) || !path.contains(".");
     };
 

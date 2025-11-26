@@ -20,22 +20,23 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
     @Override
     public String createTemplate(ServiceDTO dto) {
         StringBuilder yaml = new StringBuilder();
+        String namespace = resolveNamespace(dto);
 
         // Create Kubernetes Service
-        yaml.append(createKubernetesService(dto));
+        yaml.append(createKubernetesService(dto, namespace));
 
         // Always create VirtualService
-        yaml.append(createVirtualService(dto));
+        yaml.append(createVirtualService(dto, namespace));
 
         // If service is exposed, create Gateway
         if (dto.isExposeService() && dto.getFrontendUrl() != null && !dto.getFrontendUrl().isEmpty()) {
-            yaml.append(createGateway(dto));
+            yaml.append(createGateway(dto, namespace));
         }
 
         return yaml.toString();
     }
 
-    private String createKubernetesService(ServiceDTO dto) {
+    private String createKubernetesService(ServiceDTO dto, String namespace) {
         DeploymentDTO deploymentDTO = dto.getTargetNodes().stream()
                 .filter(DeploymentDTO.class::isInstance)
                 .map(DeploymentDTO.class::cast)
@@ -70,7 +71,7 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         io.fabric8.kubernetes.api.model.Service service = new ServiceBuilder()
                 .withNewMetadata()
                 .withName(dto.getName())
-                .withNamespace("default")
+                .withNamespace(namespace)
                 .endMetadata()
                 .withNewSpec()
                 .withSelector(selectors)
@@ -82,11 +83,11 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         return Serialization.asYaml(service);
     }
 
-    private String createGateway(ServiceDTO dto) {
+    private String createGateway(ServiceDTO dto, String namespace) {
         Gateway gateway = new GatewayBuilder()
                 .withNewMetadata()
                 .withName(dto.getName() + "-gateway")
-                .withNamespace("default")
+                .withNamespace(namespace)
                 .endMetadata()
                 .withNewSpec()
                 .withSelector(Collections.singletonMap("istio", "ingressgateway"))
@@ -104,7 +105,7 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         return Serialization.asYaml(gateway);
     }
 
-    private String createVirtualService(ServiceDTO dto) {
+    private String createVirtualService(ServiceDTO dto, String namespace) {
         // Create URI match
         StringMatch uriMatch = new StringMatch();
         uriMatch.setAdditionalProperty("prefix", "/");
@@ -128,7 +129,7 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         VirtualServiceBuilder virtualService = new VirtualServiceBuilder()
                 .withNewMetadata()
                 .withName(dto.getName() + "-virtualservice")
-                .withNamespace("default")
+                .withNamespace(namespace)
                 .endMetadata()
                 .withNewSpec()
                 .withHttp(Collections.singletonList(httpRoute))
@@ -147,5 +148,8 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         return url.replaceAll("^(http://|https://)", "");
     }
 
+    private String resolveNamespace(ServiceDTO dto) {
+        return dto.getNamespace() == null || dto.getNamespace().isBlank() ? "default" : dto.getNamespace();
+    }
 
 }

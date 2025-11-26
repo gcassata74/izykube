@@ -1,8 +1,10 @@
 package com.izylife.izykube.services;
 
+import com.izylife.izykube.dto.kube.DeploymentLogsDTO;
 import com.izylife.izykube.dto.kube.DeploymentSummaryDTO;
 import com.izylife.izykube.dto.kube.NamespaceDTO;
 import com.izylife.izykube.dto.kube.NamespaceSummaryDTO;
+import com.izylife.izykube.dto.kube.PodLogDTO;
 import com.izylife.izykube.dto.kube.PodSummaryDTO;
 import com.izylife.izykube.dto.kube.ServiceSummaryDTO;
 import io.fabric8.kubernetes.api.model.HasMetadata;
@@ -10,6 +12,7 @@ import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.dsl.PodResource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,8 +22,10 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -30,6 +35,8 @@ import java.util.stream.Collectors;
 public class KubernetesExplorerService {
 
     private static final String ALL_NAMESPACES = "all";
+    private static final int DEFAULT_TAIL_LINES = 500;
+    private static final int MAX_TAIL_LINES = 2000;
 
     private final KubernetesClient kubernetesClient;
 
@@ -74,6 +81,55 @@ public class KubernetesExplorerService {
                 .toList();
 
         return new NamespaceSummaryDTO(effectiveNamespace, pods, deployments, services);
+    }
+
+    public PodLogDTO getPodLogs(String namespace, String podName, int tailLines) {
+        if (!StringUtils.hasText(namespace) || !StringUtils.hasText(podName)) {
+            return null;
+        }
+        PodResource podResource = kubernetesClient.pods().inNamespace(namespace).withName(podName);
+        Pod pod = podResource.get();
+        if (pod == null) {
+            return null;
+        }
+        String logs = readPodLog(podResource, sanitizeTail(tailLines));
+        return new PodLogDTO(podName, namespace, logs);
+    }
+
+    public DeploymentLogsDTO getDeploymentLogs(String namespace, String deploymentName, int tailLines) {
+        if (!StringUtils.hasText(namespace) || !StringUtils.hasText(deploymentName)) {
+            return null;
+        }
+        Deployment deployment = kubernetesClient.apps().deployments().inNamespace(namespace).withName(deploymentName).get();
+        if (deployment == null) {
+            return null;
+        }
+
+        Map<String, String> selectorLabels = Optional.ofNullable(deployment.getSpec())
+                .map(spec -> spec.getSelector())
+                .map(sel -> sel.getMatchLabels())
+                .orElseGet(Collections::emptyMap);
+
+        Map<String, String> labelsToUse = selectorLabels.isEmpty()
+                ? Map.of("app", deploymentName)
+                : selectorLabels;
+
+        List<Pod> pods = kubernetesClient.pods()
+                .inNamespace(namespace)
+                .withLabels(labelsToUse)
+                .list()
+                .getItems();
+
+        int tail = sanitizeTail(tailLines);
+        List<PodLogDTO> podLogs = pods.stream()
+                .map(pod -> {
+                    PodResource podResource = kubernetesClient.pods().inNamespace(namespace).withName(pod.getMetadata().getName());
+                    String logContent = readPodLog(podResource, tail);
+                    return new PodLogDTO(pod.getMetadata().getName(), namespace, logContent);
+                })
+                .toList();
+
+        return new DeploymentLogsDTO(deploymentName, namespace, podLogs);
     }
 
     private PodSummaryDTO mapPod(Pod pod) {
@@ -178,5 +234,21 @@ public class KubernetesExplorerService {
             log.warn("Unable to parse Kubernetes creation timestamp: {}", timestamp, exception);
             return "-";
         }
+    }
+
+    private String readPodLog(PodResource podResource, int tailLines) {
+        try {
+            return Optional.ofNullable(podResource.tailingLines(tailLines).getLog()).orElse("");
+        } catch (Exception ex) {
+            log.warn("Failed to read pod logs: {}", ex.getMessage());
+            return "Unable to retrieve logs: " + ex.getMessage();
+        }
+    }
+
+    private int sanitizeTail(int tailLines) {
+        if (tailLines <= 0) {
+            return DEFAULT_TAIL_LINES;
+        }
+        return Math.min(tailLines, MAX_TAIL_LINES);
     }
 }

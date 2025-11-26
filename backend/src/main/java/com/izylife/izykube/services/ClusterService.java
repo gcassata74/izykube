@@ -11,17 +11,20 @@ import com.izylife.izykube.factory.NodeFactory;
 import com.izylife.izykube.factory.TemplateFactory;
 import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.model.ClusterTemplate;
-import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.repositories.ClusterTemplateRepository;
+import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.services.ai.ClusterYamlService;
 import com.izylife.izykube.utils.ClusterUtil;
 import io.fabric8.istio.api.networking.v1beta1.Gateway;
 import io.fabric8.istio.api.networking.v1beta1.VirtualService;
 import io.fabric8.istio.client.IstioClient;
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.NamespaceBuilder;
+import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.dsl.Resource;
 import javassist.tools.rmi.ObjectNotFoundException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,13 +32,17 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
@@ -43,12 +50,27 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ClusterService {
 
+    private static final int MAX_NAMESPACE_LENGTH = 63;
+    private static final Set<String> CLUSTER_SCOPED_KINDS = Set.of(
+            "namespace",
+            "customresourcedefinition",
+            "clusterrole",
+            "clusterrolebinding",
+            "storageclass",
+            "persistentvolume",
+            "mutatingwebhookconfiguration",
+            "validatingwebhookconfiguration",
+            "apiservice",
+            "node"
+    );
+
     private final ClientFactory clientFactory;
     private final ClusterRepository clusterRepository;
     private final ClusterTemplateRepository clusterTemplateRepository;
     private final TemplateFactory templateFactory;
     private final TemplateService templateService;
     private final ClusterYamlService clusterYamlService;
+    private final NamespaceService namespaceService;
 
 
     public ClusterDTO createCluster(ClusterDTO clusterDTO) {
@@ -58,18 +80,23 @@ public class ClusterService {
 
             clusterDTO.setNodes(sanitized.nodes());
             clusterDTO.setLinks(sanitized.links());
+            String namespace = generateUniqueNamespace(clusterDTO.getName(), null);
+            clusterDTO.setNameSpace(namespace);
 
             Cluster cluster = new Cluster();
             cluster.setName(clusterDTO.getName());
+            cluster.setNameSpace(namespace);
             cluster.setNodes(sanitized.nodes());
             cluster.setLinks(sanitized.links());
             cluster.setDiagram(resolveDiagram(clusterDTO));
             cluster.setStatus(ClusterStatusEnum.INITIALIZED);
             Cluster savedCluster = clusterRepository.save(cluster);
+            namespaceService.ensureNamespaceExists(namespace);
 
             return ClusterDTO.builder()
                     .id(savedCluster.getId())
                     .name(savedCluster.getName())
+                    .nameSpace(savedCluster.getNameSpace())
                     .nodes(savedCluster.getNodes())
                     .links(savedCluster.getLinks())
                     .diagram(savedCluster.getDiagram())
@@ -91,12 +118,15 @@ public class ClusterService {
             Cluster cluster = clusterRepository.findById(clusterDTO.getId()).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
             cluster.setId(clusterDTO.getId());
             cluster.setName(clusterDTO.getName());
-            cluster.setNameSpace(clusterDTO.getNameSpace());
+            String namespace = generateUniqueNamespace(clusterDTO.getName(), clusterDTO.getId());
+            clusterDTO.setNameSpace(namespace);
+            cluster.setNameSpace(namespace);
             cluster.setNodes(sanitized.nodes());
             cluster.setLinks(sanitized.links());
             cluster.setDiagram(resolveDiagram(clusterDTO));
             cluster.setStatus(ClusterStatusEnum.CREATED);
             Cluster updatedCluster = clusterRepository.save(cluster);
+            namespaceService.ensureNamespaceExists(namespace);
 
             return ClusterDTO.builder()
                     .id(updatedCluster.getId())
@@ -169,21 +199,35 @@ public class ClusterService {
         Cluster cluster = clusterRepository.findById(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
 
+        String namespace = resolveClusterNamespace(cluster);
+
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
 
+        ensureNamespaceMaterialized(namespace);
+
         for (String yaml : template.getYamlList()) {
             try {
-                KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
-                List<HasMetadata> resources = k8sClient.load(new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8))).items();
+                KubernetesClient loaderClient = (KubernetesClient) clientFactory.getClient("kubernetes");
+                List<HasMetadata> resources = loaderClient
+                        .load(new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8)))
+                        .items();
+
+                if (resources == null || resources.isEmpty()) {
+                    continue;
+                }
 
                 for (HasMetadata resource : resources) {
+                    if (resource == null) {
+                        continue;
+                    }
+                    applyNamespaceMetadata(resource, namespace);
                     Object client = clientFactory.getClient(resource.getApiVersion());
 
-                    if (client instanceof IstioClient) {
-                        deployIstioResource((IstioClient) client, resource);
-                    } else if (client instanceof KubernetesClient) {
-                        ((KubernetesClient) client).resource(resource).createOrReplace();
+                    if (client instanceof IstioClient istioClient) {
+                        deployIstioResource(istioClient, resource, namespace);
+                    } else if (client instanceof KubernetesClient kubernetesClient) {
+                        kubernetesClient.resource(resource).createOrReplace();
                     }
 
                     log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
@@ -197,17 +241,18 @@ public class ClusterService {
         clusterRepository.save(cluster);
     }
 
-    private void deployIstioResource(IstioClient istioClient, HasMetadata resource) {
+    private void deployIstioResource(IstioClient istioClient, HasMetadata resource, String namespace) {
+        String targetNamespace = (namespace == null || namespace.isBlank()) ? "default" : namespace;
         if (resource instanceof Gateway) {
-            istioClient.v1beta1().gateways().inNamespace("default").resource((Gateway) resource).create();
+            istioClient.v1beta1().gateways().inNamespace(targetNamespace).resource((Gateway) resource).create();
         } else if (resource instanceof VirtualService) {
-            istioClient.v1beta1().virtualServices().inNamespace("default").resource((VirtualService) resource).create();
+            istioClient.v1beta1().virtualServices().inNamespace(targetNamespace).resource((VirtualService) resource).create();
         } else {
             log.warn("Unsupported Istio resource type: " + resource.getKind());
         }
     }
 
-    private void applyTemplate(ClusterTemplate template) {
+    private void applyTemplate(ClusterTemplate template, String namespace) {
         for (String yaml : template.getYamlList()) {
             try {
                 // Load the YAML into Kubernetes resources
@@ -216,6 +261,7 @@ public class ClusterService {
 
                 // Create or update each resource
                 for (HasMetadata resource : resources) {
+                    applyNamespaceMetadata(resource, namespace);
                     k8sClient.resource(resource).createOrReplace();
                     log.info("Deployed resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
                 }
@@ -229,50 +275,28 @@ public class ClusterService {
         Cluster cluster = clusterRepository.findById(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
 
+        String namespace = resolveClusterNamespace(cluster);
+
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
 
-        for (String yaml : template.getYamlList()) {
-            try {
-                KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
-                List<HasMetadata> resources = k8sClient.load(new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8))).get();
-
-                if (resources == null || resources.isEmpty()) {
-                    log.error("No resources found in YAML: " + yaml);
-                    continue;
-                }
-
-                for (HasMetadata resource : resources) {
-                    if (resource == null) {
-                        log.error("Null resource found in YAML: " + yaml);
-                        continue;
-                    }
-
-                    Object client = clientFactory.getClient(resource.getApiVersion());
-
-                    if (client instanceof IstioClient) {
-                        undeployIstioResource((IstioClient) client, resource);
-                    } else if (client instanceof KubernetesClient) {
-                        ((KubernetesClient) client).resource(resource).delete();
-                    }
-
-                    log.info("Deleted resource: " + resource.getKind() + "/" + resource.getMetadata().getName());
-                }
-
-            } catch (KubernetesClientException e) {
-                log.error("Error undeploying resource from template: " + e.getMessage());
-            }
-        }
+        deleteResourcesFromTemplate(template, namespace);
 
         cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
         clusterRepository.save(cluster);
+
+        boolean namespaceDeleted = deleteNamespace(namespace);
+        if (!namespaceDeleted) {
+            log.warn("Namespace {} could not be fully removed. Please check cluster resources manually.", namespace);
+        }
     }
 
-    private void undeployIstioResource(IstioClient istioClient, HasMetadata resource) {
+    private void undeployIstioResource(IstioClient istioClient, HasMetadata resource, String namespace) {
+        String targetNamespace = (namespace == null || namespace.isBlank()) ? "default" : namespace;
         if (resource instanceof Gateway) {
-            istioClient.v1beta1().gateways().inNamespace("default").resource((Gateway) resource).delete();
+            istioClient.v1beta1().gateways().inNamespace(targetNamespace).resource((Gateway) resource).delete();
         } else if (resource instanceof VirtualService) {
-            istioClient.v1beta1().virtualServices().inNamespace("default").resource((VirtualService) resource).delete();
+            istioClient.v1beta1().virtualServices().inNamespace(targetNamespace).resource((VirtualService) resource).delete();
         } else {
             log.warn("Unsupported Istio resource type: " + resource.getKind());
         }
@@ -285,6 +309,9 @@ public class ClusterService {
             Cluster existingCluster = clusterRepository.findById(id)
                     .orElseThrow(() -> new ObjectNotFoundException("Cluster not found with id: " + id));
 
+            String namespace = generateUniqueNamespace(clusterDTO.getName(), id);
+            clusterDTO.setNameSpace(namespace);
+
             // Generate and save the template
             ClusterTemplate template = templateService.createOrReplaceTemplate(id, clusterDTO);
             if (template == null) {
@@ -295,12 +322,13 @@ public class ClusterService {
             clusterDTO.setNodes(sanitized.nodes());
             clusterDTO.setLinks(sanitized.links());
 
-            applyTemplate(template);
+            ensureNamespaceMaterialized(namespace);
+            applyTemplate(template, namespace);
             triggerDeploymentUpdates(clusterDTO);
 
             // Update the cluster entity with new data
             existingCluster.setName(clusterDTO.getName());
-            existingCluster.setNameSpace(clusterDTO.getNameSpace());
+            existingCluster.setNameSpace(namespace);
             existingCluster.setNodes(sanitized.nodes());
             existingCluster.setLinks(sanitized.links());
             existingCluster.setDiagram(resolveDiagram(clusterDTO));
@@ -308,6 +336,7 @@ public class ClusterService {
             existingCluster.setStatus(existingCluster.getStatus());
             // Save the updated cluster
             Cluster updatedCluster = clusterRepository.save(existingCluster);
+            namespaceService.ensureNamespaceExists(namespace);
             return updatedCluster;
 
 
@@ -319,6 +348,10 @@ public class ClusterService {
     }
 
     private void triggerDeploymentUpdates(ClusterDTO clusterDTO) {
+        String namespace = clusterDTO.getNameSpace();
+        if (namespace == null || namespace.isBlank()) {
+            namespace = sanitizeNamespace(clusterDTO.getName());
+        }
         List<NodeDTO> configMaps = new ArrayList<>(ClusterUtil.findNodesByKind(clusterDTO, "configmap"));
         configMaps.addAll(ClusterUtil.findNodesByKind(clusterDTO, "secret"));
 
@@ -329,17 +362,17 @@ public class ClusterService {
                     .collect(Collectors.toList());
 
             for (NodeDTO deployment : connectedDeployments) {
-                restartDeployment(deployment.getName());
+                restartDeployment(deployment.getName(), namespace);
             }
         }
     }
 
-    private void restartDeployment(String name) {
+    private void restartDeployment(String name, String namespace) {
         // Implement the logic to trigger a rolling update for the deployment
         // Example using Fabric8 Kubernetes client:
         KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
         k8sClient.apps().deployments()
-                .inNamespace("default")
+                .inNamespace(namespace == null || namespace.isBlank() ? "default" : namespace)
                 .withName(name)
                 .edit(d -> new DeploymentBuilder(d)
                         .editSpec().editTemplate().editMetadata()
@@ -467,5 +500,177 @@ public class ClusterService {
         } catch (Exception ex) {
             log.warn("Failed to regenerate diagram for cluster {}: {}", cluster.getId(), ex.getMessage());
         }
+    }
+
+    private String resolveClusterNamespace(Cluster cluster) {
+        if (cluster == null) {
+            return "default";
+        }
+        String namespace = cluster.getNameSpace();
+        if (namespace == null || namespace.isBlank()) {
+            namespace = generateUniqueNamespace(cluster.getName(), cluster.getId());
+            cluster.setNameSpace(namespace);
+            clusterRepository.save(cluster);
+        }
+        namespaceService.ensureNamespaceExists(namespace);
+        return namespace;
+    }
+
+    private void ensureNamespaceMaterialized(String namespace) {
+        if (namespace == null || namespace.isBlank()) {
+            return;
+        }
+        KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
+        if (k8sClient.namespaces().withName(namespace).get() == null) {
+            k8sClient.namespaces()
+                    .resource(new NamespaceBuilder().withNewMetadata().withName(namespace).endMetadata().build())
+                    .create();
+        }
+    }
+
+    private void deleteResourcesFromTemplate(ClusterTemplate template, String namespace) {
+        if (template == null || template.getYamlList() == null) {
+            return;
+        }
+        for (String yaml : template.getYamlList()) {
+            try {
+                KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
+                List<HasMetadata> resources = k8sClient.load(new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8))).get();
+
+                if (resources == null || resources.isEmpty()) {
+                    log.warn("No resources found in YAML during undeploy");
+                    continue;
+                }
+
+                for (HasMetadata resource : resources) {
+                    if (resource == null) {
+                        continue;
+                    }
+
+                    applyNamespaceMetadata(resource, namespace);
+                    Object client = clientFactory.getClient(resource.getApiVersion());
+
+                    if (client instanceof IstioClient) {
+                        undeployIstioResource((IstioClient) client, resource, namespace);
+                    } else if (client instanceof KubernetesClient) {
+                        ((KubernetesClient) client).resource(resource).delete();
+                    }
+                }
+
+            } catch (KubernetesClientException e) {
+                log.warn("Error undeploying resource from template: {}", e.getMessage());
+            }
+        }
+    }
+
+    private boolean deleteNamespace(String namespace) {
+        if (namespace == null || namespace.isBlank()) {
+            return true;
+        }
+        if ("default".equalsIgnoreCase(namespace)) {
+            return true;
+        }
+        KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
+        try {
+            var op = k8sClient.namespaces().withName(namespace);
+            List<io.fabric8.kubernetes.api.model.StatusDetails> result = op.delete();
+            if (result == null || result.isEmpty()) {
+                log.warn("Delete request for namespace {} was not acknowledged", namespace);
+                return false;
+            }
+            boolean terminated = waitForNamespaceTermination(op, 30);
+            if (terminated) {
+                log.info("Namespace {} deleted from cluster", namespace);
+            } else {
+                log.warn("Namespace {} deletion is taking longer than expected", namespace);
+            }
+            return terminated;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            log.warn("Namespace deletion wait interrupted for {}: {}", namespace, ex.getMessage());
+            return false;
+        } catch (Exception ex) {
+            log.warn("Unable to delete namespace {}: {}", namespace, ex.getMessage());
+            return false;
+        }
+    }
+
+    private boolean waitForNamespaceTermination(Resource<io.fabric8.kubernetes.api.model.Namespace> op, int timeoutSeconds) throws InterruptedException {
+        int attempts = timeoutSeconds;
+        while (attempts-- > 0) {
+            if (op.get() == null) {
+                return true;
+            }
+            TimeUnit.SECONDS.sleep(1);
+        }
+        return op.get() == null;
+    }
+
+    private void applyNamespaceMetadata(HasMetadata resource, String namespace) {
+        if (resource == null || namespace == null || namespace.isBlank()) {
+            return;
+        }
+        if (isClusterScopedKind(resource.getKind())) {
+            return;
+        }
+        ObjectMeta metadata = resource.getMetadata();
+        if (metadata == null) {
+            metadata = new ObjectMeta();
+            resource.setMetadata(metadata);
+        }
+        metadata.setNamespace(namespace);
+    }
+
+    private boolean isClusterScopedKind(String kind) {
+        if (kind == null) {
+            return false;
+        }
+        return CLUSTER_SCOPED_KINDS.contains(kind.toLowerCase(Locale.ROOT));
+    }
+
+    private String generateUniqueNamespace(String diagramName, String currentClusterId) {
+        String baseName = sanitizeNamespace(diagramName);
+        String candidate = baseName;
+        int counter = 1;
+
+        while (clusterRepository.isNamespaceInUse(candidate, currentClusterId)) {
+            String suffix = "-" + counter++;
+            int availableLength = Math.max(1, MAX_NAMESPACE_LENGTH - suffix.length());
+            String trimmedBase = baseName.length() > availableLength ? baseName.substring(0, availableLength) : baseName;
+            trimmedBase = trimmedBase.replaceAll("-+$", "");
+            if (trimmedBase.isBlank()) {
+                trimmedBase = "diagram";
+            }
+            if (trimmedBase.length() > availableLength) {
+                trimmedBase = trimmedBase.substring(0, availableLength).replaceAll("-+$", "");
+            }
+            candidate = trimmedBase + suffix;
+        }
+
+        return candidate;
+    }
+
+    private String sanitizeNamespace(String value) {
+        if (value == null || value.isBlank()) {
+            return "diagram";
+        }
+
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        normalized = normalized.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9-]", "-")
+                .replaceAll("-{2,}", "-")
+                .replaceAll("^-+", "")
+                .replaceAll("-+$", "");
+
+        if (normalized.isBlank()) {
+            normalized = "diagram";
+        }
+
+        if (normalized.length() > MAX_NAMESPACE_LENGTH) {
+            normalized = normalized.substring(0, MAX_NAMESPACE_LENGTH).replaceAll("-+$", "");
+        }
+
+        return normalized.isBlank() ? "diagram" : normalized;
     }
 }

@@ -31,6 +31,7 @@ public class JobProcessor implements TemplateProcessor<JobDTO> {
 
     @Override
     public String createTemplate(JobDTO dto) {
+        String namespace = resolveNamespace(dto);
         Asset asset = assetRepository.findById(dto.getAssetId())
                 .orElseThrow(() -> new NoSuchElementException("Asset not found: " + dto.getAssetId()));
 
@@ -43,17 +44,17 @@ public class JobProcessor implements TemplateProcessor<JobDTO> {
         StringBuilder yaml = new StringBuilder();
 
         // Create script ConfigMap using ConfigMapProcessor
-        ConfigMapDTO scriptConfigMap = createScriptConfigMapDTO(dto, asset);
+        ConfigMapDTO scriptConfigMap = createScriptConfigMapDTO(dto, asset, namespace);
         yaml.append(configMapProcessor.createTemplate(scriptConfigMap));
         yaml.append("---\n");
 
         // Create Job with init container
-        yaml.append(createJobTemplate(dto, scriptConfigMap.getName(), sourceService, asset));
+        yaml.append(createJobTemplate(dto, scriptConfigMap.getName(), sourceService, asset, namespace));
 
         return yaml.toString();
     }
 
-    private ConfigMapDTO createScriptConfigMapDTO(JobDTO dto, Asset asset) {
+    private ConfigMapDTO createScriptConfigMapDTO(JobDTO dto, Asset asset, String namespace) {
         String configMapName = dto.getName() + "-script";
 
         // Create yaml content directly
@@ -66,15 +67,17 @@ public class JobProcessor implements TemplateProcessor<JobDTO> {
             yamlBuilder.append("  ").append(line).append("\n");
         }
 
-        return new ConfigMapDTO(
+        ConfigMapDTO configMapDTO = new ConfigMapDTO(
                 dto.getName() + "-script",
                 configMapName,
                 yamlBuilder.toString()
         );
+        configMapDTO.setNamespace(namespace);
+        return configMapDTO;
     }
 
-    private String createJobTemplate(JobDTO dto, String configMapName, ServiceDTO targetService, Asset asset) {
-        List<EnvVar> envVars = createEnvironmentVariables(targetService);
+    private String createJobTemplate(JobDTO dto, String configMapName, ServiceDTO targetService, Asset asset, String namespace) {
+        List<EnvVar> envVars = createEnvironmentVariables(targetService, namespace);
 
         // Create main container using ContainerProcessor
         ContainerDTO mainContainerDto = new ContainerDTO(
@@ -96,7 +99,7 @@ public class JobProcessor implements TemplateProcessor<JobDTO> {
         Job job = new JobBuilder()
                 .withNewMetadata()
                 .withName(dto.getName())
-                .withNamespace("default")
+                .withNamespace(namespace)
                 .endMetadata()
                 .withNewSpec()
                 .withTtlSecondsAfterFinished(100)
@@ -120,13 +123,14 @@ public class JobProcessor implements TemplateProcessor<JobDTO> {
         return Serialization.asYaml(job);
     }
 
-    private List<EnvVar> createEnvironmentVariables(ServiceDTO targetService) {
+    private List<EnvVar> createEnvironmentVariables(ServiceDTO targetService, String namespace) {
         List<EnvVar> envVars = new ArrayList<>();
         String serviceName = targetService.getName().toUpperCase().replace("-", "_");
+        String resolvedNamespace = namespace == null || namespace.isBlank() ? "default" : namespace;
 
         envVars.add(new EnvVar(
                 serviceName + "_SERVICE_HOST",
-                targetService.getName() + ".default.svc.cluster.local",
+                targetService.getName() + "." + resolvedNamespace + ".svc.cluster.local",
                 null
         ));
         envVars.add(new EnvVar(
@@ -143,6 +147,8 @@ public class JobProcessor implements TemplateProcessor<JobDTO> {
         return envVars;
     }
 
+    private String resolveNamespace(JobDTO dto) {
+        return dto.getNamespace() == null || dto.getNamespace().isBlank() ? "default" : dto.getNamespace();
+    }
 }
-
 
