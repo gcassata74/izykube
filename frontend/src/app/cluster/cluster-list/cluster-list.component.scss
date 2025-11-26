@@ -1,0 +1,36 @@
+.status-column {
+  min-width: 14rem;
+}
+
+.status-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1.5rem;
+}
+
+.status-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.status-wrapper .pi {
+  font-size: 0.9rem;
+}
+
+.status-wrapper.operation-pending,
+.status-wrapper.operation-running {
+  color: #2563eb;
+}
+
+.status-wrapper.operation-succeeded {
+  color: #16a34a;
+}
+
+.status-wrapper.operation-failed {
+  color: #dc2626;
+}
+
+.status-wrapper.operation-timeout {
+  color: #b45309;
+}

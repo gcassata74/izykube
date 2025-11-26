@@ -1,7 +1,7 @@
 <div class="container custom-container mt-5">
   <div class="card">
     <div class="card-header">
-      <h2 i18n="@@clusterForm.title">Create Cluster</h2>
+      <h2 i18n="@@clusterForm.title">Create Diagram</h2>
     </div>
     <div class="card-body">
       <form [formGroup]="clusterForm" (ngSubmit)="saveCluster()">
@@ -14,32 +14,17 @@
                    formControlName="name"
                    required
                    i18n-placeholder="@@clusterForm.name.placeholder"
-                   placeholder="Enter cluster name"
+                   placeholder="Enter diagram name"
                    (keyup)="clusterForm.get('name')?.markAsTouched()"/>
-            <label for="clustername" i18n="@@clusterForm.name.label">Cluster Name</label>
+            <label for="clustername" i18n="@@clusterForm.name.label">Diagram Name</label>
           </span>
           <small class="text-danger"
                  *ngIf="clusterForm.get('name')?.touched && clusterForm.get('name')?.hasError('required')"
                  i18n="@@clusterForm.name.required">
             Field is mandatory, please fill it.
           </small>
-        </div>
-        <div class="mt-4 pl-4 pr-4 mb-4">
-          <span class="p-float-label">
-            <input type="text"
-                   id="namespace"
-                   class="form-control"
-                   pInputText
-                   formControlName="namespace"
-                   i18n-placeholder="@@clusterForm.namespace.placeholder"
-                   placeholder="Enter namespace"
-                   (keyup)="clusterForm.get('namespace')?.markAsTouched()"/>
-            <label for="namespace" i18n="@@clusterForm.namespace.label">Namespace</label>
-          </span>
-          <small class="text-danger"
-                 *ngIf="clusterForm.get('namespace')?.touched && clusterForm.get('namespace')?.hasError('required')"
-                 i18n="@@clusterForm.namespace.required">
-            Field is mandatory, please fill it.
+          <small class="text-muted d-block mt-2" i18n="@@clusterForm.namespace.help">
+            The namespace is generated from the diagram name and created automatically at deploy time.
           </small>
         </div>
         <div class="text-end">

@@ -38,3 +38,15 @@ export interface NamespaceSummary {
 export interface NamespaceOption {
   name: string;
 }
+
+export interface PodLogs {
+  name: string;
+  namespace: string;
+  logs: string;
+}
+
+export interface DeploymentLogs {
+  name: string;
+  namespace: string;
+  pods: PodLogs[];
+}

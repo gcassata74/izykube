@@ -108,21 +108,21 @@
         </context-group>
       </trans-unit>
       <trans-unit id="clusterForm.title" datatype="html">
-        <source>Create Cluster</source>
+        <source>Create Diagram</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
           <context context-type="linenumber">4</context>
         </context-group>
       </trans-unit>
       <trans-unit id="clusterForm.name.placeholder" datatype="html">
-        <source>Enter cluster name</source>
+        <source>Enter diagram name</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
           <context context-type="linenumber">17</context>
         </context-group>
       </trans-unit>
       <trans-unit id="clusterForm.name.label" datatype="html">
-        <source>Cluster Name</source>
+        <source>Diagram Name</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
           <context context-type="linenumber">19</context>
@@ -135,25 +135,11 @@
           <context context-type="linenumber">23,25</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="clusterForm.namespace.placeholder" datatype="html">
-        <source>Enter namespace</source>
+      <trans-unit id="clusterForm.namespace.help" datatype="html">
+        <source>The namespace is generated from the diagram name and created automatically at deploy time.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
-          <context context-type="linenumber">35</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="clusterForm.namespace.label" datatype="html">
-        <source>Namespace</source>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
-          <context context-type="linenumber">37</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="clusterForm.namespace.required" datatype="html">
-        <source> Field is mandatory, please fill it. </source>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/cluster/cluster-form/cluster-form.component.html</context>
-          <context context-type="linenumber">41,43</context>
+          <context context-type="linenumber">26</context>
         </context-group>
       </trans-unit>
       <trans-unit id="clusterForm.button.save" datatype="html">
@@ -170,11 +156,18 @@
           <context context-type="linenumber">54,55</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="clusters" datatype="html">
-        <source>Clusters</source>
+      <trans-unit id="namespaces" datatype="html">
+        <source>Namespaces</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/cluster/cluster-list/cluster-list.component.html</context>
           <context context-type="linenumber">2</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="clusterList.addNamespace" datatype="html">
+        <source>Add Namespace</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/cluster/cluster-list/cluster-list.component.html</context>
+          <context context-type="linenumber">5</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3193976279273491157" datatype="html">

@@ -1,8 +1,8 @@
 <div class="content">
-  <p-card class="izy-card" header="Clusters" i18n-header="@@clusters">
+  <p-card class="izy-card" header="Namespaces" i18n-header="@@namespaces">
     <div class="card-content">
       <div class="izy-button-container">
-        <button pButton label="Add" class="p-button-text" (click)="addCluster()"></button>
+        <button pButton label="Add Namespace" i18n-label="@@clusterList.addNamespace" class="p-button-text" (click)="addCluster()"></button>
       </div>
       <ng-container *ngIf="clusters$ | async as clusters">
         <p-table [value]="clusters" [columns]="cols" styleClass="p-datatable-striped">
@@ -17,8 +17,23 @@
           <ng-template pTemplate="body" let-rowData let-columns="columns" let-even="even">
             <tr [ngClass]="{'izy-row-even': even, 'izy-row-odd': !even}" [pContextMenuRow]="items"
                 (click)="onContextMenu($event, rowData.id)" [pEditableRow]="items">
-              <td *ngFor="let col of columns">
-                {{rowData[col.field]}}
+              <td *ngFor="let col of columns" [ngClass]="{'status-column': col.field === 'status'}">
+                <ng-container [ngSwitch]="col.field">
+                  <ng-container *ngSwitchCase="'status'">
+                    <div class="status-wrapper" [ngClass]="statusClass(rowData.id)">
+                      <ng-container *ngIf="operationStatus(rowData.id) as opStatus; else staticStatus">
+                        <i [class]="iconForStatus(opStatus)" aria-hidden="true"></i>
+                        <span class="status-text">{{ operationLabel(rowData.id) }}</span>
+                      </ng-container>
+                      <ng-template #staticStatus>
+                        <span class="status-text">{{ rowData.status }}</span>
+                      </ng-template>
+                    </div>
+                  </ng-container>
+                  <ng-container *ngSwitchDefault>
+                    {{ rowData[col.field] }}
+                  </ng-container>
+                </ng-container>
               </td>
               <td class="action-column">
                 <button pButton (click)="editDiagram(rowData.id)">

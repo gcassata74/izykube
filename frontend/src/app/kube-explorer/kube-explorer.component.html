@@ -226,8 +226,14 @@
         <aside class="detail-panel" *ngIf="selectedRow">
             <div class="detail-panel__header">
                 <h3>{{ activeLabel }} details</h3>
+        <span class="detail-panel__header-actions">
+          <button pButton type="button" icon="pi pi-bars" label="View logs"
+                  *ngIf="canViewLogs"
+                  class="p-button-text"
+                  (click)="viewLogs()"></button>
                 <button pButton type="button" icon="pi pi-times" class="p-button-rounded p-button-text"
                         (click)="clearRowSelection()"></button>
+        </span>
             </div>
             <div class="detail-panel__body">
                 <dl class="detail-panel__list">
@@ -240,3 +246,22 @@
         </aside>
     </main>
 </div>
+
+<p-dialog
+  [header]="logsTitle"
+  [(visible)]="logsDialogVisible"
+  [modal]="true"
+  [style]="{ width: '640px' }"
+  [dismissableMask]="true"
+  (onHide)="logsDialogVisible = false">
+  <div class="logs-panel">
+    <p *ngIf="logsLoading">Loading logs...</p>
+    <p *ngIf="logsError && !logsLoading" class="text-danger">{{ logsError }}</p>
+    <pre *ngIf="!logsLoading" class="logs-panel__content">{{ logsContent }}</pre>
+  </div>
+  <ng-template pTemplate="footer">
+    <button pButton type="button" icon="pi pi-copy" label="Copy" (click)="copyLogs()" [disabled]="!logsContent"></button>
+    <button pButton type="button" icon="pi pi-refresh" label="Refresh" (click)="refreshLogs()" [disabled]="logsLoading || !currentLogTarget"></button>
+    <button pButton type="button" icon="pi pi-times" label="Close" class="p-button-text" (click)="logsDialogVisible = false"></button>
+  </ng-template>
+</p-dialog>

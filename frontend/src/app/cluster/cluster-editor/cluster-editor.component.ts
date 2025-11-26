@@ -54,7 +54,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
               }
               ),
               catchError(error => {
-                this.notificationService.error('Failed to load cluster');
+                this.notificationService.error('Failed to load diagram');
                 console.error('Error loading cluster:', error);
                 return of(null);
               })
@@ -116,11 +116,11 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
       take(1),
       switchMap(clusterData => this.clusterService.patchCluster(clusterData.id, clusterData).pipe(
         tap(() => {
-          this.notificationService.success('Cluster patched successfully');
+          this.notificationService.success('Diagram patched successfully');
           this.store.dispatch(actions.resetCurrentAction());
         }),
         catchError(error => {
-          this.notificationService.error('Failed to patch cluster');
+          this.notificationService.error('Failed to patch diagram');
           console.error('Error saving cluster:', error);
           return throwError(() => error);
         })
@@ -132,11 +132,11 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
       take(1),
       switchMap(clusterData => this.templateService.updateTemplate(clusterData).pipe(
         tap(() => {
-          this.notificationService.success('Cluster template updated successfully');
+          this.notificationService.success('Namespace template updated successfully');
           this.store.dispatch(actions.resetCurrentAction());
         }),
         catchError(error => {
-          this.notificationService.error('Failed to update template');
+          this.notificationService.error('Failed to update namespace template');
           console.error('Error saving cluster:', error);
           return throwError(() => error);
         })
@@ -152,11 +152,11 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
           if (savedCluster) {
             this.store.dispatch(actions.loadCluster({ cluster: savedCluster }));
           }
-          this.notificationService.success('Cluster saved successfully');
+          this.notificationService.success('Diagram saved successfully');
           this.store.dispatch(actions.resetCurrentAction());
         }),
         catchError(error => {
-          this.notificationService.error('Failed to save cluster');
+          this.notificationService.error('Failed to save diagram');
           console.error('Error saving cluster:', error);
           return throwError(() => error);
         })

@@ -333,7 +333,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   private fetchClusterExport(): void {
     if (!this.currentClusterSnapshot) {
-      this.notificationService.warn('No cluster to export', 'Create or load a cluster before exporting YAML.');
+      this.notificationService.warn('No diagram to export', 'Create or load a diagram before exporting YAML.');
       this.clusterYamlDialogVisible = false;
       return;
     }
@@ -348,7 +348,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
         next: (response: AiHelmChartExportResponse) => {
           this.clusterYamlText = '';
           this.helmChartBlob = response.blob;
-          const fallbackName = `${this.sanitizeFileName(this.currentClusterSnapshot?.name || 'izykube-cluster')}-chart.zip`;
+        const fallbackName = `${this.sanitizeFileName(this.currentClusterSnapshot?.name || 'izykube-namespace')}-chart.zip`;
           this.clusterYamlFileName = response.fileName || fallbackName;
         },
         error: (error) => {
@@ -364,7 +364,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       next: (response: AiExportYamlResponse) => {
         this.helmChartBlob = null;
         this.clusterYamlText = response.yaml;
-        this.clusterYamlFileName = `${this.sanitizeFileName(this.currentClusterSnapshot?.name || 'izykube-cluster')}.yaml`;
+        this.clusterYamlFileName = `${this.sanitizeFileName(this.currentClusterSnapshot?.name || 'izykube-namespace')}.yaml`;
       },
       error: (error) => {
         this.handleClusterExportError(error);
@@ -373,7 +373,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   private handleClusterExportError(error: any): void {
-    const detail = error?.error || error?.message || 'Cluster export failed.';
+    const detail = error?.error || error?.message || 'Diagram export failed.';
     this.notificationService.error('Export failed', typeof detail === 'string' ? detail : undefined);
     this.clusterYamlDialogVisible = false;
   }
@@ -393,7 +393,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   importClusterYaml(): void {
     const yaml = this.clusterYamlText?.trim();
     if (!yaml) {
-      this.notificationService.warn('Add YAML', 'Paste cluster YAML before importing.');
+      this.notificationService.warn('Add YAML', 'Paste diagram YAML before importing.');
       return;
     }
 
@@ -406,12 +406,12 @@ export class DiagramComponent implements OnInit, OnDestroy {
     ).subscribe({
       next: (response: AiImportYamlResponse) => {
         this.applyImportedCluster(response);
-        this.notificationService.success('Cluster imported', 'Diagram updated from YAML.');
+        this.notificationService.success('Diagram imported', 'Diagram updated from YAML.');
         this.clusterYamlDialogVisible = false;
       },
       error: (error) => {
-        const detail = error?.error || error?.message || 'Cluster import failed.';
-        this.clusterYamlError = typeof detail === 'string' ? detail : 'Cluster import failed.';
+        const detail = error?.error || error?.message || 'Diagram import failed.';
+        this.clusterYamlError = typeof detail === 'string' ? detail : 'Diagram import failed.';
       }
     });
   }
@@ -422,7 +422,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     }
     if (navigator && navigator.clipboard) {
       navigator.clipboard.writeText(this.clusterYamlText).then(
-        () => this.notificationService.success('Copied', 'Cluster YAML copied to clipboard.'),
+        () => this.notificationService.success('Copied', 'Namespace YAML copied to clipboard.'),
         () => this.notificationService.error('Copy failed', 'Unable to copy YAML to clipboard.')
       );
     } else {
@@ -438,7 +438,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = this.clusterYamlFileName || 'izykube-cluster.yaml';
+    link.download = this.clusterYamlFileName || 'izykube-namespace.yaml';
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -450,7 +450,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     const url = URL.createObjectURL(this.helmChartBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = this.clusterYamlFileName || `${this.sanitizeFileName(this.currentClusterSnapshot?.name || 'izykube-cluster')}-chart.zip`;
+    link.download = this.clusterYamlFileName || `${this.sanitizeFileName(this.currentClusterSnapshot?.name || 'izykube-namespace')}-chart.zip`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -581,10 +581,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
     }
 
     this.importingFromChat = true;
-    this.aiAssistantService.importYaml({ yaml, name: 'AI Generated Cluster' }).subscribe({
+    this.aiAssistantService.importYaml({ yaml, name: 'AI Generated Diagram' }).subscribe({
       next: (response) => {
         this.applyImportedCluster(response);
-        this.notificationService.success('Cluster imported', 'Diagram updated from YAML.');
+        this.notificationService.success('Diagram imported', 'Diagram updated from YAML.');
         this.importingFromChat = false;
       },
       error: (error) => {
@@ -665,7 +665,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     return value
       .toLowerCase()
       .replace(/[^a-z0-9-]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'izykube-cluster';
+      .replace(/^-+|-+$/g, '') || 'izykube-namespace';
   }
 
   private handleAiSuggestions(content: string): void {

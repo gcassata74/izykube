@@ -43,6 +43,14 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   };
 
   private autoRefreshSubscription: Subscription | null = null;
+  private readonly autoRefreshStorageKey = 'kubeExplorer.autoRefresh';
+  currentLogTarget: { type: 'pod' | 'deployment'; namespace: string; name: string } | null = null;
+
+  logsDialogVisible = false;
+  logsTitle = '';
+  logsContent = '';
+  logsLoading = false;
+  logsError: string | null = null;
 
   @ViewChild('podsTable') podsTable?: Table;
   @ViewChild('deploymentsTable') deploymentsTable?: Table;
@@ -107,6 +115,10 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.autoRefreshEnabled = this.loadAutoRefreshPreference();
+    if (this.autoRefreshEnabled) {
+      this.startAutoRefresh();
+    }
     this.fetchNamespaces();
   }
 
@@ -202,13 +214,13 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
 
   toggleAutoRefresh(): void {
     this.autoRefreshEnabled = !this.autoRefreshEnabled;
-    this.cdr.markForCheck();
-
+    this.persistAutoRefreshPreference(this.autoRefreshEnabled);
     if (this.autoRefreshEnabled) {
-      this.autoRefreshSubscription = interval(this.refreshIntervalMs).subscribe(() => this.loadSummary());
+      this.startAutoRefresh();
     } else {
       this.teardownAutoRefresh();
     }
+    this.cdr.markForCheck();
   }
 
   manualRefresh(): void {
@@ -276,6 +288,45 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
           { label: 'Node', value: this.selectedRow.node || '-' },
           { label: 'Age', value: this.selectedRow.age }
         ];
+    }
+  }
+
+  get canViewLogs(): boolean {
+    return !!this.selectedRow && (this.activeView === 'pods' || this.activeView === 'deployments');
+  }
+
+  viewLogs(): void {
+    if (!this.selectedRow || !this.canViewLogs) {
+      return;
+    }
+    if (this.activeView === 'pods') {
+      this.fetchPodLogs(this.selectedRow.namespace, this.selectedRow.name);
+    } else if (this.activeView === 'deployments') {
+      this.fetchDeploymentLogs(this.selectedRow.namespace, this.selectedRow.name);
+    }
+  }
+
+  refreshLogs(): void {
+    if (!this.currentLogTarget) {
+      return;
+    }
+    if (this.currentLogTarget.type === 'pod') {
+      this.fetchPodLogs(this.currentLogTarget.namespace, this.currentLogTarget.name, false);
+    } else {
+      this.fetchDeploymentLogs(this.currentLogTarget.namespace, this.currentLogTarget.name, false);
+    }
+  }
+
+  copyLogs(): void {
+    if (!this.logsContent) {
+      return;
+    }
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(this.logsContent).then(() => {
+        this.notificationService.success('Logs copied', 'Log output copied to clipboard.');
+      }, () => {
+        this.notificationService.warn('Copy failed', 'Unable to copy logs to clipboard.');
+      });
     }
   }
 
@@ -356,5 +407,98 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
       default:
         return this.podsTable;
     }
+  }
+
+  private startAutoRefresh(): void {
+    this.teardownAutoRefresh();
+    this.autoRefreshSubscription = interval(this.refreshIntervalMs).subscribe(() => this.loadSummary());
+  }
+
+  private persistAutoRefreshPreference(value: boolean): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (value) {
+      localStorage.setItem(this.autoRefreshStorageKey, 'true');
+    } else {
+      localStorage.removeItem(this.autoRefreshStorageKey);
+    }
+  }
+
+  private loadAutoRefreshPreference(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return localStorage.getItem(this.autoRefreshStorageKey) === 'true';
+  }
+
+  private fetchPodLogs(namespace: string, podName: string, showDialog = true): void {
+    if (!namespace || !podName) {
+      return;
+    }
+    this.currentLogTarget = { type: 'pod', namespace, name: podName };
+    if (showDialog) {
+      this.prepareLogsDialog(`Pod logs • ${podName}`);
+    }
+    this.logsLoading = true;
+    this.logsError = null;
+    this.logsContent = '';
+    this.kubeExplorerService.getPodLogs(namespace, podName).pipe(
+      finalize(() => {
+        this.logsLoading = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (response) => {
+        this.logsContent = response?.logs || '[No log output]';
+        this.logsDialogVisible = true;
+      },
+      error: () => {
+        this.logsError = 'Unable to fetch pod logs.';
+      }
+    });
+    this.cdr.markForCheck();
+  }
+
+  private fetchDeploymentLogs(namespace: string, deploymentName: string, showDialog = true): void {
+    if (!namespace || !deploymentName) {
+      return;
+    }
+    this.currentLogTarget = { type: 'deployment', namespace, name: deploymentName };
+    if (showDialog) {
+      this.prepareLogsDialog(`Deployment logs • ${deploymentName}`);
+    }
+    this.logsLoading = true;
+    this.logsError = null;
+    this.logsContent = '';
+    this.kubeExplorerService.getDeploymentLogs(namespace, deploymentName).pipe(
+      finalize(() => {
+        this.logsLoading = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (response) => {
+        if (!response?.pods?.length) {
+          this.logsContent = 'No pods found for this deployment.';
+        } else {
+          this.logsContent = response.pods.map(pod => {
+            const log = pod.logs || '[No log output]';
+            return `=== Pod ${pod.name} ===\n${log}`;
+          }).join('\n\n');
+        }
+        this.logsDialogVisible = true;
+      },
+      error: () => {
+        this.logsError = 'Unable to fetch deployment logs.';
+      }
+    });
+    this.cdr.markForCheck();
+  }
+
+  private prepareLogsDialog(title: string): void {
+    this.logsTitle = title;
+    this.logsDialogVisible = true;
+    this.logsContent = '';
+    this.logsError = null;
   }
 }
