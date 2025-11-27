@@ -24,6 +24,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
   @ViewChild('diagram') diagramComponent!: DiagramComponent;
   subscription: Subscription = new Subscription();
   clusterId!: string;
+  private exportActionsEnabled = false;
 
   constructor(
     private toolbarService: ToolbarService,
@@ -67,6 +68,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
 
 
   handleButtonsCreation(cluster: Cluster) {
+    this.exportActionsEnabled = cluster.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT;
     if (cluster.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT) {
       this.createButtons("update-template");
     } else if (cluster.status === ClusterStatusEnum.DEPLOYED) {
@@ -92,6 +94,10 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
               this.diagramComponent?.openClusterYamlDialog('import');
               return of(null);
             case 'export-cluster-yaml':
+              if (!this.exportActionsEnabled) {
+                this.notificationService.warn('Template required', 'Generate the template before exporting YAML.');
+                return of(null);
+              }
               this.diagramComponent?.openClusterYamlDialog('export');
               return of(null);
             case 'open-ai-chat':
@@ -185,7 +191,7 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
         styleClass: 'p-button-secondary',
         menuItems: [
           { label: 'Import YAML', action: 'import-cluster-yaml', icon: 'pi pi-upload' },
-          { label: 'Export YAML', action: 'export-cluster-yaml', icon: 'pi pi-download' }
+          ...(this.exportActionsEnabled ? [{ label: 'Export YAML', action: 'export-cluster-yaml', icon: 'pi pi-download' }] : [])
         ]
       }
     ];

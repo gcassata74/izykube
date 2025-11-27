@@ -12,6 +12,7 @@ import { AiAssistantService, AiChatMessage, AiImportYamlResponse, AiExportYamlRe
 import { NotificationService } from '../services/notification.service';
 import { Link } from '../model/link.class';
 import { ContainerRole, toContainerRole } from '../model/container.class';
+import { ClusterStatusEnum } from '../cluster/enum/cluster.-status-enum';
 
 interface DiagramNode {
   id: string;
@@ -314,6 +315,11 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   openClusterYamlDialog(mode: 'import' | 'export'): void {
+    if (mode === 'export' && !this.isExportAllowed()) {
+      this.notificationService.warn('Template required', 'Generate the template before exporting YAML.');
+      this.clusterYamlDialogVisible = false;
+      return;
+    }
     this.clusterYamlMode = mode;
     this.clusterYamlError = null;
     this.clusterYamlText = '';
@@ -330,6 +336,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.clusterYamlFileName = '';
       this.helmChartBlob = null;
     }
+  }
+
+  private isExportAllowed(): boolean {
+    return this.currentClusterSnapshot?.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT;
   }
 
   private fetchClusterExport(): void {
@@ -925,27 +935,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
     if (!fromNode || !toNode) return;
 
-    // Use specific connection points if available, otherwise use node centers
-    let fromPoint: { x: number, y: number };
-    let toPoint: { x: number, y: number };
-
-    if (link.fromPoint) {
-      // Update the connection point coordinates based on current node position
-      const updatedFromPoints = this.getConnectionPoints(fromNode);
-      const matchingFromPoint = updatedFromPoints.find(p => p.side === link.fromPoint!.side);
-      fromPoint = matchingFromPoint || this.getNodeCenter(fromNode);
-    } else {
-      fromPoint = this.getNodeCenter(fromNode);
-    }
-
-    if (link.toPoint) {
-      // Update the connection point coordinates based on current node position
-      const updatedToPoints = this.getConnectionPoints(toNode);
-      const matchingToPoint = updatedToPoints.find(p => p.side === link.toPoint!.side);
-      toPoint = matchingToPoint || this.getNodeCenter(toNode);
-    } else {
-      toPoint = this.getNodeCenter(toNode);
-    }
+    const { fromPoint, toPoint } = this.resolveDynamicAnchors(link, fromNode, toNode);
 
     this.ensureArrowMarker();
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -1002,26 +992,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       const toNode = this.nodes.find(n => n.id === link.to);
 
       if (fromNode && toNode && link.element) {
-        // Use specific connection points if available, otherwise use node centers
-        let fromPoint: { x: number, y: number };
-        let toPoint: { x: number, y: number };
-
-        if (link.fromPoint) {
-          const updatedFromPoints = this.getConnectionPoints(fromNode);
-          const matchingFromPoint = updatedFromPoints.find(p => p.side === link.fromPoint!.side);
-          fromPoint = matchingFromPoint || this.getNodeCenter(fromNode);
-        } else {
-          fromPoint = this.getNodeCenter(fromNode);
-        }
-
-        if (link.toPoint) {
-          const updatedToPoints = this.getConnectionPoints(toNode);
-          const matchingToPoint = updatedToPoints.find(p => p.side === link.toPoint!.side);
-          toPoint = matchingToPoint || this.getNodeCenter(toNode);
-        } else {
-          toPoint = this.getNodeCenter(toNode);
-        }
-        
+        const { fromPoint, toPoint } = this.resolveDynamicAnchors(link, fromNode, toNode);
         link.element.setAttribute('x1', fromPoint.x.toString());
         link.element.setAttribute('y1', fromPoint.y.toString());
         link.element.setAttribute('x2', toPoint.x.toString());
@@ -1716,6 +1687,33 @@ export class DiagramComponent implements OnInit, OnDestroy {
       });
     });
 
+    return closest;
+  }
+
+  private resolveDynamicAnchors(
+    link: DiagramLink,
+    fromNode: DiagramNode,
+    toNode: DiagramNode
+  ): { fromPoint: ConnectionPoint; toPoint: ConnectionPoint } {
+    const fromPoint = this.getNearestConnectionPointTowardsTarget(fromNode, toNode);
+    const toPoint = this.getNearestConnectionPointTowardsTarget(toNode, fromNode);
+    link.fromPoint = fromPoint;
+    link.toPoint = toPoint;
+    return { fromPoint, toPoint };
+  }
+
+  private getNearestConnectionPointTowardsTarget(node: DiagramNode, targetNode: DiagramNode): ConnectionPoint {
+    const targetCenter = this.getNodeCenter(targetNode);
+    const points = this.getConnectionPoints(node);
+    let closest = points[0];
+    let minDistance = Number.POSITIVE_INFINITY;
+    points.forEach(point => {
+      const distance = Math.hypot(point.x - targetCenter.x, point.y - targetCenter.y);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closest = point;
+      }
+    });
     return closest;
   }
 
