@@ -16,6 +16,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Stream;
 import java.util.stream.Collectors;
 
 @Processor(DeploymentDTO.class)
@@ -101,11 +104,23 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
     }
 
     private List<EnvFromSource> createEnvFromSources(DeploymentDTO dto) {
-        return dto.getTargetNodes().stream()
-                .filter(node -> node instanceof ConfigMapDTO)
-                .map(node -> (ConfigMapDTO) node)
-                .map(ConfigMapUtils::createEnvFromSource)
-                .collect(Collectors.toList());
+        Stream<NodeDTO> linkedNodes = Stream.concat(
+                safeStream(dto.getTargetNodes()),
+                safeStream(dto.getSourceNodes())
+        );
+
+        return linkedNodes
+                .map(this::toEnvFromCandidate)
+                .flatMap(Optional::stream)
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toMap(
+                                EnvFromCandidate::key,
+                                EnvFromCandidate::source,
+                                (existing, ignored) -> existing,
+                                java.util.LinkedHashMap::new
+                        ),
+                        map -> new ArrayList<>(map.values())
+                ));
     }
 
     private List<Container> createContainers(DeploymentDTO dto) {
@@ -147,4 +162,51 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
     private String stripHttpPrefix(String url) {
         return url.replaceAll("^(http://|https://)", "");
     }
+
+    private Stream<NodeDTO> safeStream(List<NodeDTO> nodes) {
+        return nodes == null ? Stream.empty() : nodes.stream().filter(Objects::nonNull);
+    }
+
+    private Optional<EnvFromCandidate> toEnvFromCandidate(NodeDTO node) {
+        if (node == null) {
+            return Optional.empty();
+        }
+
+        if (node instanceof ConfigMapDTO configMap) {
+            String name = normalizeName(configMap.getName());
+            if (name.isEmpty()) {
+                return Optional.empty();
+            }
+            boolean secret = configMap.isSecret() || "secret".equalsIgnoreCase(configMap.getKind());
+            EnvFromSource source = ConfigMapUtils.createEnvFromSource(name, secret);
+            return Optional.of(new EnvFromCandidate(buildEnvFromKey(secret, name), source));
+        }
+
+        String kind = normalizeKind(node.getKind());
+        if (!"configmap".equals(kind) && !"secret".equals(kind)) {
+            return Optional.empty();
+        }
+
+        String name = normalizeName(node.getName());
+        if (name.isEmpty()) {
+            return Optional.empty();
+        }
+        boolean secret = "secret".equals(kind);
+        EnvFromSource source = ConfigMapUtils.createEnvFromSource(name, secret);
+        return Optional.of(new EnvFromCandidate(buildEnvFromKey(secret, name), source));
+    }
+
+    private String normalizeName(String name) {
+        return name == null ? "" : name.trim();
+    }
+
+    private String normalizeKind(String kind) {
+        return kind == null ? "" : kind.trim().toLowerCase();
+    }
+
+    private String buildEnvFromKey(boolean secret, String name) {
+        return (secret ? "secret:" : "configmap:") + name;
+    }
+
+    private record EnvFromCandidate(String key, EnvFromSource source) { }
 }

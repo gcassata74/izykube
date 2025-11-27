@@ -16,7 +16,12 @@
       appDragDrop
       [isDraggable]="true"
       [dragData]="item">
-      <img [src]="item.icon" [alt]="item.name" style="width: 40px; height: 40px;">
+      <ng-container *ngIf="isPrimeIcon(item.icon); else paletteImage">
+        <i [ngClass]="getPrimeIconClasses(item.icon)" class="diagram-node__prime-icon" [attr.aria-label]="item.name"></i>
+      </ng-container>
+      <ng-template #paletteImage>
+        <img [src]="item.icon" [alt]="item.name" style="width: 40px; height: 40px;">
+      </ng-template>
       <div class="palette-label">{{ item.name }}</div>
     </div>
 
@@ -73,7 +78,12 @@
         </span>
       </ng-container>
 
-      <img [src]="node.icon" [alt]="node.name" style="width: 40px; height: 40px;">
+      <ng-container *ngIf="isPrimeIcon(node.icon); else imageIcon">
+        <i [ngClass]="getPrimeIconClasses(node.icon)" class="diagram-node__prime-icon" [attr.aria-label]="node.name"></i>
+      </ng-container>
+      <ng-template #imageIcon>
+        <img [src]="node.icon" [alt]="node.name" style="width: 40px; height: 40px;">
+      </ng-template>
       <div
         style="font-size: 10px; text-align: center; margin-top: 2px;"
         contenteditable="true"

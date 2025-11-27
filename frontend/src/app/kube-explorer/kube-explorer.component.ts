@@ -6,7 +6,8 @@ import { KubeExplorerService } from '../services/kube-explorer.service';
 import { NotificationService } from '../services/notification.service';
 import { Table } from 'primeng/table';
 
-type ResourceKind = 'pods' | 'deployments' | 'services';
+type ResourceCollections = Pick<NamespaceSummary, 'pods' | 'deployments' | 'services' | 'ingresses' | 'configMaps' | 'secrets' | 'jobs' | 'cronJobs' | 'daemonSets' | 'statefulSets'>;
+type ResourceKind = keyof ResourceCollections;
 
 interface ResourceMenuItem {
   kind: ResourceKind;
@@ -30,17 +31,28 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   loading = false;
   autoRefreshEnabled = false;
   readonly refreshIntervalMs = 15000;
-  readonly resourceOrder: ResourceKind[] = ['pods', 'deployments', 'services'];
+  readonly resourceMetadata: Record<ResourceKind, { label: string; icon: string; description: string }> = {
+    pods: { label: 'Pods', icon: 'pi pi-box', description: 'Workload containers' },
+    deployments: { label: 'Deployments', icon: 'pi pi-sitemap', description: 'Replica management' },
+    services: { label: 'Services', icon: 'pi pi-share-alt', description: 'Network endpoints' },
+    ingresses: { label: 'Ingresses', icon: 'pi pi-globe', description: 'Ingress routes' },
+    configMaps: { label: 'ConfigMaps', icon: 'pi pi-clone', description: 'Configuration data' },
+    secrets: { label: 'Secrets', icon: 'pi pi-lock', description: 'Sensitive data' },
+    jobs: { label: 'Jobs', icon: 'pi pi-refresh', description: 'One-off workloads' },
+    cronJobs: { label: 'CronJobs', icon: 'pi pi-calendar', description: 'Scheduled jobs' },
+    daemonSets: { label: 'DaemonSets', icon: 'pi pi-server', description: 'Node daemons' },
+    statefulSets: { label: 'StatefulSets', icon: 'pi pi-database', description: 'Stateful workloads' }
+  };
+  readonly resourceOrder: ResourceKind[] = Object.keys(this.resourceMetadata) as ResourceKind[];
 
   resourceMenu: ResourceMenuItem[] = [];
   activeView: ResourceKind = 'pods';
   selectedRow: any = null;
   private selectedRowKeys: Partial<Record<ResourceKind, string>> = {};
-  private globalFilters: Record<ResourceKind, string> = {
-    pods: '',
-    deployments: '',
-    services: ''
-  };
+  private globalFilters: Record<ResourceKind, string> = this.resourceOrder.reduce((acc, kind) => {
+    acc[kind] = '';
+    return acc;
+  }, {} as Record<ResourceKind, string>);
 
   private autoRefreshSubscription: Subscription | null = null;
   private readonly autoRefreshStorageKey = 'kubeExplorer.autoRefresh';
@@ -55,6 +67,13 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   @ViewChild('podsTable') podsTable?: Table;
   @ViewChild('deploymentsTable') deploymentsTable?: Table;
   @ViewChild('servicesTable') servicesTable?: Table;
+  @ViewChild('ingressesTable') ingressesTable?: Table;
+  @ViewChild('configMapsTable') configMapsTable?: Table;
+  @ViewChild('secretsTable') secretsTable?: Table;
+  @ViewChild('jobsTable') jobsTable?: Table;
+  @ViewChild('cronJobsTable') cronJobsTable?: Table;
+  @ViewChild('daemonSetsTable') daemonSetsTable?: Table;
+  @ViewChild('statefulSetsTable') statefulSetsTable?: Table;
 
   podStatusClass = (pod: any): string => {
     const status = (pod?.status || '').toLowerCase();
@@ -213,9 +232,16 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   }
 
   toggleAutoRefresh(): void {
-    this.autoRefreshEnabled = !this.autoRefreshEnabled;
-    this.persistAutoRefreshPreference(this.autoRefreshEnabled);
-    if (this.autoRefreshEnabled) {
+    this.setAutoRefresh(!this.autoRefreshEnabled);
+  }
+
+  setAutoRefresh(enabled: boolean): void {
+    if (this.autoRefreshEnabled === enabled) {
+      return;
+    }
+    this.autoRefreshEnabled = enabled;
+    this.persistAutoRefreshPreference(enabled);
+    if (enabled) {
       this.startAutoRefresh();
     } else {
       this.teardownAutoRefresh();
@@ -232,6 +258,20 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
       return [];
     }
     switch (this.activeView) {
+      case 'ingresses':
+        return this.summary.ingresses || [];
+      case 'configMaps':
+        return this.summary.configMaps || [];
+      case 'secrets':
+        return this.summary.secrets || [];
+      case 'jobs':
+        return this.summary.jobs || [];
+      case 'cronJobs':
+        return this.summary.cronJobs || [];
+      case 'daemonSets':
+        return this.summary.daemonSets || [];
+      case 'statefulSets':
+        return this.summary.statefulSets || [];
       case 'deployments':
         return this.summary.deployments || [];
       case 'services':
@@ -251,12 +291,88 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     return this.globalFilters[this.activeView];
   }
 
+  onQuickLogClick(event: MouseEvent, kind: 'pod' | 'deployment', row: any): void {
+    event.stopPropagation();
+    if (!row) {
+      return;
+    }
+    if (kind === 'pod') {
+      this.fetchPodLogs(row.namespace, row.name);
+    } else {
+      this.fetchDeploymentLogs(row.namespace, row.name);
+    }
+  }
+
   getSelectedRowEntries(): { label: string; value: string }[] {
     if (!this.selectedRow) {
       return [];
     }
 
     switch (this.activeView) {
+      case 'ingresses':
+        return [
+          { label: 'Name', value: this.selectedRow.name },
+          { label: 'Namespace', value: this.selectedRow.namespace },
+          { label: 'Hosts', value: this.selectedRow.hosts || '-' },
+          { label: 'Services', value: this.selectedRow.serviceTargets || '-' },
+          { label: 'TLS', value: this.selectedRow.tls || '-' },
+          { label: 'Age', value: this.selectedRow.age }
+        ];
+      case 'configMaps':
+        return [
+          { label: 'Name', value: this.selectedRow.name },
+          { label: 'Namespace', value: this.selectedRow.namespace },
+          { label: 'Entries', value: String(this.selectedRow.dataEntries ?? 0) },
+          { label: 'Age', value: this.selectedRow.age }
+        ];
+      case 'secrets':
+        return [
+          { label: 'Name', value: this.selectedRow.name },
+          { label: 'Namespace', value: this.selectedRow.namespace },
+          { label: 'Type', value: this.selectedRow.type },
+          { label: 'Entries', value: String(this.selectedRow.dataEntries ?? 0) },
+          { label: 'Age', value: this.selectedRow.age }
+        ];
+      case 'jobs':
+        return [
+          { label: 'Name', value: this.selectedRow.name },
+          { label: 'Namespace', value: this.selectedRow.namespace },
+          { label: 'Completions', value: this.selectedRow.completions ?? '-' },
+          { label: 'Succeeded', value: this.selectedRow.succeeded ?? '-' },
+          { label: 'Failed', value: this.selectedRow.failed ?? '-' },
+          { label: 'Active', value: this.selectedRow.active ?? '-' },
+          { label: 'Age', value: this.selectedRow.age }
+        ].map(entry => ({ label: entry.label, value: String(entry.value ?? '-') }));
+      case 'cronJobs':
+        return [
+          { label: 'Name', value: this.selectedRow.name },
+          { label: 'Namespace', value: this.selectedRow.namespace },
+          { label: 'Schedule', value: this.selectedRow.schedule },
+          { label: 'Suspended', value: this.selectedRow.suspended ? 'Yes' : 'No' },
+          { label: 'Last Schedule', value: this.selectedRow.lastScheduleTime || '-' },
+          { label: 'Active Jobs', value: String(this.selectedRow.activeJobs ?? 0) },
+          { label: 'Age', value: this.selectedRow.age }
+        ];
+      case 'daemonSets':
+        return [
+          { label: 'Name', value: this.selectedRow.name },
+          { label: 'Namespace', value: this.selectedRow.namespace },
+          { label: 'Desired', value: this.selectedRow.desired ?? '-' },
+          { label: 'Current', value: this.selectedRow.current ?? '-' },
+          { label: 'Ready', value: this.selectedRow.ready ?? '-' },
+          { label: 'Available', value: this.selectedRow.available ?? '-' },
+          { label: 'Updated', value: this.selectedRow.updated ?? '-' },
+          { label: 'Age', value: this.selectedRow.age }
+        ].map(entry => ({ label: entry.label, value: String(entry.value ?? '-') }));
+      case 'statefulSets':
+        return [
+          { label: 'Name', value: this.selectedRow.name },
+          { label: 'Namespace', value: this.selectedRow.namespace },
+          { label: 'Ready', value: this.selectedRow.readyReplicas ?? '-' },
+          { label: 'Replicas', value: this.selectedRow.replicas ?? '-' },
+          { label: 'Updated', value: this.selectedRow.updatedReplicas ?? '-' },
+          { label: 'Age', value: this.selectedRow.age }
+        ].map(entry => ({ label: entry.label, value: String(entry.value ?? '-') }));
       case 'deployments':
         return [
           { label: 'Name', value: this.selectedRow.name },
@@ -339,33 +455,18 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   }
 
   private updateResourceMenu(): void {
-    const podsCount = this.summary?.pods?.length ?? 0;
-    const deploymentsCount = this.summary?.deployments?.length ?? 0;
-    const servicesCount = this.summary?.services?.length ?? 0;
-
-    this.resourceMenu = [
-      {
-        kind: 'pods',
-        label: 'Pods',
-        icon: 'pi pi-box',
-        count: podsCount,
-        description: 'Workload containers'
-      },
-      {
-        kind: 'deployments',
-        label: 'Deployments',
-        icon: 'pi pi-sitemap',
-        count: deploymentsCount,
-        description: 'Replica management'
-      },
-      {
-        kind: 'services',
-        label: 'Services',
-        icon: 'pi pi-share-alt',
-        count: servicesCount,
-        description: 'Network endpoints'
-      }
-    ];
+    this.resourceMenu = this.resourceOrder.map(kind => {
+      const metadata = this.resourceMetadata[kind];
+      const collection = (this.summary?.[kind] ?? []) as ResourceCollections[ResourceKind];
+      const count = collection.length;
+      return {
+        kind,
+        label: metadata.label,
+        icon: metadata.icon,
+        count,
+        description: metadata.description
+      };
+    });
   }
 
   private restoreSelectionForActiveView(): void {
@@ -399,6 +500,20 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
 
   private getActiveTable(): Table | undefined {
     switch (this.activeView) {
+      case 'ingresses':
+        return this.ingressesTable;
+      case 'configMaps':
+        return this.configMapsTable;
+      case 'secrets':
+        return this.secretsTable;
+      case 'jobs':
+        return this.jobsTable;
+      case 'cronJobs':
+        return this.cronJobsTable;
+      case 'daemonSets':
+        return this.daemonSetsTable;
+      case 'statefulSets':
+        return this.statefulSetsTable;
       case 'deployments':
         return this.deploymentsTable;
       case 'services':

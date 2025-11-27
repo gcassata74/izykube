@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -229,6 +230,7 @@ public class ClusterYamlService {
                 .filter(node -> node.getId() != null)
                 .collect(Collectors.toMap(NodeDTO::getId, node -> node, (a, b) -> a, LinkedHashMap::new));
         Map<String, List<NodeDTO>> targetsBySource = buildTargetsBySource(nodesById, cluster.getLinks());
+        Map<String, List<NodeDTO>> sourcesByTarget = buildSourcesByTarget(nodesById, cluster.getLinks());
         for (NodeDTO node : nodes) {
             if (node.getKind() == null) {
                 continue;
@@ -236,7 +238,7 @@ public class ClusterYamlService {
             switch (node.getKind().toLowerCase(Locale.ROOT)) {
                 case "configmap" -> updateConfigMapManifest((ConfigMapDTO) node, manifestsByName);
                 case "secret" -> updateSecretManifest((SecretDTO) node, manifestsByName);
-                case "deployment" -> updateDeploymentManifest((DeploymentDTO) node, manifestsByName);
+                case "deployment" -> updateDeploymentManifest((DeploymentDTO) node, manifestsByName, targetsBySource, sourcesByTarget);
                 case "service" -> updateServiceManifest((ServiceDTO) node, manifestsByName);
                 case "ingress" -> {
                     resolveIngressTargetsFromLinks((IngressDTO) node, targetsBySource);
@@ -858,7 +860,10 @@ public class ClusterYamlService {
         return dumped == null ? "" : dumped.trim();
     }
 
-    private void updateDeploymentManifest(DeploymentDTO node, Map<String, ManifestEntry> manifests) {
+    private void updateDeploymentManifest(DeploymentDTO node,
+                                          Map<String, ManifestEntry> manifests,
+                                          Map<String, List<NodeDTO>> targetsBySource,
+                                          Map<String, List<NodeDTO>> sourcesByTarget) {
         ManifestEntry entry = manifests.get(node.getId());
         if (entry == null) {
             entry = new ManifestEntry("deployment", node.getId(), createBaseDeploymentManifest(node));
@@ -880,9 +885,112 @@ public class ClusterYamlService {
         Map<String, Object> template = Optional.ofNullable(getMap(spec, "template")).orElseGet(LinkedHashMap::new);
         Map<String, Object> templateSpec = Optional.ofNullable(getMap(template, "spec")).orElseGet(LinkedHashMap::new);
         applyPrimaryContainerSpec(node, templateSpec);
+        applyLinkedConfigReferences(node, templateSpec, targetsBySource, sourcesByTarget);
         template.put("spec", templateSpec);
         spec.put("template", template);
         manifest.put("spec", spec);
+    }
+
+    private void applyLinkedConfigReferences(DeploymentDTO node,
+                                             Map<String, Object> templateSpec,
+                                             Map<String, List<NodeDTO>> targetsBySource,
+                                             Map<String, List<NodeDTO>> sourcesByTarget) {
+        List<ConfigMapDTO> linkedConfigs = collectLinkedConfigNodes(node, targetsBySource, sourcesByTarget);
+        if (linkedConfigs.isEmpty()) {
+            return;
+        }
+
+        List<Map<String, Object>> containers = this.<Map<String, Object>>getList(templateSpec, "containers");
+        if (containers == null || containers.isEmpty()) {
+            return;
+        }
+
+        for (Map<String, Object> container : containers) {
+            ensureEnvFromEntries(container, linkedConfigs);
+        }
+    }
+
+    private List<ConfigMapDTO> collectLinkedConfigNodes(DeploymentDTO node,
+                                                        Map<String, List<NodeDTO>> targetsBySource,
+                                                        Map<String, List<NodeDTO>> sourcesByTarget) {
+        if (node == null || node.getId() == null) {
+            return List.of();
+        }
+
+        Stream<NodeDTO> outgoing = Optional.ofNullable(targetsBySource.get(node.getId()))
+                .orElse(List.of())
+                .stream();
+        Stream<NodeDTO> incoming = Optional.ofNullable(sourcesByTarget.get(node.getId()))
+                .orElse(List.of())
+                .stream();
+
+        return Stream.concat(outgoing, incoming)
+                .filter(Objects::nonNull)
+                .filter(ConfigMapDTO.class::isInstance)
+                .map(ConfigMapDTO.class::cast)
+                .filter(cfg -> cfg.getName() != null && !cfg.getName().isBlank())
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toMap(ConfigMapDTO::getId, cfg -> cfg, (existing, ignored) -> existing, LinkedHashMap::new),
+                        map -> new ArrayList<>(map.values())
+                ));
+    }
+
+    private void ensureEnvFromEntries(Map<String, Object> container, List<ConfigMapDTO> linkedConfigs) {
+        if (container == null || linkedConfigs == null || linkedConfigs.isEmpty()) {
+            return;
+        }
+
+        List<Map<String, Object>> envFrom = this.<Map<String, Object>>getList(container, "envFrom");
+        if (envFrom == null) {
+            envFrom = new ArrayList<>();
+            container.put("envFrom", envFrom);
+        }
+
+        Set<String> existingKeys = envFrom.stream()
+                .map(this::resolveEnvFromKey)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        for (ConfigMapDTO config : linkedConfigs) {
+            String key = buildEnvFromKey(config);
+            if (existingKeys.contains(key)) {
+                continue;
+            }
+            envFrom.add(buildEnvFromEntry(config));
+            existingKeys.add(key);
+        }
+    }
+
+    private String resolveEnvFromKey(Map<String, Object> envFromEntry) {
+        if (envFromEntry == null) {
+            return null;
+        }
+
+        Map<String, Object> configMapRef = getMap(envFromEntry, "configMapRef");
+        if (configMapRef != null) {
+            String name = getString(configMapRef, "name", null);
+            return name == null ? null : "configmap:" + name;
+        }
+
+        Map<String, Object> secretRef = getMap(envFromEntry, "secretRef");
+        if (secretRef != null) {
+            String name = getString(secretRef, "name", null);
+            return name == null ? null : "secret:" + name;
+        }
+
+        return null;
+    }
+
+    private String buildEnvFromKey(ConfigMapDTO config) {
+        return (config.isSecret() ? "secret:" : "configmap:") + config.getName();
+    }
+
+    private Map<String, Object> buildEnvFromEntry(ConfigMapDTO config) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        Map<String, Object> ref = new LinkedHashMap<>();
+        ref.put("name", config.getName());
+        entry.put(config.isSecret() ? "secretRef" : "configMapRef", ref);
+        return entry;
     }
 
     private void updateServiceManifest(ServiceDTO node, Map<String, ManifestEntry> manifests) {
@@ -1469,6 +1577,21 @@ public class ClusterYamlService {
             targetsBySource.computeIfAbsent(link.getSource(), key -> new ArrayList<>()).add(target);
         }
         return targetsBySource;
+    }
+
+    private Map<String, List<NodeDTO>> buildSourcesByTarget(Map<String, NodeDTO> nodesById, List<LinkDTO> links) {
+        Map<String, List<NodeDTO>> sourcesByTarget = new HashMap<>();
+        if (links == null || links.isEmpty() || nodesById.isEmpty()) {
+            return sourcesByTarget;
+        }
+        for (LinkDTO link : links) {
+            NodeDTO source = nodesById.get(link.getSource());
+            if (source == null) {
+                continue;
+            }
+            sourcesByTarget.computeIfAbsent(link.getTarget(), key -> new ArrayList<>()).add(source);
+        }
+        return sourcesByTarget;
     }
 
     private void resolveIngressTargetsFromLinks(IngressDTO ingress, Map<String, List<NodeDTO>> targetsBySource) {

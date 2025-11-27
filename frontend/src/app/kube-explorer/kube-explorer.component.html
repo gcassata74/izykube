@@ -15,36 +15,18 @@
     </div>
 
         <div class="status-item status-item--actions">
-      <span class="status-item__badge" [class.status-item__badge--active]="autoRefreshEnabled">
-        <span class="status-indicator"></span>
-        {{ autoRefreshEnabled ? 'Auto refresh ON' : 'Auto refresh OFF' }}
-      </span>
-            <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded p-button-text"
-                    [disabled]="loading" (click)="manualRefresh()"
-                    pTooltip="Refresh now"></button>
-      <button
-        pButton
-        type="button"
-        size="small"
-        [label]="autoRefreshEnabled ? 'Pause' : 'Resume'"
-        [icon]="autoRefreshEnabled ? 'pi pi-pause' : 'pi pi-play'"
-        [class.p-button-success]="autoRefreshEnabled"
-        [class.p-button-secondary]="!autoRefreshEnabled"
-        (click)="toggleAutoRefresh()"
-      ></button>
+      <div class="auto-refresh-toggle">
+        <span class="status-item__badge" [class.status-item__badge--active]="autoRefreshEnabled">
+          <span class="status-indicator"></span>
+          Auto refresh
+        </span>
+        <p-inputSwitch [ngModel]="autoRefreshEnabled" (ngModelChange)="setAutoRefresh($event)"></p-inputSwitch>
+      </div>
+      <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded p-button-text"
+              [disabled]="loading" (click)="manualRefresh()"
+              pTooltip="Refresh now"></button>
     </div>
     </header>
-
-    <section class="kube-explorer__summary" *ngIf="resourceMenu.length">
-        <article class="summary-card" *ngFor="let item of resourceMenu" [class.is-active]="item.kind === activeView">
-            <div class="summary-card__header">
-                <i [ngClass]="item.icon"></i>
-                <span>{{ item.label }}</span>
-            </div>
-            <div class="summary-card__value">{{ item.count }}</div>
-            <div class="summary-card__description">{{ item.description }}</div>
-        </article>
-    </section>
 
     <main class="kube-explorer__layout">
         <aside class="resource-menu" aria-label="Resource switcher">
@@ -116,6 +98,7 @@
                             <th>Restarts</th>
                             <th>Node</th>
                             <th>Age</th>
+                            <th class="text-center">Logs</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-pod>
@@ -133,6 +116,10 @@
                             <td>{{ pod.restarts }}</td>
                             <td>{{ pod.node || '-' }}</td>
                             <td>{{ pod.age }}</td>
+                            <td class="text-center">
+                                <button pButton type="button" icon="pi pi-bars" class="p-button-text"
+                                        (click)="onQuickLogClick($event, 'pod', pod)"></button>
+                            </td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -161,6 +148,7 @@
                             <th>Updated</th>
                             <th>Available</th>
                             <th>Age</th>
+                            <th class="text-center">Logs</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-deployment>
@@ -172,6 +160,10 @@
                             <td>{{ deployment.updatedReplicas }}</td>
                             <td>{{ deployment.availableReplicas }}</td>
                             <td>{{ deployment.age }}</td>
+                            <td class="text-center">
+                                <button pButton type="button" icon="pi pi-bars" class="p-button-text"
+                                        (click)="onQuickLogClick($event, 'deployment', deployment)"></button>
+                            </td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -213,6 +205,225 @@
                             <td>{{ service.externalIp || '-' }}</td>
                             <td>{{ service.ports || '-' }}</td>
                             <td>{{ service.age }}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+
+                <p-table *ngSwitchCase="'ingresses'"
+                         #ingressesTable
+                         [value]="summary?.ingresses || []"
+                         dataKey="name"
+                         [paginator]="true"
+                         [rows]="10"
+                         selectionMode="single"
+                         [(selection)]="selectedRow"
+                         (onRowSelect)="onRowSelect($event.data)">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th>Name</th>
+                            <th>Namespace</th>
+                            <th>Hosts</th>
+                            <th>Services</th>
+                            <th>TLS</th>
+                            <th>Age</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-ingress>
+                        <tr>
+                            <td>{{ ingress.name }}</td>
+                            <td>{{ ingress.namespace }}</td>
+                            <td>{{ ingress.hosts || '-' }}</td>
+                            <td>{{ ingress.serviceTargets || '-' }}</td>
+                            <td>{{ ingress.tls || '-' }}</td>
+                            <td>{{ ingress.age }}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+
+                <p-table *ngSwitchCase="'configMaps'"
+                         #configMapsTable
+                         [value]="summary?.configMaps || []"
+                         dataKey="name"
+                         [paginator]="true"
+                         [rows]="10"
+                         selectionMode="single"
+                         [(selection)]="selectedRow"
+                         (onRowSelect)="onRowSelect($event.data)">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th>Name</th>
+                            <th>Namespace</th>
+                            <th>Entries</th>
+                            <th>Age</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-configMap>
+                        <tr>
+                            <td>{{ configMap.name }}</td>
+                            <td>{{ configMap.namespace }}</td>
+                            <td>{{ configMap.dataEntries }}</td>
+                            <td>{{ configMap.age }}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+
+                <p-table *ngSwitchCase="'secrets'"
+                         #secretsTable
+                         [value]="summary?.secrets || []"
+                         dataKey="name"
+                         [paginator]="true"
+                         [rows]="10"
+                         selectionMode="single"
+                         [(selection)]="selectedRow"
+                         (onRowSelect)="onRowSelect($event.data)">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th>Name</th>
+                            <th>Namespace</th>
+                            <th>Type</th>
+                            <th>Entries</th>
+                            <th>Age</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-secret>
+                        <tr>
+                            <td>{{ secret.name }}</td>
+                            <td>{{ secret.namespace }}</td>
+                            <td>{{ secret.type }}</td>
+                            <td>{{ secret.dataEntries }}</td>
+                            <td>{{ secret.age }}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+
+                <p-table *ngSwitchCase="'jobs'"
+                         #jobsTable
+                         [value]="summary?.jobs || []"
+                         dataKey="name"
+                         [paginator]="true"
+                         [rows]="10"
+                         selectionMode="single"
+                         [(selection)]="selectedRow"
+                         (onRowSelect)="onRowSelect($event.data)">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th>Name</th>
+                            <th>Namespace</th>
+                            <th>Completions</th>
+                            <th>Succeeded</th>
+                            <th>Failed</th>
+                            <th>Active</th>
+                            <th>Age</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-job>
+                        <tr>
+                            <td>{{ job.name }}</td>
+                            <td>{{ job.namespace }}</td>
+                            <td>{{ job.completions ?? '-' }}</td>
+                            <td>{{ job.succeeded ?? '-' }}</td>
+                            <td>{{ job.failed ?? '-' }}</td>
+                            <td>{{ job.active ?? '-' }}</td>
+                            <td>{{ job.age }}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+
+                <p-table *ngSwitchCase="'cronJobs'"
+                         #cronJobsTable
+                         [value]="summary?.cronJobs || []"
+                         dataKey="name"
+                         [paginator]="true"
+                         [rows]="10"
+                         selectionMode="single"
+                         [(selection)]="selectedRow"
+                         (onRowSelect)="onRowSelect($event.data)">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th>Name</th>
+                            <th>Namespace</th>
+                            <th>Schedule</th>
+                            <th>Suspended</th>
+                            <th>Last Schedule</th>
+                            <th>Active Jobs</th>
+                            <th>Age</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-cron>
+                        <tr>
+                            <td>{{ cron.name }}</td>
+                            <td>{{ cron.namespace }}</td>
+                            <td>{{ cron.schedule }}</td>
+                            <td>{{ cron.suspended ? 'Yes' : 'No' }}</td>
+                            <td>{{ cron.lastScheduleTime }}</td>
+                            <td>{{ cron.activeJobs }}</td>
+                            <td>{{ cron.age }}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+
+                <p-table *ngSwitchCase="'daemonSets'"
+                         #daemonSetsTable
+                         [value]="summary?.daemonSets || []"
+                         dataKey="name"
+                         [paginator]="true"
+                         [rows]="10"
+                         selectionMode="single"
+                         [(selection)]="selectedRow"
+                         (onRowSelect)="onRowSelect($event.data)">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th>Name</th>
+                            <th>Namespace</th>
+                            <th>Desired</th>
+                            <th>Current</th>
+                            <th>Ready</th>
+                            <th>Available</th>
+                            <th>Updated</th>
+                            <th>Age</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-daemon>
+                        <tr>
+                            <td>{{ daemon.name }}</td>
+                            <td>{{ daemon.namespace }}</td>
+                            <td>{{ daemon.desired ?? '-' }}</td>
+                            <td>{{ daemon.current ?? '-' }}</td>
+                            <td>{{ daemon.ready ?? '-' }}</td>
+                            <td>{{ daemon.available ?? '-' }}</td>
+                            <td>{{ daemon.updated ?? '-' }}</td>
+                            <td>{{ daemon.age }}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+
+                <p-table *ngSwitchCase="'statefulSets'"
+                         #statefulSetsTable
+                         [value]="summary?.statefulSets || []"
+                         dataKey="name"
+                         [paginator]="true"
+                         [rows]="10"
+                         selectionMode="single"
+                         [(selection)]="selectedRow"
+                         (onRowSelect)="onRowSelect($event.data)">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th>Name</th>
+                            <th>Namespace</th>
+                            <th>Ready</th>
+                            <th>Replicas</th>
+                            <th>Updated</th>
+                            <th>Age</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-stateful>
+                        <tr>
+                            <td>{{ stateful.name }}</td>
+                            <td>{{ stateful.namespace }}</td>
+                            <td>{{ stateful.readyReplicas ?? '-' }}</td>
+                            <td>{{ stateful.replicas ?? '-' }}</td>
+                            <td>{{ stateful.updatedReplicas ?? '-' }}</td>
+                            <td>{{ stateful.age }}</td>
                         </tr>
                     </ng-template>
                 </p-table>

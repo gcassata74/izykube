@@ -41,6 +41,7 @@ import { ClusterService } from './services/cluster.service';
 import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.component';
 import { MessageService } from 'primeng/api';
 import { CardModule } from 'primeng/card';
+import { InputSwitchModule } from 'primeng/inputswitch';
 import { ServiceFormComponent } from './cluster/service-form/service-form.component';
 import { IngressFormComponent } from './cluster/ingress-form/ingress-form.component';
 import { TabViewModule } from 'primeng/tabview';
@@ -101,6 +102,7 @@ import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
     CardModule,
     MenubarModule,
     ButtonModule,
+    InputSwitchModule,
     TableModule,
     MenuModule,
     MessageModule,

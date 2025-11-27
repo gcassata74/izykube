@@ -95,7 +95,10 @@ describe('DiagramComponent', () => {
       { side: 'top', x: 0, y: 0 }
     );
 
-    expect(notificationService.warn).toHaveBeenCalledWith('Invalid connection', 'Containers can only be linked to Deployments.');
+    expect(notificationService.warn).toHaveBeenCalledWith(
+      'Invalid connection',
+      'Containers can only be linked to Deployments, ConfigMaps or Secrets.'
+    );
     expect((component as any).links.length).toBe(0);
   });
 });

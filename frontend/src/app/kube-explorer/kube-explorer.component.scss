@@ -1,3 +1,81 @@
 :host {
   display: block;
 }
+
+.kube-explorer {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px);
+  min-height: 0;
+}
+
+.kube-explorer__layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1.5rem;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.resource-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-right: 0.5rem;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.resource-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.status-item--actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.auto-refresh-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.resource-panel__table {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.resource-panel__table ::ng-deep .p-datatable-wrapper {
+  overflow-x: hidden !important;
+}
+
+.resource-panel__table ::ng-deep table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.resource-panel__table ::ng-deep th,
+.resource-panel__table ::ng-deep td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.resource-panel__table ::ng-deep th:nth-child(1),
+.resource-panel__table ::ng-deep td:nth-child(1) {
+  max-width: 220px;
+}
+
+.resource-panel__table ::ng-deep th:last-child,
+.resource-panel__table ::ng-deep td:last-child {
+  max-width: 120px;
+  text-align: center;
+}

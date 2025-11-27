@@ -1,23 +1,25 @@
 <form [formGroup]="form" class="mb-3 mt-3 config-map-form">
   <div class="button-row">
-    <p-splitButton
-      label="Import"
-      icon="pi pi-upload"
-      class="action-split import-button"
-      [model]="importMenuItems"
-      buttonStyleClass="p-button-outlined"
-      menuButtonStyleClass="p-button-outlined"
-      (onClick)="triggerYamlImport()">
-    </p-splitButton>
-    <p-splitButton
-      label="Export"
-      icon="pi pi-download"
-      class="action-split export-button"
-      [model]="exportMenuItems"
-      buttonStyleClass="p-button"
-      menuButtonStyleClass="p-button"
-      (onClick)="exportYaml()">
-    </p-splitButton>
+    <div class="button-row__group">
+      <p-splitButton
+        label="Import"
+        icon="pi pi-upload"
+        class="action-split import-button"
+        [model]="importMenuItems"
+        buttonStyleClass="p-button-outlined"
+        menuButtonStyleClass="p-button-outlined"
+        (onClick)="triggerYamlImport()">
+      </p-splitButton>
+      <p-splitButton
+        label="Export"
+        icon="pi pi-download"
+        class="action-split export-button"
+        [model]="exportMenuItems"
+        buttonStyleClass="p-button"
+        menuButtonStyleClass="p-button"
+        (onClick)="exportYaml()">
+      </p-splitButton>
+    </div>
     <button
       pButton
       type="button"

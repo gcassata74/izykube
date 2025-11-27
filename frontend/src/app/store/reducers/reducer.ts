@@ -77,11 +77,12 @@ export const clusterReducer = createReducer(
   })),
 
 
-  on(actions.updateDiagram, (state, { diagramData }) => ({
+  on(actions.updateDiagram, (state, { diagramData, links }) => ({
     ...state,
     currentCluster: {
       ...state.currentCluster,
-      diagram: diagramData
+      diagram: diagramData,
+      links: links || []
     }
   })),
 

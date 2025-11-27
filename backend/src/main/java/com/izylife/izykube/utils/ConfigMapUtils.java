@@ -6,16 +6,33 @@ import io.fabric8.kubernetes.api.model.EnvFromSourceBuilder;
 
 public class ConfigMapUtils {
     public static EnvFromSource createEnvFromSource(ConfigMapDTO configMap) {
+        if (configMap == null) {
+            throw new IllegalArgumentException("ConfigMapDTO cannot be null");
+        }
+        String name = requireName(configMap.getName());
+        boolean secret = configMap.isSecret() || "secret".equalsIgnoreCase(configMap.getKind());
+        return createEnvFromSource(name, secret);
+    }
+
+    public static EnvFromSource createEnvFromSource(String name, boolean secret) {
+        String normalizedName = requireName(name);
         EnvFromSourceBuilder builder = new EnvFromSourceBuilder();
-        if (configMap.isSecret()) {
+        if (secret) {
             builder.withNewSecretRef()
-                    .withName(configMap.getName())
+                    .withName(normalizedName)
                     .endSecretRef();
         } else {
             builder.withNewConfigMapRef()
-                    .withName(configMap.getName())
+                    .withName(normalizedName)
                     .endConfigMapRef();
         }
         return builder.build();
+    }
+
+    private static String requireName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Config or secret name cannot be null or blank");
+        }
+        return name.trim();
     }
 }

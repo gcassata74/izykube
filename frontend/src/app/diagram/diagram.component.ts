@@ -128,6 +128,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     secret: 1
   };
   private readonly fallbackIconType = 'container';
+  private readonly connectionCaptureRadius = 28;
 
   constructor(
     private iconService: IconService,
@@ -1067,6 +1068,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent) {
+    if (this.isEditingFormField(event.target)) {
+      return;
+    }
+
     if (event.key === 'Delete' || event.key === 'Backspace') {
       if (this.selectedLink) {
         this.deleteSelectedLink();
@@ -1079,6 +1084,25 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.undo();
       event.preventDefault();
     }
+  }
+
+  private isEditingFormField(target: EventTarget | null): boolean {
+    if (!target) {
+      return false;
+    }
+
+    const element = target as HTMLElement;
+    if (!element) {
+      return false;
+    }
+
+    const tagName = element.tagName?.toLowerCase();
+    const editableTags = ['input', 'textarea', 'select'];
+    if (tagName && editableTags.includes(tagName)) {
+      return true;
+    }
+
+    return element.isContentEditable || !!element.closest('[contenteditable="true"]');
   }
 
   private deleteSelectedLink() {
@@ -1170,7 +1194,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
     }
 
     if (!this.isContainerLinkAllowed(fromNode, toNode)) {
-      this.notificationService.warn('Invalid connection', 'Containers can only be linked to Deployments.');
+      this.notificationService.warn(
+        'Invalid connection',
+        'Containers can only be linked to Deployments, ConfigMaps or Secrets.'
+      );
       return;
     }
 
@@ -1260,8 +1287,16 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   private isContainerLinkAllowed(nodeA: DiagramNode, nodeB: DiagramNode): boolean {
-    const typeA = nodeA.type?.toLowerCase();
-    const typeB = nodeB.type?.toLowerCase();
+    const typeA = nodeA.type?.toLowerCase() ?? '';
+    const typeB = nodeB.type?.toLowerCase() ?? '';
+
+    const configResources = ['configmap', 'secret'];
+    const involvesConfigResource = configResources.includes(typeA) || configResources.includes(typeB);
+
+    if (involvesConfigResource) {
+      const otherType = configResources.includes(typeA) ? typeB : typeA;
+      return ['deployment', 'container'].includes(otherType);
+    }
 
     if (typeA !== 'container' && typeB !== 'container') {
       return true;
@@ -1290,6 +1325,21 @@ export class DiagramComponent implements OnInit, OnDestroy {
     fromPoint?: ConnectionPoint;
     toPoint?: ConnectionPoint;
   } {
+    const startType = startNode.type?.toLowerCase();
+    const endType = endNode.type?.toLowerCase();
+    const configPreferredTypes = new Set(['configmap', 'secret']);
+
+    const startPreferred = startType ? configPreferredTypes.has(startType) : false;
+    const endPreferred = endType ? configPreferredTypes.has(endType) : false;
+
+    if (startPreferred && !endPreferred) {
+      return { fromNode: startNode, toNode: endNode, fromPoint: startPoint, toPoint: endPoint };
+    }
+
+    if (endPreferred && !startPreferred) {
+      return { fromNode: endNode, toNode: startNode, fromPoint: endPoint, toPoint: startPoint };
+    }
+
     const startPriority = this.getDependencyPriority(startNode.type);
     const endPriority = this.getDependencyPriority(endNode.type);
 
@@ -1307,6 +1357,14 @@ export class DiagramComponent implements OnInit, OnDestroy {
   private resolveIconPath(type?: string): string {
     const normalized = type?.toLowerCase() || this.fallbackIconType;
     return this.iconService.getIconPath(normalized) || this.iconService.getIconPath(this.fallbackIconType) || '';
+  }
+
+  isPrimeIcon(icon?: string): boolean {
+    return !!icon && icon.trim().startsWith('pi ');
+  }
+
+  getPrimeIconClasses(icon?: string): string {
+    return icon || '';
   }
 
   private resolveLinkEndpoint(link: any, endpoint: 'source' | 'target'): string | undefined {
@@ -1555,6 +1613,16 @@ export class DiagramComponent implements OnInit, OnDestroy {
               );
             }
           }
+        } else {
+          const nearest = this.findNearestDroppablePoint(upEvent.clientX, upEvent.clientY, this.connectionStartNode?.id);
+          if (nearest) {
+            this.createLinkWithPoints(
+              this.connectionStartNode!.id,
+              nearest.node.id,
+              this.connectionStartPoint!,
+              nearest.point
+            );
+          }
         }
         
         this.cancelConnection();
@@ -1581,7 +1649,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   private highlightNearbyConnectionPoints(clientX: number, clientY: number) {
-    const threshold = 20; // pixels
+    const threshold = this.connectionCaptureRadius;
     
     this.nodes.forEach(node => {
       if (node.id === this.connectionStartNode?.id) return; // Skip start node
@@ -1619,6 +1687,36 @@ export class DiagramComponent implements OnInit, OnDestroy {
     const sideIndex = sides.indexOf(point.side);
     
     return connectionPoints[sideIndex] as HTMLElement || null;
+  }
+
+  private findNearestDroppablePoint(
+    clientX: number,
+    clientY: number,
+    excludeNodeId?: string
+  ): { node: DiagramNode; point: ConnectionPoint } | null {
+    const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
+    let closest: { node: DiagramNode; point: ConnectionPoint } | null = null;
+    let bestDistance = this.connectionCaptureRadius;
+
+    this.nodes.forEach(node => {
+      if (node.id === excludeNodeId) {
+        return;
+      }
+
+      const connectionPoints = this.getConnectionPoints(node);
+      connectionPoints.forEach(point => {
+        const pointScreenX = canvasRect.left + point.x;
+        const pointScreenY = canvasRect.top + point.y;
+        const distance = Math.hypot(clientX - pointScreenX, clientY - pointScreenY);
+
+        if (distance <= bestDistance) {
+          bestDistance = distance;
+          closest = { node, point };
+        }
+      });
+    });
+
+    return closest;
   }
 
   private createTempLine(x1: number, y1: number, x2: number, y2: number) {
@@ -1748,6 +1846,16 @@ export class DiagramComponent implements OnInit, OnDestroy {
       return !!name && validNames.has(name);
     });
 
+    const serializedLinks = this.links.map(l => ({
+      id: l.id,
+      from: l.from,
+      to: l.to,
+      fromPoint: l.fromPoint,
+      toPoint: l.toPoint
+    }));
+
+    const clusterLinks = this.links.map(l => new Link(l.from, l.to));
+
     const diagramData = JSON.stringify({
       nodes: this.nodes.map(n => ({
         id: n.id,
@@ -1758,17 +1866,11 @@ export class DiagramComponent implements OnInit, OnDestroy {
         y: n.y,
         ...(n.type === 'container' && n.role ? { role: n.role } : {})
       })),
-      links: this.links.map(l => ({ 
-        id: l.id, 
-        from: l.from, 
-        to: l.to,
-        fromPoint: l.fromPoint,
-        toPoint: l.toPoint
-      })),
+      links: serializedLinks,
       rawManifests: this.rawManifests
     });
 
-    this.store.dispatch(actions.updateDiagram({ diagramData }));
+    this.store.dispatch(actions.updateDiagram({ diagramData, links: clusterLinks }));
   }
 
   ngOnDestroy(): void {

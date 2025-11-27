@@ -63,7 +63,7 @@ export const removeLink = createAction(
 
 export const updateDiagram = createAction(
   UPDATE_DIAGRAM,
-  props<{ diagramData: string }>()
+  props<{ diagramData: string, links: Link[] }>()
 );
 
 export const updateNode = createAction(
@@ -92,4 +92,3 @@ export const selectNode = createAction(
   SELECT_NODE,
   props<{ nodeId: string }>()
 );
-

@@ -8,16 +8,15 @@ export class IconService {
 
   // Define a configuration object with icon names and file paths
   private iconConfig = {
-    'ingress': 'assets/images/diagram/ingress.svg',
-    'service': 'assets/images/diagram/service.svg',
-    'configmap': 'assets/images/diagram/config-map.svg',
-    'secret': 'assets/images/diagram/secret.svg',
-    'container': 'assets/images/diagram/container.svg',
-    'deployment': 'assets/images/diagram/deployment.svg',
-    'volume': 'assets/images/diagram/volume.svg',
-    'job': 'assets/images/diagram/wrench.svg',
+    'ingress': 'pi pi-globe',
+    'service': 'pi pi-share-alt',
+    'configmap': 'pi pi-clone',
+    'secret': 'pi pi-lock',
+    'container': 'pi pi-box',
+    'deployment': 'pi pi-sitemap',
+    'volume': 'pi pi-database',
+    'job': 'pi pi-refresh',
     'istio': 'assets/images/diagram/istio.svg'
-    // Add more entries as needed
   };
 
   constructor() {
