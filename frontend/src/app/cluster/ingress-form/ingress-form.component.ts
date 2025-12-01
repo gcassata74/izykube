@@ -35,6 +35,9 @@ export class IngressFormComponent implements OnInit, OnChanges {
     if ((changes['sourceNodes'] || changes['cluster']) && this.ingressForm) {
       this.applyLinkedServiceDefaults();
     }
+    if (changes['selectedNode'] && !changes['selectedNode'].firstChange) {
+      this.refreshFormFromNode(changes['selectedNode'].currentValue as Ingress);
+    }
   }
 
   private initForm(): void {
@@ -70,6 +73,23 @@ export class IngressFormComponent implements OnInit, OnChanges {
       }))
     );
     this.autoSaveService.enableAutoSave(this.ingressForm, this.selectedNode.id, formValue$);
+  }
+
+  private refreshFormFromNode(ingress: Ingress): void {
+    if (!this.ingressForm) {
+      return;
+    }
+
+    this.ingressForm.patchValue({
+      name: ingress.name,
+      host: ingress.host,
+      path: ingress.path,
+      serviceName: ingress.serviceName || '',
+      servicePort: ingress.servicePort || 80,
+      tls: ingress.tls || ''
+    }, { emitEvent: false });
+
+    this.setAnnotationsFromRecord(ingress.annotations || {});
   }
 
   private applyLinkedServiceDefaults(): void {
@@ -159,6 +179,18 @@ export class IngressFormComponent implements OnInit, OnChanges {
       return;
     }
     entries.forEach(([key, value]) => this.addAnnotation({ key, value }));
+  }
+
+  private setAnnotationsFromRecord(annotations: Record<string, string>): void {
+    if (!this.ingressForm) {
+      return;
+    }
+
+    const annotationsArray = this.ingressForm.get('annotations') as FormArray;
+    while (annotationsArray.length) {
+      annotationsArray.removeAt(0);
+    }
+    this.initializeAnnotationsArray(annotations);
   }
 
   private mapAnnotationsToRecord(): Record<string, string> {

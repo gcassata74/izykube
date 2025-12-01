@@ -34,6 +34,9 @@ export class IstioFormComponent implements OnInit, OnChanges {
     if ((changes['sourceNodes'] || changes['cluster']) && this.form) {
       this.applyLinkedServiceDefaults();
     }
+    if (changes['selectedNode'] && !changes['selectedNode'].firstChange) {
+      this.refreshFormFromNode(changes['selectedNode'].currentValue as Istio);
+    }
   }
 
   private initForm(): void {
@@ -59,6 +62,20 @@ export class IstioFormComponent implements OnInit, OnChanges {
 
   private setupAutoSave(): void {
     this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.form.valueChanges);
+  }
+
+  private refreshFormFromNode(istio: Istio): void {
+    if (!this.form) {
+      return;
+    }
+
+    this.form.patchValue({
+      name: istio.name,
+      host: istio.host,
+      path: istio.path,
+      serviceName: istio.serviceName || '',
+      servicePort: istio.servicePort || 80
+    }, { emitEvent: false });
   }
 
   private applyLinkedServiceDefaults(): void {

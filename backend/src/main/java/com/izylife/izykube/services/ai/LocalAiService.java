@@ -73,7 +73,7 @@ public class LocalAiService {
             }
 
             OllamaGenerateResponse body = response.getBody();
-            String content = body.getResponse();
+            String content = sanitizeContent(body.getResponse(), request.getTask());
 
             if (content == null || content.isBlank()) {
                 throw new LocalAiServiceException("Local AI service returned no content");
@@ -135,7 +135,8 @@ public class LocalAiService {
                 throw new LocalAiServiceException("Local AI chat returned no content");
             }
 
-            return new AiResult(body.getMessage().getContent().trim(), body.getModel() != null ? body.getModel() : defaultModel);
+            String content = sanitizeContent(body.getMessage().getContent(), request.getTask());
+            return new AiResult(content, body.getModel() != null ? body.getModel() : defaultModel);
         } catch (RestClientException e) {
             log.error("Local AI chat request failed: {}", e.getMessage(), e);
             throw new LocalAiServiceException("Local AI chat failed: " + e.getMessage(), e);
@@ -204,6 +205,81 @@ public class LocalAiService {
         return switch (role.toLowerCase()) {
             case "assistant", "system", "user" -> role.toLowerCase();
             default -> "user";
+        };
+    }
+
+    private String sanitizeContent(String content, String task) {
+        if (content == null) {
+            return "";
+        }
+        String sanitized = content.trim();
+        if ("configmap_yaml".equalsIgnoreCase(task)) {
+            sanitized = stripCodeFences(sanitized);
+        }
+        return sanitized;
+    }
+
+    private String stripCodeFences(String content) {
+        String result = stripFence(content, "```");
+        result = stripFence(result, "'''");
+        result = stripFence(result, "\"\"\"");
+        return result.trim();
+    }
+
+    private String stripFence(String text, String fence) {
+        String result = text;
+        if (result.startsWith(fence)) {
+            result = stripLeadingLanguageMarker(result.substring(fence.length()));
+        }
+        if (result.endsWith(fence)) {
+            result = result.substring(0, result.length() - fence.length());
+        }
+        return result.trim();
+    }
+
+    private String stripLeadingLanguageMarker(String text) {
+        String withoutLeadingBreaks = stripLeadingLineBreaks(text);
+        int lineBreakIndex = findLineBreak(withoutLeadingBreaks);
+        if (lineBreakIndex == -1) {
+            String candidate = withoutLeadingBreaks.trim();
+            return isLanguageTag(candidate) ? "" : withoutLeadingBreaks;
+        }
+        String firstLine = withoutLeadingBreaks.substring(0, lineBreakIndex).replace("\r", "").trim();
+        if (isLanguageTag(firstLine)) {
+            String remainder = withoutLeadingBreaks.substring(lineBreakIndex + 1);
+            return stripLeadingLineBreaks(remainder);
+        }
+        return withoutLeadingBreaks;
+    }
+
+    private String stripLeadingLineBreaks(String text) {
+        int index = 0;
+        while (index < text.length()) {
+            char ch = text.charAt(index);
+            if (ch == '\n' || ch == '\r') {
+                index++;
+            } else {
+                break;
+            }
+        }
+        return text.substring(index);
+    }
+
+    private int findLineBreak(String text) {
+        int newline = text.indexOf('\n');
+        if (newline >= 0) {
+            return newline;
+        }
+        return text.indexOf('\r');
+    }
+
+    private boolean isLanguageTag(String value) {
+        if (value == null) {
+            return false;
+        }
+        return switch (value.trim().toLowerCase()) {
+            case "yaml", "yml", "json" -> true;
+            default -> false;
         };
     }
 

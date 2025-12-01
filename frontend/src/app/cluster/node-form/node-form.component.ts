@@ -1,6 +1,6 @@
 import { Node } from './../../model/node.class';
 import { Store } from '@ngrx/store';
-import { Component, OnDestroy, OnInit, Type } from '@angular/core';
+import { Component, ComponentRef, OnDestroy, OnInit, Type, ViewChild, ViewContainerRef } from '@angular/core';
 import { switchMap, filter, tap, Subscription, distinctUntilChanged } from 'rxjs';
 import { DiagramService } from 'src/app/services/diagram.service';
 import { getCurrentCluster, getNodeById } from 'src/app/store/selectors/selectors';
@@ -27,9 +27,10 @@ export class NodeFormComponent implements OnInit, OnDestroy {
 
   node: Node | null = null;
   activeComponentType: Type<any> | null = null;
-  componentInputs: Record<string, unknown> = {};
   private currentNodeId: string | null = null;
   subscription: Subscription = new Subscription();
+  private componentRef: ComponentRef<any> | null = null;
+  @ViewChild('dynamicHost', { read: ViewContainerRef, static: true }) dynamicHost!: ViewContainerRef;
   formMapper: Record<string, Type<any>> = {
     'deployment': DeploymentFormComponent,
     'configmap': ConfigMapFormComponent,
@@ -84,14 +85,14 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     const isSameNode = node.id === this.currentNodeId;
 
     if (!isSameComponentType || !isSameNode) {
-      this.activeComponentType = componentType;
+      this.createComponent(componentType);
     }
 
     this.currentNodeId = node.id;
 
     this.store.select(getCurrentCluster).pipe(take(1)).subscribe((cluster: Cluster) => {
       if (!cluster) {
-        this.componentInputs = { selectedNode: node };
+        this.updateComponentInputs({ selectedNode: node });
         return;
       }
 
@@ -108,7 +109,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
         inputs['sourceNodes'] = sourceNodes;
       }
 
-      this.componentInputs = inputs;
+      this.updateComponentInputs(inputs);
     });
   }
 
@@ -116,7 +117,11 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     this.currentNodeId = null;
     this.node = null;
     this.activeComponentType = null;
-    this.componentInputs = {};
+    this.dynamicHost?.clear();
+    if (this.componentRef) {
+      this.componentRef.destroy();
+      this.componentRef = null;
+    }
   }
 
   private findLinkedNodes(cluster: Cluster, nodeId: string, direction: 'incoming' | 'outgoing'): Node[] {
@@ -134,6 +139,26 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     }
 
     return (cluster.nodes ?? []).filter((n: Node) => linkedIds.includes(n.id));
+  }
+
+  private createComponent(componentType: Type<any>): void {
+    this.dynamicHost.clear();
+    if (this.componentRef) {
+      this.componentRef.destroy();
+      this.componentRef = null;
+    }
+    this.componentRef = this.dynamicHost.createComponent(componentType);
+    this.activeComponentType = componentType;
+  }
+
+  private updateComponentInputs(inputs: Record<string, unknown>): void {
+    if (!this.componentRef) {
+      return;
+    }
+    Object.entries(inputs).forEach(([key, value]) => {
+      this.componentRef!.setInput(key, value);
+    });
+    this.componentRef.changeDetectorRef.detectChanges();
   }
 
   ngOnDestroy(): void {

@@ -36,7 +36,6 @@ export class ServiceFormComponent implements OnInit, OnChanges {
   form!: FormGroup;
   deployments: Deployment[] = [];
   connectedDeploymentNames: string[] = [];
-  private portManuallyEdited = false;
 
   serviceTypes = [
     { name: 'ClusterIP', value: 'ClusterIP' },
@@ -59,10 +58,12 @@ export class ServiceFormComponent implements OnInit, OnChanges {
     if ((changes['targetNodes'] || changes['cluster']) && this.form) {
       this.applyLinkedDeploymentDefaults();
     }
+    if (changes['selectedNode'] && !changes['selectedNode'].firstChange) {
+      this.refreshFormFromNode(changes['selectedNode'].currentValue as Service);
+    }
   }
 
   private initForm() {
-    this.portManuallyEdited = false;
     const service = this.selectedNode as Service;
     this.form = this.fb.group({
       name: [service.name || '', Validators.required],
@@ -91,15 +92,36 @@ export class ServiceFormComponent implements OnInit, OnChanges {
       }
     });
 
-    this.form.get('port')?.valueChanges.subscribe(() => {
-      if (this.form.get('port')?.dirty) {
-        this.portManuallyEdited = true;
-      }
-    });
+    // Additional control-specific listeners can be added here when needed
   }
 
   private setupAutoSave() {
     this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.form.valueChanges);
+  }
+
+  private refreshFormFromNode(service: Service): void {
+    if (!this.form) {
+      return;
+    }
+
+    const exposeService = service.exposeService ?? false;
+    this.form.patchValue({
+      name: service.name || '',
+      type: service.type || 'ClusterIP',
+      port: service.port,
+      nodePort: service.nodePort,
+      exposeService,
+      frontendUrl: service.frontendUrl || ''
+    }, { emitEvent: false });
+
+    const frontendUrlControl = this.form.get('frontendUrl');
+    if (frontendUrlControl) {
+      if (exposeService) {
+        frontendUrlControl.enable({ emitEvent: false });
+      } else {
+        frontendUrlControl.disable({ emitEvent: false });
+      }
+    }
   }
 
   private applyLinkedDeploymentDefaults(): void {
@@ -120,16 +142,14 @@ export class ServiceFormComponent implements OnInit, OnChanges {
     const defaultDeployment = this.deployments[0];
 
     const nameControl = this.form.get('name');
-    if (nameControl && (!nameControl.value || nameControl.pristine)) {
-      nameControl.patchValue(`${defaultDeployment.name}-service`, { emitEvent: false });
+    if (nameControl && this.shouldAutofillName(nameControl.value)) {
+      nameControl.patchValue(this.buildDefaultServiceName(defaultDeployment.name), { emitEvent: false });
     }
 
     const portControl = this.form.get('port');
-    if (portControl && (!this.portManuallyEdited || portControl.pristine)) {
-      const derivedPort = this.derivePortFromDeployment(defaultDeployment);
-      if (derivedPort) {
-        portControl.patchValue(derivedPort, { emitEvent: false });
-      }
+    const derivedPort = this.derivePortFromDeployment(defaultDeployment);
+    if (portControl && derivedPort && this.shouldAutofillPort(portControl.value, derivedPort)) {
+      portControl.patchValue(derivedPort, { emitEvent: false });
     }
   }
 
@@ -156,5 +176,36 @@ export class ServiceFormComponent implements OnInit, OnChanges {
 
     const container = containers[0];
     return container?.containerPort ?? null;
+  }
+
+  private shouldAutofillName(currentValue: string | null | undefined): boolean {
+    const normalized = (currentValue ?? '').trim().toLowerCase();
+    if (!normalized) {
+      return true;
+    }
+    const kindPlaceholder = (this.selectedNode?.kind ?? '').trim().toLowerCase();
+    return normalized === kindPlaceholder;
+  }
+
+  private buildDefaultServiceName(baseDeploymentName: string): string {
+    return `${baseDeploymentName}-service`;
+  }
+
+  private shouldAutofillPort(currentValue: number | null | undefined, derivedPort: number): boolean {
+    if (currentValue === undefined || currentValue === null) {
+      return true;
+    }
+
+    const defaultPort = this.getDefaultServicePort();
+    if (currentValue === defaultPort && derivedPort !== defaultPort) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private getDefaultServicePort(): number {
+    // keep in sync with NodeFactoryService defaults
+    return 80;
   }
 }

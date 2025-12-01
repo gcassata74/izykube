@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { FormGroup, FormBuilder, Validators, FormControl } from '@angular/forms';
 import { catchError, map, Observable, of } from 'rxjs';
 import { Asset } from 'src/app/model/asset.class';
@@ -12,7 +12,7 @@ import { NotificationService } from 'src/app/services/notification.service';
   templateUrl: './container-form.component.html',
   providers: [AutoSaveService]
 })
-export class ContainerFormComponent {
+export class ContainerFormComponent implements OnInit, OnChanges {
   @Input() selectedNode!: Container;
   form!: FormGroup;
   assets$!: Observable<Asset[]>;
@@ -34,6 +34,12 @@ export class ContainerFormComponent {
     this.loadAssets();
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['selectedNode'] && !changes['selectedNode'].firstChange) {
+      this.refreshFormValues(changes['selectedNode'].currentValue as Container);
+    }
+  }
+
   private initForm() {
     const selectedRole = toContainerRole(this.selectedNode?.role);
     this.form = this.fb.group({
@@ -42,6 +48,19 @@ export class ContainerFormComponent {
       containerPort: [this.selectedNode.containerPort, [Validators.required, Validators.min(1)]],
       role: new FormControl<ContainerRole | null>(selectedRole ?? null)
     });
+  }
+
+  private refreshFormValues(node: Container): void {
+    if (!this.form) {
+      return;
+    }
+    const selectedRole = toContainerRole(node?.role);
+    this.form.patchValue({
+      name: node.name,
+      assetId: node.assetId,
+      containerPort: node.containerPort,
+      role: selectedRole ?? null
+    }, { emitEvent: false });
   }
 
 

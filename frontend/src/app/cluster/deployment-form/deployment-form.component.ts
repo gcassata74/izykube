@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { catchError, map, Observable, of } from 'rxjs';
 import { AutoSaveService } from '../../services/auto-save.service';
@@ -12,7 +12,7 @@ import { NotificationService } from '../../services/notification.service';
   templateUrl: './deployment-form.component.html',
   providers: [AutoSaveService]
 })
-export class DeploymentFormComponent implements OnInit {
+export class DeploymentFormComponent implements OnInit, OnChanges {
   @Input() selectedNode!: Deployment;
   form!: FormGroup;
   assets$!: Observable<any[]>;
@@ -34,6 +34,12 @@ export class DeploymentFormComponent implements OnInit {
     this.loadAssets();
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['selectedNode'] && !changes['selectedNode'].firstChange) {
+      this.refreshFormValues(changes['selectedNode'].currentValue as Deployment);
+    }
+  }
+
   private initForm() {
     this.form = this.fb.group({
       name: [this.selectedNode.name, Validators.required],
@@ -42,6 +48,19 @@ export class DeploymentFormComponent implements OnInit {
       assetId: [this.selectedNode.assetId || '', Validators.required],
       containerPort: [this.selectedNode.containerPort ?? 80, [Validators.required, Validators.min(1)]]
     });
+  }
+
+  private refreshFormValues(node: Deployment): void {
+    if (!this.form) {
+      return;
+    }
+    this.form.patchValue({
+      name: node.name,
+      replicas: node.replicas,
+      strategyType: node.strategyType,
+      assetId: node.assetId || '',
+      containerPort: node.containerPort ?? 80
+    }, { emitEvent: false });
   }
 
   private loadAssets() {

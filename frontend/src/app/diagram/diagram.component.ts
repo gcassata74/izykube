@@ -159,6 +159,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.store.select(getCurrentCluster).pipe(
         tap(cluster => {
           this.currentClusterSnapshot = cluster ? Cluster.fromJSON(cluster) : null;
+          this.syncDiagramNodeNames();
           this.syncContainerRolesFromCluster();
         })
       ).subscribe()
@@ -1204,6 +1205,42 @@ export class DiagramComponent implements OnInit, OnDestroy {
     if (!options?.deferUpdate) {
       this.updateDiagramData();
     }
+  }
+
+  private syncDiagramNodeNames(): void {
+    if (!this.currentClusterSnapshot?.nodes?.length || !this.nodes?.length) {
+      return;
+    }
+
+    const nodeMap = new Map<string, any>(
+      this.currentClusterSnapshot.nodes.map((node: any) => [node.id, node])
+    );
+
+    let hasChanges = false;
+    const updatedNodes = this.nodes.map(node => {
+      const clusterNode = nodeMap.get(node.id);
+      if (!clusterNode) {
+        return node;
+      }
+
+      const clusterName = typeof clusterNode.name === 'string' ? clusterNode.name : '';
+      if (clusterName && clusterName !== node.name) {
+        hasChanges = true;
+        return { ...node, name: clusterName };
+      }
+
+      return node;
+    });
+
+    if (!hasChanges) {
+      return;
+    }
+
+    this.nodes = updatedNodes;
+    if (this.selectedNode) {
+      this.selectedNode = this.nodes.find(n => n.id === this.selectedNode!.id) ?? null;
+    }
+    this.updateDiagramData();
   }
 
   private syncContainerRolesFromCluster(): void {

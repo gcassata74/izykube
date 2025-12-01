@@ -1,4 +1,4 @@
-import { Component, ElementRef, Input, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, Input, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Node } from '../../model/node.class';
 import { ConfigMap } from '../../model/config-map.class';
@@ -13,7 +13,7 @@ import { AiAssistantService } from '../../services/ai-assistant.service';
   templateUrl: './config-map-form.component.html',
   providers: [AutoSaveService]
 })
-export class ConfigMapFormComponent implements OnInit {
+export class ConfigMapFormComponent implements OnInit, OnChanges {
   @Input() selectedNode!: Node;
   form!: FormGroup;
 
@@ -43,12 +43,25 @@ export class ConfigMapFormComponent implements OnInit {
     this.setupMenus();
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['selectedNode'] && !changes['selectedNode'].firstChange) {
+      this.refreshFormFromNode(changes['selectedNode'].currentValue as ConfigMap);
+    }
+  }
+
   private initForm() {
     const configMap = this.selectedNode as ConfigMap;
 
     this.form = this.fb.group({
       yaml: [configMap.yaml, Validators.required]
     });
+  }
+
+  private refreshFormFromNode(configMap: ConfigMap): void {
+    if (!this.form) {
+      return;
+    }
+    this.form.patchValue({ yaml: configMap.yaml }, { emitEvent: false });
   }
 
   private setupAutoSave() {

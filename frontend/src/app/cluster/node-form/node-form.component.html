@@ -6,15 +6,12 @@
   </div>
 
   <div class="node-form-body">
-    <ng-container *ngIf="activeComponentType as componentType; else nodeFormPlaceholder">
-      <ng-container *ngComponentOutlet="componentType; inputs: componentInputs"></ng-container>
-    </ng-container>
-
-    <ng-template #nodeFormPlaceholder>
+    <ng-template #dynamicHost></ng-template>
+    <ng-container *ngIf="!activeComponentType">
       <div class="node-form-placeholder">
         <i class="pi pi-hand-pointer"></i>
         <p>Select a node in the diagram to edit its settings.</p>
       </div>
-    </ng-template>
+    </ng-container>
   </div>
 </div>

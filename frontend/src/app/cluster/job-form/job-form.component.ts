@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { catchError, filter, map, Observable, of, tap } from 'rxjs';
 import { AssetType } from 'src/app/model/asset.class';
@@ -12,7 +12,7 @@ import { NotificationService } from 'src/app/services/notification.service';
   templateUrl: './job-form.component.html',
   providers: [AutoSaveService]
 })
-export class JobFormComponent {
+export class JobFormComponent implements OnInit, OnChanges {
   @Input() selectedNode!: Job;
   form!: FormGroup;
   assets$!: Observable<any[]>;
@@ -30,11 +30,27 @@ export class JobFormComponent {
     this.loadAssets();
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['selectedNode'] && !changes['selectedNode'].firstChange) {
+      this.refreshFormValues(changes['selectedNode'].currentValue as Job);
+    }
+  }
+
   private initForm() {
     this.form = this.fb.group({
       name: [this.selectedNode.name, Validators.required],
       assetId: [this.selectedNode.assetId, Validators.required]
     });
+  }
+
+  private refreshFormValues(node: Job): void {
+    if (!this.form) {
+      return;
+    }
+    this.form.patchValue({
+      name: node.name,
+      assetId: node.assetId
+    }, { emitEvent: false });
   }
 
   private loadAssets() {
