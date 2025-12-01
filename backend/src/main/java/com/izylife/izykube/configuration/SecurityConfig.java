@@ -82,7 +82,7 @@ public class SecurityConfig {
                                 "/3rdpartylicenses.txt",
                                 "/manifest.webmanifest").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/authenticate", "/api/**", "/api-docs/**").permitAll()
+                        .requestMatchers("/authenticate", "/api/**", "/api-docs/**", "/ws/**").permitAll()
                         .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                         .requestMatchers(SPA_ROUTE_MATCHER).permitAll()
                         .anyRequest().authenticated()

@@ -106,6 +106,105 @@
   color: #2f3c52;
 }
 
+.diagram-node__action-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  border: none;
+  background: rgba(6, 24, 61, 0.92);
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 3;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    background: #0d6efd;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  }
+
+  i {
+    font-size: 12px;
+    line-height: 1;
+  }
+}
+
+.pod-shell-menu {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  padding: 0.35rem 0;
+
+  &--error {
+    color: #c82333;
+  }
+
+  &--empty {
+    justify-content: center;
+    color: #6c757d;
+  }
+}
+
+.pod-shell-menu__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.pod-shell-menu__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid #e3e6ea;
+
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+}
+
+.pod-shell-menu__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.pod-shell-menu__name {
+  font-weight: 600;
+  color: #212529;
+  font-size: 0.9rem;
+}
+
+.pod-shell-menu__status {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.pod-shell-menu__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  i {
+    font-size: 0.9rem;
+  }
+}
+
 .diagram-ai-dialog {
   display: flex;
   flex-direction: column;

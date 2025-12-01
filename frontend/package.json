@@ -24,6 +24,8 @@
     "@ngrx/router-store": "^16.3.0",
     "@ngrx/store": "^16.3.0",
     "@ngrx/store-devtools": "^16.3.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
     "ace-builds": "^1.36.3",
     "bootstrap": "^5.3.3",
     "gojs": "^3.0.26",

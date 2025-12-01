@@ -4,11 +4,13 @@ import com.izylife.izykube.dto.kube.DeploymentLogsDTO;
 import com.izylife.izykube.dto.kube.NamespaceDTO;
 import com.izylife.izykube.dto.kube.NamespaceSummaryDTO;
 import com.izylife.izykube.dto.kube.PodLogDTO;
+import com.izylife.izykube.dto.kube.PodSummaryDTO;
 import com.izylife.izykube.services.KubernetesExplorerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,5 +57,12 @@ public class KubernetesExplorerController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(logs);
+    }
+
+    @GetMapping("/deployments/{deployment}/pods")
+    public ResponseEntity<List<PodSummaryDTO>> getDeploymentPods(@PathVariable("deployment") String deploymentName,
+                                                                 @RequestParam String namespace) {
+        List<PodSummaryDTO> pods = explorerService.getPodsByDeployment(namespace, deploymentName);
+        return ResponseEntity.ok(pods);
     }
 }

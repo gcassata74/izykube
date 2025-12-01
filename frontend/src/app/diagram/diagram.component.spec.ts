@@ -9,6 +9,8 @@ import { DiagramService } from '../services/diagram.service';
 import { Store } from '@ngrx/store';
 import { AiAssistantService } from '../services/ai-assistant.service';
 import { NotificationService } from '../services/notification.service';
+import { PodShellService } from '../services/pod-shell.service';
+import { ClusterStatusEnum } from '../cluster/enum/cluster.-status-enum';
 
 class MockIconService {
   getIconPath(name: string) {
@@ -58,7 +60,8 @@ describe('DiagramComponent', () => {
         { provide: DiagramService, useClass: MockDiagramService },
         { provide: Store, useClass: MockStore },
         { provide: AiAssistantService, useClass: MockAiAssistantService },
-        { provide: NotificationService, useValue: notificationService }
+        { provide: NotificationService, useValue: notificationService },
+        { provide: PodShellService, useValue: jasmine.createSpyObj('PodShellService', ['getPodsByDeployment', 'createShellSocket']) }
       ],
       schemas: [NO_ERRORS_SCHEMA]
     });
@@ -100,5 +103,31 @@ describe('DiagramComponent', () => {
       'Containers can only be linked to Deployments, ConfigMaps or Secrets.'
     );
     expect((component as any).links.length).toBe(0);
+  });
+
+  it('should determine pod shell trigger visibility based on namespace status', () => {
+    const deploymentNode: any = { id: 'd1', name: 'web', type: 'deployment', icon: '', x: 0, y: 0 };
+    const serviceNode: any = { id: 's1', name: 'svc', type: 'service', icon: '', x: 0, y: 0 };
+    (component as any).currentClusterSnapshot = { status: ClusterStatusEnum.DEPLOYED };
+    expect(component.shouldShowPodShellTrigger(deploymentNode)).toBeTrue();
+    expect(component.shouldShowPodShellTrigger(serviceNode)).toBeFalse();
+
+    (component as any).currentClusterSnapshot = { status: ClusterStatusEnum.CREATED };
+    expect(component.shouldShowPodShellTrigger(deploymentNode)).toBeFalse();
+  });
+
+  it('should fetch pods when shell icon is clicked', () => {
+    const podShellService = TestBed.inject(PodShellService) as jasmine.SpyObj<PodShellService>;
+    podShellService.getPodsByDeployment.and.returnValue(of([]));
+    (component as any).currentClusterSnapshot = { nameSpace: 'demo', status: ClusterStatusEnum.DEPLOYED };
+    const node: any = { id: 'd1', name: 'web', type: 'deployment', icon: '', x: 0, y: 0 };
+    const event = {
+      stopPropagation: jasmine.createSpy('stopPropagation'),
+      preventDefault: jasmine.createSpy('preventDefault')
+    } as unknown as MouseEvent;
+
+    component.onPodShellIconClick(event, node);
+
+    expect(podShellService.getPodsByDeployment).toHaveBeenCalledWith('demo', 'web');
   });
 });

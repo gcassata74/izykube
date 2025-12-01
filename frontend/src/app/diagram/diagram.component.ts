@@ -13,6 +13,9 @@ import { NotificationService } from '../services/notification.service';
 import { Link } from '../model/link.class';
 import { ContainerRole, toContainerRole } from '../model/container.class';
 import { ClusterStatusEnum } from '../cluster/enum/cluster.-status-enum';
+import { PodShellService } from '../services/pod-shell.service';
+import { PodSummary } from '../model/kube-summary';
+import { OverlayPanel } from 'primeng/overlaypanel';
 
 interface DiagramNode {
   id: string;
@@ -65,6 +68,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   @ViewChild('container', { static: true }) container!: ElementRef;
   @ViewChild('diagramCanvas', { static: true }) diagramCanvas!: ElementRef;
   @ViewChild('paletteContainer', { static: true }) paletteContainer!: ElementRef;
+  @ViewChild('podShellOverlay') podShellOverlay?: OverlayPanel;
 
   nodes: DiagramNode[] = [];
   links: DiagramLink[] = [];
@@ -130,13 +134,20 @@ export class DiagramComponent implements OnInit, OnDestroy {
   };
   private readonly fallbackIconType = 'container';
   private readonly connectionCaptureRadius = 28;
+  podMenuPods: PodSummary[] = [];
+  podMenuLoading = false;
+  podMenuError: string | null = null;
+  private podMenuContext: { namespace: string; deploymentName: string } | null = null;
+  podShellDialogVisible = false;
+  activeShellTarget: { namespace: string; podName: string; containerName?: string } | null = null;
 
   constructor(
     private iconService: IconService,
     private store: Store,
     private diagramService: DiagramService,
     private aiAssistantService: AiAssistantService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private podShellService: PodShellService
   ) { }
 
 
@@ -846,6 +857,72 @@ export class DiagramComponent implements OnInit, OnDestroy {
       default:
         return null;
     }
+  }
+
+  shouldShowPodShellTrigger(node: DiagramNode): boolean {
+    return node.type?.toLowerCase() === 'deployment' && this.isNamespaceDeployed();
+  }
+
+  onPodShellIconClick(event: MouseEvent, node: DiagramNode): void {
+    event.stopPropagation();
+    event.preventDefault();
+    if (!this.shouldShowPodShellTrigger(node)) {
+      return;
+    }
+
+    const namespace = this.currentClusterSnapshot?.nameSpace;
+    if (!namespace) {
+      this.notificationService.warn('Namespace required', 'Assign a namespace before opening a pod shell.');
+      return;
+    }
+
+    this.podMenuContext = { namespace, deploymentName: node.name };
+    this.podMenuLoading = true;
+    this.podMenuError = null;
+    this.podMenuPods = [];
+
+    this.podShellService.getPodsByDeployment(namespace, node.name).pipe(
+      finalize(() => this.podMenuLoading = false)
+    ).subscribe({
+      next: pods => {
+        this.podMenuPods = pods;
+        this.showPodShellOverlay(event);
+      },
+      error: () => {
+        this.podMenuError = 'Unable to load pods for this deployment.';
+        this.showPodShellOverlay(event);
+      }
+    });
+  }
+
+  openShellForPod(pod: PodSummary): void {
+    if (!this.podMenuContext) {
+      return;
+    }
+
+    this.activeShellTarget = {
+      namespace: this.podMenuContext.namespace,
+      podName: pod.name
+    };
+    this.podShellDialogVisible = true;
+    this.podShellOverlay?.hide();
+  }
+
+  onShellDialogClosed(): void {
+    this.podShellDialogVisible = false;
+    this.activeShellTarget = null;
+  }
+
+  private showPodShellOverlay(event: MouseEvent): void {
+    if (!this.podShellOverlay) {
+      return;
+    }
+    this.podShellOverlay.hide();
+    this.podShellOverlay.show(event);
+  }
+
+  private isNamespaceDeployed(): boolean {
+    return this.currentClusterSnapshot?.status === ClusterStatusEnum.DEPLOYED;
   }
 
   private resolveContainerRole(node: DiagramNode): ContainerRole | undefined {

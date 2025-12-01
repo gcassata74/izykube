@@ -15,6 +15,7 @@ import { HomeComponent } from './home/home.component';
 import { DiagramComponent } from './diagram/diagram.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import {ToolbarModule} from 'primeng/toolbar';
+import { OverlayPanelModule } from 'primeng/overlaypanel';
 import { StoreModule } from '@ngrx/store';
 import { EffectsModule } from '@ngrx/effects';
 import { StoreDevtoolsModule } from '@ngrx/store-devtools';
@@ -56,6 +57,7 @@ import { JobFormComponent } from './cluster/job-form/job-form.component';
 import { IstioFormComponent } from './cluster/istio-form/istio-form.component';
 import { DragDropDirective } from './directives/drag-drop.directive';
 import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
+import { PodShellDialogComponent } from './pod-shell-dialog/pod-shell-dialog.component';
 
 @NgModule({
   declarations: [
@@ -78,6 +80,7 @@ import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
     IstioFormComponent,
     DragDropDirective,
     KubeExplorerComponent,
+    PodShellDialogComponent,
   ],
   imports: [
     SharedModule,
@@ -106,6 +109,7 @@ import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
     TableModule,
     MenuModule,
     MessageModule,
+    OverlayPanelModule,
     BrowserAnimationsModule,
     FormsModule,
     HttpClientModule,

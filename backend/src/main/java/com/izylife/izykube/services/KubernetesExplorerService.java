@@ -1,5 +1,6 @@
 package com.izylife.izykube.services;
 
+import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.kube.ConfigMapSummaryDTO;
 import com.izylife.izykube.dto.kube.CronJobSummaryDTO;
 import com.izylife.izykube.dto.kube.DaemonSetSummaryDTO;
@@ -14,6 +15,7 @@ import com.izylife.izykube.dto.kube.PodSummaryDTO;
 import com.izylife.izykube.dto.kube.SecretSummaryDTO;
 import com.izylife.izykube.dto.kube.ServiceSummaryDTO;
 import com.izylife.izykube.dto.kube.StatefulSetSummaryDTO;
+import com.izylife.izykube.repositories.ClusterRepository;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Namespace;
@@ -57,6 +59,7 @@ public class KubernetesExplorerService {
     private static final int MAX_TAIL_LINES = 2000;
 
     private final KubernetesClient kubernetesClient;
+    private final ClusterRepository clusterRepository;
 
     public List<NamespaceDTO> listNamespaces() {
         return kubernetesClient.namespaces()
@@ -216,6 +219,46 @@ public class KubernetesExplorerService {
                 .toList();
 
         return new DeploymentLogsDTO(deploymentName, namespace, podLogs);
+    }
+
+    public List<PodSummaryDTO> getPodsByDeployment(String namespace, String deploymentName) {
+        if (!StringUtils.hasText(namespace) || !StringUtils.hasText(deploymentName)) {
+            return List.of();
+        }
+
+        Deployment deployment = kubernetesClient.apps().deployments().inNamespace(namespace).withName(deploymentName).get();
+        if (deployment == null) {
+            return List.of();
+        }
+
+        Map<String, String> selectorLabels = Optional.ofNullable(deployment.getSpec())
+                .map(spec -> spec.getSelector())
+                .map(sel -> sel.getMatchLabels())
+                .orElseGet(Collections::emptyMap);
+
+        Map<String, String> labelsToUse = selectorLabels.isEmpty()
+                ? Map.of("app", deploymentName)
+                : selectorLabels;
+
+        List<Pod> pods = kubernetesClient.pods()
+                .inNamespace(namespace)
+                .withLabels(labelsToUse)
+                .list()
+                .getItems();
+
+        return pods.stream()
+                .map(this::mapPod)
+                .sorted(Comparator.comparing(PodSummaryDTO::name))
+                .toList();
+    }
+
+    public boolean isNamespaceDeployed(String namespace) {
+        if (!StringUtils.hasText(namespace)) {
+            return false;
+        }
+        return clusterRepository.findByNameSpaceIgnoreCase(namespace)
+                .map(cluster -> cluster.getStatus() == ClusterStatusEnum.DEPLOYED)
+                .orElse(false);
     }
 
     private PodSummaryDTO mapPod(Pod pod) {

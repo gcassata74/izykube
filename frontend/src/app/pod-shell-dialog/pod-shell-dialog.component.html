@@ -1,0 +1,20 @@
+<p-dialog
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [dismissableMask]="true"
+  [baseZIndex]="1100"
+  [style]="{ width: '80vw', height: '80vh' }"
+  [contentStyle]="{ height: '100%', padding: 0 }"
+  [visible]="visible"
+  (visibleChange)="onDialogVisibleChange($event)">
+  <ng-template pTemplate="header">
+    Shell • {{ namespace || '-' }}/{{ podName || '-' }}
+  </ng-template>
+  <div class="pod-shell-dialog">
+    <div class="pod-shell-dialog__terminal" #terminalHost></div>
+    <div *ngIf="connectionError" class="pod-shell-dialog__error">
+      {{ connectionError }}
+    </div>
+  </div>
+</p-dialog>

@@ -69,6 +69,15 @@
         (mousedown)="onConnectionPointClick(node, point, $event)">
       </div>
 
+      <button
+        *ngIf="shouldShowPodShellTrigger(node)"
+        type="button"
+        class="diagram-node__action-btn"
+        title="Open pod shell"
+        (click)="onPodShellIconClick($event, node)">
+        <i class="pi pi-desktop"></i>
+      </button>
+
       <ng-container *ngIf="getContainerBadge(node) as badge">
         <span
           class="diagram-node__badge"
@@ -93,6 +102,53 @@
     </div>
   </div>
 </div>
+
+<p-overlayPanel
+  #podShellOverlay
+  [dismissable]="true"
+  [showCloseIcon]="true"
+  appendTo="body"
+  [style]="{ minWidth: '280px' }">
+  <div class="pod-shell-menu" *ngIf="podMenuLoading">
+    <p-progressSpinner strokeWidth="4" [style]="{ width: '18px', height: '18px' }"></p-progressSpinner>
+    <span>Loading pods…</span>
+  </div>
+  <div class="pod-shell-menu pod-shell-menu--error" *ngIf="podMenuError && !podMenuLoading">
+    {{ podMenuError }}
+  </div>
+  <ng-container *ngIf="!podMenuLoading && !podMenuError">
+    <div class="pod-shell-menu pod-shell-menu--empty" *ngIf="!podMenuPods.length">
+      No pods are reporting for this deployment.
+    </div>
+    <ul class="pod-shell-menu__list" *ngIf="podMenuPods.length">
+      <li *ngFor="let pod of podMenuPods" class="pod-shell-menu__item">
+        <div class="pod-shell-menu__meta">
+          <div class="pod-shell-menu__name">{{ pod.name }}</div>
+          <div class="pod-shell-menu__status">
+            {{ pod.status }}
+            <span *ngIf="pod.node">• {{ pod.node }}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          pButton
+          class="p-button-text p-button-sm pod-shell-menu__action"
+          (click)="openShellForPod(pod)">
+          <i class="pi pi-desktop"></i>
+          <span>Open shell</span>
+        </button>
+      </li>
+    </ul>
+  </ng-container>
+</p-overlayPanel>
+
+<app-pod-shell-dialog
+  [(visible)]="podShellDialogVisible"
+  [namespace]="activeShellTarget?.namespace || null"
+  [podName]="activeShellTarget?.podName || null"
+  [containerName]="activeShellTarget?.containerName || null"
+  (closed)="onShellDialogClosed()">
+</app-pod-shell-dialog>
 
 <p-dialog
   header="Design with Local AI"
