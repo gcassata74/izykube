@@ -39,6 +39,7 @@
     <div
       *ngFor="let node of nodes"
       class="diagram-node"
+      [class.diagram-node--affected]="node.isAffected"
       [style.position]="'absolute'"
       [style.left.px]="node.x"
       [style.top.px]="node.y"
@@ -55,6 +56,11 @@
       [style.z-index]="2"
       (click)="selectNode(node); $event.stopPropagation()"
       (mousedown)="onNodeMouseDown($event, node)">
+
+      <div class="diagram-node__status" *ngIf="node.isAffected">
+        <i class="pi pi-sync" [ngClass]="{ 'pi-spin': resourceSyncService.isRestarting(node.id) }"></i>
+        <span>{{ resourceSyncService.isRestarting(node.id) ? 'Syncing…' : 'Pending…' }}</span>
+      </div>
 
       <!-- Connection points -->
       <div

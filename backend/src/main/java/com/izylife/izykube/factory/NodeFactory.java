@@ -8,31 +8,37 @@ import java.util.LinkedHashMap;
 public class NodeFactory {
 
     public static NodeDTO createNodeDTO(NodeDTO node) {
+        NodeDTO sanitized;
         switch (node.getKind().toLowerCase()) {
             case "configmap":
                 ConfigMapDTO configMap = (ConfigMapDTO) node;
-                return new ConfigMapDTO(configMap.getId(), configMap.getName(), configMap.getYaml());
+                sanitized = new ConfigMapDTO(configMap.getId(), configMap.getName(), configMap.getYaml());
+                break;
             case "secret":
                 ConfigMapDTO secret = (ConfigMapDTO) node;
-                return new SecretDTO(secret.getId(), secret.getName(), secret.getYaml());
+                sanitized = new SecretDTO(secret.getId(), secret.getName(), secret.getYaml());
+                break;
             case "job":
                 JobDTO job = (JobDTO) node;
-                return new JobDTO(job.getId(), job.getName(), job.getAssetId());
+                sanitized = new JobDTO(job.getId(), job.getName(), job.getAssetId());
+                break;
             case "pod":
                 PodDTO pod = (PodDTO) node;
-                return convertPodToDeployment(pod);
+                sanitized = convertPodToDeployment(pod);
+                break;
             case "container":
                 ContainerDTO container = (ContainerDTO) node;
-                return new ContainerDTO(
+                sanitized = new ContainerDTO(
                         container.getId(),
                         container.getName(),
                         container.getAssetId(),
                         container.getContainerPort(),
                         container.getRole()
                 );
+                break;
             case "deployment":
                 DeploymentDTO deployment = (DeploymentDTO) node;
-                return new DeploymentDTO(
+                sanitized = new DeploymentDTO(
                         deployment.getId(),
                         deployment.getName(),
                         deployment.getReplicas(),
@@ -40,9 +46,10 @@ public class NodeFactory {
                         deployment.getAssetId(),
                         deployment.getContainerPort()
                 );
+                break;
             case "service":
                 ServiceDTO service = (ServiceDTO) node;
-                return new ServiceDTO(
+                sanitized = new ServiceDTO(
                         service.getId(),
                         service.getName(),
                         service.getType(),
@@ -51,9 +58,10 @@ public class NodeFactory {
                         service.isExposeService(),
                         service.getFrontendUrl()
                 );
+                break;
             case "ingress":
                 IngressDTO ingress = (IngressDTO) node;
-                return new IngressDTO(
+                sanitized = new IngressDTO(
                         ingress.getId(),
                         ingress.getName(),
                         ingress.getHost(),
@@ -63,9 +71,10 @@ public class NodeFactory {
                         ingress.getTls(),
                         ingress.getAnnotations()
                 );
+                break;
             case "istio":
                 VirtualServiceDTO virtualService = (VirtualServiceDTO) node;
-                return new VirtualServiceDTO(
+                sanitized = new VirtualServiceDTO(
                         virtualService.getId(),
                         virtualService.getName(),
                         virtualService.getHost(),
@@ -73,18 +82,22 @@ public class NodeFactory {
                         virtualService.getServiceName(),
                         virtualService.getServicePort()
                 );
+                break;
 
             case "volume":
                 VolumeDTO volume = (VolumeDTO) node;
-                return new VolumeDTO(
+                sanitized = new VolumeDTO(
                         volume.getId(),
                         volume.getName(),
                         volume.getType(),
                         volume.getConfig()
                 );
+                break;
             default:
                 throw new IllegalArgumentException("Unsupported node type: " + node.getKind());
         }
+        sanitized.setAffected(node.isAffected());
+        return sanitized;
     }
 
     // Helper method to create a new node with default values

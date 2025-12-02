@@ -46,6 +46,8 @@ public abstract class NodeDTO {
     @Transient
     @JsonIgnore
     List<NodeDTO> targetNodes;
+    @JsonProperty("isAffected")
+    private boolean affected;
 
     public NodeDTO(String id, String name, String kind) {
         this.id = id;

@@ -16,6 +16,8 @@ import { ClusterStatusEnum } from '../cluster/enum/cluster.-status-enum';
 import { PodShellService } from '../services/pod-shell.service';
 import { PodSummary } from '../model/kube-summary';
 import { OverlayPanel } from 'primeng/overlaypanel';
+import { ConfigurationChangeService } from '../services/configuration-change.service';
+import { ResourceSyncService } from '../services/resource-sync.service';
 
 interface DiagramNode {
   id: string;
@@ -25,6 +27,7 @@ interface DiagramNode {
   x: number;
   y: number;
   role?: ContainerRole;
+  isAffected?: boolean;
   element?: HTMLElement;
 }
 
@@ -147,7 +150,9 @@ export class DiagramComponent implements OnInit, OnDestroy {
     private diagramService: DiagramService,
     private aiAssistantService: AiAssistantService,
     private notificationService: NotificationService,
-    private podShellService: PodShellService
+    private podShellService: PodShellService,
+    private configurationChangeService: ConfigurationChangeService,
+    public resourceSyncService: ResourceSyncService
   ) { }
 
 
@@ -172,6 +177,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
           this.currentClusterSnapshot = cluster ? Cluster.fromJSON(cluster) : null;
           this.syncDiagramNodeNames();
           this.syncContainerRolesFromCluster();
+          this.syncAffectedStateFromCluster();
         })
       ).subscribe()
     );
@@ -810,6 +816,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       icon: rawNode?.icon || this.resolveIconPath(type),
       x: typeof rawNode?.x === 'number' ? rawNode.x : 0,
       y: typeof rawNode?.y === 'number' ? rawNode.y : 0,
+      isAffected: !!rawNode?.isAffected,
       ...overrides
     };
 
@@ -945,8 +952,16 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   onNodeLabelEdit(node: DiagramNode, event: any) {
     node.name = event.target.textContent || node.name;
-    this.diagramService.updateClusterNodes(node.id, { name: node.name });
+    const shouldAutoSync = this.isNamespaceDeployed();
+    if (shouldAutoSync) {
+      node.isAffected = true;
+    }
+    const payload = shouldAutoSync ? { name: node.name, isAffected: true } : { name: node.name };
+    this.diagramService.updateClusterNodes(node.id, payload);
     this.updateDiagramData();
+    if (shouldAutoSync) {
+      this.configurationChangeService.emit({ resourceId: node.id });
+    }
   }
 
   onNodeMouseDown(event: MouseEvent, node: DiagramNode) {
@@ -1369,6 +1384,46 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.nodes = updatedNodes;
       this.updateDiagramData();
     }
+  }
+
+  private syncAffectedStateFromCluster(): void {
+    if (!this.currentClusterSnapshot?.nodes?.length || !this.nodes?.length) {
+      return;
+    }
+
+    const affectedMap = new Map<string, boolean>();
+    this.currentClusterSnapshot.nodes.forEach((node: any) => {
+      if (node?.id) {
+        affectedMap.set(node.id, !!node?.isAffected);
+      }
+    });
+
+    if (!affectedMap.size) {
+      const hasExistingFlags = this.nodes.some(node => node.isAffected);
+      if (!hasExistingFlags) {
+        return;
+      }
+    }
+
+    let hasChanges = false;
+    const updatedNodes = this.nodes.map(node => {
+      const shouldBlink = affectedMap.get(node.id) ?? false;
+      if (!!node.isAffected === shouldBlink) {
+        return node;
+      }
+      hasChanges = true;
+      return { ...node, isAffected: shouldBlink };
+    });
+
+    if (!hasChanges) {
+      return;
+    }
+
+    this.nodes = updatedNodes;
+    if (this.selectedNode) {
+      this.selectedNode = this.nodes.find(n => n.id === this.selectedNode!.id) ?? null;
+    }
+    this.updateDiagramData();
   }
 
   private isContainerLinkAllowed(nodeA: DiagramNode, nodeB: DiagramNode): boolean {
@@ -1976,6 +2031,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
         icon: n.icon,
         x: n.x,
         y: n.y,
+        isAffected: !!n.isAffected,
         ...(n.type === 'container' && n.role ? { role: n.role } : {})
       })),
       links: serializedLinks,

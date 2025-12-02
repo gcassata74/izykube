@@ -11,6 +11,8 @@ import { AiAssistantService } from '../services/ai-assistant.service';
 import { NotificationService } from '../services/notification.service';
 import { PodShellService } from '../services/pod-shell.service';
 import { ClusterStatusEnum } from '../cluster/enum/cluster.-status-enum';
+import { ConfigurationChangeService } from '../services/configuration-change.service';
+import { ResourceSyncService } from '../services/resource-sync.service';
 
 class MockIconService {
   getIconPath(name: string) {
@@ -61,7 +63,9 @@ describe('DiagramComponent', () => {
         { provide: Store, useClass: MockStore },
         { provide: AiAssistantService, useClass: MockAiAssistantService },
         { provide: NotificationService, useValue: notificationService },
-        { provide: PodShellService, useValue: jasmine.createSpyObj('PodShellService', ['getPodsByDeployment', 'createShellSocket']) }
+        { provide: PodShellService, useValue: jasmine.createSpyObj('PodShellService', ['getPodsByDeployment', 'createShellSocket']) },
+        { provide: ConfigurationChangeService, useValue: { emit: jasmine.createSpy('emit') } },
+        { provide: ResourceSyncService, useValue: { isRestarting: () => false } }
       ],
       schemas: [NO_ERRORS_SCHEMA]
     });
