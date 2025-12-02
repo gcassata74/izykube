@@ -44,7 +44,8 @@ public class NodeFactory {
                         deployment.getReplicas(),
                         deployment.getStrategyType(),
                         deployment.getAssetId(),
-                        deployment.getContainerPort()
+                        deployment.getContainerPort(),
+                        deployment.getWorkloadType()
                 );
                 break;
             case "service":
@@ -110,7 +111,7 @@ public class NodeFactory {
             case "container":
                 return new ContainerDTO(id, name, "", 80, null);
             case "deployment":
-                return new DeploymentDTO(id, name, 1, "RollingUpdate", "", 80);
+                return new DeploymentDTO(id, name, 1, "RollingUpdate", "", 80, DeploymentWorkloadType.DEPLOYMENT);
             case "service":
                 return new ServiceDTO(id, name, "ClusterIP", 80);
             case "ingress":
@@ -132,6 +133,6 @@ public class NodeFactory {
     private static DeploymentDTO convertPodToDeployment(PodDTO pod) {
         String deploymentId = pod.getId() != null ? pod.getId() : ("deployment-" + System.nanoTime());
         String name = pod.getName() != null ? pod.getName() : deploymentId;
-        return new DeploymentDTO(deploymentId, name, 1, "RollingUpdate", "", 80);
+        return new DeploymentDTO(deploymentId, name, 1, "RollingUpdate", "", 80, DeploymentWorkloadType.DEPLOYMENT);
     }
 }

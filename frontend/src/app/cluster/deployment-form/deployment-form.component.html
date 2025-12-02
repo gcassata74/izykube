@@ -41,6 +41,19 @@
   <div class="p-field">
     <span class="p-float-label">
       <p-dropdown
+        id="workloadType"
+        [options]="workloadOptions"
+        formControlName="workloadType"
+        optionLabel="label"
+        optionValue="value">
+      </p-dropdown>
+      <label for="workloadType" i18n="@@deploymentWorkloadType">Workload Type</label>
+    </span>
+  </div>
+
+  <div class="p-field">
+    <span class="p-float-label">
+      <p-dropdown
         id="strategyType"
         [options]="strategyTypes"
         formControlName="strategyType"

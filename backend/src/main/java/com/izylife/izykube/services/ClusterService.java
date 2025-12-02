@@ -3,6 +3,7 @@ package com.izylife.izykube.services;
 import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
+import com.izylife.izykube.dto.cluster.DeploymentWorkloadType;
 import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.dto.cluster.PodDTO;
@@ -21,7 +22,9 @@ import io.fabric8.istio.client.IstioClient;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.NamespaceBuilder;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.api.model.apps.DaemonSetBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
+import io.fabric8.kubernetes.api.model.apps.StatefulSetBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.Resource;
@@ -356,29 +359,50 @@ public class ClusterService {
         configMaps.addAll(ClusterUtil.findNodesByKind(clusterDTO, "secret"));
 
         for (NodeDTO configMap : configMaps) {
-            List<NodeDTO> connectedDeployments = ClusterUtil.findTargetNodesOf(clusterDTO, configMap.getId())
+            List<DeploymentDTO> connectedDeployments = ClusterUtil.findTargetNodesOf(clusterDTO, configMap.getId())
                     .stream()
-                    .filter(node -> "deployment".equals(node.getKind()))
+                    .filter(DeploymentDTO.class::isInstance)
+                    .map(DeploymentDTO.class::cast)
                     .collect(Collectors.toList());
 
-            for (NodeDTO deployment : connectedDeployments) {
-                restartDeployment(deployment.getName(), namespace);
+            for (DeploymentDTO deployment : connectedDeployments) {
+                restartWorkload(deployment, namespace);
             }
         }
     }
 
-    private void restartDeployment(String name, String namespace) {
-        // Implement the logic to trigger a rolling update for the deployment
-        // Example using Fabric8 Kubernetes client:
+    private void restartWorkload(DeploymentDTO deployment, String namespace) {
         KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
-        k8sClient.apps().deployments()
-                .inNamespace(namespace == null || namespace.isBlank() ? "default" : namespace)
-                .withName(name)
-                .edit(d -> new DeploymentBuilder(d)
-                        .editSpec().editTemplate().editMetadata()
-                        .addToAnnotations("kubectl.kubernetes.io/restartedAt", Instant.now().toString())
-                        .endMetadata().endTemplate().endSpec()
-                        .build());
+        String resolvedNamespace = (namespace == null || namespace.isBlank()) ? "default" : namespace;
+        String timestamp = Instant.now().toString();
+
+        DeploymentWorkloadType workloadType = deployment.resolveWorkloadType();
+        switch (workloadType) {
+            case STATEFULSET -> k8sClient.apps().statefulSets()
+                    .inNamespace(resolvedNamespace)
+                    .withName(deployment.getName())
+                    .edit(s -> new StatefulSetBuilder(s)
+                            .editSpec().editTemplate().editMetadata()
+                            .addToAnnotations("kubectl.kubernetes.io/restartedAt", timestamp)
+                            .endMetadata().endTemplate().endSpec()
+                            .build());
+            case DAEMONSET -> k8sClient.apps().daemonSets()
+                    .inNamespace(resolvedNamespace)
+                    .withName(deployment.getName())
+                    .edit(ds -> new DaemonSetBuilder(ds)
+                            .editSpec().editTemplate().editMetadata()
+                            .addToAnnotations("kubectl.kubernetes.io/restartedAt", timestamp)
+                            .endMetadata().endTemplate().endSpec()
+                            .build());
+            default -> k8sClient.apps().deployments()
+                    .inNamespace(resolvedNamespace)
+                    .withName(deployment.getName())
+                    .edit(d -> new DeploymentBuilder(d)
+                            .editSpec().editTemplate().editMetadata()
+                            .addToAnnotations("kubectl.kubernetes.io/restartedAt", timestamp)
+                            .endMetadata().endTemplate().endSpec()
+                            .build());
+        }
     }
 
     private SanitizedCluster sanitizeClusterData(List<NodeDTO> nodes, List<LinkDTO> links) {
@@ -462,7 +486,7 @@ public class ClusterService {
 
     private DeploymentDTO convertPodToDeployment(PodDTO pod, String deploymentId) {
         String name = pod.getName() != null ? pod.getName() : deploymentId;
-        return new DeploymentDTO(deploymentId, name, 1, "RollingUpdate", "", 80);
+        return new DeploymentDTO(deploymentId, name, 1, "RollingUpdate", "", 80, DeploymentWorkloadType.DEPLOYMENT);
     }
 
     private record SanitizedCluster(List<NodeDTO> nodes, List<LinkDTO> links) {}

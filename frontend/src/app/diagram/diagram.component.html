@@ -95,6 +95,14 @@
         </span>
       </ng-container>
 
+      <ng-container *ngIf="getWorkloadBadge(node) as workloadBadge">
+        <span
+          class="diagram-node__workload-badge"
+          [attr.title]="workloadBadge.title">
+          {{ workloadBadge.label }}
+        </span>
+      </ng-container>
+
       <ng-container *ngIf="isPrimeIcon(node.icon); else imageIcon">
         <i [ngClass]="getPrimeIconClasses(node.icon)" class="diagram-node__prime-icon" [attr.aria-label]="node.name"></i>
       </ng-container>

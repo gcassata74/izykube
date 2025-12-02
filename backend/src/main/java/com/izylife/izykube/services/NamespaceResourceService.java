@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
+import com.izylife.izykube.dto.cluster.DeploymentDTO;
+import com.izylife.izykube.dto.cluster.DeploymentWorkloadType;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.dto.cluster.ResourceSyncStatusDTO;
 import com.izylife.izykube.factory.ClientFactory;
@@ -211,6 +213,14 @@ public class NamespaceResourceService {
     private SyncOutcome waitForResourceSynchronization(NodeDTO node, String namespace) {
         if (node == null || !StringUtils.hasText(node.getKind())) {
             return SyncOutcome.success("Resource type missing, assuming synchronized");
+        }
+        if (node instanceof DeploymentDTO deployment) {
+            DeploymentWorkloadType workloadType = deployment.resolveWorkloadType();
+            return switch (workloadType) {
+                case STATEFULSET -> waitForStatefulSetReady(deployment.getName(), namespace);
+                case DAEMONSET -> waitForDaemonSetReady(deployment.getName(), namespace);
+                default -> waitForDeploymentReady(deployment.getName(), namespace);
+            };
         }
         return switch (node.getKind().toLowerCase(Locale.ROOT)) {
             case "deployment" -> waitForDeploymentReady(node.getName(), namespace);

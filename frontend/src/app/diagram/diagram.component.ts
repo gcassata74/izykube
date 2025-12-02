@@ -27,6 +27,7 @@ interface DiagramNode {
   x: number;
   y: number;
   role?: ContainerRole;
+  workloadType?: 'DEPLOYMENT' | 'STATEFULSET' | 'DAEMONSET';
   isAffected?: boolean;
   element?: HTMLElement;
 }
@@ -177,6 +178,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
           this.currentClusterSnapshot = cluster ? Cluster.fromJSON(cluster) : null;
           this.syncDiagramNodeNames();
           this.syncContainerRolesFromCluster();
+          this.syncWorkloadTypesFromCluster();
           this.syncAffectedStateFromCluster();
         })
       ).subscribe()
@@ -754,7 +756,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
       type: normalizedType,
       icon: icon,
       x: x,
-      y: y
+      y: y,
+      ...(normalizedType === 'deployment' ? { workloadType: 'DEPLOYMENT' as DiagramNode['workloadType'] } : {})
     };
 
     this.nodes.push(node);
@@ -820,6 +823,11 @@ export class DiagramComponent implements OnInit, OnDestroy {
       ...overrides
     };
 
+    if (type === 'deployment') {
+      const workloadSource = (overrides?.workloadType || rawNode?.workloadType) as string | undefined;
+      normalized.workloadType = workloadSource ? (workloadSource.toString().toUpperCase() as DiagramNode['workloadType']) : 'DEPLOYMENT';
+    }
+
     if (type === 'container') {
       const overrideRole = overrides?.role;
       const rawRole = overrideRole ?? rawNode?.role;
@@ -864,6 +872,20 @@ export class DiagramComponent implements OnInit, OnDestroy {
       default:
         return null;
     }
+  }
+
+  getWorkloadBadge(node: DiagramNode): { label: string; title: string } | null {
+    if (node.type !== 'deployment') {
+      return null;
+    }
+    const workload = (node.workloadType || 'DEPLOYMENT').toUpperCase();
+    if (workload === 'STATEFULSET') {
+      return { label: 'SS', title: 'StatefulSet workload' };
+    }
+    if (workload === 'DAEMONSET') {
+      return { label: 'DS', title: 'DaemonSet workload' };
+    }
+    return null;
   }
 
   shouldShowPodShellTrigger(node: DiagramNode): boolean {
@@ -1382,6 +1404,45 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
     if (hasChanges) {
       this.nodes = updatedNodes;
+      this.updateDiagramData();
+    }
+  }
+
+  private syncWorkloadTypesFromCluster(): void {
+    if (!this.currentClusterSnapshot?.nodes?.length || !this.nodes?.length) {
+      return;
+    }
+    const map = new Map<string, DiagramNode['workloadType']>();
+    this.currentClusterSnapshot.nodes.forEach((node: any) => {
+      const kind = (node?.kind ?? node?.type ?? '').toLowerCase();
+      if (kind !== 'deployment' || !node?.id) {
+        return;
+      }
+      const workload = typeof node?.workloadType === 'string'
+        ? node.workloadType.toUpperCase()
+        : 'DEPLOYMENT';
+      map.set(node.id, workload as DiagramNode['workloadType']);
+    });
+    if (!map.size) {
+      return;
+    }
+    let hasChanges = false;
+    const updatedNodes = this.nodes.map(node => {
+      if (node.type !== 'deployment') {
+        return node;
+      }
+      const workload = map.get(node.id);
+      if (!workload || workload === node.workloadType) {
+        return node;
+      }
+      hasChanges = true;
+      return { ...node, workloadType: workload };
+    });
+    if (hasChanges) {
+      this.nodes = updatedNodes;
+      if (this.selectedNode) {
+        this.selectedNode = this.nodes.find(n => n.id === this.selectedNode!.id) ?? null;
+      }
       this.updateDiagramData();
     }
   }
@@ -2032,7 +2093,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
         x: n.x,
         y: n.y,
         isAffected: !!n.isAffected,
-        ...(n.type === 'container' && n.role ? { role: n.role } : {})
+        ...(n.type === 'container' && n.role ? { role: n.role } : {}),
+        ...(n.type === 'deployment' && n.workloadType ? { workloadType: n.workloadType } : {})
       })),
       links: serializedLinks,
       rawManifests: this.rawManifests

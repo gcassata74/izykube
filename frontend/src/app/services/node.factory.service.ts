@@ -36,10 +36,11 @@ export class NodeFactoryService {
         return new Deployment(
           id,
           name,
-          1,             // default replicas
+          1,
           'RollingUpdate',
-          '',            // default assetId
-          80             // default container port
+          '',
+          80,
+          'DEPLOYMENT'
         );
       case 'configmap':
         return new ConfigMap(

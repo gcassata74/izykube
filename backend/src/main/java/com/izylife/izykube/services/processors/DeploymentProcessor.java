@@ -3,13 +3,28 @@ package com.izylife.izykube.services.processors;
 import com.izylife.izykube.dto.cluster.*;
 import com.izylife.izykube.utils.ConfigMapUtils;
 import com.izylife.izykube.utils.VolumeUtils;
-import io.fabric8.kubernetes.api.model.*;
+import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.EnvFromSource;
+import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.HostAlias;
+import io.fabric8.kubernetes.api.model.IntOrString;
+import io.fabric8.kubernetes.api.model.PodSpec;
+import io.fabric8.kubernetes.api.model.PodSpecBuilder;
+import io.fabric8.kubernetes.api.model.PodTemplateSpec;
+import io.fabric8.kubernetes.api.model.PodTemplateSpecBuilder;
+import io.fabric8.kubernetes.api.model.Volume;
+import io.fabric8.kubernetes.api.model.VolumeMount;
+import io.fabric8.kubernetes.api.model.apps.DaemonSet;
+import io.fabric8.kubernetes.api.model.apps.DaemonSetBuilder;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.apps.RollingUpdateDeploymentBuilder;
+import io.fabric8.kubernetes.api.model.apps.StatefulSet;
+import io.fabric8.kubernetes.api.model.apps.StatefulSetBuilder;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
@@ -53,8 +68,38 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         Map<String, String> labels = new HashMap<>();
         labels.put("app", dto.getName());
 
-        String strategyType = dto.getStrategyType() != null ? dto.getStrategyType() : "RollingUpdate";
+        PodSpecBuilder podSpecBuilder = new PodSpecBuilder()
+                .withContainers(containers)
+                .withRestartPolicy("Always");
 
+        if (!volumes.isEmpty()) {
+            podSpecBuilder.withVolumes(volumes);
+        }
+        if (hostAlias != null) {
+            podSpecBuilder.withHostAliases(List.of(hostAlias));
+        }
+
+        PodSpec podSpec = podSpecBuilder.build();
+        podSpec.getContainers().forEach(container -> container.setEnvFrom(envFromSources));
+
+        PodTemplateSpec podTemplate = new PodTemplateSpecBuilder()
+                .withNewMetadata()
+                .withLabels(labels)
+                .endMetadata()
+                .withSpec(podSpec)
+                .build();
+
+        HasMetadata workload = switch (dto.resolveWorkloadType()) {
+            case STATEFULSET -> buildStatefulSet(dto, namespace, labels, podTemplate, serviceDTO);
+            case DAEMONSET -> buildDaemonSet(dto, namespace, labels, podTemplate);
+            default -> buildDeployment(dto, namespace, labels, podTemplate);
+        };
+
+        return Serialization.asYaml(workload);
+    }
+
+    private Deployment buildDeployment(DeploymentDTO dto, String namespace, Map<String, String> labels, PodTemplateSpec podTemplate) {
+        String strategyType = dto.getStrategyType() != null ? dto.getStrategyType() : "RollingUpdate";
         Deployment deployment = new DeploymentBuilder()
                 .withNewMetadata()
                 .withName(dto.getName())
@@ -65,15 +110,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .withNewSelector()
                 .withMatchLabels(labels)
                 .endSelector()
-                .withNewTemplate()
-                .withNewMetadata()
-                .withLabels(labels)
-                .endMetadata()
-                .withNewSpec()
-                .withContainers(containers)
-                .withRestartPolicy("Always")
-                .endSpec()
-                .endTemplate()
+                .withTemplate(podTemplate)
                 .withNewStrategy()
                 .withType(strategyType)
                 .endStrategy()
@@ -88,19 +125,47 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                             .build()
             );
         }
+        return deployment;
+    }
 
-        deployment.getSpec().getTemplate().getSpec().getContainers()
-                .forEach(container -> container.setEnvFrom(envFromSources));
-
-        if (!volumes.isEmpty()) {
-            deployment.getSpec().getTemplate().getSpec().setVolumes(volumes);
+    private StatefulSet buildStatefulSet(DeploymentDTO dto,
+                                         String namespace,
+                                         Map<String, String> labels,
+                                         PodTemplateSpec podTemplate,
+                                         ServiceDTO serviceDTO) {
+        String serviceName = dto.getName();
+        if (serviceDTO != null && StringUtils.hasText(serviceDTO.getName())) {
+            serviceName = serviceDTO.getName().trim();
         }
 
-        if (hostAlias != null) {
-            deployment.getSpec().getTemplate().getSpec().setHostAliases(List.of(hostAlias));
-        }
+        return new StatefulSetBuilder()
+                .withNewMetadata()
+                .withName(dto.getName())
+                .withNamespace(namespace)
+                .endMetadata()
+                .withNewSpec()
+                .withReplicas(dto.getReplicas())
+                .withServiceName(serviceName)
+                .withNewSelector().withMatchLabels(labels).endSelector()
+                .withTemplate(podTemplate)
+                .endSpec()
+                .build();
+    }
 
-        return Serialization.asYaml(deployment);
+    private DaemonSet buildDaemonSet(DeploymentDTO dto,
+                                     String namespace,
+                                     Map<String, String> labels,
+                                     PodTemplateSpec podTemplate) {
+        return new DaemonSetBuilder()
+                .withNewMetadata()
+                .withName(dto.getName())
+                .withNamespace(namespace)
+                .endMetadata()
+                .withNewSpec()
+                .withNewSelector().withMatchLabels(labels).endSelector()
+                .withTemplate(podTemplate)
+                .endSpec()
+                .build();
     }
 
     private List<EnvFromSource> createEnvFromSources(DeploymentDTO dto) {

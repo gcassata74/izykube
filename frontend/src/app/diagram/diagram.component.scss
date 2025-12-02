@@ -491,6 +491,23 @@
   background-color: #10b981;
 }
 
+.diagram-node__workload-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  min-width: 22px;
+  height: 18px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  background: #fb923c;
+  color: #1f2937;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  text-transform: uppercase;
+}
+
 .connection-point {
   position: absolute;
   width: 12px;

@@ -3,6 +3,7 @@ export class Node {
     name!: string;
     kind!: string;
     isAffected: boolean;
+    workloadType?: string;
 
     constructor(id: string, name: string, kind: string, isAffected: boolean = false) {
         this.id = id;

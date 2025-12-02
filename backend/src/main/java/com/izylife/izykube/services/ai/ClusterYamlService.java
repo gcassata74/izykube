@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.ConfigMapDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
+import com.izylife.izykube.dto.cluster.DeploymentWorkloadType;
 import com.izylife.izykube.dto.cluster.IngressDTO;
 import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
@@ -1194,17 +1195,28 @@ public class ClusterYamlService {
     private Map<String, Object> createBaseDeploymentManifest(DeploymentDTO node) {
         Map<String, Object> manifest = new LinkedHashMap<>();
         manifest.put("apiVersion", "apps/v1");
-        manifest.put("kind", "Deployment");
+        DeploymentWorkloadType workloadType = node.resolveWorkloadType();
+        String kind = switch (workloadType) {
+            case STATEFULSET -> "StatefulSet";
+            case DAEMONSET -> "DaemonSet";
+            default -> "Deployment";
+        };
+        manifest.put("kind", kind);
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("name", node.getName());
         metadata.put("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
 
         Map<String, Object> spec = new LinkedHashMap<>();
-        spec.put("replicas", node.getReplicas());
+        if (workloadType != DeploymentWorkloadType.DAEMONSET) {
+            spec.put("replicas", node.getReplicas());
+        }
         Map<String, Object> selector = new LinkedHashMap<>();
         selector.put("matchLabels", Map.of("app", node.getName()));
         spec.put("selector", selector);
+        if (workloadType == DeploymentWorkloadType.STATEFULSET) {
+            spec.put("serviceName", node.getName());
+        }
         Map<String, Object> template = new LinkedHashMap<>();
         Map<String, Object> tempMeta = new LinkedHashMap<>();
         tempMeta.put("labels", Map.of("app", node.getName()));

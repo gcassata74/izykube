@@ -20,6 +20,11 @@ export class DeploymentFormComponent implements OnInit, OnChanges {
     { label: 'Recreate', value: 'Recreate' },
     { label: 'Rolling Update', value: 'RollingUpdate' }
   ];
+  workloadOptions = [
+    { label: 'Deployment', value: 'DEPLOYMENT' },
+    { label: 'StatefulSet', value: 'STATEFULSET' },
+    { label: 'DaemonSet', value: 'DAEMONSET' }
+  ];
 
   constructor(
     private fb: FormBuilder,
@@ -46,7 +51,8 @@ export class DeploymentFormComponent implements OnInit, OnChanges {
       replicas: [this.selectedNode.replicas, [Validators.required, Validators.min(0)]],
       strategyType: [this.selectedNode.strategyType, Validators.required],
       assetId: [this.selectedNode.assetId || '', Validators.required],
-      containerPort: [this.selectedNode.containerPort ?? 80, [Validators.required, Validators.min(1)]]
+      containerPort: [this.selectedNode.containerPort ?? 80, [Validators.required, Validators.min(1)]],
+      workloadType: [this.selectedNode.workloadType ?? 'DEPLOYMENT', Validators.required]
     });
   }
 
@@ -59,7 +65,8 @@ export class DeploymentFormComponent implements OnInit, OnChanges {
       replicas: node.replicas,
       strategyType: node.strategyType,
       assetId: node.assetId || '',
-      containerPort: node.containerPort ?? 80
+      containerPort: node.containerPort ?? 80,
+      workloadType: node.workloadType ?? 'DEPLOYMENT'
     }, { emitEvent: false });
   }
 
