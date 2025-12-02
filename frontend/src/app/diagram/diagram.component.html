@@ -58,8 +58,10 @@
       (mousedown)="onNodeMouseDown($event, node)">
 
       <div class="diagram-node__status" *ngIf="node.isAffected">
-        <i class="pi pi-sync" [ngClass]="{ 'pi-spin': resourceSyncService.isRestarting(node.id) }"></i>
-        <span>{{ resourceSyncService.isRestarting(node.id) ? 'Syncing…' : 'Pending…' }}</span>
+        <i
+          class="pi pi-sync"
+          [class.pi-spin]="resourceSyncService.isRestarting(node.id)">
+        </i>
       </div>
 
       <!-- Connection points -->
