@@ -1318,7 +1318,11 @@ export class DiagramComponent implements OnInit, OnDestroy {
     if (!this.isContainerLinkAllowed(fromNode, toNode)) {
       this.notificationService.warn(
         'Invalid connection',
+<<<<<<< HEAD
         'Containers can only be linked to Deployments or Config Bundles.'
+=======
+        'Config bundles may connect to Deployments, Containers, or Volumes. Volumes may connect to Deployments or Config Bundles.'
+>>>>>>> acac5289 ([iZ-60]ConfigMap/Secret/Volume refactoring)
       );
       return;
     }
@@ -1597,90 +1601,23 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.updateDiagramData();
   }
 
-  private syncConfigBundleMetaFromCluster(): void {
-    if (!this.currentClusterSnapshot?.nodes?.length || !this.nodes?.length) {
-      return;
-    }
-
-    const metaMap = new Map<string, ConfigBundleMeta>();
-    this.currentClusterSnapshot.nodes.forEach((node: any) => {
-      const type = (node?.kind ?? node?.type ?? '').toLowerCase();
-      if (type !== 'configmap' && type !== 'secret') {
-        return;
-      }
-      const bundle = node?.configBundle;
-      const entries = Array.isArray(bundle?.entries)
-        ? bundle.entries
-        : Array.isArray(node?.entries)
-          ? node.entries
-          : [];
-      const secretCount = entries.filter((entry: any) => (entry?.sensitivity ?? '').toUpperCase() === 'SECRET').length;
-      const plainCount = entries.filter((entry: any) => (entry?.sensitivity ?? '').toUpperCase() !== 'SECRET').length;
-      metaMap.set(node.id, {
-        hasSecretEntries: secretCount > 0 || type === 'secret',
-        hasPlainEntries: plainCount > 0 && type !== 'secret',
-        entryCount: entries.length
-      } as ConfigBundleMeta);
-    });
-
-    const shouldClearMeta = !metaMap.size && this.nodes.some(node => node.bundleMeta);
-    if (!metaMap.size && !shouldClearMeta) {
-      return;
-    }
-
-    let hasChanges = false;
-    const updatedNodes = this.nodes.map(node => {
-      if (node.type !== 'configmap' && node.type !== 'secret') {
-        if (node.bundleMeta) {
-          const clone = { ...node } as DiagramNode;
-          delete (clone as any).bundleMeta;
-          hasChanges = true;
-          return clone;
-        }
-        return node;
-      }
-      const meta = metaMap.get(node.id);
-      if (!meta) {
-        if (node.bundleMeta) {
-          const clone = { ...node } as DiagramNode;
-          delete (clone as any).bundleMeta;
-          hasChanges = true;
-          return clone;
-        }
-        return node;
-      }
-      const sameMeta = node.bundleMeta
-        && node.bundleMeta.hasPlainEntries === meta.hasPlainEntries
-        && node.bundleMeta.hasSecretEntries === meta.hasSecretEntries
-        && node.bundleMeta.entryCount === meta.entryCount;
-      if (sameMeta) {
-        return node;
-      }
-      hasChanges = true;
-      return { ...node, bundleMeta: meta };
-    });
-
-    if (!hasChanges) {
-      return;
-    }
-
-    this.nodes = updatedNodes;
-    if (this.selectedNode) {
-      this.selectedNode = this.nodes.find(n => n.id === this.selectedNode!.id) ?? null;
-    }
-    this.updateDiagramData();
-  }
-
   private isContainerLinkAllowed(nodeA: DiagramNode, nodeB: DiagramNode): boolean {
     const typeA = nodeA.type?.toLowerCase() ?? '';
     const typeB = nodeB.type?.toLowerCase() ?? '';
 
     const configResources = ['configmap', 'secret'];
+    const volumeResources = ['volume'];
     const involvesConfigResource = configResources.includes(typeA) || configResources.includes(typeB);
+    const involvesVolume = volumeResources.includes(typeA) || volumeResources.includes(typeB);
 
     if (involvesConfigResource) {
       const otherType = configResources.includes(typeA) ? typeB : typeA;
-      return ['deployment', 'container'].includes(otherType);
+      return ['deployment', 'container', 'volume'].includes(otherType);
+    }
+
+    if (involvesVolume) {
+      const otherType = volumeResources.includes(typeA) ? typeB : typeA;
+      return configResources.includes(otherType) || ['deployment', 'container'].includes(otherType);
     }
 
     if (typeA !== 'container' && typeB !== 'container') {
