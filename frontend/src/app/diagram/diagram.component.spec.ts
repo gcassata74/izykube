@@ -104,7 +104,7 @@ describe('DiagramComponent', () => {
 
     expect(notificationService.warn).toHaveBeenCalledWith(
       'Invalid connection',
-      'Containers can only be linked to Deployments, ConfigMaps or Secrets.'
+      'Containers can only be linked to Deployments or Config Bundles.'
     );
     expect((component as any).links.length).toBe(0);
   });

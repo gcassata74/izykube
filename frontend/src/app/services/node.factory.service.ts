@@ -3,7 +3,7 @@ import { Container } from '../model/container.class';
 import { Node } from '../model/node.class';
 import { Service } from '../model/service.class';
 import { Deployment } from '../model/deployment.class';
-import { ConfigMap } from '../model/config-map.class';
+import { ConfigBundleNode } from '../model/config-bundle-node.class';
 import { Ingress } from '../model/ingress.class';
 import { Volume, VolumeConfig } from '../model/volume.class';
 import { Job } from '../model/job.class';
@@ -43,19 +43,17 @@ export class NodeFactoryService {
           'DEPLOYMENT'
         );
       case 'configmap':
-        return new ConfigMap(
-          id,
-          name,
-          '',
-          'configmap'
-        );
+        return new ConfigBundleNode(id, name, {
+          namespace: 'default',
+          annotations: {},
+          entries: []
+        }, 'configmap');
       case 'secret':
-        return new ConfigMap(
-          id,
-          name,
-          '',
-          'secret'
-        );
+        return new ConfigBundleNode(id, name, {
+          namespace: 'default',
+          annotations: {},
+          entries: []
+        }, 'secret');
         case 'job':
           return new Job(
             id,

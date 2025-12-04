@@ -1,0 +1,190 @@
+<form [formGroup]="form" class="config-bundle-form">
+  <section class="config-bundle-form__header">
+    <div class="config-bundle-form__field">
+      <label for="bundle-name">Bundle name</label>
+      <input
+        id="bundle-name"
+        pInputText
+        formControlName="name"
+        [readonly]="!canEditName"
+        autocomplete="off"
+        placeholder="app-config" />
+      <small class="field-hint" *ngIf="!canEditName">
+        Rename is disabled while this bundle is linked to other blocks.
+      </small>
+      <div class="field-error" *ngIf="form.get('name')?.touched && form.get('name')?.invalid">
+        <span *ngIf="form.get('name')?.errors?.['required']">Name is required.</span>
+        <span *ngIf="form.get('name')?.errors?.['dnsLabel']">
+          Must be DNS-1123 compliant (lowercase letters, numbers, and dashes only).
+        </span>
+        <span *ngIf="form.get('name')?.errors?.['duplicateKey']">
+          Duplicate name detected.
+        </span>
+      </div>
+    </div>
+
+    <div class="config-bundle-form__field">
+      <label for="bundle-namespace">Namespace</label>
+      <input
+        id="bundle-namespace"
+        pInputText
+        formControlName="namespace"
+        autocomplete="off"
+        placeholder="default" />
+      <div class="field-error" *ngIf="form.get('namespace')?.touched && form.get('namespace')?.invalid">
+        <span *ngIf="form.get('namespace')?.errors?.['required']">Namespace is required.</span>
+        <span *ngIf="form.get('namespace')?.errors?.['dnsLabel']">
+          Must be DNS-1123 compliant.
+        </span>
+      </div>
+    </div>
+
+    <div class="config-bundle-form__toggle">
+      <p-inputSwitch formControlName="showSecretsAsPlain"></p-inputSwitch>
+      <label>Show secret values</label>
+    </div>
+  </section>
+
+  <section class="config-bundle-form__meta">
+    <div class="kv-editor">
+      <div class="kv-editor__header">
+        <h4>Annotations</h4>
+        <button type="button" pButton icon="pi pi-plus" class="p-button-text" (click)="addAnnotation()">Add</button>
+      </div>
+      <div class="kv-editor__hint" *ngIf="!annotationsArray.length">
+        No annotations defined.
+      </div>
+      <div class="kv-editor__rows" formArrayName="annotations">
+        <div class="kv-editor__row" *ngFor="let annotationGroup of annotationsArray.controls; let i = index" [formGroupName]="i">
+          <input pInputText formControlName="key" placeholder="key" />
+          <input pInputText formControlName="value" placeholder="value" />
+          <button type="button" pButton icon="pi pi-times" class="p-button-text p-button-danger" (click)="removeAnnotation(i)"></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p-tabView>
+    <p-tabPanel header="Data">
+      <div class="entries-container" formArrayName="entries">
+        <div
+          class="entry-card"
+          *ngFor="let entryGroup of entryControls; let i = index; trackBy: trackByEntryIndex"
+          [formGroupName]="i"
+          [ngClass]="{ 'entry-card--error': entryGroup.invalid && (entryGroup.dirty || entryGroup.touched) }">
+          <label class="entry-label" [for]="'entry-key-' + i">Key</label>
+          <input
+            [id]="'entry-key-' + i"
+            pInputText
+            formControlName="key"
+            placeholder="DB_HOST"
+            autocomplete="off"
+            [ngClass]="{ 'entry-input--invalid': entryGroup.get('key')?.invalid && entryGroup.get('key')?.touched }" />
+          <div class="field-error" *ngIf="entryGroup.get('key')?.touched && entryGroup.get('key')?.invalid">
+            <span *ngIf="entryGroup.get('key')?.errors?.['required']">Key is required.</span>
+            <span *ngIf="entryGroup.get('key')?.errors?.['duplicateKey']">Duplicate key.</span>
+          </div>
+
+          <label class="entry-label" [for]="'entry-value-' + i">Value</label>
+          <div class="entry-value-wrapper" [class.entry-value-wrapper--masked]="shouldMaskEntry(entryGroup)">
+            <textarea
+              [id]="'entry-value-' + i"
+              pInputTextarea
+              formControlName="value"
+              rows="3"
+              [autoResize]="true"
+              [readonly]="shouldMaskEntry(entryGroup)"
+              [attr.placeholder]="shouldMaskEntry(entryGroup) ? 'Secret value hidden' : 'Value'">
+            </textarea>
+            <div class="entry-mask-hint" *ngIf="shouldMaskEntry(entryGroup)">
+              <i class="pi pi-eye-slash"></i>
+              <span>Hidden (enable “Show secret values” to view)</span>
+            </div>
+          </div>
+
+          <div class="entry-footer">
+            <div class="sensitivity">
+              <label [for]="'entry-sensitivity-' + i">Sensitivity</label>
+              <p-dropdown
+                [id]="'entry-sensitivity-' + i"
+                formControlName="sensitivity"
+                [options]="sensitivityOptions"
+                optionLabel="label"
+                optionValue="value">
+              </p-dropdown>
+            </div>
+            <div class="entry-actions">
+              <button
+                type="button"
+                pButton
+                class="p-button-text"
+                icon="pi pi-copy"
+                label="Duplicate"
+                (click)="duplicateEntry(i)">
+              </button>
+              <button
+                type="button"
+                pButton
+                class="p-button-text p-button-danger"
+                icon="pi pi-trash"
+                label="Delete"
+                (click)="removeEntry(i)">
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="field-error" *ngIf="entriesArray.errors?.['missingEntry']">
+        Add at least one entry with a key.
+      </div>
+      <div class="entry-actions entry-actions--global">
+        <button type="button" pButton icon="pi pi-plus" label="Add entry" (click)="addEntry()"></button>
+      </div>
+    </p-tabPanel>
+
+    <p-tabPanel header="YAML Preview">
+      <p class="yaml-preview__hint">
+        Preview only. Apply changes from the form above; this output is not editable.
+      </p>
+      <p class="yaml-preview__error" *ngIf="yamlError">
+        {{ yamlError }}
+      </p>
+      <textarea class="yaml-preview__content" readonly [value]="yamlPreview"></textarea>
+    </p-tabPanel>
+  </p-tabView>
+</form>
+
+<p-dialog
+  header="Paste key=value list"
+  [(visible)]="pasteDialogVisible"
+  [modal]="true"
+  [style]="{ width: '480px' }"
+  (onHide)="cancelPaste()">
+  <div class="paste-dialog">
+    <p class="paste-dialog__hint">
+      Paste entries like <code>KEY=value</code>, one per line. Choose the default sensitivity for values below.
+    </p>
+    <textarea
+      pInputTextarea
+      [(ngModel)]="pasteBuffer"
+      [ngModelOptions]="{ standalone: true }"
+      [autoResize]="true"
+      rows="6"
+      placeholder="USER=demo&#10;PASSWORD=secret">
+    </textarea>
+    <div class="paste-dialog__controls">
+      <label>Default sensitivity:</label>
+      <p-dropdown
+        [options]="sensitivityOptions"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="pasteDefaultSensitivity"
+        [ngModelOptions]="{ standalone: true }">
+      </p-dropdown>
+    </div>
+  </div>
+  <ng-template pTemplate="footer">
+    <button type="button" pButton label="Cancel" class="p-button-text" (click)="cancelPaste()"></button>
+    <button type="button" pButton label="Add entries" icon="pi pi-check" (click)="applyPasteBuffer()"></button>
+  </ng-template>
+</p-dialog>

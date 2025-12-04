@@ -37,7 +37,7 @@ import { ContextMenuModule } from 'primeng/contextmenu';
 import { ButtonModule } from 'primeng/button';
 import { MessageModule } from 'primeng/message';
 import { ToastModule } from 'primeng/toast';
-import { ConfigMapFormComponent } from './cluster/config-map-form/config-map-form.component';
+import { ConfigBundleFormComponent } from './cluster/config-bundle-form/config-bundle-form.component';
 import { ClusterService } from './services/cluster.service';
 import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.component';
 import { MessageService } from 'primeng/api';
@@ -69,7 +69,7 @@ import { PodShellDialogComponent } from './pod-shell-dialog/pod-shell-dialog.com
     ClusterEditorComponent,
     NodeFormComponent,
     DeploymentFormComponent,
-    ConfigMapFormComponent,
+    ConfigBundleFormComponent,
     ClusterFormComponent,
     ServiceFormComponent,
     IngressFormComponent,

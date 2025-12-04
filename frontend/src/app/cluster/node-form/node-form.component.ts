@@ -5,7 +5,7 @@ import { switchMap, filter, tap, Subscription, distinctUntilChanged } from 'rxjs
 import { DiagramService } from 'src/app/services/diagram.service';
 import { getCurrentCluster, getNodeById } from 'src/app/store/selectors/selectors';
 import { DeploymentFormComponent } from '../deployment-form/deployment-form.component';
-import { ConfigMapFormComponent } from '../config-map-form/config-map-form.component';
+import { ConfigBundleFormComponent } from '../config-bundle-form/config-bundle-form.component';
 import { ServiceFormComponent } from '../service-form/service-form.component';
 import { IngressFormComponent } from '../ingress-form/ingress-form.component';
 import { IstioFormComponent } from '../istio-form/istio-form.component';
@@ -33,8 +33,8 @@ export class NodeFormComponent implements OnInit, OnDestroy {
   @ViewChild('dynamicHost', { read: ViewContainerRef, static: true }) dynamicHost!: ViewContainerRef;
   formMapper: Record<string, Type<any>> = {
     'deployment': DeploymentFormComponent,
-    'configmap': ConfigMapFormComponent,
-    'secret': ConfigMapFormComponent,
+    'configmap': ConfigBundleFormComponent,
+    'secret': ConfigBundleFormComponent,
     'service': ServiceFormComponent,
     'ingress': IngressFormComponent,
     'istio': IstioFormComponent,
@@ -107,6 +107,10 @@ export class NodeFormComponent implements OnInit, OnDestroy {
         inputs['cluster'] = cluster;
       } else if (componentType === IngressFormComponent || componentType === IstioFormComponent) {
         inputs['sourceNodes'] = sourceNodes;
+      } else if (componentType === ConfigBundleFormComponent) {
+        inputs['sourceNodes'] = sourceNodes;
+        inputs['targetNodes'] = targetNodes;
+        inputs['clusterNamespace'] = cluster?.nameSpace || 'default';
       }
 
       this.updateComponentInputs(inputs);

@@ -18,6 +18,7 @@ import { PodSummary } from '../model/kube-summary';
 import { OverlayPanel } from 'primeng/overlaypanel';
 import { ConfigurationChangeService } from '../services/configuration-change.service';
 import { ResourceSyncService } from '../services/resource-sync.service';
+import { ConfigBundleMeta } from '../model/config-bundle.model';
 
 interface DiagramNode {
   id: string;
@@ -30,6 +31,7 @@ interface DiagramNode {
   workloadType?: 'DEPLOYMENT' | 'STATEFULSET' | 'DAEMONSET';
   isAffected?: boolean;
   element?: HTMLElement;
+  bundleMeta?: ConfigBundleMeta;
 }
 
 interface ConnectionPoint {
@@ -180,6 +182,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
           this.syncContainerRolesFromCluster();
           this.syncWorkloadTypesFromCluster();
           this.syncAffectedStateFromCluster();
+          this.syncConfigBundleMetaFromCluster();
         })
       ).subscribe()
     );
@@ -206,7 +209,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   onCanvasDrop(event: DropEvent) {
-    this.createNode(event.data.type, event.data.name, event.data.icon, event.x, event.y);
+    const baseName = event.data.baseName || event.data.name;
+    this.createNode(event.data.type, baseName, event.data.icon, event.x, event.y);
   }
 
   private initializePaletteItems() {
@@ -851,8 +855,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       { name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },
       { name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
       { name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
-      { name: 'configmap', type: 'configmap', icon: this.iconService.getIconPath('configmap') },
-      { name: 'secret', type: 'secret', icon: this.iconService.getIconPath('secret') },
+      { name: 'configbundle', displayName: 'Config bundle', baseName: 'config-bundle', type: 'configmap', icon: this.iconService.getIconPath('configmap') },
       { name: 'volume', type: 'volume', icon: this.iconService.getIconPath('volume') },
       { name: 'job', type: 'job', icon: this.iconService.getIconPath('job') }
     ];
@@ -886,6 +889,39 @@ export class DiagramComponent implements OnInit, OnDestroy {
       return { label: 'DS', title: 'DaemonSet workload' };
     }
     return null;
+  }
+
+  shouldShowSecretBadge(node: DiagramNode): boolean {
+    if (node.type !== 'configmap' && node.type !== 'secret') {
+      return false;
+    }
+    return !!node.bundleMeta?.hasSecretEntries;
+  }
+
+  getConfigBundleBadgeTitle(node: DiagramNode): string {
+    if (!node.bundleMeta) {
+      return '';
+    }
+    if (node.bundleMeta.hasSecretEntries && node.bundleMeta.hasPlainEntries) {
+      return 'Contains plain and secret entries';
+    }
+    if (node.bundleMeta.hasSecretEntries) {
+      return 'Contains secret entries';
+    }
+    return 'Contains plain entries';
+  }
+
+  getConfigBundleBadgeClass(node: DiagramNode): string {
+    if (!node.bundleMeta) {
+      return '';
+    }
+    if (node.bundleMeta.hasSecretEntries && node.bundleMeta.hasPlainEntries) {
+      return 'diagram-node__secret-badge--mixed';
+    }
+    if (node.bundleMeta.hasSecretEntries) {
+      return 'diagram-node__secret-badge--secret';
+    }
+    return 'diagram-node__secret-badge--plain';
   }
 
   shouldShowPodShellTrigger(node: DiagramNode): boolean {
@@ -1282,7 +1318,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     if (!this.isContainerLinkAllowed(fromNode, toNode)) {
       this.notificationService.warn(
         'Invalid connection',
-        'Containers can only be linked to Deployments, ConfigMaps or Secrets.'
+        'Containers can only be linked to Deployments or Config Bundles.'
       );
       return;
     }
@@ -1474,6 +1510,80 @@ export class DiagramComponent implements OnInit, OnDestroy {
       }
       hasChanges = true;
       return { ...node, isAffected: shouldBlink };
+    });
+
+    if (!hasChanges) {
+      return;
+    }
+
+    this.nodes = updatedNodes;
+    if (this.selectedNode) {
+      this.selectedNode = this.nodes.find(n => n.id === this.selectedNode!.id) ?? null;
+    }
+    this.updateDiagramData();
+  }
+
+  private syncConfigBundleMetaFromCluster(): void {
+    if (!this.currentClusterSnapshot?.nodes?.length || !this.nodes?.length) {
+      return;
+    }
+
+    const metaMap = new Map<string, ConfigBundleMeta>();
+    this.currentClusterSnapshot.nodes.forEach((node: any) => {
+      const type = (node?.kind ?? node?.type ?? '').toLowerCase();
+      if (type !== 'configmap' && type !== 'secret') {
+        return;
+      }
+      const bundle = node?.configBundle;
+      const entries = Array.isArray(bundle?.entries)
+        ? bundle.entries
+        : Array.isArray(node?.entries)
+          ? node.entries
+          : [];
+      const secretCount = entries.filter((entry: any) => (entry?.sensitivity ?? '').toUpperCase() === 'SECRET').length;
+      const plainCount = entries.filter((entry: any) => (entry?.sensitivity ?? '').toUpperCase() !== 'SECRET').length;
+      metaMap.set(node.id, {
+        hasSecretEntries: secretCount > 0 || type === 'secret',
+        hasPlainEntries: plainCount > 0 && type !== 'secret',
+        entryCount: entries.length
+      } as ConfigBundleMeta);
+    });
+
+    const shouldClearMeta = !metaMap.size && this.nodes.some(node => node.bundleMeta);
+    if (!metaMap.size && !shouldClearMeta) {
+      return;
+    }
+
+    let hasChanges = false;
+    const updatedNodes = this.nodes.map(node => {
+      if (node.type !== 'configmap' && node.type !== 'secret') {
+        if (node.bundleMeta) {
+          const clone = { ...node } as DiagramNode;
+          delete (clone as any).bundleMeta;
+          hasChanges = true;
+          return clone;
+        }
+        return node;
+      }
+      const meta = metaMap.get(node.id);
+      if (!meta) {
+        if (node.bundleMeta) {
+          const clone = { ...node } as DiagramNode;
+          delete (clone as any).bundleMeta;
+          hasChanges = true;
+          return clone;
+        }
+        return node;
+      }
+      const sameMeta = node.bundleMeta
+        && node.bundleMeta.hasPlainEntries === meta.hasPlainEntries
+        && node.bundleMeta.hasSecretEntries === meta.hasSecretEntries
+        && node.bundleMeta.entryCount === meta.entryCount;
+      if (sameMeta) {
+        return node;
+      }
+      hasChanges = true;
+      return { ...node, bundleMeta: meta };
     });
 
     if (!hasChanges) {

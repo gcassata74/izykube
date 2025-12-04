@@ -6,6 +6,8 @@ export interface DragDropData {
   icon: string;
   x?: number;
   y?: number;
+  displayName?: string;
+  baseName?: string;
 }
 
 export interface DropEvent {

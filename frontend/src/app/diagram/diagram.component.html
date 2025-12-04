@@ -17,12 +17,12 @@
       [isDraggable]="true"
       [dragData]="item">
       <ng-container *ngIf="isPrimeIcon(item.icon); else paletteImage">
-        <i [ngClass]="getPrimeIconClasses(item.icon)" class="diagram-node__prime-icon" [attr.aria-label]="item.name"></i>
+        <i [ngClass]="getPrimeIconClasses(item.icon)" class="diagram-node__prime-icon" [attr.aria-label]="item.displayName || item.name"></i>
       </ng-container>
       <ng-template #paletteImage>
-        <img [src]="item.icon" [alt]="item.name" style="width: 40px; height: 40px;">
+        <img [src]="item.icon" [alt]="item.displayName || item.name" style="width: 40px; height: 40px;">
       </ng-template>
-      <div class="palette-label">{{ item.name }}</div>
+      <div class="palette-label">{{ item.displayName || item.name }}</div>
     </div>
 
   </div>
@@ -102,6 +102,14 @@
           {{ workloadBadge.label }}
         </span>
       </ng-container>
+
+      <span
+        *ngIf="shouldShowSecretBadge(node)"
+        class="diagram-node__secret-badge"
+        [ngClass]="getConfigBundleBadgeClass(node)"
+        [attr.title]="getConfigBundleBadgeTitle(node)">
+        <i class="pi pi-lock"></i>
+      </span>
 
       <ng-container *ngIf="isPrimeIcon(node.icon); else imageIcon">
         <i [ngClass]="getPrimeIconClasses(node.icon)" class="diagram-node__prime-icon" [attr.aria-label]="node.name"></i>
