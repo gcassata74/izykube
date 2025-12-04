@@ -1,6 +1,6 @@
 import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Volume, VolumeConfig, VolumeType } from '../../model/volume.class';
+import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Volume, VolumeConfig, VolumeItem, VolumeType } from '../../model/volume.class';
 import { AutoSaveService } from '../../services/auto-save.service';
 import { Subscription, tap } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -9,6 +9,7 @@ import { TabPanel } from 'primeng/tabview';
 @Component({
   selector: 'app-volume-form',
   templateUrl: './volume-form.component.html',
+  styleUrls: ['./volume-form.component.scss'],
   providers: [AutoSaveService]
 })
 export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
@@ -23,6 +24,7 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
     { label: 'Config Map', value: 'configMap' },
     { label: 'Secret', value: 'secret' }
   ];
+  readonly itemSupportedTypes: VolumeType[] = ['configMap', 'secret'];
 
   constructor(
     private fb: FormBuilder,
@@ -66,7 +68,7 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
     const currentConfig = this.selectedNode.config;
 
     // Remove all type-specific controls
-    ['medium', 'sizeLimit', 'path', 'hostPathType', 'claimName', 'readOnly', 'name', 'secretName'].forEach(control => {
+    ['medium', 'sizeLimit', 'path', 'hostPathType', 'claimName', 'readOnly', 'name', 'secretName', 'optional', 'items'].forEach(control => {
       if (configForm.get(control)) {
         configForm.removeControl(control);
       }
@@ -86,8 +88,18 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
         configForm.addControl('claimName', this.fb.control(currentConfig.type === 'persistentVolumeClaim' ? currentConfig.claimName : '', Validators.required));
         configForm.addControl('readOnly', this.fb.control(currentConfig.type === 'persistentVolumeClaim' ? currentConfig.readOnly : false));
         break;
+      case 'configMap': {
+        const configMapConfig = currentConfig.type === 'configMap' ? currentConfig : undefined;
+        configForm.addControl('name', this.fb.control(configMapConfig?.name || '', Validators.required));
+        configForm.addControl('optional', this.fb.control(configMapConfig?.optional ?? false));
+        configForm.addControl('items', this.buildItemsArray(configMapConfig?.items));
+        break;
+      }
       case 'secret':
-        configForm.addControl('secretName', this.fb.control(currentConfig.type === 'secret' ? currentConfig.secretName : '', Validators.required));
+        const secretConfig = currentConfig.type === 'secret' ? currentConfig : undefined;
+        configForm.addControl('secretName', this.fb.control(secretConfig?.secretName || '', Validators.required));
+        configForm.addControl('optional', this.fb.control(secretConfig?.optional ?? false));
+        configForm.addControl('items', this.buildItemsArray(secretConfig?.items));
         break;
     }
   }
@@ -98,6 +110,108 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
     )
     );
   }
+
+  get itemsArray(): FormArray<FormGroup> | null {
+    if (!this.form) {
+      return null;
+    }
+    const itemsControl = this.configGroup.get('items');
+    return itemsControl instanceof FormArray ? itemsControl as FormArray<FormGroup> : null;
+  }
+
+  get configGroup(): FormGroup {
+    return this.form.get('config') as FormGroup;
+  }
+
+  get itemControls(): FormGroup[] {
+    return this.itemsArray ? (this.itemsArray.controls as FormGroup[]) : [];
+  }
+
+  supportsItemEditor(): boolean {
+    if (!this.form) {
+      return false;
+    }
+    const type = this.configGroup.get('type')?.value as VolumeType;
+    return this.itemSupportedTypes.includes(type);
+  }
+
+  addItem(): void {
+    const array = this.itemsArray;
+    if (!array) {
+      return;
+    }
+    array.push(this.createItemGroup());
+  }
+
+  duplicateItem(index: number): void {
+    const array = this.itemsArray;
+    if (!array) {
+      return;
+    }
+    const source = array.at(index)?.value;
+    array.insert(index + 1, this.createItemGroup(source));
+  }
+
+  removeItem(index: number): void {
+    const array = this.itemsArray;
+    if (!array) {
+      return;
+    }
+    array.removeAt(index);
+  }
+
+  handleItemKeyInput(group: FormGroup): void {
+    const key = (group.get('key')?.value || '').trim();
+    const pathControl = group.get('path');
+    if (!pathControl) {
+      return;
+    }
+    const currentPath = (pathControl.value || '').trim();
+    if (key && !currentPath) {
+      pathControl.setValue(key);
+    }
+  }
+
+  private buildItemsArray(items?: VolumeItem[] | Record<string, any>): FormArray<FormGroup> {
+    const normalized = this.normalizeItems(items);
+    return new FormArray<FormGroup>(normalized.map(item => this.createItemGroup(item)));
+  }
+
+  private createItemGroup(item?: VolumeItem): FormGroup {
+    return this.fb.group({
+      key: [item?.key || '', Validators.required],
+      path: [item?.path || '', Validators.required],
+      mode: [item?.mode || '']
+    });
+  }
+
+  private normalizeItems(items?: VolumeItem[] | Record<string, any>): VolumeItem[] {
+    if (!items) {
+      return [];
+    }
+    if (Array.isArray(items)) {
+      return items.map(item => ({
+        key: item?.key ?? '',
+        path: item?.path ?? '',
+        mode: item?.mode
+      }));
+    }
+    if (typeof items === 'object') {
+      return Object.entries(items).map(([key, value]) => {
+        if (typeof value === 'object' && value !== null) {
+          return {
+            key,
+            path: (value as any).path ?? '',
+            mode: (value as any).mode
+          };
+        }
+        return {
+          key,
+          path: typeof value === 'string' ? value : '',
+          mode: undefined
+        };
+      });
+    }
+    return [];
+  }
 }
-
-

@@ -52,8 +52,12 @@
 
       <ng-container *ngSwitchCase="'configMap'">
         <div class="p-field">
-          <label for="name">ConfigMap Name</label>
-          <input id="name" type="text" pInputText formControlName="name"/>
+          <label for="configMapName">ConfigMap Name</label>
+          <input id="configMapName" type="text" pInputText formControlName="name"/>
+        </div>
+        <div class="p-field-checkbox volume-optional">
+          <p-checkbox inputId="configMapOptional" [binary]="true" formControlName="optional"></p-checkbox>
+          <label for="configMapOptional">Optional</label>
         </div>
       </ng-container>
 
@@ -62,7 +66,56 @@
           <label for="secretName">Secret Name</label>
           <input id="secretName" type="text" pInputText formControlName="secretName"/>
         </div>
+        <div class="p-field-checkbox volume-optional">
+          <p-checkbox inputId="secretOptional" [binary]="true" formControlName="optional"></p-checkbox>
+          <label for="secretOptional">Optional</label>
+        </div>
       </ng-container>
+    </ng-container>
+
+    <ng-container *ngIf="supportsItemEditor()">
+      <div class="volume-items-editor" formArrayName="items">
+        <div class="volume-items-header">
+          <h4>Items</h4>
+        </div>
+        <div class="volume-items-container">
+          <div
+            class="volume-item-card"
+            *ngFor="let itemGroup of itemControls; let i = index"
+            [formGroupName]="i">
+            <label [for]="'item-key-' + i">Key</label>
+            <input
+              [id]="'item-key-' + i"
+              type="text"
+              pInputText
+              formControlName="key"
+              (input)="handleItemKeyInput(itemGroup)"/>
+
+            <label [for]="'item-path-' + i">Path</label>
+            <input
+              [id]="'item-path-' + i"
+              type="text"
+              pInputText
+              formControlName="path"/>
+
+            <label [for]="'item-mode-' + i">Mode (optional)</label>
+            <input
+              [id]="'item-mode-' + i"
+              type="text"
+              pInputText
+              placeholder="0440"
+              formControlName="mode"/>
+
+            <div class="item-actions">
+              <button type="button" pButton class="p-button-text" icon="pi pi-copy" label="Duplicate" (click)="duplicateItem(i)"></button>
+              <button type="button" pButton class="p-button-text p-button-danger" icon="pi pi-trash" label="Delete" (click)="removeItem(i)"></button>
+            </div>
+          </div>
+        </div>
+        <div class="item-actions item-actions--global">
+          <button type="button" pButton icon="pi pi-plus" label="Add item" (click)="addItem()"></button>
+        </div>
+      </div>
     </ng-container>
   </div>
 </form>
