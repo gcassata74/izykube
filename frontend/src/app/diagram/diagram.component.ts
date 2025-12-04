@@ -666,6 +666,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.rawManifests = [];
     }
 
+    this.syncConfigBundleMetaFromCluster();
     this.renderLinks();
     this.updateLinkStyles();
     this.diagramService.clearSelectedNode();
@@ -892,7 +893,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   shouldShowSecretBadge(node: DiagramNode): boolean {
-    if (node.type !== 'configmap' && node.type !== 'secret') {
+    const type = node.type?.toLowerCase();
+    if (type !== 'configmap' && type !== 'secret' && type !== 'configbundle') {
       return false;
     }
     return !!node.bundleMeta?.hasSecretEntries;
@@ -1293,6 +1295,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       if (Array.isArray(data.rawManifests)) {
         this.rawManifests = data.rawManifests;
       }
+      this.syncConfigBundleMetaFromCluster();
     } catch (error) {
       console.error('Error loading diagram data:', error);
       this.nodes = [];
@@ -1531,7 +1534,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     const metaMap = new Map<string, ConfigBundleMeta>();
     this.currentClusterSnapshot.nodes.forEach((node: any) => {
       const type = (node?.kind ?? node?.type ?? '').toLowerCase();
-      if (type !== 'configmap' && type !== 'secret') {
+      if (type !== 'configmap' && type !== 'secret' && type !== 'configbundle') {
         return;
       }
       const bundle = node?.configBundle;
@@ -1556,81 +1559,9 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
     let hasChanges = false;
     const updatedNodes = this.nodes.map(node => {
-      if (node.type !== 'configmap' && node.type !== 'secret') {
-        if (node.bundleMeta) {
-          const clone = { ...node } as DiagramNode;
-          delete (clone as any).bundleMeta;
-          hasChanges = true;
-          return clone;
-        }
-        return node;
-      }
-      const meta = metaMap.get(node.id);
-      if (!meta) {
-        if (node.bundleMeta) {
-          const clone = { ...node } as DiagramNode;
-          delete (clone as any).bundleMeta;
-          hasChanges = true;
-          return clone;
-        }
-        return node;
-      }
-      const sameMeta = node.bundleMeta
-        && node.bundleMeta.hasPlainEntries === meta.hasPlainEntries
-        && node.bundleMeta.hasSecretEntries === meta.hasSecretEntries
-        && node.bundleMeta.entryCount === meta.entryCount;
-      if (sameMeta) {
-        return node;
-      }
-      hasChanges = true;
-      return { ...node, bundleMeta: meta };
-    });
-
-    if (!hasChanges) {
-      return;
-    }
-
-    this.nodes = updatedNodes;
-    if (this.selectedNode) {
-      this.selectedNode = this.nodes.find(n => n.id === this.selectedNode!.id) ?? null;
-    }
-    this.updateDiagramData();
-  }
-
-  private syncConfigBundleMetaFromCluster(): void {
-    if (!this.currentClusterSnapshot?.nodes?.length || !this.nodes?.length) {
-      return;
-    }
-
-    const metaMap = new Map<string, ConfigBundleMeta>();
-    this.currentClusterSnapshot.nodes.forEach((node: any) => {
-      const type = (node?.kind ?? node?.type ?? '').toLowerCase();
-      if (type !== 'configmap' && type !== 'secret') {
-        return;
-      }
-      const bundle = node?.configBundle;
-      const entries = Array.isArray(bundle?.entries)
-        ? bundle.entries
-        : Array.isArray(node?.entries)
-          ? node.entries
-          : [];
-      const secretCount = entries.filter((entry: any) => (entry?.sensitivity ?? '').toUpperCase() === 'SECRET').length;
-      const plainCount = entries.filter((entry: any) => (entry?.sensitivity ?? '').toUpperCase() !== 'SECRET').length;
-      metaMap.set(node.id, {
-        hasSecretEntries: secretCount > 0 || type === 'secret',
-        hasPlainEntries: plainCount > 0 && type !== 'secret',
-        entryCount: entries.length
-      } as ConfigBundleMeta);
-    });
-
-    const shouldClearMeta = !metaMap.size && this.nodes.some(node => node.bundleMeta);
-    if (!metaMap.size && !shouldClearMeta) {
-      return;
-    }
-
-    let hasChanges = false;
-    const updatedNodes = this.nodes.map(node => {
-      if (node.type !== 'configmap' && node.type !== 'secret') {
+      const nodeType = node.type?.toLowerCase();
+      const isConfigBundleNode = nodeType === 'configmap' || nodeType === 'secret' || nodeType === 'configbundle';
+      if (!isConfigBundleNode) {
         if (node.bundleMeta) {
           const clone = { ...node } as DiagramNode;
           delete (clone as any).bundleMeta;
@@ -1675,12 +1606,12 @@ export class DiagramComponent implements OnInit, OnDestroy {
     const typeA = nodeA.type?.toLowerCase() ?? '';
     const typeB = nodeB.type?.toLowerCase() ?? '';
 
-    const configResources = ['configmap', 'secret'];
+    const configResources = ['configmap', 'secret', 'configbundle'];
     const involvesConfigResource = configResources.includes(typeA) || configResources.includes(typeB);
 
     if (involvesConfigResource) {
       const otherType = configResources.includes(typeA) ? typeB : typeA;
-      return ['deployment', 'container'].includes(otherType);
+      return ['deployment', 'container', 'volume'].includes(otherType);
     }
 
     if (typeA !== 'container' && typeB !== 'container') {
@@ -1712,7 +1643,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   } {
     const startType = startNode.type?.toLowerCase();
     const endType = endNode.type?.toLowerCase();
-    const configPreferredTypes = new Set(['configmap', 'secret']);
+    const configPreferredTypes = new Set(['configmap', 'secret', 'configbundle']);
 
     const startPreferred = startType ? configPreferredTypes.has(startType) : false;
     const endPreferred = endType ? configPreferredTypes.has(endType) : false;
