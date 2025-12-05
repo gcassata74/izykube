@@ -2,10 +2,17 @@
   <p-card class="izy-card" header="Namespaces" i18n-header="@@namespaces">
     <div class="card-content">
       <div class="izy-button-container">
-        <button pButton label="Add Namespace" i18n-label="@@clusterList.addNamespace" class="p-button-text" (click)="addCluster()"></button>
+        <button
+          pButton
+          label="Add"
+          icon="pi pi-plus"
+          i18n-label="@@clusterList.addNamespace"
+          class="p-button-outlined izy-primary-button"
+          (click)="addCluster()"
+        ></button>
       </div>
       <ng-container *ngIf="clusters$ | async as clusters">
-        <p-table [value]="clusters" [columns]="cols" styleClass="p-datatable-striped">
+        <p-table class="izy-table" [value]="clusters" [columns]="cols" styleClass="p-datatable-striped p-datatable-rounded">
           <ng-template pTemplate="header" let-columns>
             <tr>
               <th *ngFor="let col of columns">
@@ -36,14 +43,16 @@
                 </ng-container>
               </td>
               <td class="action-column">
-                <button pButton (click)="editDiagram(rowData.id)">
-                  <i class="pi pi-pencil"></i>
-                </button>
-                <button pButton class="context-menu-trigger" #rowContextMenu
-                        (click)="updateContextMenuItems($event,rowData.id)">
-                  <i class="pi pi-ellipsis-v"></i>
-                </button>
-                <p-contextMenu #cm [model]="items" [target]="rowContextMenu" appendTo="body"></p-contextMenu>
+                <div class="action-buttons">
+                  <button pButton (click)="editDiagram(rowData.id)">
+                    <i class="pi pi-pencil"></i>
+                  </button>
+                  <button pButton class="context-menu-trigger" #rowContextMenu
+                          (click)="updateContextMenuItems($event,rowData.id)">
+                    <i class="pi pi-ellipsis-v"></i>
+                  </button>
+                  <p-contextMenu #cm [model]="items" [target]="rowContextMenu" appendTo="body"></p-contextMenu>
+                </div>
               </td>
             </tr>
           </ng-template>

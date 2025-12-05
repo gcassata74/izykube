@@ -7,10 +7,10 @@
     </ng-template>
     <div class="card-content">
       <div class="button-container">
-        <button pButton type="button" label="Add" icon="pi pi-plus" class="p-button-primary izy-button-primary"
+        <button pButton type="button" label="Add" icon="pi pi-plus" class="p-button-outlined izy-primary-button"
                 (click)="addAsset()"></button>
       </div>
-      <p-table [value]="(assets$ | async) || []" [paginator]="true" [rows]="10" styleClass="p-datatable-rounded">
+      <p-table class="izy-table" [value]="(assets$ | async) || []" [paginator]="true" [rows]="10" styleClass="p-datatable-rounded">
         <ng-template pTemplate="header">
           <tr>
             <th *ngFor="let col of cols">{{col.header}}</th>
