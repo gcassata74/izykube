@@ -9,15 +9,11 @@
 
   <div
     class="app-header__context"
-    [title]="'Cluster: ' + (context?.clusterName || '—') + ' · Namespace: ' + (context?.namespace || '—') + ' · Diagram: ' + (context?.diagramName || '—')">
-    <span class="app-header__context-label">Cluster:</span>
-    <span class="app-header__context-value">{{ context?.clusterName || '—' }}</span>
-    <span class="app-header__context-divider">·</span>
-    <span class="app-header__context-label">Namespace:</span>
-    <span class="app-header__context-value">{{ context?.namespace || '—' }}</span>
-    <span class="app-header__context-divider">·</span>
-    <span class="app-header__context-label">Diagram:</span>
-    <span class="app-header__context-value">{{ context?.diagramName || '—' }}</span>
+    [attr.title]="context?.showContext ? buildContextTitle(context) : null">
+    <ng-container *ngIf="context?.showContext">
+      <span class="app-header__context-label">Namespace:</span>
+      <span class="app-header__context-value">{{ context?.namespace || '—' }}</span>
+    </ng-container>
   </div>
 
   <div class="app-header__actions">

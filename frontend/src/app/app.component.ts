@@ -1,11 +1,11 @@
 import { ToolbarService } from './services/toolbar.service';
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
 import { Store } from '@ngrx/store';
 import * as actions from './store/actions/actions';
-import { Observable, filter, map } from 'rxjs';
+import { Observable, Subscription, combineLatest, filter, map, shareReplay, startWith } from 'rxjs';
 import { Button, ButtonAction, ButtonMenuItem } from './model/button.interface';
 import { HeaderContext } from './layout/header/header.component';
 import { getCurrentCluster } from './store/selectors/selectors';
@@ -16,7 +16,7 @@ import { Cluster } from './model/cluster.class';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
 
   title = 'Izykube';
   displaySidebar = true;
@@ -26,6 +26,8 @@ export class AppComponent implements OnInit {
   sidebarCollapsed = false;
   @ViewChild('toolbarMenu') toolbarMenu?: Menu;
   menuItems: MenuItem[] = [];
+  private route$!: Observable<string>;
+  private routeSub?: Subscription;
 
   constructor(
     private router: Router,
@@ -35,19 +37,31 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     this.buttons$ = this.toolBarService.buttons$;
-    this.clusterContext$ = this.store.select(getCurrentCluster).pipe(
-      map((cluster: Cluster | undefined) => ({
-        clusterName: cluster?.name || 'Untitled Cluster',
-        namespace: cluster?.nameSpace || 'default',
-        diagramName: cluster?.name || 'Diagram',
-      }))
+    this.route$ = this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event: NavigationEnd) => event.urlAfterRedirects || event.url),
+      startWith(this.router.url || '/'),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
-    this.currentRoute = this.router.url || '/';
-    this.router.events
-      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe((event: NavigationEnd) => {
-        this.currentRoute = event.urlAfterRedirects || event.url;
-      });
+
+    this.clusterContext$ = combineLatest([
+      this.store.select(getCurrentCluster),
+      this.route$
+    ]).pipe(
+      map(([cluster, route]: [Cluster | undefined, string]) => {
+        const inDiagram = route.includes('cluster-editor');
+        return {
+          clusterName: null,
+          namespace: inDiagram ? (cluster?.nameSpace || cluster?.name || 'default') : null,
+          diagramName: null,
+          showContext: inDiagram
+        };
+      })
+    );
+
+    this.routeSub = this.route$.subscribe(route => {
+      this.currentRoute = route;
+    });
   }
 
 
@@ -84,6 +98,10 @@ export class AppComponent implements OnInit {
 
   handleSidebarCollapseChange(collapsed: boolean): void {
     this.sidebarCollapsed = collapsed;
+  }
+
+  ngOnDestroy(): void {
+    this.routeSub?.unsubscribe();
   }
 
 }

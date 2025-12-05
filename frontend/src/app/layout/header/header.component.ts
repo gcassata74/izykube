@@ -5,6 +5,7 @@ export interface HeaderContext {
   clusterName?: string | null;
   namespace?: string | null;
   diagramName?: string | null;
+  showContext?: boolean;
 }
 
 @Component({
@@ -44,5 +45,12 @@ export class HeaderComponent {
 
   trackByLabel(_: number, button: Button): string {
     return button.label;
+  }
+
+  buildContextTitle(context: HeaderContext | null): string {
+    if (!context || !context.showContext) {
+      return '';
+    }
+    return `Namespace: ${context.namespace || '—'}`;
   }
 }
