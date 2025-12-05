@@ -1,0 +1,51 @@
+<header class="app-header">
+  <div class="app-header__brand">
+    <div class="app-header__logo" aria-hidden="true">IZY</div>
+    <div class="app-header__title">
+      <span class="app-header__title-main">IZYKUBE</span>
+      <span class="app-header__title-sub">workspace</span>
+    </div>
+  </div>
+
+  <div
+    class="app-header__context"
+    [title]="'Cluster: ' + (context?.clusterName || '—') + ' · Namespace: ' + (context?.namespace || '—') + ' · Diagram: ' + (context?.diagramName || '—')">
+    <span class="app-header__context-label">Cluster:</span>
+    <span class="app-header__context-value">{{ context?.clusterName || '—' }}</span>
+    <span class="app-header__context-divider">·</span>
+    <span class="app-header__context-label">Namespace:</span>
+    <span class="app-header__context-value">{{ context?.namespace || '—' }}</span>
+    <span class="app-header__context-divider">·</span>
+    <span class="app-header__context-label">Diagram:</span>
+    <span class="app-header__context-value">{{ context?.diagramName || '—' }}</span>
+  </div>
+
+  <div class="app-header__actions">
+    <button
+      type="button"
+      class="header-icon-btn"
+      aria-label="Search"
+      title="Search (coming soon)">
+      <i class="pi pi-search"></i>
+    </button>
+
+    <ng-container *ngFor="let button of buttons ?? []; trackBy: trackByLabel">
+      <button
+        type="button"
+        class="header-action"
+        [ngClass]="'header-action--' + getButtonAppearance(button.styleClass)"
+        (click)="button.menuItems?.length ? handleMenuClick($event, button) : handleButtonClick(button)"
+        [attr.aria-haspopup]="button.menuItems?.length ? true : null"
+        [attr.aria-expanded]="false"
+        [title]="button.label">
+        <i *ngIf="button.icon" class="header-action__icon" [ngClass]="button.icon"></i>
+        <span class="header-action__label">{{ button.label }}</span>
+        <i *ngIf="button.menuItems?.length" class="pi pi-chevron-down header-action__chevron"></i>
+      </button>
+    </ng-container>
+
+    <div class="app-header__avatar" aria-label="User menu" title="Profile">
+      <span>IK</span>
+    </div>
+  </div>
+</header>

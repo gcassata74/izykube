@@ -1,0 +1,199 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  height: var(--izy-header-height, 64px);
+  padding-inline: 1.5rem;
+  background: var(--izy-header-bg, #ffffff);
+  border-bottom: 1px solid var(--izy-header-border, rgba(15, 23, 42, 0.08));
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 200px;
+  padding-inline: 1rem;
+}
+
+.app-header__logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--izy-primary, #2563eb), var(--izy-accent, #22d3ee));
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-header__title {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  color: var(--izy-header-text, #0f172a);
+}
+
+.app-header__title-main {
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.app-header__title-sub {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--izy-text-muted, #64748b);
+  letter-spacing: 0.12em;
+}
+
+.app-header__context {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--izy-text-muted, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-header__context-value {
+  font-weight: 600;
+  color: var(--izy-header-text, #0f172a);
+}
+
+.app-header__context-divider {
+  padding-inline: 0.25rem;
+  color: var(--izy-text-muted, #94a3b8);
+}
+
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--izy-header-border, rgba(15, 23, 42, 0.12));
+  background: #fff;
+  color: var(--izy-text-muted, #64748b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--izy-primary, #2563eb);
+    border-color: rgba(37, 99, 235, 0.3);
+  }
+}
+
+.header-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+  white-space: nowrap;
+  height: 36px;
+  background: transparent;
+  color: var(--izy-header-text, #0f172a);
+
+  &.header-action--primary {
+    background: var(--izy-primary, #2563eb);
+    color: #fff;
+    border-color: transparent;
+
+    &:hover {
+      background: #1d4ed8;
+    }
+  }
+
+  &.header-action--secondary {
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--izy-primary, #2563eb);
+    border-color: transparent;
+
+    &:hover {
+      background: rgba(37, 99, 235, 0.2);
+    }
+  }
+
+  &.header-action--tertiary {
+    border-color: rgba(15, 23, 42, 0.15);
+    background: transparent;
+
+    &:hover {
+      border-color: rgba(15, 23, 42, 0.3);
+      background: rgba(15, 23, 42, 0.04);
+    }
+  }
+}
+
+.header-action__icon {
+  font-size: 1rem;
+}
+
+.header-action__chevron {
+  font-size: 0.75rem;
+  margin-left: 0.25rem;
+}
+
+.app-header__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--izy-header-text, #0f172a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    background: rgba(37, 99, 235, 0.15);
+  }
+}
+
+@media (max-width: 1024px) {
+  .app-header__context {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    padding-inline: 1rem;
+  }
+
+  .header-action__label {
+    display: none;
+  }
+}

@@ -1,7 +1,6 @@
 import { MenubarModule } from 'primeng/menubar';
 import { NgModule, isDevMode } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { SidebarModule } from 'primeng/sidebar';
 import { MenuModule } from 'primeng/menu';
 import { DropdownModule } from 'primeng/dropdown';
 import { TableModule } from 'primeng/table';
@@ -58,6 +57,9 @@ import { IstioFormComponent } from './cluster/istio-form/istio-form.component';
 import { DragDropDirective } from './directives/drag-drop.directive';
 import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
 import { PodShellDialogComponent } from './pod-shell-dialog/pod-shell-dialog.component';
+import { HeaderComponent } from './layout/header/header.component';
+import { SidebarComponent } from './layout/sidebar/sidebar.component';
+import { TooltipModule } from 'primeng/tooltip';
 
 @NgModule({
   declarations: [
@@ -81,13 +83,14 @@ import { PodShellDialogComponent } from './pod-shell-dialog/pod-shell-dialog.com
     DragDropDirective,
     KubeExplorerComponent,
     PodShellDialogComponent,
+    HeaderComponent,
+    SidebarComponent,
   ],
   imports: [
     SharedModule,
     ReactiveFormsModule,
     BrowserModule,
     AppRoutingModule,
-    SidebarModule,
     ToolbarModule,
     DropdownModule,
     InputTextModule,
@@ -113,6 +116,7 @@ import { PodShellDialogComponent } from './pod-shell-dialog/pod-shell-dialog.com
     BrowserAnimationsModule,
     FormsModule,
     HttpClientModule,
+    TooltipModule,
     StoreModule.forRoot(reducers),
     EffectsModule.forRoot([ClusterEffect]),
     StoreDevtoolsModule.instrument({ maxAge: 25, logOnly: !isDevMode() }),

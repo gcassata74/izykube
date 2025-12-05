@@ -1,55 +1,24 @@
-<div class="app-container">
-  <p-toolbar styleClass="app-toolbar">
-    <div class="app-toolbar-container">
-      <div class="logo-div">
-        <img src="assets/images/logo/izylife.png" alt="IzyKube Logo">
-        <span>IzyKube</span>
-      </div>
-      <div class="button-container">
-        <ng-container *ngIf="buttons$ | async as buttons">
-          <ng-container *ngFor="let btn of buttons">
-            <ng-container *ngIf="btn.menuItems?.length; else singleButton">
-              <button
-                pButton
-                type="button"
-                [label]="btn.label"
-                [icon]="btn.icon"
-                [class]="btn.styleClass"
-                (click)="openActions($event, btn.menuItems)">
-              </button>
-            </ng-container>
-            <ng-template #singleButton>
-              <button pButton
-                      type="button"
-                      [label]="btn.label"
-                      [icon]="btn.icon"
-                      [class]="btn.styleClass"
-                      (click)="performAction(btn.actions)">
-              </button>
-            </ng-template>
-          </ng-container>
-        </ng-container>
-        <p-menu #toolbarMenu [popup]="true"></p-menu>
-      </div>
-    </div>
-  </p-toolbar>
+<div class="app-shell" [class.app-shell--sidebar-collapsed]="sidebarCollapsed">
+  <app-header
+    [buttons]="buttons$ | async"
+    [context]="clusterContext$ | async"
+    (buttonAction)="performAction($event)"
+    (menuTrigger)="openActions($event.event, $event.items)">
+  </app-header>
 
+  <div class="app-shell__body">
+    <app-sidebar
+      [collapsed]="sidebarCollapsed"
+      [activeRoute]="currentRoute"
+      (navigate)="navigate($event)"
+      (collapseChange)="handleSidebarCollapseChange($event)">
+    </app-sidebar>
 
-  <!-- Sidebar -->
-  <p-sidebar class="app-sidebar" [showCloseIcon]="false" [visible]="true" [modal]="false" position="left">
-    <nav class="sidebar-nav">
-      <ul class="nav-list">
-        <li class="nav-item"><a class="nav-link" (click)="navigate('/home')"><i class="pi pi-home"></i> <span>Home</span></a></li>
-        <li class="nav-item"><a class="nav-link" (click)="navigate('/namespaces')"><i class="pi pi-fw pi-th-large"></i> <span>Namespaces</span></a></li>
-        <li class="nav-item"><a class="nav-link" (click)="navigate('/assets')"><i class="pi pi-fw pi-briefcase"></i> <span>Assets</span></a></li>
-        <li class="nav-item"><a class="nav-link" (click)="navigate('/kube-explorer')"><i class="pi pi-fw pi-compass"></i> <span>Kube Explorer</span></a></li>
-      </ul>
-    </nav>
-  </p-sidebar>
-
-  <!-- Main Content -->
-  <div class="content-container">
-    <router-outlet></router-outlet>
-    <p-toast position="bottom-center"></p-toast>
+    <main class="app-shell__content">
+      <router-outlet></router-outlet>
+    </main>
   </div>
+
+  <p-toast position="bottom-center"></p-toast>
+  <p-menu #toolbarMenu [popup]="true"></p-menu>
 </div>

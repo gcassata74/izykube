@@ -1,0 +1,54 @@
+<aside class="app-sidebar" [class.app-sidebar--collapsed]="collapsed">
+  <div class="app-sidebar__nav">
+    <button
+      type="button"
+      class="sidebar-item"
+      *ngFor="let item of navItems"
+      (click)="onNavigate(item.route)"
+      [class.sidebar-item--active]="isActive(item.route)"
+      [pTooltip]="collapsed ? item.label : undefined"
+      tooltipPosition="right"
+      [attr.aria-label]="collapsed ? item.label : null">
+      <i [ngClass]="item.icon" class="sidebar-item__icon" aria-hidden="true"></i>
+      <span class="sidebar-item__label">{{ item.label }}</span>
+      <span class="sidebar-item__accent" aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <div class="app-sidebar__footer">
+    <button
+      type="button"
+      class="sidebar-item sidebar-item--muted"
+      title="Settings"
+      aria-label="Settings"
+      [pTooltip]="collapsed ? 'Settings' : undefined"
+      tooltipPosition="right">
+      <i class="pi pi-cog sidebar-item__icon" aria-hidden="true"></i>
+      <span class="sidebar-item__label">Settings</span>
+    </button>
+    <button
+      type="button"
+      class="sidebar-item sidebar-item--muted"
+      title="Help"
+      aria-label="Help"
+      [pTooltip]="collapsed ? 'Help & Docs' : undefined"
+      tooltipPosition="right">
+      <i class="pi pi-question-circle sidebar-item__icon" aria-hidden="true"></i>
+      <span class="sidebar-item__label">Help</span>
+    </button>
+    <button
+      type="button"
+      class="sidebar-item sidebar-item--muted sidebar-item--collapse"
+      (click)="toggleCollapse()"
+      [title]="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+      [pTooltip]="collapsed ? 'Expand sidebar' : undefined"
+      tooltipPosition="right">
+      <i
+        class="sidebar-item__icon"
+        [ngClass]="collapsed ? 'pi pi-angle-double-right' : 'pi pi-angle-double-left'"
+        aria-hidden="true">
+      </i>
+      <span class="sidebar-item__label">{{ collapsed ? 'Expand' : 'Collapse' }}</span>
+    </button>
+  </div>
+</aside>

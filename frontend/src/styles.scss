@@ -33,6 +33,18 @@
 // Variables
 //-----------------------------------------------------------------------------
 
+:root {
+  --izy-header-bg: #ffffff;
+  --izy-header-border: rgba(15, 23, 42, 0.08);
+  --izy-sidebar-bg: #0f172a;
+  --izy-primary: #2563eb;
+  --izy-accent: #38bdf8;
+  --izy-text-muted: #64748b;
+  --izy-app-surface: #e2e8f0;
+  --izy-content-bg: #ffffff;
+  --izy-header-text: #0f172a;
+}
+
 // Color Palette
 $izy-blue: #021c3fee;
 $izy-green: #4CAF50;

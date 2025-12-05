@@ -1,13 +1,15 @@
-import { ToolbarModule } from 'primeng/toolbar';
 import { ToolbarService } from './services/toolbar.service';
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
 import { Store } from '@ngrx/store';
 import * as actions from './store/actions/actions';
-import { Observable, tap } from 'rxjs';
+import { Observable, filter, map } from 'rxjs';
 import { Button, ButtonAction, ButtonMenuItem } from './model/button.interface';
+import { HeaderContext } from './layout/header/header.component';
+import { getCurrentCluster } from './store/selectors/selectors';
+import { Cluster } from './model/cluster.class';
 
 @Component({
   selector: 'app-root',
@@ -19,6 +21,9 @@ export class AppComponent implements OnInit {
   title = 'Izykube';
   displaySidebar = true;
   buttons$!: Observable<Button[]>;
+  clusterContext$!: Observable<HeaderContext>;
+  currentRoute = '/';
+  sidebarCollapsed = false;
   @ViewChild('toolbarMenu') toolbarMenu?: Menu;
   menuItems: MenuItem[] = [];
 
@@ -29,9 +34,20 @@ export class AppComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.buttons$ = this.toolBarService.buttons$.pipe(
-      tap()
+    this.buttons$ = this.toolBarService.buttons$;
+    this.clusterContext$ = this.store.select(getCurrentCluster).pipe(
+      map((cluster: Cluster | undefined) => ({
+        clusterName: cluster?.name || 'Untitled Cluster',
+        namespace: cluster?.nameSpace || 'default',
+        diagramName: cluster?.name || 'Diagram',
+      }))
     );
+    this.currentRoute = this.router.url || '/';
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe((event: NavigationEnd) => {
+        this.currentRoute = event.urlAfterRedirects || event.url;
+      });
   }
 
 
@@ -64,6 +80,10 @@ export class AppComponent implements OnInit {
       icon: item.icon,
       command: () => this.performAction(item.action)
     }));
+  }
+
+  handleSidebarCollapseChange(collapsed: boolean): void {
+    this.sidebarCollapsed = collapsed;
   }
 
 }

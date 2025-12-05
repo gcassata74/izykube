@@ -1,0 +1,114 @@
+:host {
+  display: flex;
+  height: 100%;
+}
+
+.app-sidebar {
+  width: var(--izy-sidebar-width, 96px);
+  background: var(--izy-sidebar-bg, #0f172a);
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.25rem 0.75rem;
+  gap: 1rem;
+  border-right: 1px solid rgba(15, 23, 42, 0.5);
+}
+
+.app-sidebar--collapsed {
+  --izy-sidebar-width: 64px;
+
+  .sidebar-item__label {
+    display: none;
+  }
+
+  .sidebar-item {
+    padding-inline: 0.5rem;
+  }
+}
+
+.app-sidebar__nav,
+.app-sidebar__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.75rem 0.75rem 0.65rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  font-size: 0.75rem;
+  text-align: center;
+
+  &:hover {
+    background: rgba(148, 163, 184, 0.15);
+  }
+
+  &--active {
+    background: rgba(56, 189, 248, 0.16);
+    color: #e0f2fe;
+
+    .sidebar-item__icon {
+      color: var(--izy-accent, #38bdf8);
+    }
+
+    .sidebar-item__accent {
+      opacity: 1;
+    }
+  }
+}
+
+.sidebar-item__icon {
+  font-size: 1.15rem;
+  color: rgba(248, 250, 252, 0.85);
+}
+
+.sidebar-item__label {
+  font-weight: 600;
+  font-size: 0.7rem;
+  color: rgba(248, 250, 252, 0.8);
+}
+
+.sidebar-item__accent {
+  position: absolute;
+  left: -0.5rem;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--izy-accent, #38bdf8);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.sidebar-item--muted {
+  background: transparent;
+  color: rgba(248, 250, 252, 0.65);
+  font-weight: 500;
+
+  &:hover {
+    background: rgba(148, 163, 184, 0.1);
+  }
+}
+
+.sidebar-item--collapse {
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+}
+
+@media (max-height: 700px) {
+  .sidebar-item {
+    padding-block: 0.5rem;
+  }
+}

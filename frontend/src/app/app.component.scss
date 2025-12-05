@@ -1,122 +1,72 @@
-// Izylife Color Palette
-$izy-blue: #0047AB;
-$izy-light-blue: #4169E1;
-$izy-white: #FFFFFF;
-$izy-black: #000000;
-$izy-grey: #F8F9FA;
-$izy-light-grey: #E9ECEF;
-
-// Layout Variables
-$sidebar-width: 200px;
-$toolbar-height: 70px;
-
-
-
-// Main Container
-.app-container {
-  display: flex;
-  flex-direction: column;
+:host {
+  display: block;
   height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  color: $izy-black;
+  --izy-header-height: 64px;
+  --izy-sidebar-width: 96px;
 }
 
+.app-shell {
+  display: grid;
+  grid-template-rows: var(--izy-header-height) 1fr;
+  grid-template-columns: 100%;
+  height: 100%;
+  background: var(--izy-app-surface, #f1f5f9);
+  color: var(--izy-header-text, #0f172a);
+}
 
-// Main Content Area
-.content-container {
-  margin-left: $sidebar-width;
-  padding: 20px;
-  background-color: $izy-white;
-  flex: 1;
+.app-shell--sidebar-collapsed {
+  --izy-sidebar-width: 64px;
+}
+
+app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.app-shell__body {
+  display: flex;
   min-height: 0;
-  height: calc(100vh - $toolbar-height);
-  border-radius: 8px 0 0 0;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-  box-sizing: border-box;
   overflow: hidden;
 }
 
+app-sidebar {
+  flex: 0 0 var(--izy-sidebar-width);
+  min-width: var(--izy-sidebar-width);
+  height: 100%;
+  position: sticky;
+  top: var(--izy-header-height);
+  align-self: flex-start;
+}
 
-// Sidebar Styling
-.app-sidebar {
-  width: $sidebar-width !important;
-  background-color: $izy-blue;
-  color: $izy-white;
+.app-shell__content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 1.5rem;
+  overflow: auto;
+  background: var(--izy-content-bg, #ffffff);
+  border-top-left-radius: 1.5rem;
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.06);
+}
 
-  .sidebar-nav {
-    padding: 0;
-    margin: 0;
-    height: 100%;
+@media (max-width: 1024px) {
+  :host {
+    --izy-sidebar-width: 72px;
+  }
 
-    .nav-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      
-      .nav-item {
-        margin: 0;
-        
-        .nav-link {
-          display: flex;
-          align-items: center;
-          padding: 12px 20px;
-          color: $izy-white;
-          text-decoration: none;
-          transition: all 0.3s ease;
-          border-left: 3px solid transparent;
-          
-          i {
-            margin-right: 12px;
-            font-size: 16px;
-            width: 20px;
-            text-align: center;
-            color: $izy-white;
-          }
-          
-          span {
-            font-weight: 500;
-          }
-          
-          &:hover {
-            background-color: rgba($izy-white, 0.15);
-            border-left-color: $izy-white;
-            color: $izy-white;
-            
-            i {
-              color: $izy-white;
-            }
-          }
-          
-          &.active {
-            background-color: rgba($izy-white, 0.2);
-            border-left-color: $izy-white;
-            color: $izy-white;
-            font-weight: 600;
-            
-            i {
-              color: $izy-white;
-            }
-          }
-        }
-      }
-    }
+  .app-shell__content {
+    padding: 1rem;
+    border-radius: 0;
   }
 }
 
-:host ::ng-deep .app-sidebar .p-sidebar-content {
-  background-color: transparent;
-}
-
-// Responsive Adjustments
 @media (max-width: 768px) {
-  .app-sidebar {
-    width: 100%;
-    height: auto;
-    position: static;
+  .app-shell {
+    grid-template-rows: auto 1fr;
   }
 
-  .content-container {
-    margin-left: 0;
-    width: 100%;
+  app-sidebar {
+    display: none;
   }
 }
