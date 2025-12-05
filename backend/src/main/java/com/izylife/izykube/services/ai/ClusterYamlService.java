@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
+import com.izylife.izykube.dto.cluster.ConfigEntryDTO;
+import com.izylife.izykube.dto.cluster.ConfigEntrySensitivity;
 import com.izylife.izykube.dto.cluster.ConfigMapDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.DeploymentWorkloadType;
@@ -272,9 +274,20 @@ public class ClusterYamlService {
 
         String yamlContent = values.isEmpty() ? "" : yaml.dump(values);
         String nodeId = generateNodeId(isSecret ? "secret" : "configmap", name);
-        return isSecret
+        ConfigMapDTO node = isSecret
                 ? new SecretDTO(nodeId, name, yamlContent)
                 : new ConfigMapDTO(nodeId, name, yamlContent);
+        List<ConfigEntryDTO> configEntries = values.entrySet().stream()
+                .map(entry -> {
+                    ConfigEntryDTO dto = new ConfigEntryDTO();
+                    dto.setKey(entry.getKey());
+                    dto.setValue(entry.getValue());
+                    dto.setSensitivity(isSecret ? ConfigEntrySensitivity.SECRET : ConfigEntrySensitivity.PLAIN);
+                    return dto;
+                })
+                .collect(Collectors.toList());
+        node.setEntries(configEntries);
+        return node;
     }
 
     private DeploymentArtifacts buildDeploymentNodes(String name, Map<String, Object> manifest) {
@@ -711,6 +724,9 @@ public class ClusterYamlService {
         manifest.put("metadata", metadata);
 
         Map<String, String> values = extractPlainKeyValueData(node.getYaml(), secret);
+        if (values.isEmpty()) {
+            values = extractValuesFromEntries(node, secret);
+        }
         Map<String, Object> dataSection = new LinkedHashMap<>();
         values.forEach((key, value) -> dataSection.put(key, secret ? encodeSecretValue(value) : value));
         manifest.put("data", dataSection);
@@ -831,6 +847,28 @@ public class ClusterYamlService {
         manifest.put("metadata", metadata);
         manifest.put("data", new LinkedHashMap<>());
         return manifest;
+    }
+
+    private Map<String, String> extractValuesFromEntries(ConfigMapDTO node, boolean secret) {
+        List<ConfigEntryDTO> entries = node.getEntries();
+        Map<String, String> values = new LinkedHashMap<>();
+        if (entries == null || entries.isEmpty()) {
+            return values;
+        }
+        for (ConfigEntryDTO entry : entries) {
+            if (entry == null || entry.getKey() == null || entry.getKey().isBlank()) {
+                continue;
+            }
+            boolean isSecretEntry = ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity());
+            if (secret && !isSecretEntry) {
+                continue;
+            }
+            if (!secret && isSecretEntry) {
+                continue;
+            }
+            values.put(entry.getKey(), entry.getValue() == null ? "" : entry.getValue());
+        }
+        return values;
     }
 
     private String encodeSecretValue(String value) {

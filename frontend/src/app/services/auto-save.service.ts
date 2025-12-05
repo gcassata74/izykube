@@ -25,18 +25,25 @@ export class AutoSaveService {
       debounceTime(500),
       distinctUntilChanged(),
     ).subscribe(formValue => {
-      this.store.select(getCurrentCluster).pipe(take(1)).subscribe(cluster => {
-        const shouldAutoSync = cluster?.status === ClusterStatusEnum.DEPLOYED;
-        const values = formValue ?? {};
-        const payload = shouldAutoSync ? { ...values, isAffected: true } : values;
-        this.diagramService.updateClusterNodes(nodeId, payload);
-        if (shouldAutoSync) {
-          this.configurationChangeService.emit({ resourceId: nodeId });
-        }
-      });
+      this.persistNodeChanges(nodeId, formValue);
     }));
   }
 
+  flushPendingChanges(nodeId: string, payload: any): void {
+    this.persistNodeChanges(nodeId, payload);
+  }
+
+  private persistNodeChanges(nodeId: string, formValue: any): void {
+    this.store.select(getCurrentCluster).pipe(take(1)).subscribe(cluster => {
+      const shouldAutoSync = cluster?.status === ClusterStatusEnum.DEPLOYED;
+      const values = formValue ?? {};
+      const payload = shouldAutoSync ? { ...values, isAffected: true } : values;
+      this.diagramService.updateClusterNodes(nodeId, payload);
+      if (shouldAutoSync) {
+        this.configurationChangeService.emit({ resourceId: nodeId });
+      }
+    });
+  }
 
   ngOnDestroy(): void {
    this.subscription.unsubscribe();

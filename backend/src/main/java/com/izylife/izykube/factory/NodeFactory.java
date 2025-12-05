@@ -4,6 +4,8 @@ import com.izylife.izykube.dto.cluster.*;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class NodeFactory {
 
@@ -12,11 +14,17 @@ public class NodeFactory {
         switch (node.getKind().toLowerCase()) {
             case "configmap":
                 ConfigMapDTO configMap = (ConfigMapDTO) node;
-                sanitized = new ConfigMapDTO(configMap.getId(), configMap.getName(), configMap.getYaml());
+                ConfigMapDTO sanitizedConfig = new ConfigMapDTO(configMap.getId(), configMap.getName(), configMap.getYaml());
+                sanitizedConfig.setEntries(cloneEntries(configMap.getEntries()));
+                sanitizedConfig.setShowSecretsAsPlain(configMap.getShowSecretsAsPlain());
+                sanitized = sanitizedConfig;
                 break;
             case "secret":
                 ConfigMapDTO secret = (ConfigMapDTO) node;
-                sanitized = new SecretDTO(secret.getId(), secret.getName(), secret.getYaml());
+                SecretDTO sanitizedSecret = new SecretDTO(secret.getId(), secret.getName(), secret.getYaml());
+                sanitizedSecret.setEntries(cloneEntries(secret.getEntries()));
+                sanitizedSecret.setShowSecretsAsPlain(secret.getShowSecretsAsPlain());
+                sanitized = sanitizedSecret;
                 break;
             case "job":
                 JobDTO job = (JobDTO) node;
@@ -134,5 +142,18 @@ public class NodeFactory {
         String deploymentId = pod.getId() != null ? pod.getId() : ("deployment-" + System.nanoTime());
         String name = pod.getName() != null ? pod.getName() : deploymentId;
         return new DeploymentDTO(deploymentId, name, 1, "RollingUpdate", "", 80, DeploymentWorkloadType.DEPLOYMENT);
+    }
+
+    private static List<ConfigEntryDTO> cloneEntries(List<ConfigEntryDTO> entries) {
+        if (entries == null || entries.isEmpty()) {
+            return List.of();
+        }
+        return entries.stream().map(entry -> {
+            ConfigEntryDTO clone = new ConfigEntryDTO();
+            clone.setKey(entry.getKey());
+            clone.setValue(entry.getValue());
+            clone.setSensitivity(entry.getSensitivity());
+            return clone;
+        }).collect(Collectors.toList());
     }
 }

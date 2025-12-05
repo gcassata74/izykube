@@ -48,6 +48,8 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
 
   private subscriptions = new Subscription();
   private entryKeySubscriptions = new Map<FormGroup, Subscription>();
+  private autoSaveInitialized = false;
+  private lastNodeId: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -61,8 +63,14 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['selectedNode'] && !changes['selectedNode'].firstChange) {
+    if (changes['selectedNode']) {
+      const prevId = this.lastNodeId;
+      if (prevId && this.selectedNode && this.selectedNode.id !== prevId) {
+        this.flushPendingChanges();
+      }
       this.patchFormFromNode();
+      this.lastNodeId = this.selectedNode?.id ?? null;
+      this.setupAutoSave();
     }
 
     if ((changes['sourceNodes'] || changes['targetNodes']) && this.form) {
@@ -71,6 +79,7 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.flushPendingChanges();
     this.entryKeySubscriptions.forEach(sub => sub.unsubscribe());
     this.subscriptions.unsubscribe();
   }
@@ -107,7 +116,7 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private setupAutoSave(): void {
-    if (!this.form || !this.selectedNode) {
+    if (this.autoSaveInitialized || !this.form || !this.selectedNode) {
       return;
     }
     const payload$: Observable<any> = this.form.valueChanges.pipe(
@@ -115,6 +124,7 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
       map(() => this.buildNodeUpdatePayload())
     );
     this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, payload$);
+    this.autoSaveInitialized = true;
   }
 
   private patchFormFromNode(): void {
@@ -273,32 +283,31 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
       });
     }
 
-    const rawBundle = (this.selectedNode as any).configBundle as ConfigBundle | undefined;
-    if (rawBundle) {
-      return ensureConfigBundleDefaults({
-        ...rawBundle,
-        id: this.selectedNode.id,
-        name: rawBundle.name || this.selectedNode.name
-      });
-    }
+    const nodeData = this.selectedNode as any;
+    const rawBundle = nodeData.configBundle as ConfigBundle | undefined;
+    const base = ensureConfigBundleDefaults({
+      ...(rawBundle || {}),
+      id: this.selectedNode.id,
+      name: (rawBundle?.name || this.selectedNode.name),
+      namespace: rawBundle?.namespace || nodeData.namespace || this.clusterNamespace || 'default',
+      annotations: nodeData.annotations || rawBundle?.annotations || {},
+      entries: rawBundle?.entries || []
+    });
 
-    let fallbackEntries = Array.isArray((this.selectedNode as any).entries)
-      ? (this.selectedNode as any).entries
-      : [];
+    let fallbackEntries = Array.isArray(nodeData.entries) ? nodeData.entries : base.entries;
 
-    if ((!fallbackEntries || fallbackEntries.length === 0) && (this.selectedNode as any).yaml) {
+    if ((!fallbackEntries || fallbackEntries.length === 0) && nodeData.yaml) {
       fallbackEntries = this.parseLegacyYamlEntries(
-        (this.selectedNode as any).yaml,
+        nodeData.yaml,
         this.isSecretNode(this.selectedNode) ? 'SECRET' : 'PLAIN'
       );
     }
+
     return ensureConfigBundleDefaults({
-      id: this.selectedNode.id,
-      name: this.selectedNode.name,
-      namespace: (this.selectedNode as any).namespace || this.clusterNamespace || 'default',
-      annotations: (this.selectedNode as any).annotations || {},
+      ...base,
+      annotations: nodeData.annotations || base.annotations,
       entries: fallbackEntries as ConfigEntry[],
-      showSecretsAsPlain: (this.selectedNode as any).showSecretsAsPlain ?? false
+      showSecretsAsPlain: nodeData.showSecretsAsPlain ?? base.showSecretsAsPlain
     });
   }
 
@@ -415,7 +424,6 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     const bundle = this.extractBundleFromForm();
     return {
       name: bundle.name,
-      configBundle: bundle,
       namespace: bundle.namespace,
       annotations: bundle.annotations,
       entries: bundle.entries,
@@ -576,5 +584,13 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     } else {
       nameControl.enable({ emitEvent: false });
     }
+  }
+
+  private flushPendingChanges(): void {
+    if (!this.form || !this.selectedNode) {
+      return;
+    }
+    const payload = this.buildNodeUpdatePayload();
+    this.autoSaveService.flushPendingChanges(this.selectedNode.id, payload);
   }
 }

@@ -15,6 +15,7 @@ import { NotificationService } from '../../services/notification.service';
 
 class AutoSaveStub {
   enableAutoSave() {}
+  flushPendingChanges() {}
 }
 
 class NotificationStub {

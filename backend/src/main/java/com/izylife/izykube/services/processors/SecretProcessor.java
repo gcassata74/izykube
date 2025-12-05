@@ -1,5 +1,7 @@
 package com.izylife.izykube.services.processors;
 
+import com.izylife.izykube.dto.cluster.ConfigEntryDTO;
+import com.izylife.izykube.dto.cluster.ConfigEntrySensitivity;
 import com.izylife.izykube.dto.cluster.SecretDTO;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.kubernetes.client.utils.Serialization;
@@ -8,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Processor(SecretDTO.class)
@@ -18,6 +21,12 @@ public class SecretProcessor implements TemplateProcessor<SecretDTO> {
     public String createTemplate(SecretDTO dto) {
         String namespace = dto.getNamespace() == null || dto.getNamespace().isBlank() ? "default" : dto.getNamespace();
         Map<String, String> decoded = decodeIfNeeded(YamlKeyValueExtractor.extractPlainKeyValueData(dto.getYaml()));
+        if (decoded.isEmpty()) {
+            decoded = buildValuesFromEntries(dto.getEntries());
+        }
+        if (decoded.isEmpty()) {
+            return "";
+        }
         Map<String, String> encoded = encodeSecretData(decoded);
 
         return Serialization.asYaml(
@@ -57,5 +66,22 @@ public class SecretProcessor implements TemplateProcessor<SecretDTO> {
         } catch (IllegalArgumentException ex) {
             return value;
         }
+    }
+
+    private Map<String, String> buildValuesFromEntries(List<ConfigEntryDTO> entries) {
+        Map<String, String> values = new LinkedHashMap<>();
+        if (entries == null) {
+            return values;
+        }
+        for (ConfigEntryDTO entry : entries) {
+            if (entry == null || entry.getKey() == null || entry.getKey().isBlank()) {
+                continue;
+            }
+            if (!ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity())) {
+                continue;
+            }
+            values.put(entry.getKey(), entry.getValue() == null ? "" : entry.getValue());
+        }
+        return values;
     }
 }

@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -13,6 +16,8 @@ public class ConfigMapDTO extends NodeDTO {
 
     private String yaml;
     private boolean secret;
+    private List<ConfigEntryDTO> entries = new ArrayList<>();
+    private Boolean showSecretsAsPlain;
 
     public ConfigMapDTO(String id, String name, String yaml) {
         this(id, name, yaml, false, "configmap");
@@ -32,6 +37,17 @@ public class ConfigMapDTO extends NodeDTO {
         super(id, name, kind);
         this.yaml = yaml;
         this.secret = secret;
+    }
+
+    public List<ConfigEntryDTO> getEntries() {
+        if (entries == null) {
+            entries = new ArrayList<>();
+        }
+        return entries;
+    }
+
+    public void setEntries(List<ConfigEntryDTO> entries) {
+        this.entries = entries == null ? new ArrayList<>() : new ArrayList<>(entries);
     }
 
     @Override
