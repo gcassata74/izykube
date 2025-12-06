@@ -85,7 +85,8 @@
         [class.connection-point-active]="isConnecting && connectionStartNode?.id === node.id && connectionStartPoint?.side === point.side"
         [attr.title]="connectionHelpText"
         [attr.data-node-id]="node.id"
-        [attr.data-side]="point.side">
+        [attr.data-side]="point.side"
+        (mousedown)="onConnectionPointMouseDown($event, node, point)">
       </div>
 
       <button

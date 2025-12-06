@@ -632,6 +632,7 @@
   transform-origin: center;
   transition: all 0.2s ease;
   z-index: 10;
+  pointer-events: auto;
 
   &:hover {
     background-color: #0056b3;

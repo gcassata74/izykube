@@ -21,12 +21,14 @@ import { ResourceSyncService } from '../services/resource-sync.service';
 import { ConfigBundleMeta } from '../model/config-bundle.model';
 import interact from 'interactjs';
 
-/* Manual verification checklist:
- * - Open a diagram with multiple nodes and links.
- * - Drag a node; links stay attached and move with the node.
- * - Click a link to select it; press Delete and ensure it disappears from canvas and model.
- * - Pan/zoom and confirm links remain aligned; minimap viewport moves during pan.
- */
+  /* Manual verification checklist:
+   * - Open a diagram with multiple nodes and links.
+   * - Drag a node; links stay attached and move with the node.
+   * - Click a link to select it; press Delete and ensure it disappears from canvas and model.
+   * - Pan/zoom and confirm links remain aligned; minimap viewport moves during pan.
+   * - Drag from a connection point to another to create a link; click a link and delete with Delete key.
+   * Note: Node dragging is disabled on connection-point handles (ignoreFrom) so link gestures are not hijacked.
+   */
 
 interface DiagramNode {
   id: string;
@@ -231,30 +233,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
           this.updateSurfaceSize();
         })
       },
-      inertia: false
-    }).styleCursor(false);
-
-    interact('.diagram-node').resizable({
-      edges: { left: false, right: false, top: false, bottom: false },
-      listeners: {
-        start: () => this.zone.run(() => this.saveToUndoStack()),
-        move: (event) => this.onNodeResize(event),
-        end: () => this.zone.run(() => {
-          this.updateDiagramData();
-          this.updateSurfaceSize();
-        })
-      }
-    });
-
-    interact('.connection-point').draggable({
-      listeners: {
-        start: (event) => this.zone.run(() => this.startConnectionFromHandle(event)),
-        move: (event) => this.onConnectionHandleDrag(event),
-        end: (event) => this.zone.run(() => this.finishConnectionFromHandle(event))
-      },
       inertia: false,
-      maxPerElement: 2
+      ignoreFrom: '.connection-point'
     }).styleCursor(false);
+
   }
 
   private initializePanHandlers(): void {
@@ -317,6 +299,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     const canvas = this.diagramCanvas.nativeElement;
     // Create SVG for links
     this.svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.svgElement.classList.add('diagram-links-layer');
     this.svgElement.style.position = 'absolute';
     this.svgElement.style.top = '0';
     this.svgElement.style.left = '0';
@@ -348,6 +331,9 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private onNodeDragMove(event: any): void {
+    if (this.isConnecting) {
+      return;
+    }
     const target = event.target as HTMLElement;
     const nodeId = target?.getAttribute('data-node-id');
     if (!nodeId) {
@@ -396,76 +382,61 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     this.updateViewportRect();
   }
 
-  private startConnectionFromHandle(event: any): void {
-    const target = event.target as HTMLElement;
-    const nodeId = target?.getAttribute('data-node-id');
-    const side = target?.getAttribute('data-side') as ConnectionPoint['side'] | null;
-    if (!nodeId || !side) {
-      return;
-    }
-    const node = this.nodes.find(n => n.id === nodeId);
-    if (!node) {
-      return;
-    }
-    const connectionPoints = this.getConnectionPoints(node);
-    const point = connectionPoints.find(p => p.side === side) || connectionPoints[0];
-    if (!point) {
-      return;
-    }
+  onConnectionPointMouseDown(event: MouseEvent, node: DiagramNode, point: ConnectionPoint): void {
+    event.stopPropagation();
+    event.preventDefault();
 
     this.isConnecting = true;
     this.isDraggingConnection = true;
     this.connectionStartNode = node;
     this.connectionStartPoint = point;
     this.createTempLine(point.x, point.y, point.x, point.y);
-  }
 
-  private onConnectionHandleDrag(event: any): void {
-    if (!this.isConnecting || !this.tempLine) {
-      return;
-    }
-    const coords = this.getClientCoords(event);
-    const diagramCoords = this.screenToDiagram(coords.x, coords.y);
-
-    this.tempLine.setAttribute('x2', diagramCoords.x.toString());
-    this.tempLine.setAttribute('y2', diagramCoords.y.toString());
-    this.highlightNearbyConnectionPoints(coords.x, coords.y);
-  }
-
-  private finishConnectionFromHandle(event: any): void {
-    if (!this.isConnecting) {
-      return;
-    }
-    const coords = this.getClientCoords(event);
-    const targetElement = document.elementFromPoint(coords.x, coords.y);
-    const connectionPoint = targetElement?.closest?.('.connection-point');
-
-    if (connectionPoint) {
-      const nodeId = connectionPoint.getAttribute('data-node-id');
-      const node = this.nodes.find(n => n.id === nodeId);
-      if (node && node.id !== this.connectionStartNode?.id) {
-        const points = this.getConnectionPoints(node);
-        const targetPoint = this.findClosestConnectionPoint(coords.x, coords.y, points);
-        this.createLinkWithPoints(
-          this.connectionStartNode!.id,
-          node.id,
-          this.connectionStartPoint!,
-          targetPoint
-        );
+    const onMove = (moveEvent: MouseEvent) => {
+      if (!this.isConnecting || !this.tempLine) {
+        return;
       }
-    } else {
-      const nearest = this.findNearestDroppablePoint(coords.x, coords.y, this.connectionStartNode?.id);
-      if (nearest) {
-        this.createLinkWithPoints(
-          this.connectionStartNode!.id,
-          nearest.node.id,
-          this.connectionStartPoint!,
-          nearest.point
-        );
-      }
-    }
+      const diagramCoords = this.screenToDiagram(moveEvent.clientX, moveEvent.clientY);
+      this.tempLine.setAttribute('x2', diagramCoords.x.toString());
+      this.tempLine.setAttribute('y2', diagramCoords.y.toString());
+      this.highlightNearbyConnectionPoints(moveEvent.clientX, moveEvent.clientY);
+    };
 
-    this.cancelConnection();
+    const onUp = (upEvent: MouseEvent) => {
+      if (this.isConnecting) {
+        const connectionPoint = (upEvent.target as HTMLElement)?.closest?.('.connection-point');
+        if (connectionPoint) {
+          const nodeId = connectionPoint.getAttribute('data-node-id');
+          const targetNode = this.nodes.find(n => n.id === nodeId);
+          if (targetNode && targetNode.id !== this.connectionStartNode?.id) {
+            const points = this.getConnectionPoints(targetNode);
+            const targetPoint = this.findClosestConnectionPoint(upEvent.clientX, upEvent.clientY, points);
+            this.createLinkWithPoints(
+              this.connectionStartNode!.id,
+              targetNode.id,
+              this.connectionStartPoint!,
+              targetPoint
+            );
+          }
+        } else {
+          const nearest = this.findNearestDroppablePoint(upEvent.clientX, upEvent.clientY, this.connectionStartNode?.id);
+          if (nearest) {
+            this.createLinkWithPoints(
+              this.connectionStartNode!.id,
+              nearest.node.id,
+              this.connectionStartPoint!,
+              nearest.point
+            );
+          }
+        }
+      }
+      this.cancelConnection();
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   }
 
   private getClientCoords(event: any): { x: number; y: number } {
@@ -1290,8 +1261,31 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
+  // Link rendering & selection flow:
+  // - Links are rendered as SVG <line> elements inside svgElement with click handlers.
+  // - Panning/zoom is applied on the parent surface, so link coordinates stay in diagram space.
+  // - Connection creation uses dedicated mouse listeners on connection points and sets isConnecting;
+  //   Interact.js node drag ignores events when isConnecting is true to avoid conflicts.
   private renderLinks() {
+    if (!this.svgElement) {
+      return;
+    }
+
+    // Keep markers but rebuild the link shapes to ensure click handlers stay in sync
+    const existingDefs = this.svgElement.querySelector('defs');
+    const defsClone = existingDefs ? existingDefs.cloneNode(true) : null;
+
+    while (this.svgElement.firstChild) {
+      this.svgElement.removeChild(this.svgElement.firstChild);
+    }
+
+    if (defsClone) {
+      this.svgElement.appendChild(defsClone);
+    }
+    this.ensureArrowMarker();
+
     this.links.forEach(link => this.renderLink(link));
+    this.updateLinkStyles();
   }
 
   private renderLink(link: DiagramLink) {
@@ -1308,6 +1302,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this.ensureArrowMarker();
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.classList.add('diagram-link');
+    line.setAttribute('data-link-id', link.id);
     line.setAttribute('x1', fromPoint.x.toString());
     line.setAttribute('y1', fromPoint.y.toString());
     line.setAttribute('x2', toPoint.x.toString());
@@ -1321,7 +1317,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     // Add click event listener for link selection
     line.addEventListener('click', (event) => {
       event.stopPropagation();
-      this.selectLink(link);
+      this.zone.run(() => this.selectLink(link));
     });
 
     this.svgElement.appendChild(line);
@@ -1368,6 +1364,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
         link.element.setAttribute('y2', toPoint.y.toString());
       }
     });
+    this.updateLinkStyles();
   }
 
   selectNode(node: DiagramNode) {
@@ -1460,9 +1457,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       this.selectedLink.element.remove();
     }
 
-    // Remove from links array
+    // Remove from links array and re-render
     this.links = this.links.filter(link => link.id !== this.selectedLink!.id);
     this.selectedLink = null;
+    this.renderLinks();
     this.updateDiagramData();
   }
 
@@ -2536,6 +2534,9 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private shouldStartPan(event: PointerEvent): boolean {
     const target = event.target as HTMLElement | null;
+    if (this.isConnecting || this.isDraggingConnection) {
+      return false;
+    }
     if (this.handMode) {
       return true;
     }
@@ -2543,9 +2544,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       return false;
     }
     const isNode = !!target.closest('.diagram-node');
+    const isLink = !!target.closest('.diagram-link');
     const isMinimap = !!target.closest('.diagram-minimap');
     const isToolbar = !!target.closest('.palette-actions');
-    return !isNode && !isMinimap && !isToolbar;
+    return !isNode && !isLink && !isMinimap && !isToolbar;
   }
 
   private setPanActive(active: boolean): void {
@@ -2585,6 +2587,5 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private toggleNodeInteractions(enabled: boolean): void {
     interact('.diagram-node').draggable({ enabled });
-    interact('.diagram-node').resizable({ enabled });
   }
 }
