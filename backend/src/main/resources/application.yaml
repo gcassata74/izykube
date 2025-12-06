@@ -29,6 +29,26 @@ app:
       - http://[::1]:*
       - ionic://localhost
       - capacitor://localhost
+  assets:
+    default-images:
+      - nginx:latest
+      - nginx:1.27
+      - alpine:3.18
+      - busybox:1.36
+      - redis:7
+      - postgres:16
+      - mysql:8
+      - mongo:7
+      - node:22
+      - openjdk:21
+      - python:3.12
+      - golang:1.22
+      - debian:12
+      - ubuntu:22.04
+      - traefik:3.0
+      - haproxy:2.8
+      - memcached:1.6
+      - rabbitmq:3.12
 
 ai:
   local:

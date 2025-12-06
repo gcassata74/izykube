@@ -76,6 +76,7 @@
             <div class="resource-panel__table" [ngSwitch]="activeView">
                 <p-table
                         class="izy-table"
+                        styleClass="p-datatable-rounded"
                         *ngSwitchCase="'pods'"
                         #podsTable
                         [value]="summary?.pods || []"
@@ -127,6 +128,7 @@
 
                 <p-table
                         class="izy-table"
+                        styleClass="p-datatable-rounded"
                         *ngSwitchCase="'deployments'"
                         #deploymentsTable
                         [value]="summary?.deployments || []"
@@ -172,6 +174,7 @@
 
                 <p-table
                         class="izy-table"
+                        styleClass="p-datatable-rounded"
                         *ngSwitchCase="'services'"
                         #servicesTable
                         [value]="summary?.services || []"
@@ -214,6 +217,7 @@
 
                 <p-table *ngSwitchCase="'ingresses'"
                          class="izy-table"
+                         styleClass="p-datatable-rounded"
                          #ingressesTable
                          [value]="summary?.ingresses || []"
                          dataKey="name"
@@ -246,6 +250,7 @@
 
                 <p-table *ngSwitchCase="'configMaps'"
                          class="izy-table"
+                         styleClass="p-datatable-rounded"
                          #configMapsTable
                          [value]="summary?.configMaps || []"
                          dataKey="name"
@@ -274,6 +279,7 @@
 
                 <p-table *ngSwitchCase="'secrets'"
                          class="izy-table"
+                         styleClass="p-datatable-rounded"
                          #secretsTable
                          [value]="summary?.secrets || []"
                          dataKey="name"
@@ -304,6 +310,7 @@
 
                 <p-table *ngSwitchCase="'jobs'"
                          class="izy-table"
+                         styleClass="p-datatable-rounded"
                          #jobsTable
                          [value]="summary?.jobs || []"
                          dataKey="name"
@@ -338,6 +345,7 @@
 
                 <p-table *ngSwitchCase="'cronJobs'"
                          class="izy-table"
+                         styleClass="p-datatable-rounded"
                          #cronJobsTable
                          [value]="summary?.cronJobs || []"
                          dataKey="name"
@@ -372,6 +380,7 @@
 
                 <p-table *ngSwitchCase="'daemonSets'"
                          class="izy-table"
+                         styleClass="p-datatable-rounded"
                          #daemonSetsTable
                          [value]="summary?.daemonSets || []"
                          dataKey="name"
@@ -408,6 +417,7 @@
 
                 <p-table *ngSwitchCase="'statefulSets'"
                          class="izy-table"
+                         styleClass="p-datatable-rounded"
                          #statefulSetsTable
                          [value]="summary?.statefulSets || []"
                          dataKey="name"

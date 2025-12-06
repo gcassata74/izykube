@@ -1,5 +1,6 @@
 package com.izylife.izykube.bootstrap;
 
+import com.izylife.izykube.configuration.ImageAssetProperties;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.repositories.AssetRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -7,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.boot.ApplicationArguments;
+
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -16,12 +19,15 @@ class ImageAssetInitializerTest {
     @Mock
     private AssetRepository assetRepository;
 
+    private ImageAssetProperties properties;
     private ImageAssetInitializer initializer;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        initializer = new ImageAssetInitializer(assetRepository);
+        properties = new ImageAssetProperties();
+        properties.setDefaultImages(List.of("nginx:latest", "redis:7"));
+        initializer = new ImageAssetInitializer(assetRepository, properties);
     }
 
     @Test
@@ -30,7 +36,7 @@ class ImageAssetInitializerTest {
 
         initializer.run(mock(ApplicationArguments.class));
 
-        verify(assetRepository, times(ImageAssetInitializer.DEFAULT_IMAGE_REFS.size())).save(any(Asset.class));
+        verify(assetRepository, times(properties.getDefaultImages().size())).save(any(Asset.class));
     }
 
     @Test

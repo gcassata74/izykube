@@ -1007,6 +1007,43 @@ body {
   }
 }
 
+.kube-explorer .izy-table {
+  .p-paginator,
+  .p-paginator.p-component.p-paginator-bottom,
+  .p-paginator-bottom {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center;
+    width: 100% !important;
+    margin: 0 auto !important;
+    font-size: 0.75rem !important;
+    gap: 0.25rem;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    padding-top: 0.75rem;
+  }
+
+  .p-paginator-bottom .p-paginator-page,
+  .p-paginator-bottom .p-paginator-first,
+  .p-paginator-bottom .p-paginator-last,
+  .p-paginator-bottom .p-paginator-prev,
+  .p-paginator-bottom .p-paginator-next {
+    min-width: 1.75rem;
+    height: 1.75rem;
+    line-height: 1.75rem;
+    padding: 0;
+    border-radius: 999px;
+    font-size: 0.75rem;
+  }
+
+  .p-paginator-bottom .p-highlight {
+    background-color: #e5ecff;
+    color: #1d4ed8;
+    font-weight: 600;
+  }
+}
+
 // Buttons
 .p-button {
   height: 44px;
