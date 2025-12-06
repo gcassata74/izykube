@@ -21,6 +21,13 @@ import { ResourceSyncService } from '../services/resource-sync.service';
 import { ConfigBundleMeta } from '../model/config-bundle.model';
 import interact from 'interactjs';
 
+/* Manual verification checklist:
+ * - Open a diagram with multiple nodes and links.
+ * - Drag a node; links stay attached and move with the node.
+ * - Click a link to select it; press Delete and ensure it disappears from canvas and model.
+ * - Pan/zoom and confirm links remain aligned; minimap viewport moves during pan.
+ */
+
 interface DiagramNode {
   id: string;
   name: string;
@@ -76,6 +83,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
   @ViewChild('container', { static: true }) container!: ElementRef;
   @ViewChild('diagramCanvas', { static: true }) diagramCanvas!: ElementRef;
+  @ViewChild('diagramGrid', { static: true }) diagramGrid!: ElementRef<HTMLDivElement>;
   @ViewChild('diagramSurface', { static: true }) diagramSurface!: ElementRef;
   @ViewChild('paletteContainer', { static: true }) paletteContainer!: ElementRef;
   @ViewChild('podShellOverlay') podShellOverlay?: OverlayPanel;
@@ -137,10 +145,17 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   surfaceWidth = 1600;
   surfaceHeight = 1200;
   viewportRect = { x: 0, y: 0, width: 0, height: 0 };
+  viewportState = { offsetX: 0, offsetY: 0, scale: 1 };
+  viewportTransform = 'translate(0px, 0px) scale(1)';
+  handMode = false;
+  isPanning = false;
+  private panStart = { x: 0, y: 0, offsetX: 0, offsetY: 0 };
   minimapVisible = true;
   readonly minimapSize = { width: 240, height: 170 };
   private readonly minimapPreferenceKey = 'diagram:minimap:visible';
   private isDraggingMinimap = false;
+  private panPointerMove?: (event: PointerEvent) => void;
+  private panPointerUp?: (event: PointerEvent) => void;
   private readonly dependencyPriority: Record<string, number> = {
     ingress: 6,
     service: 5,
@@ -220,7 +235,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }).styleCursor(false);
 
     interact('.diagram-node').resizable({
-      edges: { left: true, right: true, top: true, bottom: true },
+      edges: { left: false, right: false, top: false, bottom: false },
       listeners: {
         start: () => this.zone.run(() => this.saveToUndoStack()),
         move: (event) => this.onNodeResize(event),
@@ -242,9 +257,58 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }).styleCursor(false);
   }
 
+  private initializePanHandlers(): void {
+    const viewportEl = this.diagramCanvas.nativeElement as HTMLElement;
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!this.shouldStartPan(event)) {
+        return;
+      }
+      event.preventDefault();
+      this.isPanning = true;
+      this.panStart = {
+        x: event.clientX,
+        y: event.clientY,
+        offsetX: this.viewportState.offsetX,
+        offsetY: this.viewportState.offsetY
+      };
+      this.setPanActive(true);
+      viewportEl.setPointerCapture(event.pointerId);
+    };
+
+    this.panPointerMove = (event: PointerEvent) => {
+      if (!this.isPanning) {
+        return;
+      }
+      const dx = (event.clientX - this.panStart.x) / (this.viewportState.scale || 1);
+      const dy = (event.clientY - this.panStart.y) / (this.viewportState.scale || 1);
+      this.viewportState.offsetX = this.panStart.offsetX + dx;
+      this.viewportState.offsetY = this.panStart.offsetY + dy;
+      this.applyViewportTransform();
+      this.zone.run(() => this.updateViewportRect());
+    };
+
+    this.panPointerUp = (event: PointerEvent) => {
+      if (this.isPanning) {
+        this.isPanning = false;
+        this.setPanActive(false);
+      }
+      if (viewportEl.hasPointerCapture(event.pointerId)) {
+        viewportEl.releasePointerCapture(event.pointerId);
+      }
+    };
+
+    viewportEl.addEventListener('pointerdown', onPointerDown);
+    viewportEl.addEventListener('pointermove', this.panPointerMove);
+    viewportEl.addEventListener('pointerup', this.panPointerUp);
+    viewportEl.addEventListener('pointercancel', this.panPointerUp);
+    this.updatePanCursor();
+  }
+
   ngAfterViewInit(): void {
     this.zone.runOutsideAngular(() => {
       this.initializeInteract();
+      this.initializePanHandlers();
     });
   }
 
@@ -258,7 +322,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     this.svgElement.style.left = '0';
     this.svgElement.style.width = `${this.surfaceWidth}px`;
     this.svgElement.style.height = `${this.surfaceHeight}px`;
-    this.svgElement.style.pointerEvents = 'none';
+    this.svgElement.style.pointerEvents = 'auto';
     this.svgElement.style.zIndex = '1';
     this.diagramSurface.nativeElement.appendChild(this.svgElement);
     this.ensureArrowMarker();
@@ -266,13 +330,13 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     // Render existing links
     this.renderLinks();
     this.updateViewportRect();
+    this.applyViewportTransform();
   }
 
   onCanvasDrop(event: DropEvent) {
     const baseName = event.data.baseName || event.data.name;
-    const scrollLeft = this.diagramCanvas.nativeElement.scrollLeft;
-    const scrollTop = this.diagramCanvas.nativeElement.scrollTop;
-    this.createNode(event.data.type, baseName, event.data.icon, event.x + scrollLeft, event.y + scrollTop);
+    const coords = this.relativeToDiagram(event.x, event.y);
+    this.createNode(event.data.type, baseName, event.data.icon, coords.x, coords.y);
   }
 
   private initializePaletteItems() {
@@ -294,11 +358,13 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    const scale = 1; // adjust if zoom support is added
+    const scale = this.viewportState.scale || 1;
     node.x += event.dx / scale;
     node.y += event.dy / scale;
 
-    target.style.transform = `translate(${node.x}px, ${node.y}px)`;
+    target.style.transform = '';
+    target.style.left = `${node.x}px`;
+    target.style.top = `${node.y}px`;
     this.updateLinks();
     this.updateViewportRect();
   }
@@ -315,12 +381,14 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     const delta = event.deltaRect || { left: 0, top: 0 };
-    node.x += delta.left;
-    node.y += delta.top;
-    node.width = Math.max(60, event.rect.width);
-    node.height = Math.max(60, event.rect.height);
+    node.x += delta.left / this.viewportState.scale;
+    node.y += delta.top / this.viewportState.scale;
+    node.width = Math.max(60, event.rect.width / this.viewportState.scale);
+    node.height = Math.max(60, event.rect.height / this.viewportState.scale);
 
-    target.style.transform = `translate(${node.x}px, ${node.y}px)`;
+    target.style.transform = '';
+    target.style.left = `${node.x}px`;
+    target.style.top = `${node.y}px`;
     target.style.width = `${node.width}px`;
     target.style.height = `${node.height}px`;
 
@@ -357,12 +425,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
     const coords = this.getClientCoords(event);
-    const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
-    const x = coords.x - canvasRect.left + this.diagramCanvas.nativeElement.scrollLeft;
-    const y = coords.y - canvasRect.top + this.diagramCanvas.nativeElement.scrollTop;
+    const diagramCoords = this.screenToDiagram(coords.x, coords.y);
 
-    this.tempLine.setAttribute('x2', x.toString());
-    this.tempLine.setAttribute('y2', y.toString());
+    this.tempLine.setAttribute('x2', diagramCoords.x.toString());
+    this.tempLine.setAttribute('y2', diagramCoords.y.toString());
     this.highlightNearbyConnectionPoints(coords.x, coords.y);
   }
 
@@ -1341,7 +1407,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   @HostListener('document:keydown', ['$event'])
-  onKeyDown(event: KeyboardEvent) {
+  onDiagramKeyDown(event: KeyboardEvent) {
     if (this.isEditingFormField(event.target)) {
       return;
     }
@@ -1973,9 +2039,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private findClosestConnectionPoint(clientX: number, clientY: number, connectionPoints: ConnectionPoint[]): ConnectionPoint {
-    const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
-    const x = clientX - canvasRect.left + this.diagramCanvas.nativeElement.scrollLeft;
-    const y = clientY - canvasRect.top + this.diagramCanvas.nativeElement.scrollTop;
+    const { x, y } = this.screenToDiagram(clientX, clientY);
 
     let closestPoint = connectionPoints[0];
     let minDistance = Math.sqrt(Math.pow(x - closestPoint.x, 2) + Math.pow(y - closestPoint.y, 2));
@@ -2040,9 +2104,9 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     this.nodes.forEach(node => {
       const connectionPoints = this.getConnectionPoints(node);
       connectionPoints.forEach(point => {
-        const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
-        const pointScreenX = canvasRect.left + point.x - this.diagramCanvas.nativeElement.scrollLeft;
-        const pointScreenY = canvasRect.top + point.y - this.diagramCanvas.nativeElement.scrollTop;
+        const pointScreen = this.diagramToScreen(point.x, point.y);
+        const pointScreenX = pointScreen.x;
+        const pointScreenY = pointScreen.y;
         
         const distance = Math.sqrt(
           Math.pow(clientX - pointScreenX, 2) + 
@@ -2078,7 +2142,6 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     clientY: number,
     excludeNodeId?: string
   ): { node: DiagramNode; point: ConnectionPoint } | null {
-    const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
     let closest: { node: DiagramNode; point: ConnectionPoint } | null = null;
     let bestDistance = this.connectionCaptureRadius;
 
@@ -2089,9 +2152,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
       const connectionPoints = this.getConnectionPoints(node);
       connectionPoints.forEach(point => {
-        const pointScreenX = canvasRect.left + point.x - this.diagramCanvas.nativeElement.scrollLeft;
-        const pointScreenY = canvasRect.top + point.y - this.diagramCanvas.nativeElement.scrollTop;
-        const distance = Math.hypot(clientX - pointScreenX, clientY - pointScreenY);
+        const screenPoint = this.diagramToScreen(point.x, point.y);
+        const distance = Math.hypot(clientX - screenPoint.x, clientY - screenPoint.y);
 
         if (distance <= bestDistance) {
           bestDistance = distance;
@@ -2282,6 +2344,12 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     this.subscription.unsubscribe();
     interact('.diagram-node').unset();
     interact('.connection-point').unset();
+    const viewportEl = this.diagramCanvas?.nativeElement as HTMLElement | undefined;
+    if (viewportEl) {
+      viewportEl.removeEventListener('pointermove', this.panPointerMove as any);
+      viewportEl.removeEventListener('pointerup', this.panPointerUp as any);
+      viewportEl.removeEventListener('pointercancel', this.panPointerUp as any);
+    }
   }
 
   private updateSurfaceSize(): void {
@@ -2306,6 +2374,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     this.updateViewportRect();
+    this.applyViewportTransform();
   }
 
   private updateViewportRect(): void {
@@ -2313,12 +2382,14 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!canvas) {
       return;
     }
+    const scale = this.viewportState.scale || 1;
     this.viewportRect = {
-      x: canvas.scrollLeft,
-      y: canvas.scrollTop,
-      width: canvas.clientWidth,
-      height: canvas.clientHeight
+      x: -this.viewportState.offsetX / scale,
+      y: -this.viewportState.offsetY / scale,
+      width: canvas.clientWidth / scale,
+      height: canvas.clientHeight / scale
     };
+    this.updateGridBackground();
   }
 
   toggleMinimap(): void {
@@ -2368,11 +2439,12 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     const viewportWidth = canvas.clientWidth;
     const viewportHeight = canvas.clientHeight;
 
-    const newScrollLeft = Math.max(0, Math.min(this.surfaceWidth - viewportWidth, targetX - viewportWidth / 2));
-    const newScrollTop = Math.max(0, Math.min(this.surfaceHeight - viewportHeight, targetY - viewportHeight / 2));
+    const newOffsetX = viewportWidth / 2 - targetX * this.viewportState.scale;
+    const newOffsetY = viewportHeight / 2 - targetY * this.viewportState.scale;
 
-    canvas.scrollLeft = newScrollLeft;
-    canvas.scrollTop = newScrollTop;
+    this.viewportState.offsetX = newOffsetX;
+    this.viewportState.offsetY = newOffsetY;
+    this.applyViewportTransform();
     this.updateViewportRect();
   }
 
@@ -2414,5 +2486,105 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     } catch {
       return true;
     }
+  }
+
+  private applyViewportTransform(): void {
+    const { offsetX, offsetY, scale } = this.viewportState;
+    this.viewportTransform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+    if (this.diagramSurface?.nativeElement) {
+      (this.diagramSurface.nativeElement as HTMLElement).style.transform = this.viewportTransform;
+    }
+    this.updateGridBackground();
+  }
+
+  private relativeToDiagram(x: number, y: number): { x: number; y: number } {
+    const scale = this.viewportState.scale || 1;
+    return {
+      x: (x - this.viewportState.offsetX) / scale,
+      y: (y - this.viewportState.offsetY) / scale
+    };
+  }
+
+  private screenToDiagram(clientX: number, clientY: number): { x: number; y: number } {
+    const rect = this.diagramCanvas.nativeElement.getBoundingClientRect();
+    const x = (clientX - rect.left - this.viewportState.offsetX) / this.viewportState.scale;
+    const y = (clientY - rect.top - this.viewportState.offsetY) / this.viewportState.scale;
+    return { x, y };
+  }
+
+  private diagramToScreen(x: number, y: number): { x: number; y: number } {
+    const rect = this.diagramCanvas.nativeElement.getBoundingClientRect();
+    return {
+      x: rect.left + this.viewportState.offsetX + x * this.viewportState.scale,
+      y: rect.top + this.viewportState.offsetY + y * this.viewportState.scale
+    };
+  }
+
+  private updateGridBackground(): void {
+    if (!this.diagramGrid) {
+      return;
+    }
+    const gridSize = 20;
+    const scale = this.viewportState.scale || 1;
+    const size = gridSize * scale;
+    const offsetX = this.viewportState.offsetX % size;
+    const offsetY = this.viewportState.offsetY % size;
+    const gridEl = this.diagramGrid.nativeElement;
+    gridEl.style.backgroundSize = `${size}px ${size}px`;
+    gridEl.style.backgroundPosition = `${offsetX}px ${offsetY}px`;
+  }
+
+  private shouldStartPan(event: PointerEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    if (this.handMode) {
+      return true;
+    }
+    if (!target) {
+      return false;
+    }
+    const isNode = !!target.closest('.diagram-node');
+    const isMinimap = !!target.closest('.diagram-minimap');
+    const isToolbar = !!target.closest('.palette-actions');
+    return !isNode && !isMinimap && !isToolbar;
+  }
+
+  private setPanActive(active: boolean): void {
+    this.isPanning = active;
+    this.updatePanCursor();
+  }
+
+  private updatePanCursor(): void {
+    const viewportEl = this.diagramCanvas?.nativeElement as HTMLElement | undefined;
+    if (!viewportEl) {
+      return;
+    }
+    const shouldShowHand = this.handMode || this.isPanning;
+    viewportEl.classList.toggle('pan-enabled', shouldShowHand);
+    viewportEl.classList.toggle('pan-active', this.isPanning);
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent): void {
+    if (event.code === 'Space' && !event.repeat && !this.isEditingFormField(event.target)) {
+      this.handMode = true;
+      this.toggleNodeInteractions(false);
+      this.updatePanCursor();
+      event.preventDefault();
+    }
+  }
+
+  @HostListener('window:keyup', ['$event'])
+  onKeyUp(event: KeyboardEvent): void {
+    if (event.code === 'Space' && !this.isEditingFormField(event.target)) {
+      this.handMode = false;
+      this.toggleNodeInteractions(true);
+      this.updatePanCursor();
+      event.preventDefault();
+    }
+  }
+
+  private toggleNodeInteractions(enabled: boolean): void {
+    interact('.diagram-node').draggable({ enabled });
+    interact('.diagram-node').resizable({ enabled });
   }
 }

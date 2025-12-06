@@ -28,7 +28,7 @@
   </div>
 
   <div
-    class="second-column"
+    class="second-column diagram-viewport"
     #diagramCanvas
     appDragDrop
     [isDropZone]="true"
@@ -36,11 +36,14 @@
     (click)="clearSelection()"
     (scroll)="onCanvasScroll()">
 
+    <div class="diagram-grid" #diagramGrid></div>
+
     <div
       class="diagram-surface"
       #diagramSurface
       [style.width.px]="surfaceWidth"
-      [style.height.px]="surfaceHeight">
+      [style.height.px]="surfaceHeight"
+      [style.transform]="viewportTransform">
 
     <!-- Diagram nodes rendered through Angular -->
     <div
