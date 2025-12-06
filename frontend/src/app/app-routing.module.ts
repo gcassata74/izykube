@@ -7,6 +7,7 @@ import { ClusterEditorComponent } from './cluster/cluster-editor/cluster-editor.
 import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.component';
 import { AssetFormComponent } from './assets/asset-form/asset-form.component';
 import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
+import { SettingsComponent } from './settings/settings.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/home', pathMatch: 'full' },
@@ -20,7 +21,8 @@ const routes: Routes = [
   { path: 'cluster-form/:id', component: ClusterFormComponent },
   { path: 'asset-form', component: AssetFormComponent },
   { path: 'asset-form/:id', component: AssetFormComponent },
-  { path: 'kube-explorer', component: KubeExplorerComponent }
+  { path: 'kube-explorer', component: KubeExplorerComponent },
+  { path: 'settings', component: SettingsComponent }
 ];
 
 @NgModule({

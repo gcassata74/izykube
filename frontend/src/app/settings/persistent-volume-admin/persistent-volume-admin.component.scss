@@ -1,0 +1,90 @@
+.pv-admin-card {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+.pv-admin-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+  margin: 0 0 0.25rem;
+}
+
+.subtitle {
+  margin: 0.1rem 0 0;
+  color: var(--text-color-secondary);
+}
+
+.pv-table {
+  width: 100%;
+}
+
+.pv-table .actions {
+  text-align: right;
+  width: 7rem;
+}
+
+.name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.meta {
+  color: var(--text-color-secondary);
+  font-size: 0.85rem;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.tag {
+  background: var(--surface-100);
+  color: var(--text-color);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.pv-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.hint {
+  color: var(--text-color-secondary);
+}
+
+.access-modes {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}

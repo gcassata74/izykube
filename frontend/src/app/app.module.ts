@@ -60,6 +60,8 @@ import { PodShellDialogComponent } from './pod-shell-dialog/pod-shell-dialog.com
 import { HeaderComponent } from './layout/header/header.component';
 import { SidebarComponent } from './layout/sidebar/sidebar.component';
 import { TooltipModule } from 'primeng/tooltip';
+import { SettingsComponent } from './settings/settings.component';
+import { PersistentVolumeAdminComponent } from './settings/persistent-volume-admin/persistent-volume-admin.component';
 
 @NgModule({
   declarations: [
@@ -85,6 +87,8 @@ import { TooltipModule } from 'primeng/tooltip';
     PodShellDialogComponent,
     HeaderComponent,
     SidebarComponent,
+    SettingsComponent,
+    PersistentVolumeAdminComponent,
   ],
   imports: [
     SharedModule,

@@ -46,3 +46,9 @@
   align-items: center;
   gap: 0.35rem;
 }
+
+.volume-hint {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--text-color-secondary);
+}

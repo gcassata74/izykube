@@ -42,7 +42,19 @@
       <ng-container *ngSwitchCase="'persistentVolumeClaim'">
         <div class="p-field">
           <label for="claimName">Claim Name</label>
-          <input id="claimName" type="text" pInputText formControlName="claimName"/>
+          <p-dropdown
+            id="claimName"
+            formControlName="claimName"
+            [options]="persistentVolumeOptions"
+            optionLabel="label"
+            optionValue="value"
+            [filter]="true"
+            [editable]="true"
+            [showClear]="true"
+            placeholder="Select or type a claim name"
+            appendTo="body">
+          </p-dropdown>
+          <small class="volume-hint">Select from cluster persistent volumes or type a claim name manually.</small>
         </div>
         <div class="p-field-checkbox">
           <p-checkbox id="readOnly" [binary]="true" formControlName="readOnly"></p-checkbox>

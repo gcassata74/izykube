@@ -21,8 +21,10 @@
       class="sidebar-item sidebar-item--muted"
       title="Settings"
       aria-label="Settings"
+      (click)="onNavigate('/settings')"
       [pTooltip]="collapsed ? 'Settings' : undefined"
-      tooltipPosition="right">
+      tooltipPosition="right"
+      [class.sidebar-item--active]="isActive('/settings')">
       <i class="pi pi-cog sidebar-item__icon" aria-hidden="true"></i>
       <span class="sidebar-item__label">Settings</span>
     </button>

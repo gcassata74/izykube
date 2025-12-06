@@ -1,0 +1,104 @@
+<p-card class="pv-admin-card">
+  <div class="pv-admin-card__header">
+    <div>
+      <p class="eyebrow">Storage</p>
+      <h2>Persistent Volumes</h2>
+      <p class="subtitle">Create cluster-level volumes that namespaces can claim in their diagrams.</p>
+    </div>
+    <button pButton type="button" icon="pi pi-plus" label="New volume" (click)="openCreate()"></button>
+  </div>
+
+  <p-table
+    [value]="volumes"
+    [loading]="loading"
+    dataKey="name"
+    class="pv-table">
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Name</th>
+        <th>Capacity</th>
+        <th>Access Modes</th>
+        <th>Storage Class</th>
+        <th>Reclaim Policy</th>
+        <th>Volume Mode</th>
+        <th>Host Path</th>
+        <th class="actions">Actions</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-volume>
+      <tr>
+        <td>
+          <div class="name-cell">
+            <span class="name">{{ volume.name }}</span>
+            <span class="meta" *ngIf="volume.storageClassName">{{ volume.storageClassName }}</span>
+          </div>
+        </td>
+        <td>{{ volume.capacity || '—' }}</td>
+        <td>
+          <div class="tag-list">
+            <span class="tag" *ngFor="let mode of volume.accessModes">{{ mode }}</span>
+          </div>
+        </td>
+        <td>{{ volume.storageClassName || '—' }}</td>
+        <td>{{ volume.reclaimPolicy || '—' }}</td>
+        <td>{{ volume.volumeMode || 'Filesystem' }}</td>
+        <td>{{ volume.path || '—' }}</td>
+        <td class="actions">
+          <button pButton type="button" class="p-button-text" icon="pi pi-pencil" (click)="openEdit(volume)" aria-label="Edit"></button>
+          <button pButton type="button" class="p-button-text p-button-danger" icon="pi pi-trash" (click)="delete(volume)" aria-label="Delete"></button>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</p-card>
+
+<p-dialog
+  header="{{ editing ? 'Edit Persistent Volume' : 'Create Persistent Volume' }}"
+  [(visible)]="dialogVisible"
+  [modal]="true"
+  [style]="{ width: '42rem' }"
+  (onHide)="hideDialog()">
+  <form [formGroup]="form" class="pv-form">
+    <div class="field">
+      <label for="name">Name</label>
+      <input id="name" type="text" pInputText formControlName="name" placeholder="pv-shared-data">
+      <small class="hint">Cluster-unique name; used by namespaces when requesting a claim.</small>
+    </div>
+    <div class="field">
+      <label for="capacity">Capacity</label>
+      <input id="capacity" type="text" pInputText formControlName="capacity" placeholder="10Gi">
+    </div>
+    <div class="field">
+      <label for="storageClassName">Storage Class (optional)</label>
+      <input id="storageClassName" type="text" pInputText formControlName="storageClassName" placeholder="standard">
+    </div>
+    <div class="field">
+      <label>Access Modes</label>
+      <div class="access-modes" formGroupName="accessModes">
+        <p-checkbox inputId="rwo" formControlName="rwo" [binary]="true"></p-checkbox>
+        <label for="rwo">ReadWriteOnce</label>
+        <p-checkbox inputId="rwx" formControlName="rwx" [binary]="true"></p-checkbox>
+        <label for="rwx">ReadWriteMany</label>
+        <p-checkbox inputId="rox" formControlName="rox" [binary]="true"></p-checkbox>
+        <label for="rox">ReadOnlyMany</label>
+      </div>
+    </div>
+    <div class="field">
+      <label for="reclaimPolicy">Reclaim Policy</label>
+      <p-dropdown id="reclaimPolicy" [options]="reclaimPolicies" formControlName="reclaimPolicy" optionLabel="label" optionValue="value"></p-dropdown>
+    </div>
+    <div class="field">
+      <label for="volumeMode">Volume Mode</label>
+      <p-dropdown id="volumeMode" [options]="volumeModes" formControlName="volumeMode" optionLabel="label" optionValue="value"></p-dropdown>
+    </div>
+    <div class="field">
+      <label for="path">Host Path</label>
+      <input id="path" type="text" pInputText formControlName="path" placeholder="/data">
+      <small class="hint">The absolute path on the node where data is stored.</small>
+    </div>
+    <div class="form-actions">
+      <button pButton type="button" class="p-button-text" label="Cancel" (click)="hideDialog()"></button>
+      <button pButton type="button" label="Save" (click)="save()" [disabled]="loading"></button>
+    </div>
+  </form>
+</p-dialog>

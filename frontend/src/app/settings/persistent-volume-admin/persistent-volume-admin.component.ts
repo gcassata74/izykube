@@ -1,0 +1,204 @@
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { finalize, Subscription } from 'rxjs';
+import { PersistentVolume } from '../../model/persistent-volume.class';
+import { NotificationService } from '../../services/notification.service';
+import { PersistentVolumeService } from '../../services/persistent-volume.service';
+import { SelectItem } from 'primeng/api';
+
+interface AccessModeState {
+  rwo: boolean;
+  rwx: boolean;
+  rox: boolean;
+}
+
+@Component({
+  selector: 'app-persistent-volume-admin',
+  templateUrl: './persistent-volume-admin.component.html',
+  styleUrls: ['./persistent-volume-admin.component.scss']
+})
+export class PersistentVolumeAdminComponent implements OnInit, OnDestroy {
+  volumes: PersistentVolume[] = [];
+  loading = false;
+  dialogVisible = false;
+  form!: FormGroup;
+  editing?: PersistentVolume;
+  private subscriptions = new Subscription();
+
+  reclaimPolicies: SelectItem[] = [
+    { label: 'Retain', value: 'Retain' },
+    { label: 'Delete', value: 'Delete' },
+    { label: 'Recycle', value: 'Recycle' }
+  ];
+  volumeModes: SelectItem[] = [
+    { label: 'Filesystem', value: 'Filesystem' },
+    { label: 'Block', value: 'Block' }
+  ];
+
+  constructor(
+    private fb: FormBuilder,
+    private persistentVolumeService: PersistentVolumeService,
+    private notificationService: NotificationService
+  ) {}
+
+  ngOnInit(): void {
+    this.buildForm();
+    this.loadVolumes();
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
+
+  loadVolumes(): void {
+    this.loading = true;
+    this.subscriptions.add(
+      this.persistentVolumeService.getVolumes()
+        .pipe(finalize(() => (this.loading = false)))
+        .subscribe({
+          next: volumes => this.volumes = volumes,
+          error: () => this.notificationService.error('Could not load persistent volumes', 'Verify cluster connectivity')
+        })
+    );
+  }
+
+  openCreate(): void {
+    this.editing = undefined;
+    this.form.reset({
+      name: '',
+      storageClassName: '',
+      capacity: '10Gi',
+      reclaimPolicy: 'Retain',
+      volumeMode: 'Filesystem',
+      path: '/data',
+      accessModes: {
+        rwo: true,
+        rwx: false,
+        rox: false
+      } satisfies AccessModeState
+    });
+    this.form.get('name')?.enable();
+    this.dialogVisible = true;
+  }
+
+  openEdit(volume: PersistentVolume): void {
+    this.editing = volume;
+    this.form.reset({
+      name: volume.name,
+      storageClassName: volume.storageClassName || '',
+      capacity: volume.capacity || '',
+      reclaimPolicy: volume.reclaimPolicy || 'Retain',
+      volumeMode: volume.volumeMode || 'Filesystem',
+      path: volume.path || '',
+      accessModes: this.resolveAccessModes(volume.accessModes)
+    });
+    this.form.get('name')?.disable();
+    this.dialogVisible = true;
+  }
+
+  save(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    const request = this.mapFormToRequest();
+    const action$ = this.editing
+      ? this.persistentVolumeService.updateVolume(this.editing.name, request)
+      : this.persistentVolumeService.createVolume(request);
+
+    this.loading = true;
+    this.subscriptions.add(
+      action$
+        .pipe(finalize(() => (this.loading = false)))
+        .subscribe({
+          next: () => {
+            this.notificationService.success(
+              this.editing ? 'Persistent volume updated' : 'Persistent volume created',
+              this.editing ? 'The volume configuration was saved' : 'The volume is now available cluster-wide'
+            );
+            this.dialogVisible = false;
+            this.loadVolumes();
+          },
+          error: () => this.notificationService.error('Unable to save persistent volume', 'Check the values and try again')
+        })
+    );
+  }
+
+  delete(volume: PersistentVolume): void {
+    this.loading = true;
+    this.subscriptions.add(
+      this.persistentVolumeService.deleteVolume(volume.name)
+        .pipe(finalize(() => (this.loading = false)))
+        .subscribe({
+          next: () => {
+            this.notificationService.success('Persistent volume deleted', `${volume.name} was removed`);
+            this.loadVolumes();
+          },
+          error: () => this.notificationService.error('Deletion failed', 'Could not delete the persistent volume')
+        })
+    );
+  }
+
+  hideDialog(): void {
+    this.dialogVisible = false;
+  }
+
+  get accessModesGroup(): FormGroup {
+    return this.form.get('accessModes') as FormGroup;
+  }
+
+  private buildForm(): void {
+    this.form = this.fb.group({
+      name: ['', Validators.required],
+      storageClassName: [''],
+      capacity: ['10Gi', Validators.required],
+      reclaimPolicy: ['Retain'],
+      volumeMode: ['Filesystem'],
+      path: ['/data'],
+      accessModes: this.fb.group({
+        rwo: [true],
+        rwx: [false],
+        rox: [false]
+      })
+    });
+  }
+
+  private mapFormToRequest(): PersistentVolume {
+    const raw = this.form.getRawValue();
+    const accessModes = this.resolveSelectedAccessModes(raw.accessModes as AccessModeState);
+
+    return {
+      name: raw.name,
+      storageClassName: raw.storageClassName || undefined,
+      capacity: raw.capacity || undefined,
+      reclaimPolicy: raw.reclaimPolicy || undefined,
+      volumeMode: raw.volumeMode || undefined,
+      path: raw.path || undefined,
+      accessModes
+    };
+  }
+
+  private resolveSelectedAccessModes(modes: AccessModeState): string[] {
+    const selected: string[] = [];
+    if (modes.rwo) {
+      selected.push('ReadWriteOnce');
+    }
+    if (modes.rwx) {
+      selected.push('ReadWriteMany');
+    }
+    if (modes.rox) {
+      selected.push('ReadOnlyMany');
+    }
+    return selected;
+  }
+
+  private resolveAccessModes(accessModes?: string[]): AccessModeState {
+    const modes = accessModes || [];
+    return {
+      rwo: modes.includes('ReadWriteOnce'),
+      rwx: modes.includes('ReadWriteMany'),
+      rox: modes.includes('ReadOnlyMany')
+    };
+  }
+}

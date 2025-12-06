@@ -3,8 +3,8 @@ import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Volume, VolumeConfig, VolumeItem, VolumeType } from '../../model/volume.class';
 import { AutoSaveService } from '../../services/auto-save.service';
 import { Subscription, tap } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { TabPanel } from 'primeng/tabview';
+import { PersistentVolumeService } from '../../services/persistent-volume.service';
+import { PersistentVolume } from '../../model/persistent-volume.class';
 
 @Component({
   selector: 'app-volume-form',
@@ -16,6 +16,8 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
   @Input() selectedNode!: Volume;
   form!: FormGroup;
   private autoSaveSubscription: Subscription = new Subscription();
+  persistentVolumeOptions: { label: string; value: string }[] = [];
+  loadingPersistentVolumes = false;
 
   volumeTypes: { label: string; value: VolumeType }[] = [
     { label: 'Empty Dir', value: 'emptyDir' },
@@ -28,7 +30,8 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
 
   constructor(
     private fb: FormBuilder,
-    private autoSaveService: AutoSaveService
+    private autoSaveService: AutoSaveService,
+    private persistentVolumeService: PersistentVolumeService
   ) {}
 
   ngOnInit() {
@@ -60,7 +63,14 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
 
     this.form.get('config.type')?.valueChanges.subscribe((type: VolumeType) => {
       this.updateFormForVolumeType(type);
+      if (type === 'persistentVolumeClaim') {
+        this.loadPersistentVolumes();
+      }
     });
+
+    if (this.selectedNode.config.type === 'persistentVolumeClaim') {
+      this.loadPersistentVolumes();
+    }
   }
 
   private updateFormForVolumeType(type: VolumeType) {
@@ -213,5 +223,25 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
       });
     }
     return [];
+  }
+
+  private loadPersistentVolumes(): void {
+    if (this.loadingPersistentVolumes) {
+      return;
+    }
+    this.loadingPersistentVolumes = true;
+    const sub = this.persistentVolumeService.getVolumes().subscribe({
+      next: (volumes: PersistentVolume[]) => {
+        this.persistentVolumeOptions = volumes.map(v => ({
+          label: `${v.name}${v.capacity ? ' • ' + v.capacity : ''}`,
+          value: v.name
+        }));
+        this.loadingPersistentVolumes = false;
+      },
+      error: () => {
+        this.loadingPersistentVolumes = false;
+      }
+    });
+    this.autoSaveSubscription.add(sub);
   }
 }
