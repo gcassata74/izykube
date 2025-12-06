@@ -50,8 +50,8 @@
       [style.position]="'absolute'"
       [style.left.px]="node.x"
       [style.top.px]="node.y"
-      [style.width.px]="80"
-      [style.height.px]="80"
+      [style.width.px]="node.width || nodeContentSize"
+      [style.height.px]="node.height || nodeContentSize"
       [style.border]="selectedNode?.id === node.id ? '3px solid #007bff' : '3px solid #ccc'"
       [style.border-radius.px]="10"
       [style.background-color]="'white'"
@@ -61,8 +61,8 @@
       [style.justify-content]="'center'"
       [style.cursor]="'move'"
       [style.z-index]="2"
-      (click)="selectNode(node); $event.stopPropagation()"
-      (mousedown)="onNodeMouseDown($event, node)">
+      [attr.data-node-id]="node.id"
+      (click)="selectNode(node); $event.stopPropagation()">
 
       <div class="diagram-node__status" *ngIf="node.isAffected">
         <i
@@ -81,7 +81,8 @@
         [class.connection-point-left]="point.side === 'left'"
         [class.connection-point-active]="isConnecting && connectionStartNode?.id === node.id && connectionStartPoint?.side === point.side"
         [attr.title]="connectionHelpText"
-        (mousedown)="onConnectionPointClick(node, point, $event)">
+        [attr.data-node-id]="node.id"
+        [attr.data-side]="point.side">
       </div>
 
       <button
@@ -171,8 +172,8 @@
             *ngFor="let node of nodes"
             [attr.x]="node.x"
             [attr.y]="node.y"
-            [attr.width]="nodeContentSize + nodeBorderWidth * 2"
-            [attr.height]="nodeContentSize + nodeBorderWidth * 2"
+            [attr.width]="getNodeOuterSize(node).width"
+            [attr.height]="getNodeOuterSize(node).height"
             rx="6"
             ry="6"
             class="minimap-node">

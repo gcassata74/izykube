@@ -1,6 +1,6 @@
 import { DiagramService } from './../services/diagram.service';
 import { IconService } from './../services/icon.service';
-import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Store, select } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
 import { Subscription, debounceTime, filter, finalize, take, tap } from 'rxjs';
@@ -19,6 +19,7 @@ import { OverlayPanel } from 'primeng/overlaypanel';
 import { ConfigurationChangeService } from '../services/configuration-change.service';
 import { ResourceSyncService } from '../services/resource-sync.service';
 import { ConfigBundleMeta } from '../model/config-bundle.model';
+import interact from 'interactjs';
 
 interface DiagramNode {
   id: string;
@@ -27,6 +28,8 @@ interface DiagramNode {
   icon: string;
   x: number;
   y: number;
+  width?: number;
+  height?: number;
   role?: ContainerRole;
   workloadType?: 'DEPLOYMENT' | 'STATEFULSET' | 'DAEMONSET';
   isAffected?: boolean;
@@ -69,7 +72,7 @@ interface ChatMessage {
   templateUrl: './diagram.component.html',
   styleUrls: ['./diagram.component.scss']
 })
-export class DiagramComponent implements OnInit, OnDestroy {
+export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
   @ViewChild('container', { static: true }) container!: ElementRef;
   @ViewChild('diagramCanvas', { static: true }) diagramCanvas!: ElementRef;
@@ -165,7 +168,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
     private notificationService: NotificationService,
     private podShellService: PodShellService,
     private configurationChangeService: ConfigurationChangeService,
-    public resourceSyncService: ResourceSyncService
+    public resourceSyncService: ResourceSyncService,
+    private zone: NgZone
   ) { }
 
 
@@ -197,6 +201,51 @@ export class DiagramComponent implements OnInit, OnDestroy {
         })
       ).subscribe()
     );
+  }
+
+  private initializeInteract(): void {
+    interact('.diagram-node').unset();
+    interact('.connection-point').unset();
+
+    interact('.diagram-node').draggable({
+      listeners: {
+        start: () => this.zone.run(() => this.saveToUndoStack()),
+        move: (event) => this.onNodeDragMove(event),
+        end: () => this.zone.run(() => {
+          this.updateDiagramData();
+          this.updateSurfaceSize();
+        })
+      },
+      inertia: false
+    }).styleCursor(false);
+
+    interact('.diagram-node').resizable({
+      edges: { left: true, right: true, top: true, bottom: true },
+      listeners: {
+        start: () => this.zone.run(() => this.saveToUndoStack()),
+        move: (event) => this.onNodeResize(event),
+        end: () => this.zone.run(() => {
+          this.updateDiagramData();
+          this.updateSurfaceSize();
+        })
+      }
+    });
+
+    interact('.connection-point').draggable({
+      listeners: {
+        start: (event) => this.zone.run(() => this.startConnectionFromHandle(event)),
+        move: (event) => this.onConnectionHandleDrag(event),
+        end: (event) => this.zone.run(() => this.finishConnectionFromHandle(event))
+      },
+      inertia: false,
+      maxPerElement: 2
+    }).styleCursor(false);
+  }
+
+  ngAfterViewInit(): void {
+    this.zone.runOutsideAngular(() => {
+      this.initializeInteract();
+    });
   }
 
 
@@ -232,6 +281,135 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   onCanvasScroll(): void {
     this.updateViewportRect();
+  }
+
+  private onNodeDragMove(event: any): void {
+    const target = event.target as HTMLElement;
+    const nodeId = target?.getAttribute('data-node-id');
+    if (!nodeId) {
+      return;
+    }
+    const node = this.nodes.find(n => n.id === nodeId);
+    if (!node) {
+      return;
+    }
+
+    const scale = 1; // adjust if zoom support is added
+    node.x += event.dx / scale;
+    node.y += event.dy / scale;
+
+    target.style.transform = `translate(${node.x}px, ${node.y}px)`;
+    this.updateLinks();
+    this.updateViewportRect();
+  }
+
+  private onNodeResize(event: any): void {
+    const target = event.target as HTMLElement;
+    const nodeId = target?.getAttribute('data-node-id');
+    if (!nodeId) {
+      return;
+    }
+    const node = this.nodes.find(n => n.id === nodeId);
+    if (!node) {
+      return;
+    }
+
+    const delta = event.deltaRect || { left: 0, top: 0 };
+    node.x += delta.left;
+    node.y += delta.top;
+    node.width = Math.max(60, event.rect.width);
+    node.height = Math.max(60, event.rect.height);
+
+    target.style.transform = `translate(${node.x}px, ${node.y}px)`;
+    target.style.width = `${node.width}px`;
+    target.style.height = `${node.height}px`;
+
+    this.updateLinks();
+    this.updateViewportRect();
+  }
+
+  private startConnectionFromHandle(event: any): void {
+    const target = event.target as HTMLElement;
+    const nodeId = target?.getAttribute('data-node-id');
+    const side = target?.getAttribute('data-side') as ConnectionPoint['side'] | null;
+    if (!nodeId || !side) {
+      return;
+    }
+    const node = this.nodes.find(n => n.id === nodeId);
+    if (!node) {
+      return;
+    }
+    const connectionPoints = this.getConnectionPoints(node);
+    const point = connectionPoints.find(p => p.side === side) || connectionPoints[0];
+    if (!point) {
+      return;
+    }
+
+    this.isConnecting = true;
+    this.isDraggingConnection = true;
+    this.connectionStartNode = node;
+    this.connectionStartPoint = point;
+    this.createTempLine(point.x, point.y, point.x, point.y);
+  }
+
+  private onConnectionHandleDrag(event: any): void {
+    if (!this.isConnecting || !this.tempLine) {
+      return;
+    }
+    const coords = this.getClientCoords(event);
+    const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
+    const x = coords.x - canvasRect.left + this.diagramCanvas.nativeElement.scrollLeft;
+    const y = coords.y - canvasRect.top + this.diagramCanvas.nativeElement.scrollTop;
+
+    this.tempLine.setAttribute('x2', x.toString());
+    this.tempLine.setAttribute('y2', y.toString());
+    this.highlightNearbyConnectionPoints(coords.x, coords.y);
+  }
+
+  private finishConnectionFromHandle(event: any): void {
+    if (!this.isConnecting) {
+      return;
+    }
+    const coords = this.getClientCoords(event);
+    const targetElement = document.elementFromPoint(coords.x, coords.y);
+    const connectionPoint = targetElement?.closest?.('.connection-point');
+
+    if (connectionPoint) {
+      const nodeId = connectionPoint.getAttribute('data-node-id');
+      const node = this.nodes.find(n => n.id === nodeId);
+      if (node && node.id !== this.connectionStartNode?.id) {
+        const points = this.getConnectionPoints(node);
+        const targetPoint = this.findClosestConnectionPoint(coords.x, coords.y, points);
+        this.createLinkWithPoints(
+          this.connectionStartNode!.id,
+          node.id,
+          this.connectionStartPoint!,
+          targetPoint
+        );
+      }
+    } else {
+      const nearest = this.findNearestDroppablePoint(coords.x, coords.y, this.connectionStartNode?.id);
+      if (nearest) {
+        this.createLinkWithPoints(
+          this.connectionStartNode!.id,
+          nearest.node.id,
+          this.connectionStartPoint!,
+          nearest.point
+        );
+      }
+    }
+
+    this.cancelConnection();
+  }
+
+  private getClientCoords(event: any): { x: number; y: number } {
+    if (event?.client) {
+      return { x: event.client.x, y: event.client.y };
+    }
+    if (typeof event?.clientX === 'number' && typeof event?.clientY === 'number') {
+      return { x: event.clientX, y: event.clientY };
+    }
+    return { x: 0, y: 0 };
   }
 
   openAiDialog(): void {
@@ -779,6 +957,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
       icon: icon,
       x: x,
       y: y,
+      width: this.nodeContentSize,
+      height: this.nodeContentSize,
       ...(normalizedType === 'deployment' ? { workloadType: 'DEPLOYMENT' as DiagramNode['workloadType'] } : {})
     };
 
@@ -842,6 +1022,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
       icon: rawNode?.icon || this.resolveIconPath(type),
       x: typeof rawNode?.x === 'number' ? rawNode.x : 0,
       y: typeof rawNode?.y === 'number' ? rawNode.y : 0,
+      width: typeof rawNode?.width === 'number' ? rawNode.width : this.nodeContentSize,
+      height: typeof rawNode?.height === 'number' ? rawNode.height : this.nodeContentSize,
       isAffected: !!rawNode?.isAffected,
       ...overrides
     };
@@ -1041,57 +1223,6 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.configurationChangeService.emit({ resourceId: node.id });
     }
   }
-
-  onNodeMouseDown(event: MouseEvent, node: DiagramNode) {
-    // Prevent default to avoid text selection
-    event.preventDefault();
-
-    let isDragging = false;
-    let hasSavedToUndo = false;
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const startNodeX = node.x;
-    const startNodeY = node.y;
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      if (!isDragging) {
-        // Start dragging if mouse moved enough
-        const deltaX = Math.abs(moveEvent.clientX - startX);
-        const deltaY = Math.abs(moveEvent.clientY - startY);
-        if (deltaX > 5 || deltaY > 5) {
-          isDragging = true;
-          if (!hasSavedToUndo) {
-            this.saveToUndoStack();
-            hasSavedToUndo = true;
-          }
-        }
-      }
-
-      if (isDragging) {
-        const deltaX = moveEvent.clientX - startX;
-        const deltaY = moveEvent.clientY - startY;
-
-        node.x = startNodeX + deltaX;
-        node.y = startNodeY + deltaY;
-
-        this.updateLinks();
-      }
-    };
-
-    const onMouseUp = () => {
-      if (isDragging) {
-        this.updateDiagramData();
-        this.updateSurfaceSize();
-      }
-
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    };
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }
-
 
   private renderLinks() {
     this.links.forEach(link => this.renderLink(link));
@@ -1861,140 +1992,52 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   private getNodeCenter(node: DiagramNode): { x: number, y: number } {
-    const halfSize = this.nodeContentSize / 2 + this.nodeBorderWidth;
+    const dimensions = this.getNodeOuterSize(node);
+    const halfWidth = dimensions.width / 2;
+    const halfHeight = dimensions.height / 2;
     return {
-      x: node.x + halfSize,
-      y: node.y + halfSize
+      x: node.x + halfWidth,
+      y: node.y + halfHeight
+    };
+  }
+
+  getNodeOuterSize(node: DiagramNode): { width: number; height: number } {
+    const contentWidth = node.width ?? this.nodeContentSize;
+    const contentHeight = node.height ?? this.nodeContentSize;
+    return {
+      width: contentWidth + this.nodeBorderWidth * 2,
+      height: contentHeight + this.nodeBorderWidth * 2
     };
   }
 
   getConnectionPoints(node: DiagramNode): ConnectionPoint[] {
-    const halfSize = this.nodeContentSize / 2 + this.nodeBorderWidth;
-    const totalSize = this.nodeContentSize + this.nodeBorderWidth * 2;
+    const dimensions = this.getNodeOuterSize(node);
+    const halfWidth = dimensions.width / 2;
+    const halfHeight = dimensions.height / 2;
+    const totalWidth = dimensions.width;
+    const totalHeight = dimensions.height;
     return [
-      { side: 'top', x: node.x + halfSize, y: node.y },
-      { side: 'right', x: node.x + totalSize, y: node.y + halfSize },
-      { side: 'bottom', x: node.x + halfSize, y: node.y + totalSize },
-      { side: 'left', x: node.x, y: node.y + halfSize }
+      { side: 'top', x: node.x + halfWidth, y: node.y },
+      { side: 'right', x: node.x + totalWidth, y: node.y + halfHeight },
+      { side: 'bottom', x: node.x + halfWidth, y: node.y + totalHeight },
+      { side: 'left', x: node.x, y: node.y + halfHeight }
     ];
   }
 
-  onConnectionPointClick(node: DiagramNode, point: ConnectionPoint, event: MouseEvent) {
-    event.stopPropagation();
-    event.preventDefault();
-
-    if (!this.isConnecting) {
-      // Start connection immediately with drag
-      this.isConnecting = true;
-      this.connectionStartNode = node;
-      this.connectionStartPoint = point;
-      
-      // Create temporary line for visual feedback
-      this.createTempLine(point.x, point.y, point.x, point.y);
-      
-      // Start dragging immediately
-      this.startConnectionDrag();
-    } else {
-      // End connection - only allow if clicking on a different node's connection point
-      if (this.connectionStartNode && this.connectionStartNode.id !== node.id) {
-        this.createLinkWithPoints(
-          this.connectionStartNode.id, 
-          node.id,
-          this.connectionStartPoint!,
-          point
-        );
-      }
-      this.cancelConnection();
-    }
-  }
-
-  private startConnectionDrag() {
-    this.isDraggingConnection = true;
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      if (this.isConnecting && this.tempLine) {
-        const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
-        const x = moveEvent.clientX - canvasRect.left + this.diagramCanvas.nativeElement.scrollLeft;
-        const y = moveEvent.clientY - canvasRect.top + this.diagramCanvas.nativeElement.scrollTop;
-        
-        this.tempLine.setAttribute('x2', x.toString());
-        this.tempLine.setAttribute('y2', y.toString());
-        
-        // Highlight connection points when hovering over them
-        this.highlightNearbyConnectionPoints(moveEvent.clientX, moveEvent.clientY);
-      }
-    };
-
-    const onMouseUp = (upEvent: MouseEvent) => {
-      if (this.isConnecting) {
-        // Check if we're dropping on a connection point
-        const targetElement = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
-        const connectionPoint = targetElement?.closest('.connection-point');
-        
-        if (connectionPoint) {
-          // Find the target node and connection point
-          const nodeElement = connectionPoint.closest('.diagram-node');
-          if (nodeElement) {
-            const targetNode = this.findNodeByElement(nodeElement as HTMLElement);
-            
-            if (targetNode && targetNode.id !== this.connectionStartNode?.id) {
-              // Determine which connection point was targeted
-              const targetConnectionPoints = this.getConnectionPoints(targetNode);
-              const targetPoint = this.findClosestConnectionPoint(
-                upEvent.clientX, 
-                upEvent.clientY, 
-                targetConnectionPoints
-              );
-              
-              this.createLinkWithPoints(
-                this.connectionStartNode!.id, 
-                targetNode.id,
-                this.connectionStartPoint!,
-                targetPoint
-              );
-            }
-          }
-        } else {
-          const nearest = this.findNearestDroppablePoint(upEvent.clientX, upEvent.clientY, this.connectionStartNode?.id);
-          if (nearest) {
-            this.createLinkWithPoints(
-              this.connectionStartNode!.id,
-              nearest.node.id,
-              this.connectionStartPoint!,
-              nearest.point
-            );
-          }
-        }
-        
-        this.cancelConnection();
-      }
-
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    };
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }
+  // Connection dragging is now handled through Interact.js on connection-point elements
 
   private findNodeByElement(nodeElement: HTMLElement): DiagramNode | null {
-    const leftStyle = nodeElement.style.left;
-    const topStyle = nodeElement.style.top;
-    
-    if (!leftStyle || !topStyle) return null;
-    
-    const x = parseInt(leftStyle.replace('px', ''));
-    const y = parseInt(topStyle.replace('px', ''));
-    
-    return this.nodes.find(node => node.x === x && node.y === y) || null;
+    const nodeId = nodeElement.getAttribute('data-node-id');
+    if (!nodeId) {
+      return null;
+    }
+    return this.nodes.find(node => node.id === nodeId) || null;
   }
 
   private highlightNearbyConnectionPoints(clientX: number, clientY: number) {
     const threshold = this.connectionCaptureRadius;
     
     this.nodes.forEach(node => {
-      if (node.id === this.connectionStartNode?.id) return; // Skip start node
-      
       const connectionPoints = this.getConnectionPoints(node);
       connectionPoints.forEach(point => {
         const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
@@ -2020,7 +2063,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
   }
 
   private getConnectionPointElement(node: DiagramNode, point: ConnectionPoint): HTMLElement | null {
-    const nodeElement = document.querySelector(`[style*="left: ${node.x}px"][style*="top: ${node.y}px"]`);
+    const nodeElement = document.querySelector(`.diagram-node[data-node-id="${node.id}"]`);
     if (!nodeElement) return null;
     
     const connectionPoints = nodeElement.querySelectorAll('.connection-point');
@@ -2101,17 +2144,6 @@ export class DiagramComponent implements OnInit, OnDestroy {
     this.svgElement.appendChild(this.tempLine);
   }
 
-  private cancelConnectionDrag() {
-    this.isDraggingConnection = false;
-    this.connectionStartNode = null;
-    this.connectionStartPoint = null;
-    
-    if (this.tempLine) {
-      this.tempLine.remove();
-      this.tempLine = null;
-    }
-  }
-
   private cancelConnection() {
     this.isConnecting = false;
     this.isDraggingConnection = false;
@@ -2145,7 +2177,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
       this.cancelConnection();
     }
     if (this.isDraggingConnection) {
-      this.cancelConnectionDrag();
+      this.cancelConnection();
     }
   }
 
@@ -2153,7 +2185,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     // Deep clone current state
     const currentState = {
       nodes: JSON.parse(JSON.stringify(this.nodes.map(n => ({ 
-        id: n.id, name: n.name, type: n.type, icon: n.icon, x: n.x, y: n.y, role: n.role 
+        id: n.id, name: n.name, type: n.type, icon: n.icon, x: n.x, y: n.y, width: n.width, height: n.height, role: n.role 
       })))),
       links: JSON.parse(JSON.stringify(this.links.map(l => ({ 
         id: l.id, from: l.from, to: l.to, fromPoint: l.fromPoint, toPoint: l.toPoint 
@@ -2232,6 +2264,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
         icon: n.icon,
         x: n.x,
         y: n.y,
+        width: n.width ?? this.nodeContentSize,
+        height: n.height ?? this.nodeContentSize,
         isAffected: !!n.isAffected,
         ...(n.type === 'container' && n.role ? { role: n.role } : {}),
         ...(n.type === 'deployment' && n.workloadType ? { workloadType: n.workloadType } : {})
@@ -2246,19 +2280,21 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscription.unsubscribe();
+    interact('.diagram-node').unset();
+    interact('.connection-point').unset();
   }
 
   private updateSurfaceSize(): void {
     const minWidth = this.diagramCanvas?.nativeElement?.clientWidth || this.surfaceWidth;
     const minHeight = this.diagramCanvas?.nativeElement?.clientHeight || this.surfaceHeight;
-    const nodeSize = this.nodeContentSize + this.nodeBorderWidth * 2;
 
     let maxX = 0;
     let maxY = 0;
 
     this.nodes.forEach(node => {
-      maxX = Math.max(maxX, node.x + nodeSize);
-      maxY = Math.max(maxY, node.y + nodeSize);
+      const size = this.getNodeOuterSize(node);
+      maxX = Math.max(maxX, node.x + size.width);
+      maxY = Math.max(maxY, node.y + size.height);
     });
 
     this.surfaceWidth = Math.max(minWidth, maxX + this.surfacePadding);
