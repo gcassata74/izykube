@@ -48,13 +48,14 @@
             [options]="persistentVolumeOptions"
             optionLabel="label"
             optionValue="value"
-            [filter]="true"
-            [editable]="true"
+            dataKey="value"
             [showClear]="true"
-            placeholder="Select or type a claim name"
+            styleClass="volume-claim-dropdown"
+            panelStyleClass="volume-claim-dropdown-panel"
+            placeholder="Select a claim name"
             appendTo="body">
           </p-dropdown>
-          <small class="volume-hint">Select from cluster persistent volumes or type a claim name manually.</small>
+          <small class="volume-hint">Select from cluster persistent volumes.</small>
         </div>
         <div class="p-field-checkbox">
           <p-checkbox id="readOnly" [binary]="true" formControlName="readOnly"></p-checkbox>

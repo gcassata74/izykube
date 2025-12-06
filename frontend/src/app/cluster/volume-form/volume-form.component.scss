@@ -52,3 +52,16 @@
   margin-top: 0.25rem;
   color: var(--text-color-secondary);
 }
+
+::ng-deep .volume-claim-dropdown.p-dropdown {
+  width: 100%;
+}
+
+::ng-deep .volume-claim-dropdown .p-dropdown-label {
+  color: var(--text-color, #111);
+  opacity: 1;
+}
+
+::ng-deep .volume-claim-dropdown-panel .p-dropdown-items .p-dropdown-item {
+  white-space: nowrap;
+}

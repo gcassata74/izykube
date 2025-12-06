@@ -65,11 +65,13 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
       this.updateFormForVolumeType(type);
       if (type === 'persistentVolumeClaim') {
         this.loadPersistentVolumes();
+        this.watchClaimName();
       }
     });
 
     if (this.selectedNode.config.type === 'persistentVolumeClaim') {
       this.loadPersistentVolumes();
+      this.watchClaimName();
     }
   }
 
@@ -95,7 +97,11 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
         configForm.addControl('hostPathType', this.fb.control(currentConfig.type === 'hostPath' ? currentConfig.hostPathType : ''));
         break;
       case 'persistentVolumeClaim':
-        configForm.addControl('claimName', this.fb.control(currentConfig.type === 'persistentVolumeClaim' ? currentConfig.claimName : '', Validators.required));
+        const initialClaim = currentConfig.type === 'persistentVolumeClaim' ? currentConfig.claimName : '';
+        if (initialClaim) {
+          this.ensureClaimOption(initialClaim);
+        }
+        configForm.addControl('claimName', this.fb.control(initialClaim, Validators.required));
         configForm.addControl('readOnly', this.fb.control(currentConfig.type === 'persistentVolumeClaim' ? currentConfig.readOnly : false));
         break;
       case 'configMap': {
@@ -232,10 +238,16 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
     this.loadingPersistentVolumes = true;
     const sub = this.persistentVolumeService.getVolumes().subscribe({
       next: (volumes: PersistentVolume[]) => {
-        this.persistentVolumeOptions = volumes.map(v => ({
+        const currentValue = this.configGroup.get('claimName')?.value;
+        const mapped = volumes.map(v => ({
           label: `${v.name}${v.capacity ? ' • ' + v.capacity : ''}`,
           value: v.name
         }));
+        this.persistentVolumeOptions = mapped;
+        if (currentValue) {
+          this.ensureClaimOption(currentValue);
+          this.configGroup.get('claimName')?.setValue(currentValue, { emitEvent: false });
+        }
         this.loadingPersistentVolumes = false;
       },
       error: () => {
@@ -243,5 +255,29 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
       }
     });
     this.autoSaveSubscription.add(sub);
+  }
+
+  private watchClaimName(): void {
+    const claimControl = this.configGroup.get('claimName');
+    if (!claimControl) {
+      return;
+    }
+    const sub = claimControl.valueChanges.subscribe((value: string) => {
+      this.ensureClaimOption(value);
+    });
+    this.autoSaveSubscription.add(sub);
+  }
+
+  private ensureClaimOption(value: string | null | undefined): void {
+    if (!value) {
+      return;
+    }
+    const exists = this.persistentVolumeOptions.some(opt => opt.value === value);
+    if (!exists) {
+      this.persistentVolumeOptions = [
+        ...this.persistentVolumeOptions,
+        { label: value, value }
+      ];
+    }
   }
 }
