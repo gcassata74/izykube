@@ -33,7 +33,14 @@
     appDragDrop
     [isDropZone]="true"
     (onDrop)="onCanvasDrop($event)"
-    (click)="clearSelection()">
+    (click)="clearSelection()"
+    (scroll)="onCanvasScroll()">
+
+    <div
+      class="diagram-surface"
+      #diagramSurface
+      [style.width.px]="surfaceWidth"
+      [style.height.px]="surfaceHeight">
 
     <!-- Diagram nodes rendered through Angular -->
     <div
@@ -123,6 +130,62 @@
         (blur)="onNodeLabelEdit(node, $event)">
         {{ node.name }}
       </div>
+    </div>
+    </div>
+
+    <button
+      type="button"
+      class="minimap-toggle"
+      pButton
+      icon="pi pi-map"
+      [label]="minimapVisible ? 'Hide map' : 'Show map'"
+      (click)="toggleMinimap()">
+    </button>
+
+    <div
+      *ngIf="minimapVisible"
+      class="diagram-minimap"
+      #minimapContainer
+      (mousedown)="onMinimapMouseDown($event)"
+      (click)="onMinimapClick($event)">
+      <svg
+        #minimapSvg
+        [attr.width]="minimapSize.width"
+        [attr.height]="minimapSize.height"
+        [attr.viewBox]="'0 0 ' + surfaceWidth + ' ' + surfaceHeight"
+        preserveAspectRatio="xMidYMid meet">
+        <g class="minimap-links">
+          <ng-container *ngFor="let link of links">
+            <ng-container *ngIf="getMinimapLinkEndpoints(link) as coords">
+              <line
+                [attr.x1]="coords.x1"
+                [attr.y1]="coords.y1"
+                [attr.x2]="coords.x2"
+                [attr.y2]="coords.y2"
+                class="minimap-link"></line>
+            </ng-container>
+          </ng-container>
+        </g>
+        <g class="minimap-nodes">
+          <rect
+            *ngFor="let node of nodes"
+            [attr.x]="node.x"
+            [attr.y]="node.y"
+            [attr.width]="nodeContentSize + nodeBorderWidth * 2"
+            [attr.height]="nodeContentSize + nodeBorderWidth * 2"
+            rx="6"
+            ry="6"
+            class="minimap-node">
+          </rect>
+        </g>
+        <rect
+          class="minimap-viewport"
+          [attr.x]="viewportRect.x"
+          [attr.y]="viewportRect.y"
+          [attr.width]="viewportRect.width"
+          [attr.height]="viewportRect.height">
+        </rect>
+      </svg>
     </div>
   </div>
 </div>

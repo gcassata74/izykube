@@ -73,8 +73,10 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   @ViewChild('container', { static: true }) container!: ElementRef;
   @ViewChild('diagramCanvas', { static: true }) diagramCanvas!: ElementRef;
+  @ViewChild('diagramSurface', { static: true }) diagramSurface!: ElementRef;
   @ViewChild('paletteContainer', { static: true }) paletteContainer!: ElementRef;
   @ViewChild('podShellOverlay') podShellOverlay?: OverlayPanel;
+  @ViewChild('minimapSvg') minimapSvg?: ElementRef<SVGElement>;
 
   nodes: DiagramNode[] = [];
   links: DiagramLink[] = [];
@@ -126,8 +128,16 @@ export class DiagramComponent implements OnInit, OnDestroy {
   @ViewChild('yamlFileInput') yamlFileInput?: ElementRef<HTMLInputElement>;
   private currentClusterSnapshot: Cluster | null = null;
   private rawManifests: any[] = [];
-  private readonly nodeContentSize = 80;
-  private readonly nodeBorderWidth = 3;
+  readonly nodeContentSize = 80;
+  readonly nodeBorderWidth = 3;
+  private readonly surfacePadding = 200;
+  surfaceWidth = 1600;
+  surfaceHeight = 1200;
+  viewportRect = { x: 0, y: 0, width: 0, height: 0 };
+  minimapVisible = true;
+  readonly minimapSize = { width: 240, height: 170 };
+  private readonly minimapPreferenceKey = 'diagram:minimap:visible';
+  private isDraggingMinimap = false;
   private readonly dependencyPriority: Record<string, number> = {
     ingress: 6,
     service: 5,
@@ -161,6 +171,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
 
   ngOnInit(): void {
+    this.minimapVisible = this.restoreMinimapPreference();
     this.initializePaletteItems();
     this.store.pipe(
       select(selectClusterDiagram),
@@ -191,30 +202,36 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   private initializeDiagram() {
     const canvas = this.diagramCanvas.nativeElement;
-
     // Create SVG for links
     this.svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.svgElement.style.position = 'absolute';
     this.svgElement.style.top = '0';
     this.svgElement.style.left = '0';
-    this.svgElement.style.width = '100%';
-    this.svgElement.style.height = '100%';
+    this.svgElement.style.width = `${this.surfaceWidth}px`;
+    this.svgElement.style.height = `${this.surfaceHeight}px`;
     this.svgElement.style.pointerEvents = 'none';
     this.svgElement.style.zIndex = '1';
-    canvas.appendChild(this.svgElement);
+    this.diagramSurface.nativeElement.appendChild(this.svgElement);
     this.ensureArrowMarker();
 
     // Render existing links
     this.renderLinks();
+    this.updateViewportRect();
   }
 
   onCanvasDrop(event: DropEvent) {
     const baseName = event.data.baseName || event.data.name;
-    this.createNode(event.data.type, baseName, event.data.icon, event.x, event.y);
+    const scrollLeft = this.diagramCanvas.nativeElement.scrollLeft;
+    const scrollTop = this.diagramCanvas.nativeElement.scrollTop;
+    this.createNode(event.data.type, baseName, event.data.icon, event.x + scrollLeft, event.y + scrollTop);
   }
 
   private initializePaletteItems() {
     this.paletteItems = this.createNodes();
+  }
+
+  onCanvasScroll(): void {
+    this.updateViewportRect();
   }
 
   openAiDialog(): void {
@@ -771,6 +788,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     if (!options?.deferUpdate) {
       this.updateDiagramData();
     }
+    this.updateSurfaceSize();
 
     return node;
   }
@@ -1063,6 +1081,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
     const onMouseUp = () => {
       if (isDragging) {
         this.updateDiagramData();
+        this.updateSurfaceSize();
       }
 
       document.removeEventListener('mousemove', onMouseMove);
@@ -1210,6 +1229,11 @@ export class DiagramComponent implements OnInit, OnDestroy {
     }
   }
 
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateViewportRect();
+  }
+
   private isEditingFormField(target: EventTarget | null): boolean {
     if (!target) {
       return false;
@@ -1296,6 +1320,7 @@ export class DiagramComponent implements OnInit, OnDestroy {
         this.rawManifests = data.rawManifests;
       }
       this.syncConfigBundleMetaFromCluster();
+      this.updateSurfaceSize();
     } catch (error) {
       console.error('Error loading diagram data:', error);
       this.nodes = [];
@@ -1818,8 +1843,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
   private findClosestConnectionPoint(clientX: number, clientY: number, connectionPoints: ConnectionPoint[]): ConnectionPoint {
     const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
-    const x = clientX - canvasRect.left;
-    const y = clientY - canvasRect.top;
+    const x = clientX - canvasRect.left + this.diagramCanvas.nativeElement.scrollLeft;
+    const y = clientY - canvasRect.top + this.diagramCanvas.nativeElement.scrollTop;
 
     let closestPoint = connectionPoints[0];
     let minDistance = Math.sqrt(Math.pow(x - closestPoint.x, 2) + Math.pow(y - closestPoint.y, 2));
@@ -1889,8 +1914,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
     const onMouseMove = (moveEvent: MouseEvent) => {
       if (this.isConnecting && this.tempLine) {
         const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
-        const x = moveEvent.clientX - canvasRect.left;
-        const y = moveEvent.clientY - canvasRect.top;
+        const x = moveEvent.clientX - canvasRect.left + this.diagramCanvas.nativeElement.scrollLeft;
+        const y = moveEvent.clientY - canvasRect.top + this.diagramCanvas.nativeElement.scrollTop;
         
         this.tempLine.setAttribute('x2', x.toString());
         this.tempLine.setAttribute('y2', y.toString());
@@ -1973,8 +1998,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
       const connectionPoints = this.getConnectionPoints(node);
       connectionPoints.forEach(point => {
         const canvasRect = this.diagramCanvas.nativeElement.getBoundingClientRect();
-        const pointScreenX = canvasRect.left + point.x;
-        const pointScreenY = canvasRect.top + point.y;
+        const pointScreenX = canvasRect.left + point.x - this.diagramCanvas.nativeElement.scrollLeft;
+        const pointScreenY = canvasRect.top + point.y - this.diagramCanvas.nativeElement.scrollTop;
         
         const distance = Math.sqrt(
           Math.pow(clientX - pointScreenX, 2) + 
@@ -2021,8 +2046,8 @@ export class DiagramComponent implements OnInit, OnDestroy {
 
       const connectionPoints = this.getConnectionPoints(node);
       connectionPoints.forEach(point => {
-        const pointScreenX = canvasRect.left + point.x;
-        const pointScreenY = canvasRect.top + point.y;
+        const pointScreenX = canvasRect.left + point.x - this.diagramCanvas.nativeElement.scrollLeft;
+        const pointScreenY = canvasRect.top + point.y - this.diagramCanvas.nativeElement.scrollTop;
         const distance = Math.hypot(clientX - pointScreenX, clientY - pointScreenY);
 
         if (distance <= bestDistance) {
@@ -2216,9 +2241,142 @@ export class DiagramComponent implements OnInit, OnDestroy {
     });
 
     this.store.dispatch(actions.updateDiagram({ diagramData, links: clusterLinks }));
+    this.updateSurfaceSize();
   }
 
   ngOnDestroy(): void {
     this.subscription.unsubscribe();
+  }
+
+  private updateSurfaceSize(): void {
+    const minWidth = this.diagramCanvas?.nativeElement?.clientWidth || this.surfaceWidth;
+    const minHeight = this.diagramCanvas?.nativeElement?.clientHeight || this.surfaceHeight;
+    const nodeSize = this.nodeContentSize + this.nodeBorderWidth * 2;
+
+    let maxX = 0;
+    let maxY = 0;
+
+    this.nodes.forEach(node => {
+      maxX = Math.max(maxX, node.x + nodeSize);
+      maxY = Math.max(maxY, node.y + nodeSize);
+    });
+
+    this.surfaceWidth = Math.max(minWidth, maxX + this.surfacePadding);
+    this.surfaceHeight = Math.max(minHeight, maxY + this.surfacePadding);
+
+    if (this.svgElement) {
+      this.svgElement.style.width = `${this.surfaceWidth}px`;
+      this.svgElement.style.height = `${this.surfaceHeight}px`;
+    }
+
+    this.updateViewportRect();
+  }
+
+  private updateViewportRect(): void {
+    const canvas = this.diagramCanvas?.nativeElement;
+    if (!canvas) {
+      return;
+    }
+    this.viewportRect = {
+      x: canvas.scrollLeft,
+      y: canvas.scrollTop,
+      width: canvas.clientWidth,
+      height: canvas.clientHeight
+    };
+  }
+
+  toggleMinimap(): void {
+    this.minimapVisible = !this.minimapVisible;
+    this.persistMinimapPreference();
+  }
+
+  onMinimapClick(event: MouseEvent): void {
+    event.stopPropagation();
+    this.panDiagramToMinimapEvent(event);
+  }
+
+  onMinimapMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingMinimap = true;
+    this.panDiagramToMinimapEvent(event);
+  }
+
+  @HostListener('document:mousemove', ['$event'])
+  onDocumentMouseMove(event: MouseEvent): void {
+    if (this.isDraggingMinimap) {
+      this.panDiagramToMinimapEvent(event);
+    }
+  }
+
+  @HostListener('document:mouseup')
+  onDocumentMouseUp(): void {
+    this.isDraggingMinimap = false;
+  }
+
+  private panDiagramToMinimapEvent(event: MouseEvent): void {
+    const svgEl = this.minimapSvg?.nativeElement;
+    if (!svgEl) {
+      return;
+    }
+    const rect = svgEl.getBoundingClientRect();
+    const { scale, offsetX, offsetY } = this.getMinimapScale(rect);
+    if (scale <= 0) {
+      return;
+    }
+
+    const canvas = this.diagramCanvas.nativeElement;
+    const targetX = (event.clientX - rect.left - offsetX) / scale;
+    const targetY = (event.clientY - rect.top - offsetY) / scale;
+
+    const viewportWidth = canvas.clientWidth;
+    const viewportHeight = canvas.clientHeight;
+
+    const newScrollLeft = Math.max(0, Math.min(this.surfaceWidth - viewportWidth, targetX - viewportWidth / 2));
+    const newScrollTop = Math.max(0, Math.min(this.surfaceHeight - viewportHeight, targetY - viewportHeight / 2));
+
+    canvas.scrollLeft = newScrollLeft;
+    canvas.scrollTop = newScrollTop;
+    this.updateViewportRect();
+  }
+
+  private getMinimapScale(rect: DOMRect): { scale: number; offsetX: number; offsetY: number } {
+    const scaleX = rect.width / this.surfaceWidth;
+    const scaleY = rect.height / this.surfaceHeight;
+    const scale = Math.min(scaleX, scaleY);
+    const offsetX = (rect.width - this.surfaceWidth * scale) / 2;
+    const offsetY = (rect.height - this.surfaceHeight * scale) / 2;
+    return { scale, offsetX, offsetY };
+  }
+
+  getMinimapLinkEndpoints(link: DiagramLink): { x1: number; y1: number; x2: number; y2: number } | null {
+    const fromNode = this.nodes.find(n => n.id === link.from);
+    const toNode = this.nodes.find(n => n.id === link.to);
+    if (!fromNode || !toNode) {
+      return null;
+    }
+    const fromCenter = this.getNodeCenter(fromNode);
+    const toCenter = this.getNodeCenter(toNode);
+    return { x1: fromCenter.x, y1: fromCenter.y, x2: toCenter.x, y2: toCenter.y };
+  }
+
+  private persistMinimapPreference(): void {
+    try {
+      localStorage.setItem(this.minimapPreferenceKey, this.minimapVisible ? '1' : '0');
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
+  private restoreMinimapPreference(): boolean {
+    try {
+      const stored = localStorage.getItem(this.minimapPreferenceKey);
+      if (stored === null) {
+        return true;
+      }
+      return stored === '1';
+    } catch {
+      return true;
+    }
   }
 }
