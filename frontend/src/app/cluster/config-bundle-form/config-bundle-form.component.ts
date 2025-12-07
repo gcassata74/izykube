@@ -1,12 +1,5 @@
 import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
-import {
-  AbstractControl,
-  FormArray,
-  FormBuilder,
-  FormGroup,
-  ValidatorFn,
-  Validators
-} from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, ValidatorFn } from '@angular/forms';
 import { Subscription, Observable } from 'rxjs';
 import { map, skip } from 'rxjs/operators';
 import * as yaml from 'js-yaml';
@@ -46,10 +39,10 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
   ];
   canEditName = true;
 
-  private subscriptions = new Subscription();
+  private formSubscriptions = new Subscription();
   private entryKeySubscriptions = new Map<FormGroup, Subscription>();
-  private autoSaveInitialized = false;
-  private lastNodeId: string | null = null;
+  private autoSaveNodeId: string | null = null;
+  private lastSelectedNodeId: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -58,18 +51,22 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.buildForm();
+    if (!this.form) {
+      this.buildFormFromNode();
+    }
     this.setupAutoSave();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['selectedNode']) {
-      const prevId = this.lastNodeId;
-      if (prevId && this.selectedNode && this.selectedNode.id !== prevId) {
-        this.flushPendingChanges();
+      const previousNode: Node | null = changes['selectedNode'].previousValue ?? null;
+      const previousId = previousNode?.id ?? this.lastSelectedNodeId;
+      if (previousId && this.selectedNode?.id !== previousId) {
+        this.flushPendingChanges(previousNode);
       }
-      this.patchFormFromNode();
-      this.lastNodeId = this.selectedNode?.id ?? null;
+      this.buildFormFromNode();
+      this.lastSelectedNodeId = this.selectedNode?.id ?? null;
+      this.autoSaveNodeId = null;
       this.setupAutoSave();
     }
 
@@ -80,8 +77,8 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.flushPendingChanges();
-    this.entryKeySubscriptions.forEach(sub => sub.unsubscribe());
-    this.subscriptions.unsubscribe();
+    this.teardownEntryKeySubscriptions();
+    this.formSubscriptions.unsubscribe();
   }
 
   get annotationsArray(): FormArray<FormGroup> {
@@ -96,108 +93,30 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     return this.entriesArray.controls as FormGroup[];
   }
 
-  private buildForm(): void {
-    const bundle = this.resolveBundleFromNode();
-    this.form = this.fb.group({
-      name: [bundle.name, [Validators.required, this.dnsLabelValidator()]],
-      namespace: [bundle.namespace, [Validators.required, this.dnsLabelValidator()]],
-      annotations: this.fb.array(this.buildKeyValueGroups(bundle.annotations)),
-      showSecretsAsPlain: [bundle.showSecretsAsPlain ?? false],
-      entries: this.fb.array(
-        bundle.entries.length ? bundle.entries.map(entry => this.createEntryGroup(entry)) : [this.createEntryGroup()],
-        [this.atLeastOneEntryValidator()]
-      )
-    });
-
-    this.setupEntryKeySubscriptions();
-    this.setupDerivedSubscriptions();
-    this.updateNameLockState();
-    this.refreshYamlPreview();
-  }
-
-  private setupAutoSave(): void {
-    if (this.autoSaveInitialized || !this.form || !this.selectedNode) {
-      return;
-    }
-    const payload$: Observable<any> = this.form.valueChanges.pipe(
-      skip(1),
-      map(() => this.buildNodeUpdatePayload())
-    );
-    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, payload$);
-    this.autoSaveInitialized = true;
-  }
-
-  private patchFormFromNode(): void {
-    if (!this.form) {
-      return;
-    }
-    const bundle = this.resolveBundleFromNode();
-    this.form.patchValue({
-      name: bundle.name,
-      namespace: bundle.namespace,
-      showSecretsAsPlain: bundle.showSecretsAsPlain ?? false
-    }, { emitEvent: false });
-
-    this.resetKeyValueArray(this.annotationsArray, bundle.annotations);
-    this.resetEntriesArray(bundle.entries);
-    this.setupEntryKeySubscriptions();
-    this.refreshYamlPreview();
-    this.updateNameLockState();
-  }
-
-  private setupDerivedSubscriptions(): void {
-    this.subscriptions.add(
-      this.entriesArray.valueChanges.subscribe(() => {
-        this.applyDuplicateKeyErrors();
-        this.refreshYamlPreview();
-      })
-    );
-
-    this.subscriptions.add(
-      this.form.valueChanges.subscribe(() => {
-        this.refreshYamlPreview();
-      })
-    );
-  }
-
-  private resetKeyValueArray(array: FormArray<FormGroup>, values?: Record<string, string>): void {
-    array.clear({ emitEvent: false });
-    const groups = this.buildKeyValueGroups(values);
-    if (groups.length) {
-      groups.forEach(group => array.push(group, { emitEvent: false }));
-    }
-  }
-
-  private resetEntriesArray(entries: ConfigEntry[]): void {
-    this.entryKeySubscriptions.forEach(sub => sub.unsubscribe());
-    this.entryKeySubscriptions.clear();
-    this.entriesArray.clear({ emitEvent: false });
-    const groups = entries.length ? entries.map(entry => this.createEntryGroup(entry)) : [this.createEntryGroup()];
-    groups.forEach(group => this.entriesArray.push(group, { emitEvent: false }));
-  }
-
   addEntry(): void {
     const group = this.createEntryGroup();
     this.entriesArray.push(group);
     this.watchEntryKey(group);
+    this.runEntriesValidation();
   }
 
   duplicateEntry(index: number): void {
-    const source = this.entriesArray.at(index) as FormGroup;
+    const source = this.entriesArray.at(index) as FormGroup | null;
     if (!source) {
       return;
     }
     const clone = this.createEntryGroup({
-      key: `${source.get('key')?.value || ''}-copy`,
+      key: `${(source.get('key')?.value as string) || ''}-copy`,
       value: source.get('value')?.value,
       sensitivity: source.get('sensitivity')?.value
     });
     this.entriesArray.insert(index + 1, clone);
     this.watchEntryKey(clone);
+    this.runEntriesValidation();
   }
 
   removeEntry(index: number): void {
-    const group = this.entriesArray.at(index) as FormGroup;
+    const group = this.entriesArray.at(index) as FormGroup | null;
     if (!group) {
       return;
     }
@@ -205,12 +124,13 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     this.entriesArray.removeAt(index);
     if (!this.entriesArray.length) {
       this.addEntry();
+    } else {
+      this.runEntriesValidation();
     }
-    this.applyDuplicateKeyErrors();
   }
 
   addAnnotation(): void {
-    this.annotationsArray.push(this.createKeyValueGroup());
+    this.annotationsArray.push(this.createAnnotationGroup());
   }
 
   removeAnnotation(index: number): void {
@@ -251,11 +171,10 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
       };
       const group = this.createEntryGroup(entry);
       this.entriesArray.push(group);
-      this.watchEntryKey(group);
     });
 
+    this.runEntriesValidation();
     this.pasteDialogVisible = false;
-    this.applyDuplicateKeyErrors();
   }
 
   cancelPaste(): void {
@@ -272,72 +191,50 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     return index;
   }
 
-  private resolveBundleFromNode(): ConfigBundle {
-    if (!this.selectedNode) {
-      return ensureConfigBundleDefaults({
-        id: 'config-bundle',
-        name: 'config-bundle',
-        namespace: this.clusterNamespace || 'default',
-        annotations: {},
-        entries: []
-      });
-    }
+  private buildFormFromNode(): void {
+    const bundle = this.resolveBundleFromNode();
+    this.teardownEntryKeySubscriptions();
+    this.formSubscriptions.unsubscribe();
+    this.formSubscriptions = new Subscription();
 
-    const nodeData = this.selectedNode as any;
-    const rawBundle = nodeData.configBundle as ConfigBundle | undefined;
-    const base = ensureConfigBundleDefaults({
-      ...(rawBundle || {}),
-      id: this.selectedNode.id,
-      name: (rawBundle?.name || this.selectedNode.name),
-      namespace: rawBundle?.namespace || nodeData.namespace || this.clusterNamespace || 'default',
-      annotations: nodeData.annotations || rawBundle?.annotations || {},
-      entries: rawBundle?.entries || []
+    this.form = this.fb.group({
+      name: [bundle.name, [this.trimmedRequiredValidator(), this.dnsLabelValidator()]],
+      namespace: [bundle.namespace, [this.trimmedRequiredValidator(), this.dnsLabelValidator()]],
+      annotations: this.fb.array(this.buildAnnotationGroups(bundle.annotations)),
+      showSecretsAsPlain: [bundle.showSecretsAsPlain ?? false],
+      entries: this.fb.array(this.buildEntryGroups(bundle.entries), {
+        validators: this.entriesMustHaveKeyValidator()
+      })
     });
 
-    let fallbackEntries = Array.isArray(nodeData.entries) ? nodeData.entries : base.entries;
-
-    if ((!fallbackEntries || fallbackEntries.length === 0) && nodeData.yaml) {
-      fallbackEntries = this.parseLegacyYamlEntries(
-        nodeData.yaml,
-        this.isSecretNode(this.selectedNode) ? 'SECRET' : 'PLAIN'
-      );
-    }
-
-    return ensureConfigBundleDefaults({
-      ...base,
-      annotations: nodeData.annotations || base.annotations,
-      entries: fallbackEntries as ConfigEntry[],
-      showSecretsAsPlain: nodeData.showSecretsAsPlain ?? base.showSecretsAsPlain
-    });
+    this.watchEntryKeys();
+    this.setupFormSubscriptions();
+    this.updateNameLockState();
+    this.runEntriesValidation();
+    this.refreshYamlPreview();
   }
 
-  private createKeyValueGroup(initial?: { key?: string; value?: string }): FormGroup {
-    return this.fb.group({
-      key: [initial?.key || '', Validators.required],
-      value: [initial?.value || '']
-    });
-  }
-
-  private buildKeyValueGroups(values?: Record<string, string>): FormGroup[] {
-    if (!values) {
-      return [];
-    }
-    return Object.entries(values).map(([key, value]) => this.createKeyValueGroup({ key, value }));
+  private buildEntryGroups(entries: ConfigEntry[]): FormGroup[] {
+    const list = entries && entries.length ? entries : [{ key: '', value: '', sensitivity: 'PLAIN' }];
+    return list.map(entry =>
+      this.createEntryGroup({
+        ...entry,
+        sensitivity: entry?.sensitivity === 'SECRET' ? 'SECRET' : 'PLAIN'
+      })
+    );
   }
 
   private createEntryGroup(entry?: Partial<ConfigEntry>): FormGroup {
     const group = this.fb.group({
-      key: [entry?.key || '', Validators.required],
-      value: [entry?.value || ''],
+      key: [entry?.key || '', [this.trimmedRequiredValidator()]],
+      value: [entry?.value ?? ''],
       sensitivity: [entry?.sensitivity === 'SECRET' ? 'SECRET' : 'PLAIN']
     });
     this.watchEntryKey(group);
     return group;
   }
 
-  private setupEntryKeySubscriptions(): void {
-    this.entryKeySubscriptions.forEach(sub => sub.unsubscribe());
-    this.entryKeySubscriptions.clear();
+  private watchEntryKeys(): void {
     this.entryControls.forEach(group => this.watchEntryKey(group));
   }
 
@@ -345,13 +242,15 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     if (this.entryKeySubscriptions.has(group)) {
       return;
     }
-    const sub = group.get('key')?.valueChanges.subscribe(value => {
-      this.applySensitivityHeuristic(group, value);
-      this.applyDuplicateKeyErrors();
-    });
-    if (sub) {
-      this.entryKeySubscriptions.set(group, sub);
+    const keyControl = group.get('key');
+    if (!keyControl) {
+      return;
     }
+    const sub = keyControl.valueChanges.subscribe(value => {
+      this.applySensitivityHeuristic(group, value);
+      this.runEntriesValidation();
+    });
+    this.entryKeySubscriptions.set(group, sub);
   }
 
   private unwatchEntryKey(group: FormGroup): void {
@@ -360,13 +259,85 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     this.entryKeySubscriptions.delete(group);
   }
 
+  private teardownEntryKeySubscriptions(): void {
+    this.entryKeySubscriptions.forEach(sub => sub.unsubscribe());
+    this.entryKeySubscriptions.clear();
+  }
+
+  private setupFormSubscriptions(): void {
+    this.formSubscriptions.add(
+      this.entriesArray.valueChanges.subscribe(() => {
+        this.runEntriesValidation();
+      })
+    );
+
+    this.formSubscriptions.add(
+      this.form.valueChanges.subscribe(() => {
+        this.refreshYamlPreview();
+      })
+    );
+  }
+
+  private runEntriesValidation(): void {
+    this.applyDuplicateKeyErrors();
+    this.entriesArray.updateValueAndValidity({ onlySelf: true, emitEvent: false });
+  }
+
+  private resolveBundleFromNode(node: Node | null | undefined = this.selectedNode): ConfigBundle {
+    if (!node) {
+      return ensureConfigBundleDefaults({
+        id: 'config-bundle',
+        name: 'config-bundle',
+        namespace: this.clusterNamespace || 'default',
+        annotations: {},
+        entries: [],
+        showSecretsAsPlain: false
+      });
+    }
+
+    const rawBundle = (node as any).configBundle as ConfigBundle | undefined;
+    const fallbackEntries = (node as any).entries ?? [];
+    const fallbackAnnotations = (node as any).annotations ?? {};
+    const fallbackNamespace = (node as any).namespace ?? this.clusterNamespace ?? 'default';
+    return ensureConfigBundleDefaults({
+      ...(rawBundle || {}),
+      id: node.id,
+      name: rawBundle?.name || node.name || 'config-bundle',
+      namespace: rawBundle?.namespace || fallbackNamespace,
+      annotations: rawBundle?.annotations ?? fallbackAnnotations,
+      entries: rawBundle?.entries ?? fallbackEntries,
+      showSecretsAsPlain: rawBundle?.showSecretsAsPlain ?? (node as any).showSecretsAsPlain ?? false
+    });
+  }
+
+  private createAnnotationGroup(initial?: { key?: string; value?: string }): FormGroup {
+    return this.fb.group({
+      key: [initial?.key || '', [this.trimmedRequiredValidator()]],
+      value: [initial?.value ?? '']
+    });
+  }
+
+  private buildAnnotationGroups(values?: Record<string, string>): FormGroup[] {
+    if (!values || !Object.keys(values).length) {
+      return [];
+    }
+    return Object.entries(values).map(([key, value]) => this.createAnnotationGroup({ key, value }));
+  }
+
+  private trimmedRequiredValidator(): ValidatorFn {
+    return (control: AbstractControl) => {
+      const value = (control.value || '').trim();
+      return value ? null : { required: true };
+    };
+  }
+
   private applySensitivityHeuristic(group: FormGroup, value: string): void {
     const sensitivityControl = group.get('sensitivity');
-    if (!sensitivityControl || !value) {
+    if (!sensitivityControl) {
       return;
     }
     const heuristic = this.deriveSensitivityFromKey(value);
-    if (heuristic && sensitivityControl.value !== heuristic) {
+    if (heuristic && sensitivityControl.pristine && sensitivityControl.value !== heuristic) {
       sensitivityControl.setValue(heuristic);
     }
   }
@@ -382,79 +353,66 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     return null;
   }
 
-  private parseLegacyYamlEntries(yamlContent: string, defaultSensitivity: ConfigEntrySensitivity): ConfigEntry[] {
-    if (!yamlContent) {
-      return [];
-    }
-    try {
-      const parsed = yaml.load(yamlContent);
-      if (!parsed || typeof parsed !== 'object') {
-        return [];
+  private entriesMustHaveKeyValidator(): ValidatorFn {
+    return (control: AbstractControl) => {
+      if (!(control instanceof FormArray)) {
+        return null;
       }
-      const root = parsed as Record<string, any>;
-      let source: Record<string, any> | undefined;
-      if (root['data'] && typeof root['data'] === 'object') {
-        source = root['data'] as Record<string, any>;
-        defaultSensitivity = 'PLAIN';
-      } else if (root['stringData'] && typeof root['stringData'] === 'object') {
-        source = root['stringData'] as Record<string, any>;
-        defaultSensitivity = 'SECRET';
-      } else {
-        source = root;
-      }
-      if (!source) {
-        return [];
-      }
-      return Object.entries(source).map(([key, value]) => ({
-        key,
-        value: value == null ? '' : String(value),
-        sensitivity: defaultSensitivity
-      }));
-    } catch {
-      return [];
-    }
-  }
-
-  private isSecretNode(node: Node | undefined | null): boolean {
-    const kind = (node as any)?.kind?.toLowerCase?.() ?? '';
-    return kind === 'secret' || !!(node as any)?.secret;
-  }
-
-  private buildNodeUpdatePayload() {
-    const bundle = this.extractBundleFromForm();
-    return {
-      name: bundle.name,
-      namespace: bundle.namespace,
-      annotations: bundle.annotations,
-      entries: bundle.entries,
-      showSecretsAsPlain: bundle.showSecretsAsPlain,
-      hasSecrets: bundle.entries.some(entry => entry.sensitivity === 'SECRET'),
-      hasPlainEntries: bundle.entries.some(entry => entry.sensitivity !== 'SECRET')
+      const hasKey = control.controls.some(group => !!(group.get('key')?.value || '').trim());
+      return hasKey ? null : { noKeyEntry: true };
     };
   }
 
-  private extractBundleFromForm(): ConfigBundle {
-    const raw = this.form.getRawValue();
-    return ensureConfigBundleDefaults({
-      id: this.selectedNode?.id,
-      name: raw.name?.trim() || this.selectedNode?.name,
-      namespace: raw.namespace?.trim() || this.clusterNamespace || 'default',
-      annotations: this.keyValueArrayToRecord(this.annotationsArray),
-      entries: this.entriesArrayToEntries(),
-      showSecretsAsPlain: !!raw.showSecretsAsPlain
+  private applyDuplicateKeyErrors(): void {
+    const keyMap = new Map<string, FormGroup[]>();
+    this.entriesArray.controls.forEach(group => {
+      const keyControl = group.get('key');
+      if (!keyControl) {
+        return;
+      }
+
+      // remove stale duplicateKey flag while keeping other errors
+      if (keyControl.errors?.['duplicateKey']) {
+        const { duplicateKey, ...rest } = keyControl.errors;
+        keyControl.setErrors(Object.keys(rest).length ? rest : null);
+      }
+
+      const normalized = (keyControl.value || '').trim().toLowerCase();
+      if (!normalized) {
+        return;
+      }
+      const existing = keyMap.get(normalized) ?? [];
+      existing.push(group as FormGroup);
+      keyMap.set(normalized, existing);
+    });
+
+    keyMap.forEach(groups => {
+      if (groups.length < 2) {
+        return;
+      }
+      groups.forEach(group => {
+        const keyControl = group.get('key');
+        if (!keyControl) {
+          return;
+        }
+        const currentErrors = keyControl.errors || {};
+        keyControl.setErrors({ ...currentErrors, duplicateKey: true });
+      });
     });
   }
 
-  private keyValueArrayToRecord(array: FormArray<FormGroup>): Record<string, string> {
-    const record: Record<string, string> = {};
-    array.controls.forEach(group => {
-      const key = (group.get('key')?.value || '').trim();
-      if (!key) {
-        return;
+  private dnsLabelValidator(): ValidatorFn {
+    const regex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
+    return (control: AbstractControl) => {
+      const value = (control.value || '').trim();
+      if (!value) {
+        return null;
       }
-      record[key] = group.get('value')?.value ?? '';
-    });
-    return record;
+      if (value.length > 253 || !regex.test(value)) {
+        return { dnsLabel: true };
+      }
+      return null;
+    };
   }
 
   private entriesArrayToEntries(): ConfigEntry[] {
@@ -465,6 +423,43 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
         sensitivity: (group.get('sensitivity')?.value === 'SECRET' ? 'SECRET' : 'PLAIN') as ConfigEntrySensitivity
       }))
       .filter(entry => !!entry.key);
+  }
+
+  private annotationsArrayToRecord(): Record<string, string> {
+    const record: Record<string, string> = {};
+    this.annotationsArray.controls.forEach(group => {
+      const key = (group.get('key')?.value || '').trim();
+      if (!key) {
+        return;
+      }
+      record[key] = group.get('value')?.value ?? '';
+    });
+    return record;
+  }
+
+  private extractBundleFromForm(targetNode: Node | null = this.selectedNode): ConfigBundle {
+    const raw = this.form.getRawValue();
+    return ensureConfigBundleDefaults({
+      id: targetNode?.id ?? 'config-bundle',
+      name: (raw.name || '').trim() || targetNode?.name || 'config-bundle',
+      namespace: (raw.namespace || '').trim() || (targetNode as any)?.namespace || this.clusterNamespace || 'default',
+      annotations: this.annotationsArrayToRecord(),
+      entries: this.entriesArrayToEntries(),
+      showSecretsAsPlain: !!raw.showSecretsAsPlain
+    });
+  }
+
+  private buildNodeUpdatePayload(targetNode: Node | null = this.selectedNode) {
+    const bundle = this.extractBundleFromForm(targetNode);
+    return {
+      name: bundle.name,
+      namespace: bundle.namespace,
+      annotations: bundle.annotations,
+      entries: bundle.entries,
+      showSecretsAsPlain: bundle.showSecretsAsPlain,
+      hasSecrets: bundle.entries.some(entry => entry.sensitivity === 'SECRET'),
+      hasPlainEntries: bundle.entries.some(entry => entry.sensitivity !== 'SECRET')
+    };
   }
 
   private refreshYamlPreview(): void {
@@ -494,81 +489,6 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
-  private atLeastOneEntryValidator(): ValidatorFn {
-    return (control: AbstractControl) => {
-      if (!(control instanceof FormArray)) {
-        return null;
-      }
-      const hasKey = control.controls.some(group => {
-        const key = (group.get('key')?.value || '').trim();
-        return !!key;
-      });
-      return hasKey ? null : { missingEntry: true };
-    };
-  }
-
-  private applyDuplicateKeyErrors(): void {
-    if (!this.entriesArray?.length) {
-      return;
-    }
-    const keyMap = new Map<string, FormGroup[]>();
-    this.entriesArray.controls.forEach(group => {
-      const keyControl = group.get('key');
-      if (!keyControl) {
-        return;
-      }
-      this.clearDuplicateKeyError(keyControl);
-      const normalized = (keyControl.value || '').trim().toLowerCase();
-      if (!normalized) {
-        return;
-      }
-      const list = keyMap.get(normalized) || [];
-      list.push(group);
-      keyMap.set(normalized, list);
-    });
-
-    keyMap.forEach(groups => {
-      if (groups.length <= 1) {
-        return;
-      }
-      groups.forEach(group => {
-        const keyControl = group.get('key');
-        if (!keyControl) {
-          return;
-        }
-        const errors = { ...(keyControl.errors || {}) };
-        errors['duplicateKey'] = true;
-        keyControl.setErrors(errors);
-      });
-    });
-  }
-
-  private clearDuplicateKeyError(control: AbstractControl): void {
-    if (!control.errors || !control.errors['duplicateKey']) {
-      return;
-    }
-    const { duplicateKey, ...rest } = control.errors;
-    if (Object.keys(rest).length) {
-      control.setErrors(rest);
-    } else {
-      control.setErrors(null);
-    }
-  }
-
-  private dnsLabelValidator(): ValidatorFn {
-    const regex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
-    return (control: AbstractControl) => {
-      const value = (control.value || '').trim();
-      if (!value) {
-        return null;
-      }
-      if (value.length > 253 || !regex.test(value)) {
-        return { dnsLabel: true };
-      }
-      return null;
-    };
-  }
-
   private updateNameLockState(): void {
     if (!this.form) {
       return;
@@ -586,11 +506,22 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
-  private flushPendingChanges(): void {
-    if (!this.form || !this.selectedNode) {
+  private setupAutoSave(): void {
+    if (!this.form || !this.selectedNode || this.autoSaveNodeId === this.selectedNode.id) {
       return;
     }
-    const payload = this.buildNodeUpdatePayload();
-    this.autoSaveService.flushPendingChanges(this.selectedNode.id, payload);
+    const payload$: Observable<any> = this.form.valueChanges.pipe(
+      skip(1),
+      map(() => this.buildNodeUpdatePayload(this.selectedNode))
+    );
+    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, payload$);
+    this.autoSaveNodeId = this.selectedNode.id;
+  }
+
+  private flushPendingChanges(targetNode: Node | null = this.selectedNode): void {
+    if (!this.form || !targetNode?.id) {
+      return;
+    }
+    this.autoSaveService.flushPendingChanges(targetNode.id, this.buildNodeUpdatePayload(targetNode));
   }
 }

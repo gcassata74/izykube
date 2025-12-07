@@ -67,15 +67,16 @@ describe('generateManifestsFromBundle', () => {
     });
 
     const manifests = generateManifestsFromBundle(bundle);
-    expect(manifests).toHaveLength(2);
+    expect(manifests).toHaveLength(1);
 
-    const configMap = manifests.find(m => m.kind === 'ConfigMap') as GeneratedManifest;
-    const secret = manifests.find(m => m.kind === 'Secret') as GeneratedManifest;
+    const secret = manifests[0] as GeneratedManifest;
 
-    expect(configMap.metadata.name).toBe('mixed-config');
-    expect(secret.metadata.name).toBe('mixed-secret');
+    expect(secret.kind).toBe('Secret');
+    expect(secret.metadata.name).toBe('mixed');
     expect(secret.metadata.annotations).toEqual({ 'izylife.io/managed': 'true' });
-    expect(configMap.data).toEqual({ APP_MODE: 'prod' });
-    expect(secret.stringData).toEqual({ DB_PASSWORD: 's3cret' });
+    expect(secret.stringData).toEqual({
+      APP_MODE: 'prod',
+      DB_PASSWORD: 's3cret'
+    });
   });
 });

@@ -82,6 +82,10 @@
   grid-template-columns: 1fr 1fr auto;
   gap: 0.5rem;
   align-items: center;
+
+  .field-error {
+    grid-column: 1 / -1;
+  }
 }
 
 .kv-editor__hint {
@@ -132,12 +136,11 @@
 .entry-value-wrapper {
   position: relative;
 
-  textarea {
+  input {
     width: 100%;
-    min-height: 72px;
   }
 
-  &--masked textarea {
+  &--masked input {
     background-color: #f1f3f5;
     color: transparent;
     text-shadow: 0 0 12px rgba(0, 0, 0, 0.45);

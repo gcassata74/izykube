@@ -17,9 +17,6 @@
         <span *ngIf="form.get('name')?.errors?.['dnsLabel']">
           Must be DNS-1123 compliant (lowercase letters, numbers, and dashes only).
         </span>
-        <span *ngIf="form.get('name')?.errors?.['duplicateKey']">
-          Duplicate name detected.
-        </span>
       </div>
     </div>
 
@@ -59,6 +56,9 @@
           <input pInputText formControlName="key" placeholder="key" />
           <input pInputText formControlName="value" placeholder="value" />
           <button type="button" pButton icon="pi pi-times" class="p-button-text p-button-danger" (click)="removeAnnotation(i)"></button>
+          <div class="field-error" *ngIf="annotationGroup.get('key')?.touched && annotationGroup.get('key')?.invalid">
+            Key is required.
+          </div>
         </div>
       </div>
     </div>
@@ -87,15 +87,13 @@
 
           <label class="entry-label" [for]="'entry-value-' + i">Value</label>
           <div class="entry-value-wrapper" [class.entry-value-wrapper--masked]="shouldMaskEntry(entryGroup)">
-            <textarea
+            <input
               [id]="'entry-value-' + i"
-              pInputTextarea
+              pInputText
               formControlName="value"
-              rows="3"
-              [autoResize]="true"
-              [readonly]="shouldMaskEntry(entryGroup)"
-              [attr.placeholder]="shouldMaskEntry(entryGroup) ? 'Secret value hidden' : 'Value'">
-            </textarea>
+              [type]="shouldMaskEntry(entryGroup) ? 'password' : 'text'"
+              autocomplete="off"
+              [attr.placeholder]="shouldMaskEntry(entryGroup) ? 'Secret value hidden' : 'Value'" />
             <div class="entry-mask-hint" *ngIf="shouldMaskEntry(entryGroup)">
               <i class="pi pi-eye-slash"></i>
               <span>Hidden (enable “Show secret values” to view)</span>
@@ -134,7 +132,7 @@
           </div>
         </div>
       </div>
-      <div class="field-error" *ngIf="entriesArray.errors?.['missingEntry']">
+      <div class="field-error" *ngIf="entriesArray.errors?.['noKeyEntry']">
         Add at least one entry with a key.
       </div>
       <div class="entry-actions entry-actions--global">

@@ -18,13 +18,7 @@ export function generateManifestsFromBundle(bundle: ConfigBundle): GeneratedMani
     return [];
   }
 
-  const plainEntries = bundle.entries.filter(entry => entry.sensitivity !== 'SECRET');
-  const secretEntries = bundle.entries.filter(entry => entry.sensitivity === 'SECRET');
   const manifests: GeneratedManifest[] = [];
-
-  if (plainEntries.length === 0 && secretEntries.length === 0) {
-    return [];
-  }
 
   const baseMetadata: Omit<GeneratedManifest['metadata'], 'name'> = {
     namespace: bundle.namespace,
@@ -33,20 +27,12 @@ export function generateManifestsFromBundle(bundle: ConfigBundle): GeneratedMani
       : undefined
   };
 
-  if (plainEntries.length && !secretEntries.length) {
-    manifests.push(createConfigMapManifest(bundle.name, plainEntries, baseMetadata));
-    return manifests;
-  }
-
-  if (secretEntries.length && !plainEntries.length) {
-    manifests.push(createSecretManifest(bundle.name, secretEntries, baseMetadata));
-    return manifests;
-  }
-
-  if (plainEntries.length && secretEntries.length) {
-    manifests.push(createConfigMapManifest(`${bundle.name}-config`, plainEntries, baseMetadata));
-    manifests.push(createSecretManifest(`${bundle.name}-secret`, secretEntries, baseMetadata));
-  }
+  const hasSecretEntries = bundle.entries.some(entry => entry.sensitivity === 'SECRET');
+  manifests.push(
+    hasSecretEntries
+      ? createSecretManifest(bundle.name, bundle.entries, baseMetadata)
+      : createConfigMapManifest(bundle.name, bundle.entries, baseMetadata)
+  );
 
   return manifests;
 }
