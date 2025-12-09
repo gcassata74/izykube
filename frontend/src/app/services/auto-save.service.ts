@@ -1,5 +1,5 @@
 import { DiagramService } from './diagram.service';
-import { Observable, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Observable, Subscription, debounceTime, distinctUntilChanged, filter } from 'rxjs';
 import { Injectable, OnDestroy } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 import { Store } from '@ngrx/store';
@@ -20,9 +20,9 @@ export class AutoSaveService {
   ) {}
 
   enableAutoSave(form: FormGroup, nodeId: string, change$: Observable<any>) {
-    void form;
     this.subscription.add(change$.pipe(
       debounceTime(500),
+      filter(() => form.valid),
       distinctUntilChanged(),
     ).subscribe(formValue => {
       this.persistNodeChanges(nodeId, formValue);
