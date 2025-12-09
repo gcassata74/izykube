@@ -11,7 +11,6 @@ import io.fabric8.kubernetes.client.utils.Serialization;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
-import java.util.Map;
 
 @Processor(ServiceDTO.class)
 @Service
@@ -21,22 +20,26 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
     public String createTemplate(ServiceDTO dto) {
         StringBuilder yaml = new StringBuilder();
         String namespace = resolveNamespace(dto);
+        String serviceName = sanitizeName(dto.getName());
+        if (serviceName.isEmpty()) {
+            throw new IllegalStateException("Service name is required to generate templates");
+        }
 
         // Create Kubernetes Service
-        yaml.append(createKubernetesService(dto, namespace));
+        yaml.append(createKubernetesService(dto, namespace, serviceName));
 
         // Always create VirtualService
-        yaml.append(createVirtualService(dto, namespace));
+        yaml.append(createVirtualService(dto, namespace, serviceName));
 
         // If service is exposed, create Gateway
         if (dto.isExposeService() && dto.getFrontendUrl() != null && !dto.getFrontendUrl().isEmpty()) {
-            yaml.append(createGateway(dto, namespace));
+            yaml.append(createGateway(dto, namespace, serviceName));
         }
 
         return yaml.toString();
     }
 
-    private String createKubernetesService(ServiceDTO dto, String namespace) {
+    private String createKubernetesService(ServiceDTO dto, String namespace, String serviceName) {
         DeploymentDTO deploymentDTO = dto.getTargetNodes().stream()
                 .filter(DeploymentDTO.class::isInstance)
                 .map(DeploymentDTO.class::cast)
@@ -55,8 +58,6 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
                 .orElse(null)
                 : null;
 
-        Map<String, String> selectors = Collections.singletonMap("app", deploymentDTO.getName());
-
         ServicePort servicePort = new ServicePort();
         servicePort.setPort(dto.getPort());
         int targetPort = containerDTO != null
@@ -64,17 +65,21 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
                 : (deploymentDTO.getContainerPort() != null ? deploymentDTO.getContainerPort() : dto.getPort());
         servicePort.setTargetPort(new IntOrString(targetPort));
 
+        String selectorValue = sanitizeName(deploymentDTO.getName());
+        if (selectorValue.isEmpty()) {
+            throw new IllegalStateException("Deployment name is required to build service selectors");
+        }
         if ("NodePort".equals(dto.getType()) && dto.getNodePort() != null) {
             servicePort.setNodePort(dto.getNodePort());
         }
 
         io.fabric8.kubernetes.api.model.Service service = new ServiceBuilder()
                 .withNewMetadata()
-                .withName(dto.getName())
+                .withName(serviceName)
                 .withNamespace(namespace)
                 .endMetadata()
                 .withNewSpec()
-                .withSelector(selectors)
+                .withSelector(Collections.singletonMap("app", selectorValue))
                 .withType(dto.getType())
                 .withPorts(servicePort)
                 .endSpec()
@@ -83,10 +88,10 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         return Serialization.asYaml(service);
     }
 
-    private String createGateway(ServiceDTO dto, String namespace) {
+    private String createGateway(ServiceDTO dto, String namespace, String serviceName) {
         Gateway gateway = new GatewayBuilder()
                 .withNewMetadata()
-                .withName(dto.getName() + "-gateway")
+                .withName(serviceName + "-gateway")
                 .withNamespace(namespace)
                 .endMetadata()
                 .withNewSpec()
@@ -105,7 +110,7 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         return Serialization.asYaml(gateway);
     }
 
-    private String createVirtualService(ServiceDTO dto, String namespace) {
+    private String createVirtualService(ServiceDTO dto, String namespace, String serviceName) {
         // Create URI match
         StringMatch uriMatch = new StringMatch();
         uriMatch.setAdditionalProperty("prefix", "/");
@@ -115,7 +120,7 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         // Create destination
         HTTPRouteDestination destination = new HTTPRouteDestination();
         Destination dest = new Destination();
-        dest.setHost(dto.getName());
+        dest.setHost(serviceName);
         dest.setPort(new PortSelector());
         dest.getPort().setNumber(dto.getPort());
         destination.setDestination(dest);
@@ -128,7 +133,7 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         // Create VirtualService
         VirtualServiceBuilder virtualService = new VirtualServiceBuilder()
                 .withNewMetadata()
-                .withName(dto.getName() + "-virtualservice")
+                .withName(serviceName + "-virtualservice")
                 .withNamespace(namespace)
                 .endMetadata()
                 .withNewSpec()
@@ -138,7 +143,7 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
         if (dto.isExposeService() && !dto.getFrontendUrl().isEmpty()) {
             virtualService.editOrNewSpec()
                     .withHosts(Collections.singletonList(stripHttpPrefix(dto.getFrontendUrl())))
-                    .withGateways(Collections.singletonList(dto.getName() + "-gateway"))
+                    .withGateways(Collections.singletonList(serviceName + "-gateway"))
                     .endSpec();
         }
         return Serialization.asYaml(virtualService.build());
@@ -146,6 +151,15 @@ public class ServiceProcessor implements TemplateProcessor<ServiceDTO> {
 
     private String stripHttpPrefix(String url) {
         return url.replaceAll("^(http://|https://)", "");
+    }
+
+    private String sanitizeName(String name) {
+        if (name == null) {
+            return "";
+        }
+        String normalized = name.trim().replaceAll("[^A-Za-z0-9._-]+", "-");
+        normalized = normalized.replaceAll("^-+", "").replaceAll("-+$", "");
+        return normalized;
     }
 
     private String resolveNamespace(ServiceDTO dto) {

@@ -17,25 +17,26 @@ export class NodeFactoryService {
   constructor() { }
 
   createNode(type: string, id: string, name: string): Node {
+    const trimmedName = typeof name === 'string' ? name.trim() : name;
     switch (type.toLowerCase()) {
       case 'container':
         return new Container(
           id,
-          name,
+          trimmedName,
           '',  // assetId (empty by default)
           80   // default containerPort
         );
       case 'service':
         return new Service(
           id,
-          name,
+          trimmedName,
           'ClusterIP',
           80
         );
       case 'deployment':
         return new Deployment(
           id,
-          name,
+          trimmedName,
           1,
           'RollingUpdate',
           '',
@@ -43,13 +44,13 @@ export class NodeFactoryService {
           'DEPLOYMENT'
         );
       case 'configmap':
-        return new ConfigBundleNode(id, name, {
+        return new ConfigBundleNode(id, trimmedName, {
           namespace: 'default',
           annotations: {},
           entries: []
         }, 'configmap');
       case 'secret':
-        return new ConfigBundleNode(id, name, {
+        return new ConfigBundleNode(id, trimmedName, {
           namespace: 'default',
           annotations: {},
           entries: []
@@ -57,19 +58,19 @@ export class NodeFactoryService {
         case 'job':
           return new Job(
             id,
-            name,
+            trimmedName,
             ''
           );  
       case 'volume':
         return new Volume(
           id,
-          name,
+          trimmedName,
           { type: 'emptyDir' } as VolumeConfig  // default to emptyDir
         );
       case 'ingress':
         return new Ingress(
           id,
-          name,
+          trimmedName,
           'example.com',  // default host
           '/',            // default path
           '',
@@ -80,7 +81,7 @@ export class NodeFactoryService {
       case 'istio':
         return new Istio(
           id,
-          name,
+          trimmedName,
           'example.com',
           '/',
           '',

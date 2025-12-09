@@ -46,7 +46,12 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
     @Override
     public String createTemplate(DeploymentDTO dto) {
         String namespace = dto.getNamespace() == null || dto.getNamespace().isBlank() ? "default" : dto.getNamespace();
-        List<Container> containers = createContainers(dto);
+        String workloadName = sanitizeName(dto.getName());
+        if (workloadName.isEmpty()) {
+            throw new IllegalArgumentException("Deployment name is required to generate templates");
+        }
+
+        List<Container> containers = createContainers(dto, workloadName);
         List<EnvFromSource> envFromSources = createEnvFromSources(dto);
         List<Volume> volumes = createVolumes(dto);
         HostAlias hostAlias = null;
@@ -66,7 +71,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         }
 
         Map<String, String> labels = new HashMap<>();
-        labels.put("app", dto.getName());
+        labels.put("app", workloadName);
 
         PodSpecBuilder podSpecBuilder = new PodSpecBuilder()
                 .withContainers(containers)
@@ -90,19 +95,19 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .build();
 
         HasMetadata workload = switch (dto.resolveWorkloadType()) {
-            case STATEFULSET -> buildStatefulSet(dto, namespace, labels, podTemplate, serviceDTO);
-            case DAEMONSET -> buildDaemonSet(dto, namespace, labels, podTemplate);
-            default -> buildDeployment(dto, namespace, labels, podTemplate);
+            case STATEFULSET -> buildStatefulSet(dto, namespace, workloadName, labels, podTemplate, serviceDTO);
+            case DAEMONSET -> buildDaemonSet(workloadName, namespace, labels, podTemplate);
+            default -> buildDeployment(dto, workloadName, namespace, labels, podTemplate);
         };
 
         return Serialization.asYaml(workload);
     }
 
-    private Deployment buildDeployment(DeploymentDTO dto, String namespace, Map<String, String> labels, PodTemplateSpec podTemplate) {
+    private Deployment buildDeployment(DeploymentDTO dto, String workloadName, String namespace, Map<String, String> labels, PodTemplateSpec podTemplate) {
         String strategyType = dto.getStrategyType() != null ? dto.getStrategyType() : "RollingUpdate";
         Deployment deployment = new DeploymentBuilder()
                 .withNewMetadata()
-                .withName(dto.getName())
+                .withName(workloadName)
                 .withNamespace(namespace)
                 .endMetadata()
                 .withNewSpec()
@@ -130,17 +135,16 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
 
     private StatefulSet buildStatefulSet(DeploymentDTO dto,
                                          String namespace,
+                                         String workloadName,
                                          Map<String, String> labels,
                                          PodTemplateSpec podTemplate,
                                          ServiceDTO serviceDTO) {
-        String serviceName = dto.getName();
-        if (serviceDTO != null && StringUtils.hasText(serviceDTO.getName())) {
-            serviceName = serviceDTO.getName().trim();
-        }
+        String serviceName = sanitizeName(serviceDTO != null ? serviceDTO.getName() : workloadName);
+        serviceName = serviceName.isEmpty() ? workloadName : serviceName;
 
         return new StatefulSetBuilder()
                 .withNewMetadata()
-                .withName(dto.getName())
+                .withName(workloadName)
                 .withNamespace(namespace)
                 .endMetadata()
                 .withNewSpec()
@@ -152,13 +156,13 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 .build();
     }
 
-    private DaemonSet buildDaemonSet(DeploymentDTO dto,
+    private DaemonSet buildDaemonSet(String workloadName,
                                      String namespace,
                                      Map<String, String> labels,
                                      PodTemplateSpec podTemplate) {
         return new DaemonSetBuilder()
                 .withNewMetadata()
-                .withName(dto.getName())
+                .withName(workloadName)
                 .withNamespace(namespace)
                 .endMetadata()
                 .withNewSpec()
@@ -188,7 +192,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
                 ));
     }
 
-    private List<Container> createContainers(DeploymentDTO dto) {
+    private List<Container> createContainers(DeploymentDTO dto, String sanitizedName) {
         List<VolumeMount> volumeMounts = dto.getTargetNodes().stream()
                 .filter(node -> node instanceof VolumeDTO)
                 .map(node -> (VolumeDTO) node)
@@ -201,12 +205,22 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
             throw new IllegalArgumentException("Deployment " + dto.getName() + " must specify an asset/image");
         }
 
-        containers.add(containerProcessor.buildPrimaryContainer(dto, volumeMounts));
+        Container primary = containerProcessor.buildPrimaryContainer(dto, volumeMounts);
+        primary.setName(sanitizedName);
+        containers.add(primary);
 
         containers.addAll(dto.getTargetNodes().stream()
                 .filter(node -> node instanceof ContainerDTO)
                 .map(node -> (ContainerDTO) node)
-                .map(containerDTO -> containerProcessor.processContainer(containerDTO, volumeMounts))
+                .map(containerDTO -> {
+                    Container container = containerProcessor.processContainer(containerDTO, volumeMounts);
+                    String containerName = sanitizeName(container.getName());
+                    if (containerName.isEmpty()) {
+                        containerName = sanitizedName;
+                    }
+                    container.setName(containerName);
+                    return container;
+                })
                 .collect(Collectors.toList()));
 
         if (containers.isEmpty()) {
@@ -242,9 +256,19 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
             if (name.isEmpty()) {
                 return Optional.empty();
             }
-            boolean secret = configMap.isSecret() || "secret".equalsIgnoreCase(configMap.getKind());
+            boolean secret = (node instanceof com.izylife.izykube.dto.cluster.SecretDTO) || isSecretConfig(configMap);
             EnvFromSource source = ConfigMapUtils.createEnvFromSource(name, secret);
             return Optional.of(new EnvFromCandidate(buildEnvFromKey(secret, name), source));
+        }
+
+        // Fallback: if a linked node is represented only by kind "secret", still mount as secretRef
+        if ("secret".equalsIgnoreCase(node.getKind())) {
+            String name = normalizeName(node.getName());
+            if (name.isEmpty()) {
+                return Optional.empty();
+            }
+            EnvFromSource source = ConfigMapUtils.createEnvFromSource(name, true);
+            return Optional.of(new EnvFromCandidate(buildEnvFromKey(true, name), source));
         }
 
         String kind = normalizeKind(node.getKind());
@@ -263,6 +287,26 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
 
     private String normalizeName(String name) {
         return name == null ? "" : name.trim();
+    }
+
+    private boolean isSecretConfig(ConfigMapDTO configMap) {
+        boolean markedSecret = configMap.isSecret()
+                || "secret".equalsIgnoreCase(configMap.getKind())
+                || (configMap.getId() != null && configMap.getId().toLowerCase().startsWith("secret:"));
+        if (markedSecret) {
+            return true;
+        }
+        return configMap.getEntries().stream()
+                .anyMatch(entry -> ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity()));
+    }
+
+    private String sanitizeName(String name) {
+        if (name == null) {
+            return "";
+        }
+        String normalized = name.trim().replaceAll("[^A-Za-z0-9._-]+", "-");
+        normalized = normalized.replaceAll("^-+", "").replaceAll("-+$", "");
+        return normalized;
     }
 
     private String normalizeKind(String kind) {

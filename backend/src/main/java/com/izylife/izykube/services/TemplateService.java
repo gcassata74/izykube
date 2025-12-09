@@ -3,6 +3,7 @@ package com.izylife.izykube.services;
 import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
+import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.factory.TemplateFactory;
 import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.model.ClusterTemplate;
@@ -18,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @Service
@@ -55,7 +57,7 @@ public class TemplateService {
         try {
             String namespace = Optional.ofNullable(clusterDTO.getNameSpace()).filter(ns -> !ns.isBlank()).orElse("default");
 
-            List<NodeDTO> templateableNodes = clusterDTO.getNodes().stream()
+            List<NodeDTO> templateableNodes = orderNodesAncestorsFirst(clusterDTO).stream()
                     .filter(this::isTemplateableResource)
                     .toList();
 
@@ -80,42 +82,52 @@ public class TemplateService {
 
 
     private List<NodeDTO> orderNodesAncestorsFirst(ClusterDTO clusterDTO) {
-        List<NodeDTO> result = new ArrayList<>();
-        Set<String> visited = new HashSet<>();
-        Set<String> visiting = new HashSet<>();
+        Map<String, NodeDTO> nodesById = clusterDTO.getNodes().stream()
+                .collect(Collectors.toMap(NodeDTO::getId, node -> node, (a, b) -> a, LinkedHashMap::new));
 
-        // Start with nodes that have no dependencies (no source nodes)
-        List<NodeDTO> startNodes = clusterDTO.getNodes().stream()
-                .filter(node -> ClusterUtil.findSourceNodesOf(clusterDTO, node.getId()).isEmpty())
-                .toList();
+        Map<String, Integer> indegree = new LinkedHashMap<>();
+        nodesById.keySet().forEach(id -> indegree.put(id, 0));
 
-        for (NodeDTO node : startNodes) {
-            if (!visited.contains(node.getId())) {
-                topologicalSort(node, clusterDTO, result, visited, visiting);
+        Map<String, List<String>> graph = new LinkedHashMap<>();
+        nodesById.keySet().forEach(id -> graph.put(id, new ArrayList<>()));
+
+        for (LinkDTO link : clusterDTO.getLinks()) {
+            if (!nodesById.containsKey(link.getSource()) || !nodesById.containsKey(link.getTarget())) {
+                continue;
+            }
+            graph.get(link.getSource()).add(link.getTarget());
+            indegree.put(link.getTarget(), indegree.getOrDefault(link.getTarget(), 0) + 1);
+        }
+
+        PriorityQueue<String> queue = new PriorityQueue<>((a, b) -> {
+            NodeDTO na = nodesById.get(a);
+            NodeDTO nb = nodesById.get(b);
+            int cmp = Optional.ofNullable(na.getName()).orElse("").compareToIgnoreCase(Optional.ofNullable(nb.getName()).orElse(""));
+            return cmp != 0 ? cmp : a.compareToIgnoreCase(b);
+        });
+        indegree.forEach((id, deg) -> {
+            if (deg == 0) {
+                queue.add(id);
+            }
+        });
+
+        List<NodeDTO> ordered = new ArrayList<>();
+        while (!queue.isEmpty()) {
+            String id = queue.poll();
+            ordered.add(nodesById.get(id));
+            for (String neighbor : graph.get(id)) {
+                indegree.put(neighbor, indegree.get(neighbor) - 1);
+                if (indegree.get(neighbor) == 0) {
+                    queue.add(neighbor);
+                }
             }
         }
 
-        return result;
-    }
-
-    private void topologicalSort(NodeDTO node, ClusterDTO clusterDTO, List<NodeDTO> result,
-                                 Set<String> visited, Set<String> visiting) {
-        visiting.add(node.getId());
-
-        List<NodeDTO> targetNodes = ClusterUtil.findTargetNodesOf(clusterDTO, node.getId());
-        for (NodeDTO targetNode : targetNodes) {
-            if (visiting.contains(targetNode.getId())) {
-                throw new IllegalStateException("Circular dependency detected between " +
-                        node.getName() + " and " + targetNode.getName());
-            }
-            if (!visited.contains(targetNode.getId())) {
-                topologicalSort(targetNode, clusterDTO, result, visited, visiting);
-            }
+        if (ordered.size() != nodesById.size()) {
+            throw new IllegalStateException("Circular dependency detected in cluster graph");
         }
 
-        visiting.remove(node.getId());
-        visited.add(node.getId());
-        result.add(0, node); // Add to beginning for correct order
+        return ordered;
     }
 
     private boolean isTemplateableResource(NodeDTO node) {

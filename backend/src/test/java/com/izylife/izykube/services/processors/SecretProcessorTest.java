@@ -1,10 +1,13 @@
 package com.izylife.izykube.services.processors;
 
+import com.izylife.izykube.dto.cluster.ConfigEntryDTO;
+import com.izylife.izykube.dto.cluster.ConfigEntrySensitivity;
 import com.izylife.izykube.dto.cluster.SecretDTO;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SecretProcessorTest {
@@ -12,10 +15,15 @@ class SecretProcessorTest {
     private final SecretProcessor processor = new SecretProcessor();
 
     @Test
-    void skipsEmptySecretData() {
+    void rendersEmptySecretWhenNoData() {
         SecretDTO dto = new SecretDTO("secret:empty", "empty-secret", "");
         String template = processor.createTemplate(dto);
-        assertTrue(template.isEmpty(), "Empty secret payloads must not generate manifests");
+        assertFalse(template.isEmpty(), "Empty secret payloads should still generate manifests");
+        var manifest = new Yaml().load(template);
+        var metadata = (java.util.Map<String, Object>) ((java.util.Map<String, Object>) manifest).get("metadata");
+        assertTrue("empty-secret".equals(metadata.get("name")));
+        var dataSection = (java.util.Map<String, Object>) ((java.util.Map<String, Object>) manifest).get("data");
+        assertTrue(dataSection == null || dataSection.isEmpty(), "Empty secrets should render no data entries");
     }
 
     @Test
@@ -29,5 +37,24 @@ class SecretProcessorTest {
         @SuppressWarnings("unchecked")
         var data = (java.util.Map<String, Object>) dataSection;
         assertTrue("YWRtaW4=".equals(data.get("password")), "Password should be base64-encoded");
+    }
+
+    @Test
+    void trimsSecretNameAndKeys() {
+        SecretDTO dto = new SecretDTO("secret:spaced", "  spaced-secret  ", "");
+        ConfigEntryDTO entry = new ConfigEntryDTO();
+        entry.setKey("  api-key  ");
+        entry.setValue("token");
+        entry.setSensitivity(ConfigEntrySensitivity.SECRET);
+        dto.setEntries(java.util.List.of(entry));
+
+        String template = processor.createTemplate(dto);
+        assertFalse(template.isEmpty());
+
+        var manifest = new Yaml().load(template);
+        var metadata = (java.util.Map<String, Object>) ((java.util.Map<String, Object>) manifest).get("metadata");
+        assertTrue("spaced-secret".equals(metadata.get("name")));
+        var dataSection = (java.util.Map<String, Object>) ((java.util.Map<String, Object>) manifest).get("data");
+        assertTrue(dataSection.containsKey("api-key"), "Secret key should be trimmed");
     }
 }

@@ -108,7 +108,8 @@ export class ClusterListComponent implements OnInit, OnDestroy {
 
   generateMenuItems(cluster: Cluster): MenuItem[] {
     const isBusy = this.isOperationInProgress(cluster.id ?? '');
-    const canExport = cluster.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT;
+    const canExport = cluster.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT
+      || cluster.status === ClusterStatusEnum.DEPLOYED;
 
     return [
       { label: 'Edit', icon: 'pi pi-pencil', command: () => cluster.id !== null && this.editCluster(cluster.id) },

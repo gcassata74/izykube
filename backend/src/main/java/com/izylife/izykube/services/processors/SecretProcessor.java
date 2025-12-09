@@ -20,23 +20,26 @@ public class SecretProcessor implements TemplateProcessor<SecretDTO> {
     @Override
     public String createTemplate(SecretDTO dto) {
         String namespace = dto.getNamespace() == null || dto.getNamespace().isBlank() ? "default" : dto.getNamespace();
+        String secretName = sanitizeName(dto.getName());
+        if (secretName.isEmpty()) {
+            throw new IllegalArgumentException("Secret name is required to generate manifests");
+        }
+
         Map<String, String> decoded = decodeIfNeeded(YamlKeyValueExtractor.extractPlainKeyValueData(dto.getYaml()));
         if (decoded.isEmpty()) {
             decoded = buildValuesFromEntries(dto.getEntries());
         }
-        if (decoded.isEmpty()) {
-            return "";
-        }
         Map<String, String> encoded = encodeSecretData(decoded);
+        Map<String, String> dataSection = new LinkedHashMap<>(encoded);
 
         return Serialization.asYaml(
                 new SecretBuilder()
                         .withNewMetadata()
-                        .withName(dto.getName())
+                        .withName(secretName)
                         .withNamespace(namespace)
                         .endMetadata()
                         .withType("Opaque")
-                        .withData(encoded)
+                        .withData(dataSection)
                         .build()
         );
     }
@@ -52,7 +55,12 @@ public class SecretProcessor implements TemplateProcessor<SecretDTO> {
 
     private Map<String, String> decodeIfNeeded(Map<String, String> values) {
         Map<String, String> decoded = new LinkedHashMap<>();
-        values.forEach((key, value) -> decoded.put(key, decodeValue(value)));
+        values.forEach((key, value) -> {
+            String sanitizedKey = sanitizeKey(key);
+            if (!sanitizedKey.isEmpty()) {
+                decoded.put(sanitizedKey, decodeValue(value));
+            }
+        });
         return decoded;
     }
 
@@ -74,14 +82,28 @@ public class SecretProcessor implements TemplateProcessor<SecretDTO> {
             return values;
         }
         for (ConfigEntryDTO entry : entries) {
-            if (entry == null || entry.getKey() == null || entry.getKey().isBlank()) {
+            String sanitizedKey = sanitizeKey(entry == null ? null : entry.getKey());
+            if (sanitizedKey.isEmpty()) {
                 continue;
             }
             if (!ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity())) {
                 continue;
             }
-            values.put(entry.getKey(), entry.getValue() == null ? "" : entry.getValue());
+            values.put(sanitizedKey, entry.getValue() == null ? "" : entry.getValue());
         }
         return values;
+    }
+
+    private String sanitizeName(String name) {
+        if (name == null) {
+            return "";
+        }
+        String normalized = name.trim().replaceAll("[^A-Za-z0-9._-]+", "-");
+        normalized = normalized.replaceAll("^-+", "").replaceAll("-+$", "");
+        return normalized;
+    }
+
+    private String sanitizeKey(String key) {
+        return key == null ? "" : key.trim();
     }
 }

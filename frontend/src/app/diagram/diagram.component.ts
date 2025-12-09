@@ -599,43 +599,49 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private fetchClusterExport(): void {
-    if (!this.currentClusterSnapshot) {
-      this.notificationService.warn('No diagram to export', 'Create or load a diagram before exporting YAML.');
-      this.clusterYamlDialogVisible = false;
-      return;
-    }
-
-    const payload = JSON.parse(JSON.stringify(this.currentClusterSnapshot));
     this.clusterYamlLoading = true;
     this.clusterYamlError = null;
-    if (this.clusterExportMode === 'HELM_CHART') {
-      this.aiAssistantService.exportHelmChart(payload).pipe(
+
+    this.store.select(getCurrentCluster).pipe(take(1)).subscribe(cluster => {
+      if (!cluster) {
+        this.notificationService.warn('No diagram to export', 'Create or load a diagram before exporting YAML.');
+        this.clusterYamlDialogVisible = false;
+        this.clusterYamlLoading = false;
+        return;
+      }
+
+      const payload = JSON.parse(JSON.stringify(cluster));
+      const sanitizedName = this.sanitizeFileName(cluster?.name || 'izykube-namespace');
+
+      if (this.clusterExportMode === 'HELM_CHART') {
+        this.aiAssistantService.exportHelmChart(payload).pipe(
+          finalize(() => this.clusterYamlLoading = false)
+        ).subscribe({
+          next: (response: AiHelmChartExportResponse) => {
+            this.clusterYamlText = '';
+            this.helmChartBlob = response.blob;
+            const fallbackName = `${sanitizedName}-chart.zip`;
+            this.clusterYamlFileName = response.fileName || fallbackName;
+          },
+          error: (error) => {
+            this.handleClusterExportError(error);
+          }
+        });
+        return;
+      }
+
+      this.aiAssistantService.exportYaml(payload).pipe(
         finalize(() => this.clusterYamlLoading = false)
       ).subscribe({
-        next: (response: AiHelmChartExportResponse) => {
-          this.clusterYamlText = '';
-          this.helmChartBlob = response.blob;
-        const fallbackName = `${this.sanitizeFileName(this.currentClusterSnapshot?.name || 'izykube-namespace')}-chart.zip`;
-          this.clusterYamlFileName = response.fileName || fallbackName;
+        next: (response: AiExportYamlResponse) => {
+          this.helmChartBlob = null;
+          this.clusterYamlText = response.yaml;
+          this.clusterYamlFileName = `${sanitizedName}.yaml`;
         },
         error: (error) => {
           this.handleClusterExportError(error);
         }
       });
-      return;
-    }
-
-    this.aiAssistantService.exportYaml(payload).pipe(
-      finalize(() => this.clusterYamlLoading = false)
-    ).subscribe({
-      next: (response: AiExportYamlResponse) => {
-        this.helmChartBlob = null;
-        this.clusterYamlText = response.yaml;
-        this.clusterYamlFileName = `${this.sanitizeFileName(this.currentClusterSnapshot?.name || 'izykube-namespace')}.yaml`;
-      },
-      error: (error) => {
-        this.handleClusterExportError(error);
-      }
     });
   }
 

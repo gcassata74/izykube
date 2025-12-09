@@ -1,7 +1,11 @@
 package com.izylife.izykube.services.ai;
 
 import com.izylife.izykube.dto.cluster.ClusterDTO;
+import com.izylife.izykube.dto.cluster.ConfigEntryDTO;
+import com.izylife.izykube.dto.cluster.ConfigEntrySensitivity;
+import com.izylife.izykube.dto.cluster.ConfigMapDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
+import com.izylife.izykube.dto.cluster.DeploymentWorkloadType;
 import com.izylife.izykube.dto.cluster.IngressDTO;
 import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.SecretDTO;
@@ -173,6 +177,51 @@ class ClusterYamlServiceTest {
 
         assertTrue(exported.contains("kind: Secret"));
         assertTrue(exported.contains("c3VwZXItc2VjcmV0"));
+    }
+
+    @Test
+    void exportClusterConvertsConfigBundleWithSecretEntryToSecret() {
+        ConfigMapDTO bundle = new ConfigMapDTO("config-bundle-a", "config-bundle-a", null);
+
+        ConfigEntryDTO plainEntry = new ConfigEntryDTO();
+        plainEntry.setKey("MYSQL_HOST");
+        plainEntry.setValue("mysql-service");
+        plainEntry.setSensitivity(ConfigEntrySensitivity.PLAIN);
+
+        ConfigEntryDTO secretEntry = new ConfigEntryDTO();
+        secretEntry.setKey("MYSQL_ROOT_PASSWORD");
+        secretEntry.setValue("admin");
+        secretEntry.setSensitivity(ConfigEntrySensitivity.SECRET);
+
+        bundle.setEntries(List.of(plainEntry, secretEntry));
+
+        ClusterDTO cluster = ClusterDTO.builder()
+                .diagram("{}")
+                .build();
+        cluster.getNodes().add(bundle);
+
+        String exported = service.exportCluster(cluster);
+
+        assertTrue(exported.contains("kind: Secret"));
+        assertTrue(exported.contains("name: config-bundle-a"));
+        assertTrue(exported.contains("bXlzcWwtc2VydmljZQ==")); // mysql-service
+        assertTrue(exported.contains("YWRtaW4=")); // admin
+    }
+
+    @Test
+    void exportClusterUsesStatefulSetWhenWorkloadTypeIsStatefulSet() {
+        DeploymentDTO workload = new DeploymentDTO("deployment-1", "  my-db  ", 1, "RollingUpdate", "", 3306, DeploymentWorkloadType.STATEFULSET);
+
+        ClusterDTO cluster = ClusterDTO.builder()
+                .diagram("{}")
+                .build();
+        cluster.getNodes().add(workload);
+
+        String exported = service.exportCluster(cluster);
+
+        assertTrue(exported.contains("kind: StatefulSet"));
+        assertTrue(exported.contains("name: my-db"));
+        assertTrue(exported.contains("serviceName: my-db"));
     }
 
     @Test

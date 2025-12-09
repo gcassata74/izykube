@@ -18,7 +18,8 @@ export class DiagramService {
   ) { }
 
   updateClusterNodes(nodeId: string, formValues: any) {
-    this.store.dispatch(updateNode({ nodeId, formValues }));
+    const sanitized = this.sanitizeFormValues(formValues);
+    this.store.dispatch(updateNode({ nodeId, formValues: sanitized }));
   }
 
   addClusterNode(type: string, nodeId: string, name: string): void {
@@ -45,5 +46,16 @@ export class DiagramService {
 
   clearSelectedNode(): void {
     this.setSelectedNode(null);
+  }
+
+  private sanitizeFormValues(values: any): any {
+    if (!values || typeof values !== 'object') {
+      return values;
+    }
+    const sanitized = { ...values };
+    if (typeof sanitized.name === 'string') {
+      sanitized.name = sanitized.name.trim();
+    }
+    return sanitized;
   }
 }

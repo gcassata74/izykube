@@ -8,6 +8,7 @@ import com.izylife.izykube.dto.kube.PodSummaryDTO;
 import com.izylife.izykube.services.KubernetesExplorerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,13 +29,17 @@ public class KubernetesExplorerController {
     @GetMapping("/namespaces")
     public ResponseEntity<List<NamespaceDTO>> listNamespaces() {
         List<NamespaceDTO> namespaces = explorerService.listNamespaces();
-        return ResponseEntity.ok(namespaces);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(namespaces);
     }
 
     @GetMapping("/summary")
     public ResponseEntity<NamespaceSummaryDTO> getSummary(@RequestParam(value = "namespace", defaultValue = "all") String namespace) {
         NamespaceSummaryDTO summary = explorerService.getNamespaceSummary(namespace);
-        return ResponseEntity.ok(summary);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(summary);
     }
 
     @GetMapping("/logs/pod")
@@ -45,7 +50,9 @@ public class KubernetesExplorerController {
         if (logs == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(logs);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(logs);
     }
 
     @GetMapping("/logs/deployment")
@@ -56,13 +63,17 @@ public class KubernetesExplorerController {
         if (logs == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(logs);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(logs);
     }
 
     @GetMapping("/deployments/{deployment}/pods")
     public ResponseEntity<List<PodSummaryDTO>> getDeploymentPods(@PathVariable("deployment") String deploymentName,
                                                                  @RequestParam String namespace) {
         List<PodSummaryDTO> pods = explorerService.getPodsByDeployment(namespace, deploymentName);
-        return ResponseEntity.ok(pods);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(pods);
     }
 }

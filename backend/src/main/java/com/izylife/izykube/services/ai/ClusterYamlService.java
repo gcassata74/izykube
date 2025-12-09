@@ -133,16 +133,26 @@ public class ClusterYamlService {
 
                 switch (kind) {
                     case "configmap", "secret" -> nodes.add(buildConfigMapNode(name, manifest));
-                case "deployment" -> {
-                    DeploymentArtifacts artifacts = buildDeploymentNodes(name, manifest);
-                    nodes.add(artifacts.deploymentNode);
-                    deploymentInfoMap.put(artifacts.deploymentNode.getId(), artifacts.info);
-                }
-                case "service" -> {
-                    ServiceArtifacts artifacts = buildServiceNode(name, manifest);
-                    nodes.add(artifacts.node);
-                    serviceInfoMap.put(name, artifacts.info);
-                }
+                    case "deployment" -> {
+                        DeploymentArtifacts artifacts = buildDeploymentNodes(name, manifest, DeploymentWorkloadType.DEPLOYMENT);
+                        nodes.add(artifacts.deploymentNode);
+                        deploymentInfoMap.put(artifacts.deploymentNode.getId(), artifacts.info);
+                    }
+                    case "statefulset" -> {
+                        DeploymentArtifacts artifacts = buildDeploymentNodes(name, manifest, DeploymentWorkloadType.STATEFULSET);
+                        nodes.add(artifacts.deploymentNode);
+                        deploymentInfoMap.put(artifacts.deploymentNode.getId(), artifacts.info);
+                    }
+                    case "daemonset" -> {
+                        DeploymentArtifacts artifacts = buildDeploymentNodes(name, manifest, DeploymentWorkloadType.DAEMONSET);
+                        nodes.add(artifacts.deploymentNode);
+                        deploymentInfoMap.put(artifacts.deploymentNode.getId(), artifacts.info);
+                    }
+                    case "service" -> {
+                        ServiceArtifacts artifacts = buildServiceNode(name, manifest);
+                        nodes.add(artifacts.node);
+                        serviceInfoMap.put(name, artifacts.info);
+                    }
                     case "ingress" -> {
                         IngressArtifacts artifacts = buildIngressNode(name, manifest);
                         nodes.add(artifacts.node);
@@ -234,15 +244,18 @@ public class ClusterYamlService {
                 .collect(Collectors.toMap(NodeDTO::getId, node -> node, (a, b) -> a, LinkedHashMap::new));
         Map<String, List<NodeDTO>> targetsBySource = buildTargetsBySource(nodesById, cluster.getLinks());
         Map<String, List<NodeDTO>> sourcesByTarget = buildSourcesByTarget(nodesById, cluster.getLinks());
+        Map<String, String> statefulServiceSelectors = resolveStatefulServiceSelectors(cluster.getLinks(), nodesById);
+        Map<String, String> statefulServiceNamesByDeployment = resolveStatefulServiceNames(cluster.getLinks(), nodesById);
         for (NodeDTO node : nodes) {
             if (node.getKind() == null) {
                 continue;
             }
+            node.setName(trimName(node.getName()));
             switch (node.getKind().toLowerCase(Locale.ROOT)) {
                 case "configmap" -> updateConfigMapManifest((ConfigMapDTO) node, manifestsByName);
                 case "secret" -> updateSecretManifest((SecretDTO) node, manifestsByName);
-                case "deployment" -> updateDeploymentManifest((DeploymentDTO) node, manifestsByName, targetsBySource, sourcesByTarget);
-                case "service" -> updateServiceManifest((ServiceDTO) node, manifestsByName);
+                case "deployment" -> updateDeploymentManifest((DeploymentDTO) node, manifestsByName, targetsBySource, sourcesByTarget, statefulServiceNamesByDeployment);
+                case "service" -> updateServiceManifest((ServiceDTO) node, manifestsByName, statefulServiceSelectors);
                 case "ingress" -> {
                     resolveIngressTargetsFromLinks((IngressDTO) node, targetsBySource);
                     updateIngressLikeManifest((IngressDTO) node, manifestsByName);
@@ -290,14 +303,22 @@ public class ClusterYamlService {
         return node;
     }
 
-    private DeploymentArtifacts buildDeploymentNodes(String name, Map<String, Object> manifest) {
+    private DeploymentArtifacts buildDeploymentNodes(String name, Map<String, Object> manifest, DeploymentWorkloadType workloadType) {
         Map<String, Object> spec = getMap(manifest, "spec");
         int replicas = getInt(spec, "replicas", 1);
         String strategy = Optional.ofNullable(getMap(spec, "strategy"))
                 .map(strategyMap -> getString(strategyMap, "type", "RollingUpdate"))
                 .orElse("RollingUpdate");
 
-        DeploymentDTO deploymentNode = new DeploymentDTO(generateNodeId("deployment", name), name, replicas, strategy, "", 80);
+        DeploymentDTO deploymentNode = new DeploymentDTO(
+                generateNodeId("deployment", name),
+                name,
+                replicas,
+                strategy,
+                "",
+                80,
+                workloadType == null ? DeploymentWorkloadType.DEPLOYMENT : workloadType
+        );
 
         Map<String, Object> template = Optional.ofNullable(getMap(spec, "template")).orElseGet(LinkedHashMap::new);
         Map<String, Object> podSpec = getMap(template, "spec");
@@ -329,7 +350,7 @@ public class ClusterYamlService {
             nodePort = getInteger(firstPort, "nodePort");
         }
 
-        ServiceDTO node = new ServiceDTO(generateNodeId("service", name), name, type, port, nodePort, false, null);
+        ServiceDTO node = new ServiceDTO(generateNodeId("service", name), trimName(name), type, port, nodePort, false, null);
         ServiceInfo info = new ServiceInfo(node, LabelMatcher.normalize(getMap(spec, "selector")));
         info.manifest = manifest;
         return new ServiceArtifacts(node, info);
@@ -698,9 +719,17 @@ public class ClusterYamlService {
     }
 
     private void updateConfigMapManifest(ConfigMapDTO node, Map<String, ManifestEntry> manifests) {
+        boolean hasSecretEntries = Optional.ofNullable(node.getEntries())
+                .orElseGet(ArrayList::new)
+                .stream()
+                .anyMatch(entry -> ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity()));
+
+        node.setSecret(hasSecretEntries);
+
         String resourceName = resolveResourceName(node);
-        Map<String, Object> manifest = buildKeyValueManifest(node, resourceName, false);
-        manifests.put(node.getId(), new ManifestEntry("configmap", resourceName, manifest));
+        Map<String, Object> manifest = buildKeyValueManifest(node, resourceName, hasSecretEntries);
+        String manifestKind = hasSecretEntries ? "secret" : "configmap";
+        manifests.put(node.getId(), new ManifestEntry(manifestKind, resourceName, manifest));
     }
 
     private void updateSecretManifest(SecretDTO node, Map<String, ManifestEntry> manifests) {
@@ -737,7 +766,15 @@ public class ClusterYamlService {
     }
 
     private String resolveResourceName(ConfigMapDTO node) {
-        return Optional.ofNullable(node.getName()).filter(name -> !name.isBlank()).orElse(node.getId());
+        String yamlName = Optional.ofNullable(loadManifestFromYaml(node.getYaml()))
+                .map(manifest -> getMap(manifest, "metadata"))
+                .map(meta -> getString(meta, "name", null))
+                .map(this::trimName)
+                .orElse(null);
+        if (yamlName != null && !yamlName.isBlank()) {
+            return yamlName;
+        }
+        return Optional.ofNullable(trimName(node.getName())).filter(name -> !name.isBlank()).orElse(node.getId());
     }
 
     private void applyPrimaryContainerSpec(DeploymentDTO node, Map<String, Object> templateSpec) {
@@ -750,7 +787,7 @@ public class ClusterYamlService {
             templateSpec.put("containers", containers);
         }
         Map<String, Object> primary = containers.isEmpty() ? new LinkedHashMap<>() : containers.get(0);
-        primary.put("name", Optional.ofNullable(node.getName()).filter(name -> !name.isBlank()).orElse(node.getId()));
+        primary.put("name", Optional.ofNullable(trimName(node.getName())).filter(name -> !name.isBlank()).orElse(node.getId()));
         String image = resolveAssetImage(node);
         if (image != null && !image.isBlank()) {
             primary.put("image", image);
@@ -860,15 +897,25 @@ public class ClusterYamlService {
                 continue;
             }
             boolean isSecretEntry = ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity());
-            if (secret && !isSecretEntry) {
-                continue;
-            }
             if (!secret && isSecretEntry) {
                 continue;
             }
             values.put(entry.getKey(), entry.getValue() == null ? "" : entry.getValue());
         }
         return values;
+    }
+
+    private boolean isSecretConfig(ConfigMapDTO config) {
+        if (config == null) {
+            return false;
+        }
+        if (config.isSecret()) {
+            return true;
+        }
+        return Optional.ofNullable(config.getEntries())
+                .orElse(List.of())
+                .stream()
+                .anyMatch(entry -> ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity()));
     }
 
     private String encodeSecretValue(String value) {
@@ -899,10 +946,64 @@ public class ClusterYamlService {
         return dumped == null ? "" : dumped.trim();
     }
 
+    private String trimName(String name) {
+        return name == null ? null : name.trim();
+    }
+
+    private Map<String, String> resolveStatefulServiceSelectors(List<LinkDTO> links, Map<String, NodeDTO> nodesById) {
+        Map<String, String> selectors = new LinkedHashMap<>();
+        if (links == null || links.isEmpty() || nodesById == null || nodesById.isEmpty()) {
+            return selectors;
+        }
+        for (LinkDTO link : links) {
+            NodeDTO source = nodesById.get(link.getSource());
+            NodeDTO target = nodesById.get(link.getTarget());
+            if (source == null || target == null) {
+                continue;
+            }
+            if (isServiceToStateful(source, target)) {
+                selectors.put(source.getId(), trimName(target.getName()));
+            }
+            if (isServiceToStateful(target, source)) {
+                selectors.put(target.getId(), trimName(source.getName()));
+            }
+        }
+        return selectors;
+    }
+
+    private Map<String, String> resolveStatefulServiceNames(List<LinkDTO> links, Map<String, NodeDTO> nodesById) {
+        Map<String, String> serviceNames = new LinkedHashMap<>();
+        if (links == null || links.isEmpty() || nodesById == null || nodesById.isEmpty()) {
+            return serviceNames;
+        }
+        for (LinkDTO link : links) {
+            NodeDTO source = nodesById.get(link.getSource());
+            NodeDTO target = nodesById.get(link.getTarget());
+            if (source == null || target == null) {
+                continue;
+            }
+            if (isServiceToStateful(source, target)) {
+                serviceNames.put(target.getId(), trimName(source.getName()));
+            }
+            if (isServiceToStateful(target, source)) {
+                serviceNames.put(source.getId(), trimName(target.getName()));
+            }
+        }
+        return serviceNames;
+    }
+
+    private boolean isServiceToStateful(NodeDTO maybeService, NodeDTO maybeWorkload) {
+        if (!(maybeService instanceof ServiceDTO) || !(maybeWorkload instanceof DeploymentDTO deployment)) {
+            return false;
+        }
+        return deployment.resolveWorkloadType() == DeploymentWorkloadType.STATEFULSET;
+    }
+
     private void updateDeploymentManifest(DeploymentDTO node,
                                           Map<String, ManifestEntry> manifests,
                                           Map<String, List<NodeDTO>> targetsBySource,
-                                          Map<String, List<NodeDTO>> sourcesByTarget) {
+                                          Map<String, List<NodeDTO>> sourcesByTarget,
+                                          Map<String, String> statefulServiceNamesByDeployment) {
         ManifestEntry entry = manifests.get(node.getId());
         if (entry == null) {
             entry = new ManifestEntry("deployment", node.getId(), createBaseDeploymentManifest(node));
@@ -910,22 +1011,55 @@ public class ClusterYamlService {
         }
         Map<String, Object> manifest = entry.manifest;
         manifest.put("apiVersion", manifest.getOrDefault("apiVersion", "apps/v1"));
-        manifest.put("kind", "Deployment");
+        DeploymentWorkloadType workloadType = node.resolveWorkloadType();
+        String kind = switch (workloadType) {
+            case STATEFULSET -> "StatefulSet";
+            case DAEMONSET -> "DaemonSet";
+            default -> "Deployment";
+        };
+        manifest.put("kind", kind);
         Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
-        metadata.put("name", node.getName());
+        String sanitizedName = trimName(node.getName());
+        metadata.put("name", sanitizedName);
         metadata.putIfAbsent("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
 
         Map<String, Object> spec = Optional.ofNullable(getMap(manifest, "spec")).orElseGet(LinkedHashMap::new);
-        spec.put("replicas", node.getReplicas());
-        Map<String, Object> strategy = Optional.ofNullable(getMap(spec, "strategy")).orElseGet(LinkedHashMap::new);
-        strategy.put("type", node.getStrategyType());
-        spec.put("strategy", strategy);
+        if (workloadType == DeploymentWorkloadType.DAEMONSET) {
+            spec.remove("replicas");
+        } else {
+            spec.put("replicas", node.getReplicas());
+        }
+        if (workloadType == DeploymentWorkloadType.STATEFULSET) {
+            spec.remove("strategy");
+            Map<String, Object> updateStrategy = Optional.ofNullable(getMap(spec, "updateStrategy")).orElseGet(LinkedHashMap::new);
+            updateStrategy.put("type", node.getStrategyType());
+            spec.put("updateStrategy", updateStrategy);
+        } else {
+            Map<String, Object> strategy = Optional.ofNullable(getMap(spec, "strategy")).orElseGet(LinkedHashMap::new);
+            strategy.put("type", node.getStrategyType());
+            spec.put("strategy", strategy);
+            spec.remove("updateStrategy");
+        }
         Map<String, Object> template = Optional.ofNullable(getMap(spec, "template")).orElseGet(LinkedHashMap::new);
         Map<String, Object> templateSpec = Optional.ofNullable(getMap(template, "spec")).orElseGet(LinkedHashMap::new);
         applyPrimaryContainerSpec(node, templateSpec);
         applyLinkedConfigReferences(node, templateSpec, targetsBySource, sourcesByTarget);
         template.put("spec", templateSpec);
+        Map<String, Object> selector = new LinkedHashMap<>(Optional.ofNullable(getMap(spec, "selector")).orElseGet(LinkedHashMap::new));
+        Map<String, Object> matchLabels = new LinkedHashMap<>(Optional.ofNullable(getMap(selector, "matchLabels")).orElseGet(LinkedHashMap::new));
+        matchLabels.put("app", sanitizedName);
+        selector.put("matchLabels", matchLabels);
+        spec.put("selector", selector);
+        if (workloadType == DeploymentWorkloadType.STATEFULSET) {
+            String linkedServiceName = Optional.ofNullable(statefulServiceNamesByDeployment.get(node.getId()))
+                    .map(this::trimName)
+                    .filter(name -> !name.isBlank())
+                    .orElse(sanitizedName);
+            spec.put("serviceName", linkedServiceName);
+        } else {
+            spec.remove("serviceName");
+        }
         spec.put("template", template);
         manifest.put("spec", spec);
     }
@@ -1021,18 +1155,18 @@ public class ClusterYamlService {
     }
 
     private String buildEnvFromKey(ConfigMapDTO config) {
-        return (config.isSecret() ? "secret:" : "configmap:") + config.getName();
+        return (isSecretConfig(config) ? "secret:" : "configmap:") + config.getName();
     }
 
     private Map<String, Object> buildEnvFromEntry(ConfigMapDTO config) {
         Map<String, Object> entry = new LinkedHashMap<>();
         Map<String, Object> ref = new LinkedHashMap<>();
         ref.put("name", config.getName());
-        entry.put(config.isSecret() ? "secretRef" : "configMapRef", ref);
+        entry.put(isSecretConfig(config) ? "secretRef" : "configMapRef", ref);
         return entry;
     }
 
-    private void updateServiceManifest(ServiceDTO node, Map<String, ManifestEntry> manifests) {
+    private void updateServiceManifest(ServiceDTO node, Map<String, ManifestEntry> manifests, Map<String, String> statefulServiceSelectors) {
         ManifestEntry entry = manifests.get(node.getId());
         if (entry == null) {
             entry = new ManifestEntry("service", node.getId(), createBaseServiceManifest(node));
@@ -1060,6 +1194,13 @@ public class ClusterYamlService {
         }
         if (ports.isEmpty()) {
             ports.add(firstPort);
+        }
+        String desiredSelector = statefulServiceSelectors.get(node.getId());
+        if (desiredSelector != null && !desiredSelector.isBlank()) {
+            Map<String, Object> selector = Optional.ofNullable(getMap(spec, "selector")).orElseGet(LinkedHashMap::new);
+            selector.put("app", desiredSelector);
+            spec.put("selector", selector);
+            spec.put("clusterIP", "None");
         }
         spec.put("ports", ports);
         manifest.put("spec", spec);
@@ -1234,6 +1375,7 @@ public class ClusterYamlService {
         Map<String, Object> manifest = new LinkedHashMap<>();
         manifest.put("apiVersion", "apps/v1");
         DeploymentWorkloadType workloadType = node.resolveWorkloadType();
+        String sanitizedName = trimName(node.getName());
         String kind = switch (workloadType) {
             case STATEFULSET -> "StatefulSet";
             case DAEMONSET -> "DaemonSet";
@@ -1241,7 +1383,7 @@ public class ClusterYamlService {
         };
         manifest.put("kind", kind);
         Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("name", node.getName());
+        metadata.put("name", sanitizedName);
         metadata.put("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
 
@@ -1250,14 +1392,14 @@ public class ClusterYamlService {
             spec.put("replicas", node.getReplicas());
         }
         Map<String, Object> selector = new LinkedHashMap<>();
-        selector.put("matchLabels", Map.of("app", node.getName()));
+        selector.put("matchLabels", Map.of("app", sanitizedName));
         spec.put("selector", selector);
         if (workloadType == DeploymentWorkloadType.STATEFULSET) {
-            spec.put("serviceName", node.getName());
+            spec.put("serviceName", sanitizedName);
         }
         Map<String, Object> template = new LinkedHashMap<>();
         Map<String, Object> tempMeta = new LinkedHashMap<>();
-        tempMeta.put("labels", Map.of("app", node.getName()));
+        tempMeta.put("labels", Map.of("app", sanitizedName));
         template.put("metadata", tempMeta);
         Map<String, Object> tempSpec = new LinkedHashMap<>();
         tempSpec.put("containers", new ArrayList<Map<String, Object>>());
@@ -1272,8 +1414,9 @@ public class ClusterYamlService {
         Map<String, Object> manifest = new LinkedHashMap<>();
         manifest.put("apiVersion", "v1");
         manifest.put("kind", "Service");
+        String sanitizedName = trimName(node.getName());
         Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("name", node.getName());
+        metadata.put("name", sanitizedName);
         metadata.put("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
 
@@ -1282,6 +1425,9 @@ public class ClusterYamlService {
         Map<String, Object> ports = new LinkedHashMap<>();
         ports.put("port", node.getPort());
         spec.put("ports", List.of(ports));
+        Map<String, Object> selector = new LinkedHashMap<>();
+        selector.put("app", sanitizedName);
+        spec.put("selector", selector);
         manifest.put("spec", spec);
         return manifest;
     }
@@ -1290,8 +1436,9 @@ public class ClusterYamlService {
         Map<String, Object> manifest = new LinkedHashMap<>();
         manifest.put("apiVersion", "networking.k8s.io/v1");
         manifest.put("kind", "Ingress");
+        String sanitizedName = trimName(node.getName());
         Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("name", node.getName());
+        metadata.put("name", sanitizedName);
         metadata.put("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
         return manifest;
@@ -1301,8 +1448,9 @@ public class ClusterYamlService {
         Map<String, Object> manifest = new LinkedHashMap<>();
         manifest.put("apiVersion", "networking.istio.io/v1beta1");
         manifest.put("kind", "VirtualService");
+        String sanitizedName = trimName(node.getName());
         Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("name", node.getName());
+        metadata.put("name", sanitizedName);
         metadata.put("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
         Map<String, Object> spec = new LinkedHashMap<>();
