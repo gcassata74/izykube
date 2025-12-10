@@ -1,10 +1,21 @@
-.asset-list{
+.asset-list {
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(37, 99, 235, 0.06));
+  border-radius: 18px;
 
-  .button-container{
+  .izy-card {
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
+
+    .card-content {
+      padding: 1.25rem;
+    }
+  }
+
+  .button-container {
     display: flex;
     justify-content: flex-end;
     margin-bottom: 20px;
   }
-
-
 }

@@ -1,5 +1,11 @@
 .pv-admin-card {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  background: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.08), transparent 30%),
+    radial-gradient(circle at 80% 0%, rgba(37, 99, 235, 0.1), transparent 28%),
+    #ffffff;
+  overflow: hidden;
 }
 
 .pv-admin-card__header {
@@ -24,17 +30,18 @@
 
 .pv-table {
   width: 100%;
-}
+  margin-top: 0.5rem;
 
-.pv-table .actions {
-  text-align: right;
-  width: 7rem;
-}
+  .actions {
+    text-align: right;
+    width: 7rem;
+  }
 
-.name-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  .name-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
 }
 
 .name {

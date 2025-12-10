@@ -2,6 +2,23 @@
   min-width: 14rem;
 }
 
+.content {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(14, 165, 233, 0.08));
+  padding: 1rem;
+  border-radius: 18px;
+}
+
+.izy-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
+
+  .card-content {
+    padding: 1.25rem;
+  }
+}
+
 .status-wrapper {
   display: flex;
   align-items: center;

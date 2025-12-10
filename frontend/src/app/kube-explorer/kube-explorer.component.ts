@@ -446,6 +446,46 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     }
   }
 
+  parseReady(value: string): number {
+    if (!value) {
+      return 0;
+    }
+    const [readyRaw, totalRaw] = value.split('/');
+    const ready = Number(readyRaw) || 0;
+    const total = Number(totalRaw) || 0;
+    if (total > 0) {
+      return this.toPercent(ready, total);
+    }
+    return ready > 0 ? 100 : 0;
+  }
+
+  replicaPercent(item: { readyReplicas?: number; replicas?: number }): number {
+    const ready = Number(item?.readyReplicas ?? 0);
+    const total = Number(item?.replicas ?? 0);
+    if (total > 0) {
+      return this.toPercent(ready, total);
+    }
+    return ready > 0 ? 100 : 0;
+  }
+
+  daemonPercent(item: { ready?: number; desired?: number }): number {
+    const ready = Number(item?.ready ?? 0);
+    const total = Number(item?.desired ?? 0);
+    if (total > 0) {
+      return this.toPercent(ready, total);
+    }
+    return ready > 0 ? 100 : 0;
+  }
+
+  jobPercent(job: { succeeded?: number; completions?: number }): number {
+    const succeeded = Number(job?.succeeded ?? 0);
+    const total = Number(job?.completions ?? succeeded);
+    if (total > 0) {
+      return this.toPercent(succeeded, total);
+    }
+    return succeeded > 0 ? 100 : 0;
+  }
+
   private teardownAutoRefresh(): void {
     if (this.autoRefreshSubscription) {
       this.autoRefreshSubscription.unsubscribe();
@@ -615,5 +655,13 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     this.logsDialogVisible = true;
     this.logsContent = '';
     this.logsError = null;
+  }
+
+  private toPercent(value: number, total: number): number {
+    if (!total || total <= 0) {
+      return 0;
+    }
+    const clamped = Math.min(Math.max(value, 0), total);
+    return Math.round((clamped / total) * 100);
   }
 }

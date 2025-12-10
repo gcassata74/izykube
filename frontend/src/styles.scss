@@ -43,6 +43,11 @@
   --izy-app-surface: #e2e8f0;
   --izy-content-bg: #ffffff;
   --izy-header-text: #0f172a;
+  --izy-surface-highlight: #f8fafc;
+  --izy-surface-accent: #eef2ff;
+  --izy-ink: #0b1224;
+  --izy-table-glow: rgba(37, 99, 235, 0.08);
+  --izy-table-border: #e2e8f0;
 }
 
 // Color Palette
@@ -886,25 +891,49 @@ body {
 // Shared styling for Izy tables
 .izy-table {
   width: 100%;
+  position: relative;
+  padding: 0.4rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(56, 189, 248, 0.05));
+  box-shadow: 0 12px 30px rgba(2, 28, 63, 0.08);
+  overflow: hidden;
 
-  .p-paginator.p-component.p-paginator-bottom {
-    display: flex;
-    justify-content: center !important;
-    align-items: center;
-    width: 100% !important;
-    margin: 0 auto !important;
-    font-size: 0.75rem !important;
-    gap: 0.25rem;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.12), transparent 35%),
+    radial-gradient(circle at 80% 0%, rgba(37, 99, 235, 0.12), transparent 30%);
+    pointer-events: none;
+    z-index: 0;
   }
 
+  .p-datatable {
+    position: relative;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1px solid var(--izy-table-border);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    z-index: 1;
+  }
+
+  .p-datatable-wrapper {
+    border-radius: 14px;
+  }
+
+  .p-paginator.p-component.p-paginator-bottom,
   .p-paginator {
     display: flex !important;
     justify-content: center !important;
     align-items: center;
     width: 100% !important;
     margin: 0 auto !important;
-    gap: 0.25rem;
-    font-size: 0.75rem !important;
+    gap: 0.35rem;
+    font-size: 0.78rem !important;
+    background: transparent;
+    border: none;
+    padding: 0.8rem 1rem 0.4rem;
   }
 
   .p-paginator .p-paginator-current,
@@ -912,22 +941,72 @@ body {
     margin: 0 !important;
   }
 
+  .p-paginator-bottom .p-paginator-page,
+  .p-paginator-bottom .p-paginator-first,
+  .p-paginator-bottom .p-paginator-last,
+  .p-paginator-bottom .p-paginator-prev,
+  .p-paginator-bottom .p-paginator-next,
+  .p-paginator .p-paginator-page,
+  .p-paginator .p-paginator-first,
+  .p-paginator .p-paginator-last,
+  .p-paginator .p-paginator-prev,
+  .p-paginator .p-paginator-next {
+    min-width: 2.1rem;
+    height: 2.1rem;
+    line-height: 2.1rem;
+    padding: 0;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: var(--izy-ink);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  }
+
+  .p-paginator .p-highlight {
+    background: linear-gradient(90deg, #2563eb, #38bdf8);
+    color: #ffffff;
+    border-color: transparent;
+    font-weight: 700;
+  }
+
   .p-datatable-thead > tr > th {
     font-weight: 600;
-    border-bottom: 1px solid #e5e7eb;
+    border: none;
+    color: #e2e8f0;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    background: var(--izy-sidebar-bg);
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+    padding: 0.85rem 1rem;
   }
 
   .p-datatable-tbody > tr > td {
-    border-bottom: 1px solid #f3f4f6;
+    border: none;
+    border-bottom: 1px solid #eef2ff;
+    background: #ffffff;
+    padding: 0.85rem 1rem;
+    color: var(--izy-ink);
   }
 
-  .p-datatable-tbody > tr:hover {
-    background-color: #f9fafb;
+  .p-datatable-tbody > tr:nth-child(even) > td {
+    background: var(--izy-surface-highlight);
+  }
+
+  .p-datatable-tbody > tr:hover > td {
+    background: var(--izy-surface-accent);
+    box-shadow: inset 0 1px 0 rgba(37, 99, 235, 0.08), inset 0 -1px 0 rgba(37, 99, 235, 0.08);
+  }
+
+  .p-datatable-tbody > tr.p-highlight > td {
+    background: linear-gradient(90deg, rgba(37, 99, 235, 0.12), rgba(14, 165, 233, 0.12)) !important;
+    box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.22);
+    color: #0f172a;
   }
 
   .p-datatable-thead > tr > th:last-child,
   .p-datatable-tbody > tr > td:last-child {
-    width: 120px;
+    width: 140px;
     text-align: right;
     white-space: nowrap;
   }
@@ -936,7 +1015,7 @@ body {
     display: inline-flex;
     justify-content: flex-end;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.35rem;
   }
 
   .action-buttons .p-button {
@@ -945,41 +1024,38 @@ body {
     padding: 0;
   }
 
-  .p-paginator-bottom {
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center;
-    width: 100% !important;
-    margin: 0 auto !important;
-    font-size: 0.8rem !important;
-    border: none;
-    background: transparent;
-    box-shadow: none;
-    padding-top: 0.75rem;
+  .p-progressbar {
+    height: 10px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
 
-    .p-paginator-left,
-    .p-paginator-right {
-      margin: 0;
+    .p-progressbar-value {
+      border-radius: 999px;
+      background: linear-gradient(90deg, #22d3ee 0%, #2563eb 100%);
     }
   }
 
-  .p-paginator-bottom .p-paginator-page,
-  .p-paginator-bottom .p-paginator-first,
-  .p-paginator-bottom .p-paginator-last,
-  .p-paginator-bottom .p-paginator-prev,
-  .p-paginator-bottom .p-paginator-next {
-    min-width: 1.75rem;
-    height: 1.75rem;
-    line-height: 1.75rem;
-    padding: 0;
-    border-radius: 999px;
-    font-size: 0.75rem;
+  .progress-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 140px;
   }
 
-  .p-paginator-bottom .p-highlight {
-    background-color: #e5ecff;
-    color: #1d4ed8;
+  .progress-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.86rem;
+    color: var(--izy-ink);
     font-weight: 600;
+  }
+
+  .progress-hint {
+    color: var(--izy-text-muted);
+    font-weight: 500;
+    font-size: 0.8rem;
   }
 }
 

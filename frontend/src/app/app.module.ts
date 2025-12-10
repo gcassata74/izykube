@@ -8,6 +8,7 @@ import { SplitButtonModule } from 'primeng/splitbutton';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { ProgressBarModule } from 'primeng/progressbar';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { HomeComponent } from './home/home.component';
@@ -104,6 +105,7 @@ import { PersistentVolumeAdminComponent } from './settings/persistent-volume-adm
     DialogModule,
     InputTextareaModule,
     ProgressSpinnerModule,
+    ProgressBarModule,
     ContextMenuModule,
     CheckboxModule,
     EditorModule,

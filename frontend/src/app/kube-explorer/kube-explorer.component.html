@@ -96,7 +96,7 @@
                             <th>Name</th>
                             <th>Namespace</th>
                             <th>Status</th>
-                            <th>Ready</th>
+                            <th>Readiness</th>
                             <th>Restarts</th>
                             <th>Node</th>
                             <th>Age</th>
@@ -114,7 +114,15 @@
                   {{ pod.status }}
                 </span>
                             </td>
-                            <td>{{ pod.ready }}</td>
+                            <td>
+                                <div class="progress-cell">
+                                    <div class="progress-meta">
+                                        <span>{{ pod.ready }}</span>
+                                        <span class="progress-hint">ready</span>
+                                    </div>
+                                    <p-progressBar [value]="parseReady(pod.ready)"></p-progressBar>
+                                </div>
+                            </td>
                             <td>{{ pod.restarts }}</td>
                             <td>{{ pod.node || '-' }}</td>
                             <td>{{ pod.age }}</td>
@@ -147,7 +155,7 @@
                         <tr>
                             <th>Name</th>
                             <th>Namespace</th>
-                            <th>Ready</th>
+                            <th>Progress</th>
                             <th>Desired</th>
                             <th>Updated</th>
                             <th>Available</th>
@@ -159,7 +167,15 @@
                         <tr [ngClass]="deploymentStatusClass(deployment)">
                             <td>{{ deployment.name }}</td>
                             <td>{{ deployment.namespace }}</td>
-                            <td>{{ deployment.readyReplicas }}</td>
+                            <td>
+                                <div class="progress-cell">
+                                    <div class="progress-meta">
+                                        <span>{{ deployment.readyReplicas }}/{{ deployment.replicas }}</span>
+                                        <span class="progress-hint">ready</span>
+                                    </div>
+                                    <p-progressBar [value]="replicaPercent(deployment)"></p-progressBar>
+                                </div>
+                            </td>
                             <td>{{ deployment.replicas }}</td>
                             <td>{{ deployment.updatedReplicas }}</td>
                             <td>{{ deployment.availableReplicas }}</td>
@@ -323,6 +339,7 @@
                         <tr>
                             <th>Name</th>
                             <th>Namespace</th>
+                            <th>Progress</th>
                             <th>Completions</th>
                             <th>Succeeded</th>
                             <th>Failed</th>
@@ -334,6 +351,15 @@
                         <tr>
                             <td>{{ job.name }}</td>
                             <td>{{ job.namespace }}</td>
+                            <td>
+                                <div class="progress-cell">
+                                    <div class="progress-meta">
+                                        <span>{{ job.succeeded ?? 0 }}/{{ job.completions ?? job.succeeded ?? 0 }}</span>
+                                        <span class="progress-hint">done</span>
+                                    </div>
+                                    <p-progressBar [value]="jobPercent(job)"></p-progressBar>
+                                </div>
+                            </td>
                             <td>{{ job.completions ?? '-' }}</td>
                             <td>{{ job.succeeded ?? '-' }}</td>
                             <td>{{ job.failed ?? '-' }}</td>
@@ -407,7 +433,15 @@
                             <td>{{ daemon.namespace }}</td>
                             <td>{{ daemon.desired ?? '-' }}</td>
                             <td>{{ daemon.current ?? '-' }}</td>
-                            <td>{{ daemon.ready ?? '-' }}</td>
+                            <td>
+                                <div class="progress-cell">
+                                    <div class="progress-meta">
+                                        <span>{{ daemon.ready ?? 0 }}/{{ daemon.desired ?? '-' }}</span>
+                                        <span class="progress-hint">ready</span>
+                                    </div>
+                                    <p-progressBar [value]="daemonPercent(daemon)"></p-progressBar>
+                                </div>
+                            </td>
                             <td>{{ daemon.available ?? '-' }}</td>
                             <td>{{ daemon.updated ?? '-' }}</td>
                             <td>{{ daemon.age }}</td>
@@ -440,7 +474,15 @@
                         <tr>
                             <td>{{ stateful.name }}</td>
                             <td>{{ stateful.namespace }}</td>
-                            <td>{{ stateful.readyReplicas ?? '-' }}</td>
+                            <td>
+                                <div class="progress-cell">
+                                    <div class="progress-meta">
+                                        <span>{{ stateful.readyReplicas ?? 0 }}/{{ stateful.replicas ?? '-' }}</span>
+                                        <span class="progress-hint">ready</span>
+                                    </div>
+                                    <p-progressBar [value]="replicaPercent(stateful)"></p-progressBar>
+                                </div>
+                            </td>
                             <td>{{ stateful.replicas ?? '-' }}</td>
                             <td>{{ stateful.updatedReplicas ?? '-' }}</td>
                             <td>{{ stateful.age }}</td>
