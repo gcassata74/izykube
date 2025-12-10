@@ -28,7 +28,10 @@ export class Cluster {
 
      const nodeIds = new Set(normalizedNodes.map((node: any) => node?.id));
      const filteredLinks = Array.isArray(apiResponse.links)
-         ? apiResponse.links.filter((link: any) => nodeIds.has(link?.source) && nodeIds.has(link?.target))
+         ? apiResponse.links
+             .map((link: any) => Link.fromJSON(link))
+             .filter((link: Link | null): link is Link => !!link)
+             .filter((link: Link) => nodeIds.has(link.source) && nodeIds.has(link.target))
          : [];
 
      return new Cluster(

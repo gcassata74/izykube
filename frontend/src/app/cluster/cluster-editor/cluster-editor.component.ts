@@ -1,9 +1,8 @@
-import { Deployment } from './../../model/deployment.class';
 import { ClusterService } from 'src/app/services/cluster.service';
 import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { Store, select } from '@ngrx/store';
+import { Store } from '@ngrx/store';
 import { Button, ButtonAction } from '../../model/button.interface';
-import { EMPTY, Observable, Subscription, catchError, filter, finalize, of, switchMap, take, tap, throwError } from 'rxjs';
+import { EMPTY, Observable, Subscription, catchError, combineLatest, filter, finalize, map, of, switchMap, take, tap, throwError } from 'rxjs';
 import { DiagramComponent } from '../../diagram/diagram.component';
 import { ToolbarService } from '../../services/toolbar.service';
 import { getCurrentAction, getCurrentCluster } from '../../store/selectors/selectors';
@@ -13,6 +12,8 @@ import { Cluster } from 'src/app/model/cluster.class';
 import { NotificationService } from 'src/app/services/notification.service';
 import { ClusterStatusEnum } from '../enum/cluster.-status-enum';
 import { TemplateService } from 'src/app/services/template.service';
+import { DiagramService } from 'src/app/services/diagram.service';
+import { Link } from 'src/app/model/link.class';
 
 @Component({
   selector: 'app-cluster-editor',
@@ -24,11 +25,13 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
   @ViewChild('diagram') diagramComponent!: DiagramComponent;
   subscription: Subscription = new Subscription();
   clusterId!: string;
+  selectedLink$!: Observable<Link | null>;
   private exportActionsEnabled = false;
 
   constructor(
     private toolbarService: ToolbarService,
     private store: Store,
+    private diagramService: DiagramService,
     protected notificationService: NotificationService,
     private clusterService: ClusterService,
     private templateService: TemplateService,
@@ -36,6 +39,25 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
+    this.selectedLink$ = combineLatest([
+      this.diagramService.selectedLinkId$,
+      this.store.select(getCurrentCluster)
+    ]).pipe(
+      map(([linkId, cluster]) => {
+        if (!linkId) {
+          return null;
+        }
+        const links = cluster?.links || [];
+        const match = links.find((link: any) => link.id === linkId);
+        if (!match) {
+          return null;
+        }
+        return {
+          ...match,
+          type: match.type === 'Use' ? 'Use' : 'Expose'
+        } as Link;
+      })
+    );
     this.loadCluster();
     this.setupActionHandlers();
   }

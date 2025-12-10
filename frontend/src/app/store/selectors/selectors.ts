@@ -46,3 +46,8 @@ export const getSelectedNodeId = createSelector(
   (state: ActionState) => state?.currentAction
 );
 
+export const getLinkById = (linkId: string) => createSelector(
+  getCurrentCluster,
+  (currentCluster: Cluster) => {
+    return (currentCluster?.links || []).find((link: any) => link.id === linkId);
+  });

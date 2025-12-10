@@ -76,6 +76,27 @@ export const clusterReducer = createReducer(
     }
   })),
 
+  on(actions.updateLink, (state, { linkId, changes }) => ({
+    ...state,
+    currentCluster: {
+      ...state.currentCluster,
+      links: (state.currentCluster.links || []).map((link: any) => {
+        const matches = link.id === linkId || (!link.id && `${link.source}->${link.target}` === linkId);
+        if (!matches) {
+          return link;
+        }
+        const nextType = changes.type === 'Use' ? 'Use' : changes.type === 'Expose' ? 'Expose' : (link.type || 'Expose');
+        const nextNote = 'note' in changes ? changes.note : link.note;
+        return {
+          ...link,
+          ...changes,
+          type: nextType,
+          ...(nextNote !== undefined ? { note: nextNote } : {})
+        };
+      })
+    }
+  })),
+
 
   on(actions.updateDiagram, (state, { diagramData, links }) => ({
     ...state,

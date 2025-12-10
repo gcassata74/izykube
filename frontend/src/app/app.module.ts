@@ -63,6 +63,7 @@ import { SidebarComponent } from './layout/sidebar/sidebar.component';
 import { TooltipModule } from 'primeng/tooltip';
 import { SettingsComponent } from './settings/settings.component';
 import { PersistentVolumeAdminComponent } from './settings/persistent-volume-admin/persistent-volume-admin.component';
+import { LinkPropertiesFormComponent } from './diagram/link-properties-form/link-properties-form.component';
 
 @NgModule({
   declarations: [
@@ -90,6 +91,7 @@ import { PersistentVolumeAdminComponent } from './settings/persistent-volume-adm
     SidebarComponent,
     SettingsComponent,
     PersistentVolumeAdminComponent,
+    LinkPropertiesFormComponent,
   ],
   imports: [
     SharedModule,

@@ -13,6 +13,7 @@ export const ADD_NODE = '[Cluster] Add Node';
 export const REMOVE_NODE = '[Cluster] Remove Node';
 export const ADD_LINK = '[Cluster] Add Link';
 export const REMOVE_LINK = '[Cluster] Remove Link';
+export const UPDATE_LINK = '[Cluster] Update Link';
 export const UPDATE_DIAGRAM = '[Cluster] Update Diagram';
 export const UPDATE_NODE = '[Cluster] Update Node';
 export const UPDATE_CLUSTER = '[Cluster] Update Cluster';
@@ -59,6 +60,11 @@ export const addLink = createAction(
 export const removeLink = createAction(
   REMOVE_LINK,
   props<{ source: string, target:string }>()
+);
+
+export const updateLink = createAction(
+  UPDATE_LINK,
+  props<{ linkId: string, changes: Partial<Link> }>()
 );
 
 export const updateDiagram = createAction(

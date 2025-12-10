@@ -167,6 +167,7 @@
                 [attr.y1]="coords.y1"
                 [attr.x2]="coords.x2"
                 [attr.y2]="coords.y2"
+                [attr.stroke-dasharray]="link.type === 'Use' ? '6 3' : null"
                 class="minimap-link"></line>
             </ng-container>
           </ng-container>

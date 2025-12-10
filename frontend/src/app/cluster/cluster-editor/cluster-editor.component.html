@@ -3,6 +3,11 @@
     <app-diagram #diagram></app-diagram>
   </div>
   <div class="config-panel">
-    <app-node-form></app-node-form>
+    <ng-container *ngIf="selectedLink$ | async as selectedLink; else nodePanel">
+      <app-link-properties-form [link]="selectedLink"></app-link-properties-form>
+    </ng-container>
+    <ng-template #nodePanel>
+      <app-node-form></app-node-form>
+    </ng-template>
   </div>
 </div>

@@ -11,6 +11,8 @@ import { NodeFactoryService } from './node.factory.service';
 export class DiagramService {
   private _selectedNodeId = new BehaviorSubject<string | null>(null);
   readonly selectedNodeId$ = this._selectedNodeId.asObservable();
+  private _selectedLinkId = new BehaviorSubject<string | null>(null);
+  readonly selectedLinkId$ = this._selectedLinkId.asObservable();
 
   constructor(
     private store: Store,
@@ -38,6 +40,9 @@ export class DiagramService {
     }
 
     this._selectedNodeId.next(nodeId);
+    if (nodeId) {
+      this.clearSelectedLink();
+    }
 
     if (nodeId) {
       this.store.dispatch(selectNode({ nodeId }));
@@ -46,6 +51,20 @@ export class DiagramService {
 
   clearSelectedNode(): void {
     this.setSelectedNode(null);
+  }
+
+  setSelectedLink(linkId: string | null): void {
+    if (this._selectedLinkId.getValue() === linkId) {
+      return;
+    }
+    if (linkId) {
+      this.clearSelectedNode();
+    }
+    this._selectedLinkId.next(linkId);
+  }
+
+  clearSelectedLink(): void {
+    this._selectedLinkId.next(null);
   }
 
   private sanitizeFormValues(values: any): any {

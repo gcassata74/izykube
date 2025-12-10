@@ -1,0 +1,58 @@
+<div class="link-form">
+  <div class="link-form__header">
+    <div class="link-form__icon">
+      <i class="pi pi-link"></i>
+    </div>
+    <div class="link-form__titles">
+      <div class="link-form__title">Link Properties</div>
+      <div class="link-form__subtitle">
+        {{ link?.source || 'Source' }} → {{ link?.target || 'Target' }}
+      </div>
+    </div>
+  </div>
+
+  <div class="link-form__body">
+    <form [formGroup]="form" class="link-form__fields">
+      <div class="p-field">
+        <label for="linkType">Link Type</label>
+        <select
+          id="linkType"
+          formControlName="linkType"
+          class="link-form__select">
+          <option value="Expose">Expose</option>
+          <option value="Use">Use</option>
+        </select>
+      </div>
+
+      <div class="link-form__info">
+        <div class="link-form__pill">Interpretation</div>
+        <div class="link-form__info-text">
+          <div>Expose → Service exposes Deployment</div>
+          <div>Use → Deployment uses Service (DB, API)</div>
+        </div>
+      </div>
+
+      <div class="link-form__preview">
+        <div class="link-form__preview-label">Preview</div>
+        <div class="link-form__preview-canvas" [class.link-form__preview-canvas--use]="selectedType === 'Use'">
+          <span class="link-form__dot"></span>
+          <span
+            class="link-form__line"
+            [class.link-form__line--dashed]="selectedType === 'Use'"></span>
+          <span class="link-form__arrow">▶</span>
+        </div>
+      </div>
+
+      <div class="p-field">
+        <label for="note">Notes</label>
+        <textarea
+          id="note"
+          pInputTextarea
+          formControlName="note"
+          [autoResize]="true"
+          rows="3"
+          placeholder="Optional notes about this link"></textarea>
+      </div>
+    </form>
+  </div>
+</div>
