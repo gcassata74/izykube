@@ -34,6 +34,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
   formMapper: Record<string, Type<any>> = {
     'deployment': DeploymentFormComponent,
     'configmap': ConfigBundleFormComponent,
+    'configbundle': ConfigBundleFormComponent,
     'secret': ConfigBundleFormComponent,
     'service': ServiceFormComponent,
     'ingress': IngressFormComponent,

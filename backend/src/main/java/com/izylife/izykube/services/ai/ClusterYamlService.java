@@ -719,17 +719,35 @@ public class ClusterYamlService {
     }
 
     private void updateConfigMapManifest(ConfigMapDTO node, Map<String, ManifestEntry> manifests) {
-        boolean hasSecretEntries = Optional.ofNullable(node.getEntries())
-                .orElseGet(ArrayList::new)
-                .stream()
-                .anyMatch(entry -> ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity()));
+        List<ConfigEntryDTO> entries = Optional.ofNullable(node.getEntries()).orElseGet(ArrayList::new);
 
-        node.setSecret(hasSecretEntries);
+        boolean hasPlainEntries = entries.stream()
+                .anyMatch(entry -> entry != null && !ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity()));
+
+        boolean hasSecretEntries = entries.stream()
+                .anyMatch(entry -> entry != null && ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity()));
 
         String resourceName = resolveResourceName(node);
-        Map<String, Object> manifest = buildKeyValueManifest(node, resourceName, hasSecretEntries);
-        String manifestKind = hasSecretEntries ? "secret" : "configmap";
-        manifests.put(node.getId(), new ManifestEntry(manifestKind, resourceName, manifest));
+
+        manifests.entrySet().removeIf(entry ->
+                entry.getKey().equals(node.getId()) || entry.getKey().startsWith(node.getId() + ":"));
+
+        if (hasPlainEntries) {
+            Map<String, Object> configMapManifest = buildKeyValueManifest(node, resourceName, false);
+            manifests.put(node.getId() + ":configmap", new ManifestEntry("configmap", resourceName, configMapManifest));
+        }
+
+        if (hasSecretEntries) {
+            Map<String, Object> secretManifest = buildKeyValueManifest(node, resourceName, true);
+            manifests.put(node.getId() + ":secret", new ManifestEntry("secret", resourceName, secretManifest));
+        }
+
+        if (!hasPlainEntries && !hasSecretEntries) {
+            boolean secretManifest = isSecretConfig(node);
+            Map<String, Object> manifest = buildKeyValueManifest(node, resourceName, secretManifest);
+            String manifestKind = secretManifest ? "secret" : "configmap";
+            manifests.put(node.getId(), new ManifestEntry(manifestKind, resourceName, manifest));
+        }
     }
 
     private void updateSecretManifest(SecretDTO node, Map<String, ManifestEntry> manifests) {
@@ -897,26 +915,44 @@ public class ClusterYamlService {
                 continue;
             }
             boolean isSecretEntry = ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity());
-            if (!secret && isSecretEntry) {
-                continue;
+            if (secret) {
+                if (!isSecretEntry) {
+                    continue;
+                }
+                values.put(entry.getKey(), entry.getValue() == null ? "" : entry.getValue());
+            } else {
+                if (isSecretEntry) {
+                    continue;
+                }
+                values.put(entry.getKey(), entry.getValue() == null ? "" : entry.getValue());
             }
-            values.put(entry.getKey(), entry.getValue() == null ? "" : entry.getValue());
         }
         return values;
     }
 
     private boolean isSecretConfig(ConfigMapDTO config) {
+        return detectBundleSensitivity(config).hasSecretEntries();
+    }
+
+    private BundleSensitivity detectBundleSensitivity(ConfigMapDTO config) {
         if (config == null) {
-            return false;
+            return new BundleSensitivity(false, false);
         }
-        if (config.isSecret()) {
-            return true;
-        }
-        return Optional.ofNullable(config.getEntries())
+        boolean hasPlainEntries = Optional.ofNullable(config.getEntries())
                 .orElse(List.of())
                 .stream()
+                .filter(Objects::nonNull)
+                .anyMatch(entry -> !ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity()));
+        boolean hasSecretEntries = Optional.ofNullable(config.getEntries())
+                .orElse(List.of())
+                .stream()
+                .filter(Objects::nonNull)
                 .anyMatch(entry -> ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity()));
+        boolean secretKind = "secret".equalsIgnoreCase(config.getKind());
+        return new BundleSensitivity(hasPlainEntries, hasSecretEntries || secretKind);
     }
+
+    private record BundleSensitivity(boolean hasPlainEntries, boolean hasSecretEntries) { }
 
     private String encodeSecretValue(String value) {
         byte[] bytes = value == null ? new byte[0] : value.getBytes(StandardCharsets.UTF_8);
@@ -1125,12 +1161,36 @@ public class ClusterYamlService {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
         for (ConfigMapDTO config : linkedConfigs) {
-            String key = buildEnvFromKey(config);
-            if (existingKeys.contains(key)) {
+            String name = config.getName();
+            if (name == null || name.isBlank()) {
                 continue;
             }
-            envFrom.add(buildEnvFromEntry(config));
-            existingKeys.add(key);
+
+            BundleSensitivity sensitivity = detectBundleSensitivity(config);
+
+            if (sensitivity.hasPlainEntries()) {
+                String key = "configmap:" + name;
+                if (!existingKeys.contains(key)) {
+                    envFrom.add(buildEnvFromEntry(name, false));
+                    existingKeys.add(key);
+                }
+            }
+
+            if (sensitivity.hasSecretEntries()) {
+                String key = "secret:" + name;
+                if (!existingKeys.contains(key)) {
+                    envFrom.add(buildEnvFromEntry(name, true));
+                    existingKeys.add(key);
+                }
+            }
+
+            if (!sensitivity.hasPlainEntries() && !sensitivity.hasSecretEntries()) {
+                String key = "configmap:" + name;
+                if (!existingKeys.contains(key)) {
+                    envFrom.add(buildEnvFromEntry(name, false));
+                    existingKeys.add(key);
+                }
+            }
         }
     }
 
@@ -1154,15 +1214,11 @@ public class ClusterYamlService {
         return null;
     }
 
-    private String buildEnvFromKey(ConfigMapDTO config) {
-        return (isSecretConfig(config) ? "secret:" : "configmap:") + config.getName();
-    }
-
-    private Map<String, Object> buildEnvFromEntry(ConfigMapDTO config) {
+    private Map<String, Object> buildEnvFromEntry(String name, boolean secret) {
         Map<String, Object> entry = new LinkedHashMap<>();
         Map<String, Object> ref = new LinkedHashMap<>();
-        ref.put("name", config.getName());
-        entry.put(isSecretConfig(config) ? "secretRef" : "configMapRef", ref);
+        ref.put("name", name);
+        entry.put(secret ? "secretRef" : "configMapRef", ref);
         return entry;
     }
 

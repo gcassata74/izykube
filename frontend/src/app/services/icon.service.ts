@@ -11,6 +11,7 @@ export class IconService {
     'ingress': 'pi pi-globe',
     'service': 'pi pi-share-alt',
     'configmap': 'pi pi-clone',
+    'configbundle': 'pi pi-clone',
     'secret': 'pi pi-lock',
     'container': 'pi pi-box',
     'deployment': 'pi pi-sitemap',

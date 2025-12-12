@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -180,7 +181,7 @@ class ClusterYamlServiceTest {
     }
 
     @Test
-    void exportClusterConvertsConfigBundleWithSecretEntryToSecret() {
+    void exportClusterSplitsConfigBundleIntoConfigMapAndSecret() {
         ConfigMapDTO bundle = new ConfigMapDTO("config-bundle-a", "config-bundle-a", null);
 
         ConfigEntryDTO plainEntry = new ConfigEntryDTO();
@@ -202,10 +203,126 @@ class ClusterYamlServiceTest {
 
         String exported = service.exportCluster(cluster);
 
+        assertTrue(exported.contains("kind: ConfigMap"));
         assertTrue(exported.contains("kind: Secret"));
         assertTrue(exported.contains("name: config-bundle-a"));
-        assertTrue(exported.contains("bXlzcWwtc2VydmljZQ==")); // mysql-service
-        assertTrue(exported.contains("YWRtaW4=")); // admin
+        assertTrue(exported.contains("MYSQL_HOST: mysql-service"));
+        assertTrue(exported.contains("YWRtaW4=")); // admin encoded
+    }
+
+    @Test
+    void exportClusterDoesNotDuplicateKeysBetweenConfigMapAndSecret() {
+        ConfigMapDTO bundle = new ConfigMapDTO("config-bundle-b", "config-bundle-b", null);
+
+        bundle.setEntries(List.of(
+                entry("DB_USER", "root", ConfigEntrySensitivity.PLAIN),
+                entry("DB_NAME", "testdb", ConfigEntrySensitivity.PLAIN),
+                entry("DB_HOST", "mysql-service", ConfigEntrySensitivity.PLAIN),
+                entry("DB_PASSWORD", "admin", ConfigEntrySensitivity.SECRET)
+        ));
+        bundle.setNamespace("test-image");
+
+        ClusterDTO cluster = ClusterDTO.builder().diagram("{}").build();
+        cluster.getNodes().add(bundle);
+
+        String exported = service.exportCluster(cluster);
+
+        Map<String, Object> configMapDoc = null;
+        Map<String, Object> secretDoc = null;
+        for (Object doc : new Yaml().loadAll(exported)) {
+            if (!(doc instanceof Map<?, ?> map)) {
+                continue;
+            }
+            if ("ConfigMap".equals(map.get("kind"))) {
+                configMapDoc = castMap(doc);
+            } else if ("Secret".equals(map.get("kind"))) {
+                secretDoc = castMap(doc);
+            }
+        }
+
+        assertNotNull(configMapDoc, "Expected ConfigMap document");
+        assertNotNull(secretDoc, "Expected Secret document");
+
+        Map<String, Object> configData = castMap(configMapDoc.get("data"));
+        assertEquals(3, configData.size());
+        assertEquals("root", configData.get("DB_USER"));
+        assertEquals("testdb", configData.get("DB_NAME"));
+        assertEquals("mysql-service", configData.get("DB_HOST"));
+        assertFalse(configData.containsKey("DB_PASSWORD"), "Secret key must not appear in ConfigMap");
+
+        Map<String, Object> secretData = castMap(secretDoc.get("data"));
+        assertEquals(1, secretData.size());
+        assertTrue(secretData.containsKey("DB_PASSWORD"));
+        assertTrue(secretData.get("DB_PASSWORD").toString().startsWith("YWRtaW4"), "Secret must be encoded");
+        assertFalse(secretData.containsKey("DB_USER"));
+        assertFalse(secretData.containsKey("DB_NAME"));
+        assertFalse(secretData.containsKey("DB_HOST"));
+    }
+
+    @Test
+    void exportClusterAddsBothEnvFromEntriesForMixedBundles() {
+        ConfigMapDTO bundle = new ConfigMapDTO("config-bundle-b", "config-bundle-b", null);
+        bundle.setEntries(List.of(
+                entry("DB_USER", "root", ConfigEntrySensitivity.PLAIN),
+                entry("DB_PASSWORD", "admin", ConfigEntrySensitivity.SECRET)
+        ));
+
+        DeploymentDTO deployment = new DeploymentDTO("deployment:mysql", "deployment-a", 1, "RollingUpdate", "", 8080);
+
+        LinkDTO link = new LinkDTO();
+        link.setSource(bundle.getId());
+        link.setTarget(deployment.getId());
+
+        ClusterDTO cluster = ClusterDTO.builder()
+                .diagram("{}")
+                .build();
+        cluster.setNodes(new ArrayList<>(List.of(bundle, deployment)));
+        cluster.setLinks(List.of(link));
+
+        String exported = service.exportCluster(cluster);
+
+        Map<String, Object> deploymentManifest = null;
+        for (Object doc : new Yaml().loadAll(exported)) {
+            if (!(doc instanceof Map<?, ?> map)) {
+                continue;
+            }
+            if ("Deployment".equals(map.get("kind"))) {
+                deploymentManifest = castMap(doc);
+                break;
+            }
+        }
+
+        assertNotNull(deploymentManifest, "Expected Deployment manifest");
+        Map<String, Object> spec = castMap(deploymentManifest.get("spec"));
+        Map<String, Object> template = castMap(spec.get("template"));
+        Map<String, Object> podSpec = castMap(template.get("spec"));
+        var containers = (List<Map<String, Object>>) podSpec.get("containers");
+        Map<String, Object> container = containers.get(0);
+        List<Map<String, Object>> envFrom = (List<Map<String, Object>>) container.get("envFrom");
+
+        Map<String, Object> configMapRef = envFrom.stream()
+                .map(entry -> castMap(entry.get("configMapRef")))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+        Map<String, Object> secretRef = envFrom.stream()
+                .map(entry -> castMap(entry.get("secretRef")))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+
+        assertNotNull(configMapRef, "Expected configMapRef in envFrom");
+        assertNotNull(secretRef, "Expected secretRef in envFrom");
+        assertEquals("config-bundle-b", configMapRef.get("name"));
+        assertEquals("config-bundle-b", secretRef.get("name"));
+    }
+
+    private ConfigEntryDTO entry(String key, String value, ConfigEntrySensitivity sensitivity) {
+        ConfigEntryDTO e = new ConfigEntryDTO();
+        e.setKey(key);
+        e.setValue(value);
+        e.setSensitivity(sensitivity);
+        return e;
     }
 
     @Test

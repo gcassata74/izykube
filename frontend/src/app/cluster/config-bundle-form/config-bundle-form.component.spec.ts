@@ -12,6 +12,7 @@ import { ButtonModule } from 'primeng/button';
 import { ConfigBundleFormComponent } from './config-bundle-form.component';
 import { AutoSaveService } from '../../services/auto-save.service';
 import { NotificationService } from '../../services/notification.service';
+import { ensureConfigBundleDefaults } from '../../model/config-bundle.model';
 
 class AutoSaveStub {
   enableAutoSave() {}
@@ -57,7 +58,15 @@ describe('ConfigBundleFormComponent', () => {
       id: 'bundle-1',
       name: 'app-config',
       kind: 'configmap',
-      isAffected: false
+      isAffected: false,
+      configBundle: ensureConfigBundleDefaults({
+        id: 'bundle-1',
+        name: 'app-config',
+        namespace: 'default',
+        annotations: {},
+        entries: [],
+        showSecretsAsPlain: false
+      })
     } as any;
     fixture.detectChanges();
   });
@@ -89,5 +98,21 @@ describe('ConfigBundleFormComponent', () => {
     component.pasteBuffer = 'USER=demo\nPASSWORD=safe';
     component.applyPasteBuffer();
     expect(component.entryControls.length).toBeGreaterThan(2);
+  });
+
+  it('should persist entries inside configBundle payload', () => {
+    const entry = component.entriesArray.at(0)!;
+    entry.patchValue({ key: 'API_URL', value: 'https://api.local', sensitivity: 'PLAIN' });
+
+    const payload = (component as any).buildNodeUpdatePayload(component.selectedNode);
+    expect(payload.configBundle.entries[0]).toEqual({
+      key: 'API_URL',
+      value: 'https://api.local',
+      sensitivity: 'PLAIN'
+    });
+
+    const updatedNode = { ...(component.selectedNode as any), ...payload };
+    const rebuiltBundle = (component as any).resolveBundleFromNode(updatedNode);
+    expect(rebuiltBundle.entries[0].value).toBe('https://api.local');
   });
 });

@@ -49,6 +49,12 @@ export class NodeFactoryService {
           annotations: {},
           entries: []
         }, 'configmap');
+      case 'configbundle':
+        return new ConfigBundleNode(id, trimmedName, {
+          namespace: 'default',
+          annotations: {},
+          entries: []
+        }, 'configbundle');
       case 'secret':
         return new ConfigBundleNode(id, trimmedName, {
           namespace: 'default',

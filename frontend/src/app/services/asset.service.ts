@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpParams } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable, map, of } from 'rxjs';
 import { Asset } from '../model/asset.class';
 import { DataService } from './data.service';
 
@@ -30,6 +30,9 @@ export class AssetService {
   }
 
   getAllAssets(): Observable<Asset[]> {
+    if ((window as any)?.Cypress && Array.isArray((window as any).__izyAssets)) {
+      return of((window as any).__izyAssets as Asset[]);
+    }
     return this.dataService.get<Asset[]>('/asset/all');
   }
 

@@ -8,7 +8,7 @@ export class ConfigBundleNode extends Node {
     id: string,
     name: string,
     initial: Partial<ConfigBundle> = {},
-    kind: 'configmap' | 'secret' = 'configmap'
+    kind: 'configmap' | 'secret' | 'configbundle' = 'configbundle'
   ) {
     super(id, name, kind);
     this.configBundle = ensureConfigBundleDefaults({

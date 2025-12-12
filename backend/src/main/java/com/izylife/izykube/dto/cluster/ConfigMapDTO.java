@@ -15,7 +15,10 @@ import java.util.List;
 public class ConfigMapDTO extends NodeDTO {
 
     private String yaml;
-    private boolean secret;
+    /**
+     * Legacy override to treat the whole resource as a Secret when no per-entry sensitivity is available.
+     * Ignored when entries are provided.
+     */
     private List<ConfigEntryDTO> entries = new ArrayList<>();
     private Boolean showSecretsAsPlain;
 
@@ -36,7 +39,6 @@ public class ConfigMapDTO extends NodeDTO {
     protected ConfigMapDTO(String id, String name, String yaml, boolean secret, String kind) {
         super(id, name, kind);
         this.yaml = yaml;
-        this.secret = secret;
     }
 
     public List<ConfigEntryDTO> getEntries() {

@@ -10,7 +10,7 @@ public class ConfigMapUtils {
             throw new IllegalArgumentException("ConfigMapDTO cannot be null");
         }
         String name = requireName(configMap.getName());
-        boolean secret = configMap.isSecret() || "secret".equalsIgnoreCase(configMap.getKind());
+        boolean secret = "secret".equalsIgnoreCase(configMap.getKind());
         return createEnvFromSource(name, secret);
     }
 

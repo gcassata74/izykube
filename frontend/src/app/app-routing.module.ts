@@ -1,4 +1,4 @@
-import { NgModule } from '@angular/core';
+import { NgModule, isDevMode } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { HomeComponent } from './home/home.component';
 import { ClusterListComponent } from './cluster/cluster-list/cluster-list.component';
@@ -8,6 +8,7 @@ import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.compon
 import { AssetFormComponent } from './assets/asset-form/asset-form.component';
 import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
 import { SettingsComponent } from './settings/settings.component';
+import { FormWorkbenchComponent } from './dev/form-workbench/form-workbench.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/home', pathMatch: 'full' },
@@ -24,6 +25,10 @@ const routes: Routes = [
   { path: 'kube-explorer', component: KubeExplorerComponent },
   { path: 'settings', component: SettingsComponent }
 ];
+
+if (isDevMode()) {
+  routes.push({ path: 'dev/forms', component: FormWorkbenchComponent });
+}
 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],

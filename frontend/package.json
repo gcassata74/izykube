@@ -7,7 +7,9 @@
     "build": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "extract-i18n": "ng extract-i18n --output-path src/locale"
+    "extract-i18n": "ng extract-i18n --output-path src/locale",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run"
   },
   "private": true,
   "dependencies": {
@@ -43,6 +45,7 @@
     "@angular/compiler-cli": "^16.0.0",
     "@types/jasmine": "~4.3.0",
     "@types/uuid": "^9.0.8",
+    "cypress": "^13.15.0",
     "jasmine-core": "~4.6.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",

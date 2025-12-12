@@ -29,6 +29,7 @@ import org.springframework.util.StringUtils;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -173,23 +174,40 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
     }
 
     private List<EnvFromSource> createEnvFromSources(DeploymentDTO dto) {
-        Stream<NodeDTO> linkedNodes = Stream.concat(
-                safeStream(dto.getTargetNodes()),
-                safeStream(dto.getSourceNodes())
-        );
+        Map<String, BundleSensitivity> bundleSensitivityByName = new LinkedHashMap<>();
+        List<EnvFromCandidate> candidates = new ArrayList<>();
 
-        return linkedNodes
-                .map(this::toEnvFromCandidate)
-                .flatMap(Optional::stream)
-                .collect(Collectors.collectingAndThen(
-                        Collectors.toMap(
-                                EnvFromCandidate::key,
-                                EnvFromCandidate::source,
-                                (existing, ignored) -> existing,
-                                java.util.LinkedHashMap::new
-                        ),
-                        map -> new ArrayList<>(map.values())
-                ));
+        Stream.concat(safeStream(dto.getTargetNodes()), safeStream(dto.getSourceNodes()))
+                .forEach(node -> {
+                    if (node instanceof ConfigMapDTO configMap) {
+                        String name = normalizeName(configMap.getName());
+                        if (!name.isEmpty()) {
+                            bundleSensitivityByName.merge(
+                                    name,
+                                    detectBundleSensitivity(configMap),
+                                    BundleSensitivity::merge
+                            );
+                        }
+                    }
+                    candidates.addAll(toEnvFromCandidates(node));
+                });
+
+        Map<String, EnvFromSource> deduped = new LinkedHashMap<>();
+        for (EnvFromCandidate candidate : candidates) {
+            deduped.putIfAbsent(candidate.key(), candidate.source());
+        }
+
+        bundleSensitivityByName.forEach((name, sensitivity) -> {
+            if (!sensitivity.hasSecretEntries()) {
+                return;
+            }
+            if (sensitivity.hasPlainEntries()) {
+                deduped.putIfAbsent(buildEnvFromKey(false, name), ConfigMapUtils.createEnvFromSource(name, false));
+            }
+            deduped.putIfAbsent(buildEnvFromKey(true, name), ConfigMapUtils.createEnvFromSource(name, true));
+        });
+
+        return new ArrayList<>(deduped.values());
     }
 
     private List<Container> createContainers(DeploymentDTO dto, String sanitizedName) {
@@ -246,43 +264,67 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         return nodes == null ? Stream.empty() : nodes.stream().filter(Objects::nonNull);
     }
 
-    private Optional<EnvFromCandidate> toEnvFromCandidate(NodeDTO node) {
+    private List<EnvFromCandidate> toEnvFromCandidates(NodeDTO node) {
+        List<EnvFromCandidate> candidates = new ArrayList<>();
         if (node == null) {
-            return Optional.empty();
+            return candidates;
         }
 
         if (node instanceof ConfigMapDTO configMap) {
             String name = normalizeName(configMap.getName());
             if (name.isEmpty()) {
-                return Optional.empty();
+                return candidates;
             }
-            boolean secret = (node instanceof com.izylife.izykube.dto.cluster.SecretDTO) || isSecretConfig(configMap);
-            EnvFromSource source = ConfigMapUtils.createEnvFromSource(name, secret);
-            return Optional.of(new EnvFromCandidate(buildEnvFromKey(secret, name), source));
+
+            BundleSensitivity sensitivity = detectBundleSensitivity(configMap);
+            boolean hasPlainEntries = sensitivity.hasPlainEntries();
+            boolean hasSecretEntries = sensitivity.hasSecretEntries();
+
+            boolean markedSecret = (node instanceof com.izylife.izykube.dto.cluster.SecretDTO) || isSecretConfig(configMap);
+            boolean treatAsSecretOnly = markedSecret && !hasPlainEntries && !hasSecretEntries;
+
+            if (hasPlainEntries) {
+                EnvFromSource source = ConfigMapUtils.createEnvFromSource(name, false);
+                candidates.add(new EnvFromCandidate(buildEnvFromKey(false, name), source));
+            }
+
+            if (hasSecretEntries || treatAsSecretOnly) {
+                EnvFromSource source = ConfigMapUtils.createEnvFromSource(name, true);
+                candidates.add(new EnvFromCandidate(buildEnvFromKey(true, name), source));
+            }
+
+            if (candidates.isEmpty()) {
+                boolean secret = isSecretConfig(configMap);
+                EnvFromSource source = ConfigMapUtils.createEnvFromSource(name, secret);
+                candidates.add(new EnvFromCandidate(buildEnvFromKey(secret, name), source));
+            }
+            return candidates;
         }
 
         // Fallback: if a linked node is represented only by kind "secret", still mount as secretRef
         if ("secret".equalsIgnoreCase(node.getKind())) {
             String name = normalizeName(node.getName());
             if (name.isEmpty()) {
-                return Optional.empty();
+                return candidates;
             }
             EnvFromSource source = ConfigMapUtils.createEnvFromSource(name, true);
-            return Optional.of(new EnvFromCandidate(buildEnvFromKey(true, name), source));
+            candidates.add(new EnvFromCandidate(buildEnvFromKey(true, name), source));
+            return candidates;
         }
 
         String kind = normalizeKind(node.getKind());
         if (!"configmap".equals(kind) && !"secret".equals(kind)) {
-            return Optional.empty();
+            return candidates;
         }
 
         String name = normalizeName(node.getName());
         if (name.isEmpty()) {
-            return Optional.empty();
+            return candidates;
         }
         boolean secret = "secret".equals(kind);
         EnvFromSource source = ConfigMapUtils.createEnvFromSource(name, secret);
-        return Optional.of(new EnvFromCandidate(buildEnvFromKey(secret, name), source));
+        candidates.add(new EnvFromCandidate(buildEnvFromKey(secret, name), source));
+        return candidates;
     }
 
     private String normalizeName(String name) {
@@ -290,14 +332,18 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
     }
 
     private boolean isSecretConfig(ConfigMapDTO configMap) {
-        boolean markedSecret = configMap.isSecret()
-                || "secret".equalsIgnoreCase(configMap.getKind())
+        if (configMap == null) {
+            return false;
+        }
+        boolean markedSecret = "secret".equalsIgnoreCase(configMap.getKind())
                 || (configMap.getId() != null && configMap.getId().toLowerCase().startsWith("secret:"));
         if (markedSecret) {
             return true;
         }
-        return configMap.getEntries().stream()
-                .anyMatch(entry -> ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity()));
+        return Optional.ofNullable(configMap.getEntries())
+                .orElse(List.of())
+                .stream()
+                .anyMatch(entry -> entry != null && ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity()));
     }
 
     private String sanitizeName(String name) {
@@ -313,9 +359,38 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         return kind == null ? "" : kind.trim().toLowerCase();
     }
 
+    private BundleSensitivity detectBundleSensitivity(ConfigMapDTO configMap) {
+        if (configMap == null) {
+            return new BundleSensitivity(false, false);
+        }
+        boolean hasPlainEntries = Optional.ofNullable(configMap.getEntries())
+                .orElse(List.of())
+                .stream()
+                .filter(Objects::nonNull)
+                .anyMatch(entry -> entry.getSensitivity() != ConfigEntrySensitivity.SECRET);
+        boolean hasSecretEntries = Optional.ofNullable(configMap.getEntries())
+                .orElse(List.of())
+                .stream()
+                .filter(Objects::nonNull)
+                .anyMatch(entry -> ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity()));
+        return new BundleSensitivity(hasPlainEntries, hasSecretEntries);
+    }
+
     private String buildEnvFromKey(boolean secret, String name) {
         return (secret ? "secret:" : "configmap:") + name;
     }
 
     private record EnvFromCandidate(String key, EnvFromSource source) { }
+
+    private record BundleSensitivity(boolean hasPlainEntries, boolean hasSecretEntries) {
+        BundleSensitivity merge(BundleSensitivity other) {
+            if (other == null) {
+                return this;
+            }
+            return new BundleSensitivity(
+                    this.hasPlainEntries || other.hasPlainEntries,
+                    this.hasSecretEntries || other.hasSecretEntries
+            );
+        }
+    }
 }

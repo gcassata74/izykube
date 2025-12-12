@@ -51,23 +51,15 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    if (!this.form) {
-      this.buildFormFromNode();
-    }
+    this.buildFormFromNode();
+    this.lastSelectedNodeId = this.selectedNode?.id ?? null;
     this.setupAutoSave();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['selectedNode']) {
-      const previousNode: Node | null = changes['selectedNode'].previousValue ?? null;
-      const previousId = previousNode?.id ?? this.lastSelectedNodeId;
-      if (previousId && this.selectedNode?.id !== previousId) {
-        this.flushPendingChanges(previousNode);
-      }
-      this.buildFormFromNode();
+    if (changes['selectedNode'] && !changes['selectedNode'].firstChange && this.form) {
+      this.refreshFormFromNode(changes['selectedNode'].currentValue as Node);
       this.lastSelectedNodeId = this.selectedNode?.id ?? null;
-      this.autoSaveNodeId = null;
-      this.setupAutoSave();
     }
 
     if ((changes['sourceNodes'] || changes['targetNodes']) && this.form) {
@@ -214,6 +206,36 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     this.refreshYamlPreview();
   }
 
+  private refreshFormFromNode(node: Node): void {
+    const bundle = this.resolveBundleFromNode(node);
+    this.teardownEntryKeySubscriptions();
+    this.formSubscriptions.unsubscribe();
+    this.formSubscriptions = new Subscription();
+
+    this.form.patchValue(
+      {
+        name: bundle.name,
+        namespace: bundle.namespace,
+        showSecretsAsPlain: bundle.showSecretsAsPlain ?? false
+      },
+      { emitEvent: false }
+    );
+
+    this.form.setControl('annotations', this.fb.array(this.buildAnnotationGroups(bundle.annotations)));
+    this.form.setControl(
+      'entries',
+      this.fb.array(this.buildEntryGroups(bundle.entries), {
+        validators: this.entriesMustHaveKeyValidator()
+      })
+    );
+
+    this.watchEntryKeys();
+    this.setupFormSubscriptions();
+    this.updateNameLockState();
+    this.runEntriesValidation();
+    this.refreshYamlPreview();
+  }
+
   private buildEntryGroups(entries: ConfigEntry[]): FormGroup[] {
     const list = entries && entries.length ? entries : [{ key: '', value: '', sensitivity: 'PLAIN' }];
     return list.map(entry =>
@@ -299,13 +321,14 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     const fallbackEntries = (node as any).entries ?? [];
     const fallbackAnnotations = (node as any).annotations ?? {};
     const fallbackNamespace = (node as any).namespace ?? this.clusterNamespace ?? 'default';
+    const effectiveEntries = rawBundle?.entries && rawBundle.entries.length ? rawBundle.entries : fallbackEntries;
     return ensureConfigBundleDefaults({
       ...(rawBundle || {}),
       id: node.id,
       name: rawBundle?.name || node.name || 'config-bundle',
       namespace: rawBundle?.namespace || fallbackNamespace,
       annotations: rawBundle?.annotations ?? fallbackAnnotations,
-      entries: rawBundle?.entries ?? fallbackEntries,
+      entries: effectiveEntries,
       showSecretsAsPlain: rawBundle?.showSecretsAsPlain ?? (node as any).showSecretsAsPlain ?? false
     });
   }
@@ -452,6 +475,7 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
   private buildNodeUpdatePayload(targetNode: Node | null = this.selectedNode) {
     const bundle = this.extractBundleFromForm(targetNode);
     return {
+      configBundle: bundle,
       name: bundle.name,
       namespace: bundle.namespace,
       annotations: bundle.annotations,

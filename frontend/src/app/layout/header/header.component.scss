@@ -23,19 +23,7 @@
   padding-inline: 1rem;
 }
 
-.app-header__logo {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--izy-primary, #2563eb), var(--izy-accent, #22d3ee));
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+
 
 .app-header__title {
   display: flex;

@@ -3,7 +3,6 @@ package com.izylife.izykube.services.processors;
 import com.izylife.izykube.dto.cluster.ConfigEntryDTO;
 import com.izylife.izykube.dto.cluster.ConfigEntrySensitivity;
 import com.izylife.izykube.dto.cluster.ConfigMapDTO;
-import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.kubernetes.client.utils.Serialization;
@@ -22,40 +21,52 @@ public class ConfigMapProcessor implements TemplateProcessor<ConfigMapDTO> {
     @Override
     public String createTemplate(ConfigMapDTO dto) {
         String namespace = dto.getNamespace() == null || dto.getNamespace().isBlank() ? "default" : dto.getNamespace();
-        boolean secretResource = dto.isSecret() || containsSecretEntry(dto.getEntries());
+        List<ConfigEntryDTO> entries = dto.getEntries();
+        boolean hasEntries = entries != null && !entries.isEmpty();
+        String output = "";
 
-        Map<String, String> data = YamlKeyValueExtractor.extractPlainKeyValueData(dto.getYaml());
-        if (data.isEmpty()) {
-            data = buildValuesFromEntries(dto.getEntries(), secretResource);
+        if (hasEntries) {
+            Map<String, String> plainEntries = buildValuesFromEntries(entries, false);
+            Map<String, String> secretEntries = buildValuesFromEntries(entries, true);
+
+            StringBuilder yamlBuilder = new StringBuilder();
+            if (!plainEntries.isEmpty()) {
+                yamlBuilder.append(
+                        Serialization.asYaml(
+                                new ConfigMapBuilder()
+                                        .withNewMetadata()
+                                        .withName(dto.getName())
+                                        .withNamespace(namespace)
+                                        .endMetadata()
+                                        .withData(plainEntries)
+                                        .build()
+                        )
+                );
+            }
+
+            if (!secretEntries.isEmpty()) {
+                if (!yamlBuilder.isEmpty()) {
+                    yamlBuilder.append("---\n");
+                }
+                Map<String, String> encoded = encodeSecretData(secretEntries);
+                yamlBuilder.append(
+                        Serialization.asYaml(
+                                new SecretBuilder()
+                                        .withNewMetadata()
+                                        .withName(dto.getName())
+                                        .withNamespace(namespace)
+                                        .endMetadata()
+                                        .withType("Opaque")
+                                        .withData(encoded)
+                                        .build()
+                        )
+                );
+            }
+            if (!yamlBuilder.isEmpty()) {
+                output = yamlBuilder.toString();
+            }
         }
-
-        if (secretResource) {
-            Map<String, String> encoded = encodeSecretData(data);
-            return Serialization.asYaml(
-                    new SecretBuilder()
-                            .withNewMetadata()
-                            .withName(dto.getName())
-                            .withNamespace(namespace)
-                            .endMetadata()
-                            .withType("Opaque")
-                            .withData(encoded)
-                            .build()
-            );
-        }
-
-        if (data.isEmpty()) {
-            return "";
-        }
-
-        ConfigMap configMap = new ConfigMapBuilder()
-                .withNewMetadata()
-                .withName(dto.getName())
-                .withNamespace(namespace)
-                .endMetadata()
-                .withData(data)
-                .build();
-
-        return Serialization.asYaml(configMap);
+        return output;
     }
 
     private Map<String, String> buildValuesFromEntries(List<ConfigEntryDTO> entries, boolean secret) {
@@ -77,13 +88,6 @@ public class ConfigMapProcessor implements TemplateProcessor<ConfigMapDTO> {
             values.put(entry.getKey(), entry.getValue() == null ? "" : entry.getValue());
         }
         return values;
-    }
-
-    private boolean containsSecretEntry(List<ConfigEntryDTO> entries) {
-        if (entries == null) {
-            return false;
-        }
-        return entries.stream().anyMatch(entry -> ConfigEntrySensitivity.SECRET.equals(entry.getSensitivity()));
     }
 
     private Map<String, String> encodeSecretData(Map<String, String> decoded) {

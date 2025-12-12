@@ -162,13 +162,15 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   private panPointerMove?: (event: PointerEvent) => void;
   private panPointerUp?: (event: PointerEvent) => void;
   private readonly dependencyPriority: Record<string, number> = {
-    ingress: 6,
-    service: 5,
+    service: 6,
+    ingress: 5,
+    istio: 5,
     deployment: 4,
     job: 4,
     container: 2,
     volume: 1,
     configmap: 1,
+    configbundle: 1,
     secret: 1
   };
   private readonly fallbackIconType = 'container';
@@ -179,6 +181,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   private podMenuContext: { namespace: string; deploymentName: string } | null = null;
   podShellDialogVisible = false;
   activeShellTarget: { namespace: string; podName: string; containerName?: string } | null = null;
+  private testHarnessRegistered = false;
 
   constructor(
     private iconService: IconService,
@@ -303,6 +306,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       this.initializeInteract();
       this.initializePanHandlers();
     });
+    this.registerTestHarness();
   }
 
 
@@ -1114,7 +1118,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       { name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },
       { name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
       { name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
-      { name: 'configbundle', displayName: 'Config bundle', baseName: 'config-bundle', type: 'configmap', icon: this.iconService.getIconPath('configmap') },
+      { name: 'configbundle', displayName: 'Config bundle', baseName: 'config-bundle', type: 'configbundle', icon: this.iconService.getIconPath('configmap') },
       { name: 'volume', type: 'volume', icon: this.iconService.getIconPath('volume') },
       { name: 'job', type: 'job', icon: this.iconService.getIconPath('job') }
     ];
@@ -2541,6 +2545,11 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       viewportEl.removeEventListener('pointerup', this.panPointerUp as any);
       viewportEl.removeEventListener('pointercancel', this.panPointerUp as any);
     }
+    if (this.testHarnessRegistered) {
+      const win = window as any;
+      delete win.izyAddNode;
+      delete win.izyConnect;
+    }
   }
 
   private updateSurfaceSize(): void {
@@ -2566,6 +2575,45 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this.updateViewportRect();
     this.applyViewportTransform();
+  }
+
+  private registerTestHarness(): void {
+    if (this.testHarnessRegistered || !(window as any)?.Cypress) {
+      return;
+    }
+    const win = window as any;
+    win.izyAddNode = (type: string, options?: { name?: string; x?: number; y?: number }) => {
+      return this.zone.run(() => {
+        const normalizedType = (type || '').toLowerCase();
+        const baseName = normalizedType === 'configbundle' ? 'config-bundle' : normalizedType || 'node';
+        const preferredName = options?.name;
+        const icon = this.resolveIconPath(normalizedType);
+        const node = this.createNode(
+          normalizedType,
+          baseName,
+          icon,
+          options?.x ?? 320,
+          options?.y ?? 320,
+          { preferredName }
+        );
+        this.selectNode(node);
+        return node;
+      });
+    };
+    win.izyConnect = (fromName: string, toName: string, options?: { type?: LinkType }) => {
+      return this.zone.run(() => {
+        const fromNode = this.nodes.find(n => n.name === fromName);
+        const toNode = this.nodes.find(n => n.name === toName);
+        if (!fromNode || !toNode) {
+          return false;
+        }
+        const fromPoint = this.getConnectionPoints(fromNode)[1];
+        const toPoint = this.getConnectionPoints(toNode)[3];
+        this.createLinkWithPoints(fromNode.id, toNode.id, fromPoint, toPoint, { type: options?.type });
+        return true;
+      });
+    };
+    this.testHarnessRegistered = true;
   }
 
   private updateViewportRect(): void {

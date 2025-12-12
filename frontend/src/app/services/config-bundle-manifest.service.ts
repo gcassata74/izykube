@@ -20,6 +20,9 @@ export function generateManifestsFromBundle(bundle: ConfigBundle): GeneratedMani
 
   const manifests: GeneratedManifest[] = [];
 
+  const plainEntries = bundle.entries.filter(entry => entry.sensitivity !== 'SECRET');
+  const secretEntries = bundle.entries.filter(entry => entry.sensitivity === 'SECRET');
+
   const baseMetadata: Omit<GeneratedManifest['metadata'], 'name'> = {
     namespace: bundle.namespace,
     annotations: bundle.annotations && Object.keys(bundle.annotations).length
@@ -27,12 +30,13 @@ export function generateManifestsFromBundle(bundle: ConfigBundle): GeneratedMani
       : undefined
   };
 
-  const hasSecretEntries = bundle.entries.some(entry => entry.sensitivity === 'SECRET');
-  manifests.push(
-    hasSecretEntries
-      ? createSecretManifest(bundle.name, bundle.entries, baseMetadata)
-      : createConfigMapManifest(bundle.name, bundle.entries, baseMetadata)
-  );
+  if (plainEntries.length) {
+    manifests.push(createConfigMapManifest(bundle.name, plainEntries, baseMetadata));
+  }
+
+  if (secretEntries.length) {
+    manifests.push(createSecretManifest(bundle.name, secretEntries, baseMetadata));
+  }
 
   return manifests;
 }

@@ -64,6 +64,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { SettingsComponent } from './settings/settings.component';
 import { PersistentVolumeAdminComponent } from './settings/persistent-volume-admin/persistent-volume-admin.component';
 import { LinkPropertiesFormComponent } from './diagram/link-properties-form/link-properties-form.component';
+import { FormWorkbenchComponent } from './dev/form-workbench/form-workbench.component';
 
 @NgModule({
   declarations: [
@@ -92,6 +93,7 @@ import { LinkPropertiesFormComponent } from './diagram/link-properties-form/link
     SettingsComponent,
     PersistentVolumeAdminComponent,
     LinkPropertiesFormComponent,
+    FormWorkbenchComponent,
   ],
   imports: [
     SharedModule,
