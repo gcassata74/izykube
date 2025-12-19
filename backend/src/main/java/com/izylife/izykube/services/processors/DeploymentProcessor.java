@@ -23,8 +23,10 @@ import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.apps.StatefulSetBuilder;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import com.izylife.izykube.dto.cluster.ContainerRole;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
@@ -36,10 +38,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 import java.util.stream.Collectors;
+import com.izylife.izykube.dto.cluster.LinkDTO;
 
 @Processor(DeploymentDTO.class)
 @Service
 @AllArgsConstructor
+@Slf4j
 public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
 
     private final ContainerProcessor containerProcessor;
@@ -52,7 +56,7 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
             throw new IllegalArgumentException("Deployment name is required to generate templates");
         }
 
-        List<Container> containers = createContainers(dto, workloadName);
+        ContainerGroups containerGroups = createContainers(dto, workloadName);
         List<EnvFromSource> envFromSources = createEnvFromSources(dto);
         List<Volume> volumes = createVolumes(dto);
         HostAlias hostAlias = null;
@@ -74,10 +78,8 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         Map<String, String> labels = new HashMap<>();
         labels.put("app", workloadName);
 
-        PodSpecBuilder podSpecBuilder = new PodSpecBuilder()
-                .withContainers(containers)
-                .withRestartPolicy("Always");
-
+        PodSpecBuilder podSpecBuilder = new PodSpecBuilder().withRestartPolicy("Always");
+        applyPodContainers(containerGroups, podSpecBuilder);
         if (!volumes.isEmpty()) {
             podSpecBuilder.withVolumes(volumes);
         }
@@ -87,6 +89,9 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
 
         PodSpec podSpec = podSpecBuilder.build();
         podSpec.getContainers().forEach(container -> container.setEnvFrom(envFromSources));
+        if (podSpec.getInitContainers() != null) {
+            podSpec.getInitContainers().forEach(container -> container.setEnvFrom(envFromSources));
+        }
 
         PodTemplateSpec podTemplate = new PodTemplateSpecBuilder()
                 .withNewMetadata()
@@ -102,6 +107,16 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         };
 
         return Serialization.asYaml(workload);
+    }
+
+    private void applyPodContainers(ContainerGroups containerGroups, PodSpecBuilder podSpecBuilder) {
+        if (containerGroups == null || podSpecBuilder == null) {
+            return;
+        }
+        podSpecBuilder.withContainers(mergeContainers(containerGroups.mainContainers(), containerGroups.sidecars()));
+        if (!containerGroups.initContainers().isEmpty()) {
+            podSpecBuilder.withInitContainers(containerGroups.initContainers());
+        }
     }
 
     private Deployment buildDeployment(DeploymentDTO dto, String workloadName, String namespace, Map<String, String> labels, PodTemplateSpec podTemplate) {
@@ -210,14 +225,14 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         return new ArrayList<>(deduped.values());
     }
 
-    private List<Container> createContainers(DeploymentDTO dto, String sanitizedName) {
-        List<VolumeMount> volumeMounts = dto.getTargetNodes().stream()
+    private ContainerGroups createContainers(DeploymentDTO dto, String sanitizedName) {
+        List<VolumeMount> volumeMounts = safeStream(dto.getTargetNodes())
                 .filter(node -> node instanceof VolumeDTO)
                 .map(node -> (VolumeDTO) node)
                 .map(VolumeUtils::createVolumeMount)
                 .collect(Collectors.toList());
 
-        List<Container> containers = new ArrayList<>();
+        List<Container> mainContainers = new ArrayList<>();
 
         if (dto.getAssetId() == null || dto.getAssetId().isBlank()) {
             throw new IllegalArgumentException("Deployment " + dto.getName() + " must specify an asset/image");
@@ -225,27 +240,65 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
 
         Container primary = containerProcessor.buildPrimaryContainer(dto, volumeMounts);
         primary.setName(sanitizedName);
-        containers.add(primary);
+        mainContainers.add(primary);
 
-        containers.addAll(dto.getTargetNodes().stream()
+        List<ContainerWithMetadata> attachedContainers = Stream.concat(
+                        safeStream(dto.getTargetNodes()),
+                        safeStream(dto.getSourceNodes()))
                 .filter(node -> node instanceof ContainerDTO)
                 .map(node -> (ContainerDTO) node)
-                .map(containerDTO -> {
-                    Container container = containerProcessor.processContainer(containerDTO, volumeMounts);
-                    String containerName = sanitizeName(container.getName());
-                    if (containerName.isEmpty()) {
-                        containerName = sanitizedName;
-                    }
-                    container.setName(containerName);
-                    return container;
-                })
-                .collect(Collectors.toList()));
+                .collect(Collectors.toMap(
+                        ContainerDTO::getId,
+                        containerDTO -> buildAttachedContainer(dto, containerDTO, sanitizedName, volumeMounts),
+                        (a, b) -> a,
+                        LinkedHashMap::new))
+                .values()
+                .stream()
+                .collect(Collectors.toList());
 
-        if (containers.isEmpty()) {
+        validateUniqueContainerNames(dto, sanitizedName, mainContainers, attachedContainers);
+
+        if (mainContainers.isEmpty()) {
             throw new IllegalArgumentException("Deployment must define at least one container image");
         }
 
-        return containers;
+        if (log.isDebugEnabled()) {
+            log.debug("Classifying linked containers for workload {} (id={}): linkedContainerNodes={}",
+                    sanitizedName,
+                    dto.getId(),
+                    attachedContainers.size());
+            for (ContainerWithMetadata attached : attachedContainers) {
+                ContainerDTO source = attached.source();
+                LinkDTO link = attached.link();
+                log.debug("Linked container: id={} name={} role={} linkRole={}",
+                        source != null ? source.getId() : null,
+                        source != null ? source.getName() : null,
+                        attached.role(),
+                        link != null ? link.getContainerRole() : null);
+            }
+        }
+
+        List<Container> initContainers = attachedContainers.stream()
+                .filter(item -> item.role() == ContainerRole.INIT)
+                .map(ContainerWithMetadata::container)
+                .sorted(this::compareByName)
+                .collect(Collectors.toList());
+
+        List<Container> sidecars = attachedContainers.stream()
+                .filter(item -> item.role() != ContainerRole.INIT)
+                .map(ContainerWithMetadata::container)
+                .sorted(this::compareByName)
+                .collect(Collectors.toList());
+
+        if (log.isDebugEnabled()) {
+            log.debug("Container classification result for workload {} (id={}): initContainers={}, containers={}",
+                    sanitizedName,
+                    dto.getId(),
+                    initContainers.size(),
+                    mainContainers.size() + sidecars.size());
+        }
+
+        return new ContainerGroups(mainContainers, sidecars, initContainers);
     }
 
     private List<Volume> createVolumes(DeploymentDTO dto) {
@@ -259,6 +312,128 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
     private String stripHttpPrefix(String url) {
         return url.replaceAll("^(http://|https://)", "");
     }
+
+    private List<Container> mergeContainers(List<Container> mainContainers, List<Container> sidecars) {
+        List<Container> merged = new ArrayList<>(Optional.ofNullable(mainContainers).orElse(List.of()));
+        if (sidecars != null && !sidecars.isEmpty()) {
+            merged.addAll(sidecars);
+        }
+        return merged;
+    }
+
+    private ContainerWithMetadata buildAttachedContainer(DeploymentDTO deployment,
+                                                         ContainerDTO containerDTO,
+                                                         String fallbackName,
+                                                         List<VolumeMount> volumeMounts) {
+        Container container = containerProcessor.processContainer(containerDTO, volumeMounts);
+        String containerName = sanitizeName(container.getName());
+        if (containerName.isEmpty()) {
+            containerName = fallbackName;
+        }
+        container.setName(containerName);
+
+        ContainerRole role = resolveContainerRole(deployment, containerDTO);
+        LinkDTO link = findLinkTo(deployment, containerDTO.getId());
+        return new ContainerWithMetadata(container, role, containerDTO, link);
+    }
+
+    private ContainerRole resolveContainerRole(DeploymentDTO deployment, ContainerDTO containerDTO) {
+        if (containerDTO != null && containerDTO.getRole() != null) {
+            return containerDTO.getRole();
+        }
+        ContainerRole roleFromLink = Optional.ofNullable(findLinkTo(deployment, containerDTO != null ? containerDTO.getId() : null))
+                .map(LinkDTO::getContainerRole)
+                .orElse(null);
+        if (roleFromLink != null) {
+            return roleFromLink;
+        }
+        return ContainerRole.SIDECAR;
+    }
+
+    private LinkDTO findLinkTo(DeploymentDTO deployment, String targetId) {
+        if (deployment == null || targetId == null) {
+            return null;
+        }
+        Stream<LinkDTO> outgoing = Optional.ofNullable(deployment.getOutgoingLinks()).stream().flatMap(List::stream);
+        Stream<LinkDTO> incoming = Optional.ofNullable(deployment.getIncomingLinks()).stream().flatMap(List::stream);
+
+        return Stream.concat(outgoing, incoming)
+                .filter(Objects::nonNull)
+                .filter(link -> targetId.equals(link.getTarget()) || targetId.equals(link.getSource()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void validateUniqueContainerNames(DeploymentDTO dto,
+                                              String mainName,
+                                              List<Container> mainContainers,
+                                              List<ContainerWithMetadata> attachedContainers) {
+        Map<String, List<ContainerConflict>> conflictsByName = new LinkedHashMap<>();
+
+        for (Container container : Optional.ofNullable(mainContainers).orElse(List.of())) {
+            addConflict(conflictsByName,
+                    container != null ? container.getName() : null,
+                    new ContainerConflict("main", dto.getId(), null));
+        }
+
+        for (ContainerWithMetadata attached : attachedContainers) {
+            addConflict(
+                    conflictsByName,
+                    attached.container().getName(),
+                    new ContainerConflict(
+                            attached.role().name().toLowerCase(),
+                            attached.source().getId(),
+                            attached.link() != null ? attached.link().getId() : null
+                    )
+            );
+        }
+
+        List<String> duplicates = conflictsByName.entrySet().stream()
+                .filter(entry -> entry.getValue().size() > 1)
+                .map(Map.Entry::getKey)
+                .toList();
+
+        if (duplicates.isEmpty()) {
+            return;
+        }
+
+        String details = duplicates.stream()
+                .map(name -> name + " -> " + conflictsByName.get(name).stream()
+                        .map(conflict -> conflict.type() +
+                                "(node:" + conflict.nodeId() +
+                                (conflict.linkId() != null ? ", link:" + conflict.linkId() : "") + ")")
+                        .collect(Collectors.joining(", ")))
+                .collect(Collectors.joining("; "));
+
+        throw new IllegalArgumentException(
+                "Deployment " + dto.getName() + " (" + dto.getId() + ") has duplicate container name(s): "
+                        + String.join(", ", duplicates) + ". Conflicts: " + details
+        );
+    }
+
+    private void addConflict(Map<String, List<ContainerConflict>> conflictsByName, String name, ContainerConflict conflict) {
+        if (name == null) {
+            return;
+        }
+        conflictsByName.computeIfAbsent(name, key -> new ArrayList<>()).add(conflict);
+    }
+
+    private int compareByName(Container a, Container b) {
+        String nameA = Optional.ofNullable(a.getName()).orElse("");
+        String nameB = Optional.ofNullable(b.getName()).orElse("");
+        return nameA.compareToIgnoreCase(nameB);
+    }
+
+    private record ContainerGroups(List<Container> mainContainers,
+                                   List<Container> sidecars,
+                                   List<Container> initContainers) {}
+
+    private record ContainerWithMetadata(Container container,
+                                         ContainerRole role,
+                                         ContainerDTO source,
+                                         LinkDTO link) {}
+
+    private record ContainerConflict(String type, String nodeId, String linkId) {}
 
     private Stream<NodeDTO> safeStream(List<NodeDTO> nodes) {
         return nodes == null ? Stream.empty() : nodes.stream().filter(Objects::nonNull);

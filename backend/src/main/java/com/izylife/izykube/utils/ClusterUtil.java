@@ -27,15 +27,21 @@ public class ClusterUtil {
 
     // Find all links that have the given node ID as target
     public static List<LinkDTO> findLinksByTarget(ClusterDTO cluster, String targetId) {
+        if (cluster == null || cluster.getLinks() == null) {
+            return List.of();
+        }
         return cluster.getLinks().stream()
-                .filter(link -> link.getTarget().equals(targetId))
+                .filter(link -> targetId != null && targetId.equals(link.getTarget()))
                 .collect(Collectors.toList());
     }
 
     // Find all the nodes that are sources of a specific node
     public static List<NodeDTO> findSourceNodesOf(ClusterDTO cluster, String targetId) {
+        if (cluster == null || cluster.getLinks() == null) {
+            return List.of();
+        }
         List<String> sourceIds = cluster.getLinks().stream()
-                .filter(link -> link.getTarget().equals(targetId))
+                .filter(link -> targetId != null && targetId.equals(link.getTarget()))
                 .map(LinkDTO::getSource)
                 .collect(Collectors.toList());
 
@@ -46,8 +52,11 @@ public class ClusterUtil {
 
     // Find all nodes that are targets of a specific node
     public static List<NodeDTO> findTargetNodesOf(ClusterDTO cluster, String sourceId) {
+        if (cluster == null || cluster.getLinks() == null) {
+            return List.of();
+        }
         List<String> targetIds = cluster.getLinks().stream()
-                .filter(link -> link.getSource().equals(sourceId))
+                .filter(link -> sourceId != null && sourceId.equals(link.getSource()))
                 .map(LinkDTO::getTarget)
                 .collect(Collectors.toList());
 
@@ -81,6 +90,15 @@ public class ClusterUtil {
                 .filter(ancestor -> ancestor.getKind().equalsIgnoreCase(type))
                 .findFirst()
                 .orElse(null);
+    }
+
+    public static List<LinkDTO> findLinksBySource(ClusterDTO cluster, String sourceId) {
+        if (cluster == null || cluster.getLinks() == null) {
+            return List.of();
+        }
+        return cluster.getLinks().stream()
+                .filter(link -> sourceId != null && sourceId.equals(link.getSource()))
+                .collect(Collectors.toList());
     }
 
     // get a node by type in the descendants of a node

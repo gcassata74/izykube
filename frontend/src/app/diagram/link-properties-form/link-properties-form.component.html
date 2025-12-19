@@ -21,6 +21,7 @@
           class="link-form__select">
           <option value="Expose">Expose</option>
           <option value="Use">Use</option>
+          <option value="Container">Container</option>
         </select>
       </div>
 
@@ -52,6 +53,19 @@
           [autoResize]="true"
           rows="3"
           placeholder="Optional notes about this link"></textarea>
+      </div>
+
+      <div class="p-field" *ngIf="selectedType === 'Container'">
+        <label for="containerRole">Container Role</label>
+        <p-dropdown
+          id="containerRole"
+          formControlName="containerRole"
+          [options]="containerRoleOptions"
+          optionLabel="label"
+          optionValue="value"
+          [showClear]="true"
+          placeholder="Use container block role">
+        </p-dropdown>
       </div>
     </form>
   </div>

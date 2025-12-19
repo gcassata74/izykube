@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
+import { ContainerRole, toContainerRole } from './container.class';
 
-export type LinkType = 'Expose' | 'Use';
+export type LinkType = 'Expose' | 'Use' | 'Container';
 
 export class Link {
     id: string;
@@ -8,13 +9,15 @@ export class Link {
     target: string;
     type: LinkType;
     note?: string;
+    containerRole?: ContainerRole;
 
-    constructor(init: { source: string; target: string; type?: LinkType; id?: string; note?: string }) {
+    constructor(init: { source: string; target: string; type?: LinkType; id?: string; note?: string; containerRole?: ContainerRole }) {
         this.id = init.id || uuidv4();
         this.source = init.source;
         this.target = init.target;
         this.type = init.type ?? 'Expose';
         this.note = init.note;
+        this.containerRole = toContainerRole(init.containerRole);
     }
 
     static fromJSON(data: any): Link | null {
@@ -29,16 +32,22 @@ export class Link {
             return null;
         }
 
-        const type = data.type === 'Use' ? 'Use' : 'Expose';
+        const type: LinkType = data.type === 'Use'
+            ? 'Use'
+            : data.type === 'Container'
+                ? 'Container'
+                : 'Expose';
         const note = typeof data.note === 'string' ? data.note : undefined;
         const id = typeof data.id === 'string' && data.id.trim() ? data.id : uuidv4();
+        const containerRole = toContainerRole(data.containerRole);
 
         return new Link({
             id,
             source: String(source),
             target: String(target),
             type,
-            note
+            note,
+            containerRole: containerRole ?? undefined
         });
     }
 }

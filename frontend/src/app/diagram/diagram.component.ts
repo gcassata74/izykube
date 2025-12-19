@@ -59,6 +59,7 @@ interface DiagramLink {
   to: string;
   type: LinkType;
   note?: string;
+  containerRole?: ContainerRole;
   fromPoint?: ConnectionPoint;
   toPoint?: ConnectionPoint;
   element?: SVGElement;
@@ -1269,7 +1270,39 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       return toContainerRole((snapshotNode as any).role);
     }
 
+    if (this.isContainerAttachedToDeployment(node.id)) {
+      return 'SIDECAR';
+    }
+
     return undefined;
+  }
+
+  private resolveContainerRoleForLink(nodeA: DiagramNode, nodeB: DiagramNode): ContainerRole | undefined {
+    const containerNode = nodeA.type === 'container' ? nodeA : nodeB.type === 'container' ? nodeB : null;
+    if (!containerNode) {
+      return undefined;
+    }
+    return this.resolveContainerRole(containerNode) ?? 'SIDECAR';
+  }
+
+  private isContainerAttachedToDeployment(containerNodeId: string): boolean {
+    if (!containerNodeId) {
+      return false;
+    }
+    if (!this.nodes?.length || !this.links?.length) {
+      return false;
+    }
+    const nodeById = new Map(this.nodes.map(node => [node.id, node]));
+    return this.links.some(link => {
+      if (link.type !== 'Container') {
+        return false;
+      }
+      if (link.from !== containerNodeId && link.to !== containerNodeId) {
+        return false;
+      }
+      const otherId = link.from === containerNodeId ? link.to : link.from;
+      return nodeById.get(otherId)?.type === 'deployment';
+    });
   }
 
   onNodeLabelEdit(node: DiagramNode, event: any) {
@@ -1564,7 +1597,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
           ...link,
           id: link?.id || uuidv4(),
           type: this.resolveLinkType(link?.type),
-          note: typeof link?.note === 'string' ? link.note : undefined
+          note: typeof link?.note === 'string' ? link.note : undefined,
+          containerRole: toContainerRole(link?.containerRole) || undefined
         })) as DiagramLink[];
       this.enforceLinkOrientation();
       if (Array.isArray(data.rawManifests)) {
@@ -1602,7 +1636,12 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    const type = this.resolveLinkType(options?.type);
+    const involvesDeploymentAndContainer =
+      (fromNode.type === 'deployment' && toNode.type === 'container') ||
+      (fromNode.type === 'container' && toNode.type === 'deployment');
+
+    const type = involvesDeploymentAndContainer ? 'Container' : this.resolveLinkType(options?.type);
+    const containerRole = involvesDeploymentAndContainer ? this.resolveContainerRoleForLink(fromNode, toNode) : undefined;
     const note = typeof options?.note === 'string' ? options.note : undefined;
     const oriented = this.orientLinkByType(fromNode, toNode, fromPoint, toPoint, type);
     const sourceId = oriented.fromNode.id;
@@ -1629,6 +1668,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       to: targetId,
       type,
       note,
+      ...(containerRole ? { containerRole } : {}),
       fromPoint: oriented.fromPoint,
       toPoint: oriented.toPoint
     };
@@ -1732,6 +1772,13 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
+    const nodeById = new Map(this.nodes.map(node => [node.id, node]));
+    const isDeploymentContainerLink = (from: string, to: string): boolean => {
+      const fromType = nodeById.get(from)?.type;
+      const toType = nodeById.get(to)?.type;
+      return (fromType === 'deployment' && toType === 'container') || (fromType === 'container' && toType === 'deployment');
+    };
+
     const linkMap = new Map<string, any>();
     this.currentClusterSnapshot.links.forEach((link: any) => {
       const id = link.id || `${link.source}->${link.target}`;
@@ -1746,16 +1793,27 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       if (!match) {
         return { ...link, type: link.type ?? 'Expose' };
       }
-      const normalizedType: LinkType = match.type === 'Use' ? 'Use' : 'Expose';
+      const normalizedType: LinkType = match.type === 'Use'
+        ? 'Use'
+        : match.type === 'Container'
+          ? 'Container'
+          : 'Expose';
+      const effectiveType: LinkType = isDeploymentContainerLink(link.from, link.to) ? 'Container' : normalizedType;
+      const normalizedRole = toContainerRole((match as any).containerRole);
       const next: DiagramLink = {
         ...link,
-        type: normalizedType,
-        note: match.note
+        type: effectiveType,
+        note: match.note,
+        ...(normalizedRole && effectiveType === 'Container' ? { containerRole: normalizedRole } : {})
       };
+      if (!normalizedRole || effectiveType !== 'Container') {
+        delete (next as any).containerRole;
+      }
       const oriented = this.normalizeLinkOrientation(next);
       if (
         oriented.type !== link.type ||
         oriented.note !== link.note ||
+        oriented.containerRole !== link.containerRole ||
         oriented.from !== link.from ||
         oriented.to !== link.to
       ) {
@@ -1774,7 +1832,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  private applyLinkUpdate(linkId: string, changes: { type: LinkType; note?: string }): void {
+  private applyLinkUpdate(linkId: string, changes: { type: LinkType; note?: string; containerRole?: ContainerRole; clearContainerRole?: boolean }): void {
     const index = this.links.findIndex(link => link.id === linkId);
     if (index === -1) {
       return;
@@ -1786,6 +1844,19 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       type: changes.type ?? current.type ?? 'Expose',
       note: 'note' in changes ? changes.note : current.note
     };
+
+    if (changes.clearContainerRole) {
+      delete (updated as any).containerRole;
+    } else if ('containerRole' in changes) {
+      const normalizedRole = toContainerRole((changes as any).containerRole);
+      if (normalizedRole) {
+        (updated as any).containerRole = normalizedRole;
+      }
+    }
+    if (updated.type !== 'Container' && 'containerRole' in updated) {
+      delete (updated as any).containerRole;
+    }
+
     const oriented = this.normalizeLinkOrientation(updated);
     this.links[index] = oriented;
     if (this.selectedLink?.id === linkId) {
@@ -2030,7 +2101,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     fromPoint?: ConnectionPoint;
     toPoint?: ConnectionPoint;
   } {
-    const normalizedType: LinkType = type === 'Use' ? 'Use' : 'Expose';
+    const normalizedType: LinkType = type === 'Use' ? 'Use' : type === 'Container' ? 'Container' : 'Expose';
     const isService = (node: DiagramNode) => node.type?.toLowerCase() === 'service';
     const isDeployment = (node: DiagramNode) => node.type?.toLowerCase() === 'deployment';
 
@@ -2076,13 +2147,14 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       type: normalizedType,
       from: oriented.fromNode.id,
       to: oriented.toNode.id,
+      containerRole: link.containerRole,
       fromPoint: oriented.fromPoint,
       toPoint: oriented.toPoint
     };
   }
 
   private resolveLinkType(type?: any): LinkType {
-    return type === 'Use' ? 'Use' : 'Expose';
+    return type === 'Use' ? 'Use' : type === 'Container' ? 'Container' : 'Expose';
   }
 
   private resolveIconPath(type?: string): string {
@@ -2501,6 +2573,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       to: l.to,
       type: l.type,
       note: l.note,
+      ...(l.containerRole ? { containerRole: l.containerRole } : {}),
       fromPoint: l.fromPoint,
       toPoint: l.toPoint
     }));
@@ -2510,7 +2583,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       source: l.from,
       target: l.to,
       type: l.type,
-      note: l.note
+      note: l.note,
+      containerRole: l.containerRole
     }));
 
     const diagramData = JSON.stringify({

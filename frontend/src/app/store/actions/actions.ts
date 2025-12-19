@@ -64,7 +64,7 @@ export const removeLink = createAction(
 
 export const updateLink = createAction(
   UPDATE_LINK,
-  props<{ linkId: string, changes: Partial<Link> }>()
+  props<{ linkId: string, changes: Partial<Link> & { clearContainerRole?: boolean } }>()
 );
 
 export const updateDiagram = createAction(

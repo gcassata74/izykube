@@ -7,6 +7,8 @@ import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.ConfigEntryDTO;
 import com.izylife.izykube.dto.cluster.ConfigEntrySensitivity;
 import com.izylife.izykube.dto.cluster.ConfigMapDTO;
+import com.izylife.izykube.dto.cluster.ContainerDTO;
+import com.izylife.izykube.dto.cluster.ContainerRole;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.DeploymentWorkloadType;
 import com.izylife.izykube.dto.cluster.IngressDTO;
@@ -246,6 +248,7 @@ public class ClusterYamlService {
         Map<String, List<NodeDTO>> sourcesByTarget = buildSourcesByTarget(nodesById, cluster.getLinks());
         Map<String, String> statefulServiceSelectors = resolveStatefulServiceSelectors(cluster.getLinks(), nodesById);
         Map<String, String> statefulServiceNamesByDeployment = resolveStatefulServiceNames(cluster.getLinks(), nodesById);
+        List<LinkDTO> links = cluster.getLinks() != null ? cluster.getLinks() : List.of();
         for (NodeDTO node : nodes) {
             if (node.getKind() == null) {
                 continue;
@@ -254,7 +257,7 @@ public class ClusterYamlService {
             switch (node.getKind().toLowerCase(Locale.ROOT)) {
                 case "configmap" -> updateConfigMapManifest((ConfigMapDTO) node, manifestsByName);
                 case "secret" -> updateSecretManifest((SecretDTO) node, manifestsByName);
-                case "deployment" -> updateDeploymentManifest((DeploymentDTO) node, manifestsByName, targetsBySource, sourcesByTarget, statefulServiceNamesByDeployment);
+                case "deployment" -> updateDeploymentManifest((DeploymentDTO) node, manifestsByName, targetsBySource, sourcesByTarget, statefulServiceNamesByDeployment, links);
                 case "service" -> updateServiceManifest((ServiceDTO) node, manifestsByName, statefulServiceSelectors);
                 case "ingress" -> {
                     resolveIngressTargetsFromLinks((IngressDTO) node, targetsBySource);
@@ -672,9 +675,19 @@ public class ClusterYamlService {
         List<Map<String, Object>> diagramLinks = links.stream()
                 .map(link -> {
                     Map<String, Object> linkMap = new LinkedHashMap<>();
-                    linkMap.put("id", link.getSource() + "->" + link.getTarget());
+                    String linkId = link.getId() != null && !link.getId().isBlank()
+                            ? link.getId()
+                            : link.getSource() + "->" + link.getTarget();
+                    linkMap.put("id", linkId);
                     linkMap.put("from", link.getSource());
                     linkMap.put("to", link.getTarget());
+                    linkMap.put("type", link.getType());
+                    if (link.getContainerRole() != null) {
+                        linkMap.put("containerRole", link.getContainerRole().name());
+                    }
+                    if (link.getNote() != null) {
+                        linkMap.put("note", link.getNote());
+                    }
                     return linkMap;
                 })
                 .collect(Collectors.toList());
@@ -1039,7 +1052,8 @@ public class ClusterYamlService {
                                           Map<String, ManifestEntry> manifests,
                                           Map<String, List<NodeDTO>> targetsBySource,
                                           Map<String, List<NodeDTO>> sourcesByTarget,
-                                          Map<String, String> statefulServiceNamesByDeployment) {
+                                          Map<String, String> statefulServiceNamesByDeployment,
+                                          List<LinkDTO> links) {
         ManifestEntry entry = manifests.get(node.getId());
         if (entry == null) {
             entry = new ManifestEntry("deployment", node.getId(), createBaseDeploymentManifest(node));
@@ -1080,6 +1094,7 @@ public class ClusterYamlService {
         Map<String, Object> template = Optional.ofNullable(getMap(spec, "template")).orElseGet(LinkedHashMap::new);
         Map<String, Object> templateSpec = Optional.ofNullable(getMap(template, "spec")).orElseGet(LinkedHashMap::new);
         applyPrimaryContainerSpec(node, templateSpec);
+        applyAttachedContainerSpecs(node, templateSpec, targetsBySource, sourcesByTarget, links);
         applyLinkedConfigReferences(node, templateSpec, targetsBySource, sourcesByTarget);
         template.put("spec", templateSpec);
         Map<String, Object> selector = new LinkedHashMap<>(Optional.ofNullable(getMap(spec, "selector")).orElseGet(LinkedHashMap::new));
@@ -1100,6 +1115,267 @@ public class ClusterYamlService {
         manifest.put("spec", spec);
     }
 
+    private void applyAttachedContainerSpecs(DeploymentDTO node,
+                                            Map<String, Object> templateSpec,
+                                            Map<String, List<NodeDTO>> targetsBySource,
+                                            Map<String, List<NodeDTO>> sourcesByTarget,
+                                            List<LinkDTO> links) {
+        if (node == null || node.getId() == null || templateSpec == null) {
+            return;
+        }
+
+        List<ContainerAttachment> attachments = collectAttachedContainers(node, targetsBySource, sourcesByTarget, links);
+        if (attachments.isEmpty()) {
+            templateSpec.remove("initContainers");
+            return;
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("Classifying linked containers for workload {} (id={}): linkedContainerNodes={}",
+                    node.getName(),
+                    node.getId(),
+                    attachments.size());
+            for (ContainerAttachment attachment : attachments) {
+                LinkDTO link = attachment.link;
+                ContainerDTO container = attachment.container;
+                log.debug("Linked container: id={} name={} role={} linkType={} linkRole={}",
+                        container != null ? container.getId() : null,
+                        container != null ? container.getName() : null,
+                        attachment.role,
+                        link != null ? link.getType() : null,
+                        link != null ? link.getContainerRole() : null);
+            }
+        }
+
+        List<Map<String, Object>> mainContainers = this.<Map<String, Object>>getList(templateSpec, "containers");
+        if (mainContainers == null) {
+            mainContainers = new ArrayList<>();
+            templateSpec.put("containers", mainContainers);
+        }
+
+        List<ContainerAttachment> initAttachments = attachments.stream()
+                .filter(att -> att.role == ContainerRole.INIT)
+                .sorted((a, b) -> compareByName(a.container, b.container))
+                .toList();
+
+        List<ContainerAttachment> sidecarAttachments = attachments.stream()
+                .filter(att -> att.role == ContainerRole.SIDECAR)
+                .sorted((a, b) -> compareByName(a.container, b.container))
+                .toList();
+
+        validateUniqueContainerNames(node, mainContainers, initAttachments, sidecarAttachments);
+
+        if (initAttachments.isEmpty()) {
+            templateSpec.remove("initContainers");
+        } else {
+            List<Map<String, Object>> initContainers = initAttachments.stream()
+                    .map(att -> buildContainerSpec(att.container))
+                    .collect(Collectors.toCollection(ArrayList::new));
+            templateSpec.put("initContainers", initContainers);
+        }
+
+        List<Map<String, Object>> sidecars = sidecarAttachments.stream()
+                .map(att -> buildContainerSpec(att.container))
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (!sidecars.isEmpty()) {
+            mainContainers.addAll(sidecars);
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("Container classification result for workload {} (id={}): initContainers={}, containers={}",
+                    node.getName(),
+                    node.getId(),
+                    initAttachments.size(),
+                    mainContainers.size());
+        }
+    }
+
+    private List<ContainerAttachment> collectAttachedContainers(DeploymentDTO node,
+                                                               Map<String, List<NodeDTO>> targetsBySource,
+                                                               Map<String, List<NodeDTO>> sourcesByTarget,
+                                                               List<LinkDTO> links) {
+        Stream<NodeDTO> outgoing = Optional.ofNullable(targetsBySource.get(node.getId()))
+                .orElse(List.of())
+                .stream();
+        Stream<NodeDTO> incoming = Optional.ofNullable(sourcesByTarget.get(node.getId()))
+                .orElse(List.of())
+                .stream();
+
+        Map<String, ContainerAttachment> unique = new LinkedHashMap<>();
+        Stream.concat(outgoing, incoming)
+                .filter(Objects::nonNull)
+                .filter(ContainerDTO.class::isInstance)
+                .map(ContainerDTO.class::cast)
+                .forEach(container -> {
+                    LinkDTO link = findLinkBetween(links, node.getId(), container.getId());
+                    if (link == null) {
+                        return;
+                    }
+                    ContainerRole role = resolveContainerRole(link, container);
+                    unique.putIfAbsent(container.getId(), new ContainerAttachment(container, role, link));
+                });
+
+        return new ArrayList<>(unique.values());
+    }
+
+    private ContainerRole resolveContainerRole(LinkDTO link, ContainerDTO container) {
+        if (container != null && container.getRole() != null) {
+            return container.getRole();
+        }
+        if (link != null && link.getContainerRole() != null) {
+            return link.getContainerRole();
+        }
+        return ContainerRole.SIDECAR;
+    }
+
+    private LinkDTO findLinkBetween(List<LinkDTO> links, String a, String b) {
+        if (links == null || links.isEmpty() || a == null || b == null) {
+            return null;
+        }
+        for (LinkDTO link : links) {
+            if (link == null) {
+                continue;
+            }
+            if ((a.equals(link.getSource()) && b.equals(link.getTarget()))
+                    || (a.equals(link.getTarget()) && b.equals(link.getSource()))) {
+                return link;
+            }
+        }
+        return null;
+    }
+
+    private int compareByName(ContainerDTO a, ContainerDTO b) {
+        String nameA = Optional.ofNullable(a).map(ContainerDTO::getName).map(this::trimName).orElse("");
+        String nameB = Optional.ofNullable(b).map(ContainerDTO::getName).map(this::trimName).orElse("");
+        int cmp = nameA.compareToIgnoreCase(nameB);
+        if (cmp != 0) {
+            return cmp;
+        }
+        return Optional.ofNullable(a).map(ContainerDTO::getId).orElse("").compareToIgnoreCase(Optional.ofNullable(b).map(ContainerDTO::getId).orElse(""));
+    }
+
+    private Map<String, Object> buildContainerSpec(ContainerDTO container) {
+        Map<String, Object> spec = new LinkedHashMap<>();
+        spec.put("name", Optional.ofNullable(trimName(container.getName())).filter(name -> !name.isBlank()).orElse(container.getId()));
+        String image = resolveAssetImage(container);
+        if (image != null && !image.isBlank()) {
+            spec.put("image", image);
+        }
+        int port = container.getContainerPort() > 0 ? container.getContainerPort() : 80;
+        List<Map<String, Object>> ports = new ArrayList<>();
+        Map<String, Object> portEntry = new LinkedHashMap<>();
+        portEntry.put("containerPort", port);
+        ports.add(portEntry);
+        spec.put("ports", ports);
+        return spec;
+    }
+
+    private String resolveAssetImage(ContainerDTO node) {
+        if (node == null || node.getAssetId() == null || node.getAssetId().isBlank()) {
+            return "";
+        }
+        if (assetRepository == null) {
+            return "";
+        }
+        try {
+            return assetRepository.findById(node.getAssetId())
+                    .map(Asset::getImage)
+                    .orElse("");
+        } catch (Exception ex) {
+            log.warn("Unable to resolve asset {} for container {}: {}", node.getAssetId(), node.getName(), ex.getMessage());
+            return "";
+        }
+    }
+
+    private void validateUniqueContainerNames(DeploymentDTO deployment,
+                                              List<Map<String, Object>> mainContainers,
+                                              List<ContainerAttachment> initContainers,
+                                              List<ContainerAttachment> sidecars) {
+        Map<String, List<ContainerConflict>> conflictsByName = new LinkedHashMap<>();
+
+        for (Map<String, Object> main : Optional.ofNullable(mainContainers).orElse(List.of())) {
+            String name = trimName(getString(main, "name", null));
+            if (name != null && !name.isBlank()) {
+                conflictsByName.computeIfAbsent(name, key -> new ArrayList<>())
+                        .add(new ContainerConflict("main", deployment.getId(), null));
+            }
+        }
+
+        for (ContainerAttachment att : Optional.ofNullable(initContainers).orElse(List.of())) {
+            addAttachmentConflict(conflictsByName, att, "init");
+        }
+        for (ContainerAttachment att : Optional.ofNullable(sidecars).orElse(List.of())) {
+            addAttachmentConflict(conflictsByName, att, "sidecar");
+        }
+
+        List<String> duplicates = conflictsByName.entrySet().stream()
+                .filter(entry -> entry.getValue().size() > 1)
+                .map(Map.Entry::getKey)
+                .toList();
+
+        if (duplicates.isEmpty()) {
+            return;
+        }
+
+        String details = duplicates.stream()
+                .map(name -> name + " -> " + conflictsByName.get(name).stream()
+                        .map(conflict -> conflict.type +
+                                "(node:" + conflict.nodeId +
+                                (conflict.linkId != null ? ", link:" + conflict.linkId : "") + ")")
+                        .collect(Collectors.joining(", ")))
+                .collect(Collectors.joining("; "));
+
+        throw new IllegalArgumentException(
+                "Workload " + deployment.getName() + " (" + deployment.getId() + ") has duplicate container name(s): "
+                        + String.join(", ", duplicates) + ". Conflicts: " + details
+        );
+    }
+
+    private void addAttachmentConflict(Map<String, List<ContainerConflict>> conflictsByName,
+                                       ContainerAttachment attachment,
+                                       String type) {
+        if (attachment == null || attachment.container == null) {
+            return;
+        }
+        String name = Optional.ofNullable(trimName(attachment.container.getName())).filter(v -> !v.isBlank()).orElse(null);
+        if (name == null) {
+            return;
+        }
+        String linkId = null;
+        if (attachment.link != null) {
+            linkId = attachment.link.getId();
+            if (linkId == null || linkId.isBlank()) {
+                linkId = attachment.link.getSource() + "->" + attachment.link.getTarget();
+            }
+        }
+        conflictsByName.computeIfAbsent(name, key -> new ArrayList<>())
+                .add(new ContainerConflict(type, attachment.container.getId(), linkId));
+    }
+
+    private static class ContainerAttachment {
+        private final ContainerDTO container;
+        private final ContainerRole role;
+        private final LinkDTO link;
+
+        private ContainerAttachment(ContainerDTO container, ContainerRole role, LinkDTO link) {
+            this.container = container;
+            this.role = role;
+            this.link = link;
+        }
+    }
+
+    private static class ContainerConflict {
+        private final String type;
+        private final String nodeId;
+        private final String linkId;
+
+        private ContainerConflict(String type, String nodeId, String linkId) {
+            this.type = type;
+            this.nodeId = nodeId;
+            this.linkId = linkId;
+        }
+    }
+
     private void applyLinkedConfigReferences(DeploymentDTO node,
                                              Map<String, Object> templateSpec,
                                              Map<String, List<NodeDTO>> targetsBySource,
@@ -1116,6 +1392,13 @@ public class ClusterYamlService {
 
         for (Map<String, Object> container : containers) {
             ensureEnvFromEntries(container, linkedConfigs);
+        }
+
+        List<Map<String, Object>> initContainers = this.<Map<String, Object>>getList(templateSpec, "initContainers");
+        if (initContainers != null && !initContainers.isEmpty()) {
+            for (Map<String, Object> initContainer : initContainers) {
+                ensureEnvFromEntries(initContainer, linkedConfigs);
+            }
         }
     }
 

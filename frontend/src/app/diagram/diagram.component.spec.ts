@@ -88,6 +88,15 @@ describe('DiagramComponent', () => {
     expect(component.getContainerBadge(mainNode)).toBeNull();
   });
 
+  it('should default attached containers with missing role to sidecar', () => {
+    const deploymentNode: any = { id: 'dep-1', name: 'web', type: 'deployment', icon: '', x: 0, y: 0 };
+    const containerNode: any = { id: 'c-1', name: 'helper', type: 'container', icon: '', x: 0, y: 0 };
+    (component as any).nodes = [deploymentNode, containerNode];
+    (component as any).links = [{ id: 'l-1', from: 'c-1', to: 'dep-1', type: 'Container' }];
+
+    expect(component.getContainerBadge(containerNode)).toEqual(jasmine.objectContaining({ label: 'S' }));
+  });
+
   it('should prevent linking containers to non-deployment nodes', () => {
     (component as any).nodes = [
       { id: 'container-1', name: 'c1', type: 'container', icon: '', x: 0, y: 0 },

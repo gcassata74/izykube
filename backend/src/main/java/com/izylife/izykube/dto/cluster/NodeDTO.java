@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.izylife.izykube.dto.cluster.LinkDTO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -46,6 +47,14 @@ public abstract class NodeDTO {
     @Transient
     @JsonIgnore
     List<NodeDTO> targetNodes;
+    @Setter
+    @Transient
+    @JsonIgnore
+    List<LinkDTO> incomingLinks;
+    @Setter
+    @Transient
+    @JsonIgnore
+    List<LinkDTO> outgoingLinks;
     @JsonProperty("isAffected")
     private boolean affected;
 
@@ -55,6 +64,8 @@ public abstract class NodeDTO {
         this.kind = kind;
         this.sourceNodes = new ArrayList<>();
         this.targetNodes = new ArrayList<>();
+        this.incomingLinks = new ArrayList<>();
+        this.outgoingLinks = new ArrayList<>();
     }
 
 }

@@ -65,6 +65,8 @@ public class TemplateService {
                 node.setNamespace(namespace);
                 node.setSourceNodes(ClusterUtil.findSourceNodesOf(clusterDTO, node.getId()));
                 node.setTargetNodes(ClusterUtil.findTargetNodesOf(clusterDTO, node.getId()));
+                node.setIncomingLinks(ClusterUtil.findLinksByTarget(clusterDTO, node.getId()));
+                node.setOutgoingLinks(ClusterUtil.findLinksBySource(clusterDTO, node.getId()));
             });
 
             templateableNodes.stream()

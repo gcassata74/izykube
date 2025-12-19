@@ -85,14 +85,25 @@ export const clusterReducer = createReducer(
         if (!matches) {
           return link;
         }
-        const nextType = changes.type === 'Use' ? 'Use' : changes.type === 'Expose' ? 'Expose' : (link.type || 'Expose');
+        const nextType = changes.type === 'Use'
+          ? 'Use'
+          : changes.type === 'Container'
+            ? 'Container'
+            : changes.type === 'Expose'
+              ? 'Expose'
+              : (link.type || 'Expose');
         const nextNote = 'note' in changes ? changes.note : link.note;
-        return {
+        const next: any = {
           ...link,
           ...changes,
           type: nextType,
           ...(nextNote !== undefined ? { note: nextNote } : {})
         };
+        if ((changes as any).clearContainerRole || next.type !== 'Container') {
+          delete next.containerRole;
+        }
+        delete next.clearContainerRole;
+        return next;
       })
     }
   })),

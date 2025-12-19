@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { Link, LinkType } from '../../model/link.class';
 import { LinkUpdateService } from '../../services/link-update.service';
+import { ContainerRole, toContainerRole } from '../../model/container.class';
 
 @Component({
   selector: 'app-link-properties-form',
@@ -14,6 +15,10 @@ export class LinkPropertiesFormComponent implements OnInit, OnChanges, OnDestroy
 
   form!: FormGroup;
   private autosaveSub?: Subscription;
+  readonly containerRoleOptions = [
+    { label: 'Init container', value: 'INIT' as ContainerRole },
+    { label: 'Sidecar', value: 'SIDECAR' as ContainerRole }
+  ];
 
   constructor(
     private fb: FormBuilder,
@@ -37,9 +42,11 @@ export class LinkPropertiesFormComponent implements OnInit, OnChanges, OnDestroy
   }
 
   private initForm(): void {
+    const selectedRole = toContainerRole(this.link?.containerRole);
     this.form = this.fb.group({
       linkType: [this.link?.type ?? 'Expose', Validators.required],
-      note: [this.link?.note ?? '']
+      note: [this.link?.note ?? ''],
+      containerRole: [selectedRole ?? null]
     });
   }
 
@@ -47,10 +54,12 @@ export class LinkPropertiesFormComponent implements OnInit, OnChanges, OnDestroy
     if (!this.form) {
       return;
     }
+    const selectedRole = toContainerRole(link?.containerRole);
     this.form.patchValue(
       {
         linkType: link?.type ?? 'Expose',
-        note: link?.note ?? ''
+        note: link?.note ?? '',
+        containerRole: selectedRole ?? null
       },
       { emitEvent: false }
     );

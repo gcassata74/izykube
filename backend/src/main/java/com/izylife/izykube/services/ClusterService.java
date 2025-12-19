@@ -458,8 +458,12 @@ public class ClusterService {
                 continue;
             }
             LinkDTO sanitizedLink = new LinkDTO();
+            sanitizedLink.setId(link.getId());
             sanitizedLink.setSource(source);
             sanitizedLink.setTarget(target);
+            sanitizedLink.setType(normalizeLinkType(link.getType()));
+            sanitizedLink.setNote(link.getNote());
+            sanitizedLink.setContainerRole(link.getContainerRole());
             sanitizedLinks.add(sanitizedLink);
         }
 
@@ -490,6 +494,20 @@ public class ClusterService {
     }
 
     private record SanitizedCluster(List<NodeDTO> nodes, List<LinkDTO> links) {}
+
+    private String normalizeLinkType(String type) {
+        if (type == null) {
+            return "Expose";
+        }
+        String normalized = type.trim();
+        if ("Use".equalsIgnoreCase(normalized)) {
+            return "Use";
+        }
+        if ("Container".equalsIgnoreCase(normalized)) {
+            return "Container";
+        }
+        return "Expose";
+    }
 
     private String resolveDiagram(ClusterDTO clusterDTO) {
         if (clusterDTO == null) {

@@ -1,252 +1,249 @@
 package com.izylife.izykube.services.processors;
 
-import com.izylife.izykube.dto.cluster.ConfigEntryDTO;
-import com.izylife.izykube.dto.cluster.ConfigEntrySensitivity;
-import com.izylife.izykube.dto.cluster.ConfigMapDTO;
+import com.izylife.izykube.dto.cluster.ContainerDTO;
+import com.izylife.izykube.dto.cluster.ContainerRole;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.DeploymentWorkloadType;
-import com.izylife.izykube.dto.cluster.ServiceDTO;
-import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.ContainerBuilder;
+import com.izylife.izykube.dto.cluster.LinkDTO;
+import com.izylife.izykube.model.Asset;
+import com.izylife.izykube.repositories.AssetRepository;
+import io.fabric8.kubernetes.api.model.PodSpec;
+import io.fabric8.kubernetes.api.model.apps.DaemonSet;
+import io.fabric8.kubernetes.api.model.apps.Deployment;
+import io.fabric8.kubernetes.api.model.apps.StatefulSet;
+import io.fabric8.kubernetes.client.utils.Serialization;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.yaml.snakeyaml.Yaml;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 class DeploymentProcessorTest {
 
-    private final DeploymentProcessor processor = new DeploymentProcessor(new StubContainerProcessor());
+    private AssetRepository assetRepository;
+    private DeploymentProcessor deploymentProcessor;
 
-    @Test
-    void sanitizesNamesForStatefulSetAndServiceLink() {
-        DeploymentDTO stateful = new DeploymentDTO(
-                "deployment:mysql",
-                "  mysql-db  ",
-                1,
-                "RollingUpdate",
-                "",
-                3306,
-                DeploymentWorkloadType.STATEFULSET
-        );
-        stateful.setAssetId("asset-1");
-        stateful.setTargetNodes(new ArrayList<>());
-
-        ServiceDTO service = new ServiceDTO("service:mysql", "mysql-service  ", "ClusterIP", 3306);
-        service.setTargetNodes(List.of(stateful));
-        stateful.setSourceNodes(List.of(service));
-
-        String yaml = processor.createTemplate(stateful);
-
-        Map<String, Object> statefulManifest = null;
-        for (Object document : new Yaml().loadAll(yaml)) {
-            if (document instanceof Map<?, ?> manifest && "StatefulSet".equals(Objects.toString(manifest.get("kind"), ""))) {
-                statefulManifest = castMap(manifest);
-                break;
-            }
-        }
-
-        assertNotNull(statefulManifest, "Expected StatefulSet manifest");
-        Map<String, Object> metadata = castMap(statefulManifest.get("metadata"));
-        assertEquals("mysql-db", metadata.get("name"));
-
-        Map<String, Object> spec = castMap(statefulManifest.get("spec"));
-        assertEquals("mysql-service", spec.get("serviceName"));
-        Map<String, Object> selector = castMap(spec.get("selector"));
-        Map<String, Object> matchLabels = castMap(selector.get("matchLabels"));
-        assertEquals("mysql-db", matchLabels.get("app"));
+    @BeforeEach
+    void setUp() {
+        assetRepository = Mockito.mock(AssetRepository.class);
+        when(assetRepository.findById(anyString())).thenAnswer(invocation -> {
+            String id = invocation.getArgument(0);
+            Asset asset = new Asset();
+            asset.setId(id);
+            asset.setImage("repo/" + id + ":1.0.0");
+            return Optional.of(asset);
+        });
+        deploymentProcessor = new DeploymentProcessor(new ContainerProcessor(assetRepository));
     }
 
     @Test
-    void envFromUsesSecretRefWhenEntriesContainSecret() {
-        DeploymentDTO stateful = new DeploymentDTO(
-                "deployment:mysql",
-                "mysql-db",
-                1,
-                "RollingUpdate",
-                "",
-                3306,
-                DeploymentWorkloadType.STATEFULSET
-        );
-        stateful.setAssetId("asset-1");
+    void initContainerPlacedUnderInitContainers() {
+        DeploymentDTO deployment = buildDeployment("dep-1", "web-app", "main-asset");
+        ContainerDTO initContainer = new ContainerDTO("c-init", "init-task", "init-asset", 8080, ContainerRole.INIT);
+        deployment.setTargetNodes(List.of(initContainer));
+        deployment.setOutgoingLinks(List.of(link(deployment.getId(), initContainer.getId(), ContainerRole.INIT, "link-1")));
 
-        ConfigEntryDTO secretEntry = new ConfigEntryDTO();
-        secretEntry.setKey("MYSQL_ROOT_PASSWORD");
-        secretEntry.setValue("admin");
-        secretEntry.setSensitivity(ConfigEntrySensitivity.SECRET);
+        Deployment manifest = renderDeployment(deployment);
+        PodSpec spec = manifest.getSpec().getTemplate().getSpec();
 
-        ConfigMapDTO bundle = new ConfigMapDTO("configmap:bundle", "config-bundle-a", null);
-        bundle.setEntries(List.of(secretEntry));
-
-        stateful.setSourceNodes(List.of(bundle));
-        stateful.setTargetNodes(new ArrayList<>());
-
-        String yaml = processor.createTemplate(stateful);
-
-        Map<String, Object> statefulManifest = null;
-        for (Object document : new Yaml().loadAll(yaml)) {
-            if (document instanceof Map<?, ?> manifest && "StatefulSet".equals(Objects.toString(manifest.get("kind"), ""))) {
-                statefulManifest = castMap(manifest);
-                break;
-            }
-        }
-
-        assertNotNull(statefulManifest, "Expected StatefulSet manifest");
-        Map<String, Object> spec = castMap(statefulManifest.get("spec"));
-        Map<String, Object> template = castMap(spec.get("template"));
-        Map<String, Object> podSpec = castMap(template.get("spec"));
-        var containers = (List<Map<String, Object>>) podSpec.get("containers");
-        Map<String, Object> container = containers.get(0);
-        List<Map<String, Object>> envFrom = (List<Map<String, Object>>) container.get("envFrom");
-        Map<String, Object> secretRef = castMap(envFrom.get(0).get("secretRef"));
-        assertEquals("config-bundle-a", secretRef.get("name"));
+        assertNotNull(spec.getInitContainers());
+        assertEquals(1, spec.getInitContainers().size());
+        assertEquals("init-task", spec.getInitContainers().get(0).getName());
+        assertEquals(1, spec.getContainers().size());
     }
 
     @Test
-    void envFromIncludesBothConfigMapAndSecretForMixedEntries() {
-        DeploymentDTO deployment = new DeploymentDTO(
-                "deployment:mysql",
-                "mysql-db",
-                1,
-                "RollingUpdate",
-                "",
-                3306,
-                DeploymentWorkloadType.DEPLOYMENT
-        );
-        deployment.setAssetId("asset-1");
+    void initContainerLinkedInboundIsHonored() {
+        DeploymentDTO deployment = buildDeployment("dep-1b", "web-app", "main-asset");
+        ContainerDTO initContainer = new ContainerDTO("c-init-in", "init-in", "init-asset", 8080, ContainerRole.INIT);
+        deployment.setSourceNodes(List.of(initContainer));
+        deployment.setIncomingLinks(List.of(link(initContainer.getId(), deployment.getId(), ContainerRole.INIT, "link-1b")));
 
-        ConfigEntryDTO plainEntry = new ConfigEntryDTO();
-        plainEntry.setKey("DB_USER");
-        plainEntry.setValue("root");
-        plainEntry.setSensitivity(ConfigEntrySensitivity.PLAIN);
+        Deployment manifest = renderDeployment(deployment);
+        PodSpec spec = manifest.getSpec().getTemplate().getSpec();
 
-        ConfigEntryDTO secretEntry = new ConfigEntryDTO();
-        secretEntry.setKey("DB_PASSWORD");
-        secretEntry.setValue("admin");
-        secretEntry.setSensitivity(ConfigEntrySensitivity.SECRET);
-
-        ConfigMapDTO bundle = new ConfigMapDTO("configmap:bundle", "config-bundle-a", null);
-        bundle.setEntries(List.of(plainEntry, secretEntry));
-
-        deployment.setSourceNodes(List.of(bundle));
-        deployment.setTargetNodes(new ArrayList<>());
-
-        String yaml = processor.createTemplate(deployment);
-
-        Map<String, Object> deploymentManifest = null;
-        for (Object document : new Yaml().loadAll(yaml)) {
-            if (document instanceof Map<?, ?> manifest && "Deployment".equals(Objects.toString(manifest.get("kind"), ""))) {
-                deploymentManifest = castMap(manifest);
-                break;
-            }
-        }
-
-        assertNotNull(deploymentManifest, "Expected Deployment manifest");
-        Map<String, Object> spec = castMap(deploymentManifest.get("spec"));
-        Map<String, Object> template = castMap(spec.get("template"));
-        Map<String, Object> podSpec = castMap(template.get("spec"));
-        var containers = (List<Map<String, Object>>) podSpec.get("containers");
-        Map<String, Object> container = containers.get(0);
-        List<Map<String, Object>> envFrom = (List<Map<String, Object>>) container.get("envFrom");
-
-        assertEquals(2, envFrom.size(), "Expected both configMapRef and secretRef");
-        Map<String, Object> configMapRef = castMap(envFrom.get(0).get("configMapRef"));
-        Map<String, Object> secretRef = castMap(envFrom.get(1).get("secretRef"));
-        assertEquals("config-bundle-a", configMapRef.get("name"));
-        assertEquals("config-bundle-a", secretRef.get("name"));
+        assertNotNull(spec.getInitContainers());
+        assertEquals(1, spec.getInitContainers().size());
+        assertEquals("init-in", spec.getInitContainers().get(0).getName());
     }
 
     @Test
-    void envFromIncludesConfigMapWhenBundleIsSplitAcrossSecretAndConfigMapNodes() {
-        DeploymentDTO deployment = new DeploymentDTO(
-                "deployment:mysql",
-                "mysql-db",
-                1,
-                "RollingUpdate",
-                "",
-                3306,
-                DeploymentWorkloadType.DEPLOYMENT
-        );
-        deployment.setAssetId("asset-1");
+    void sidecarAppendedAfterMainContainers() {
+        DeploymentDTO deployment = buildDeployment("dep-2", "web-app", "main-asset");
+        ContainerDTO sidecar = new ContainerDTO("c-side", "logger", "side-asset", 8081, ContainerRole.SIDECAR);
+        deployment.setTargetNodes(List.of(sidecar));
+        deployment.setOutgoingLinks(List.of(link(deployment.getId(), sidecar.getId(), ContainerRole.SIDECAR, "link-2")));
 
-        ConfigEntryDTO plainEntry = new ConfigEntryDTO();
-        plainEntry.setKey("DB_USER");
-        plainEntry.setValue("root");
-        plainEntry.setSensitivity(ConfigEntrySensitivity.PLAIN);
+        Deployment manifest = renderDeployment(deployment);
+        List<String> names = manifest.getSpec().getTemplate().getSpec().getContainers().stream()
+                .map(c -> c.getName())
+                .toList();
 
-        ConfigEntryDTO secretEntry = new ConfigEntryDTO();
-        secretEntry.setKey("DB_PASSWORD");
-        secretEntry.setValue("admin");
-        secretEntry.setSensitivity(ConfigEntrySensitivity.SECRET);
-
-        ConfigMapDTO configMapPortion = new ConfigMapDTO("configmap:bundle", "config-bundle-split", null);
-        configMapPortion.setEntries(List.of(plainEntry));
-
-        ConfigMapDTO secretPortion = new com.izylife.izykube.dto.cluster.SecretDTO("secret:bundle", "config-bundle-split", null);
-        secretPortion.setEntries(List.of(secretEntry));
-
-        // Attach secret first to ensure insertion order does not drop the config map reference
-        deployment.setSourceNodes(List.of(secretPortion, configMapPortion));
-        deployment.setTargetNodes(new ArrayList<>());
-
-        String yaml = processor.createTemplate(deployment);
-
-        Map<String, Object> deploymentManifest = null;
-        for (Object document : new Yaml().loadAll(yaml)) {
-            if (document instanceof Map<?, ?> manifest && "Deployment".equals(Objects.toString(manifest.get("kind"), ""))) {
-                deploymentManifest = castMap(manifest);
-                break;
-            }
-        }
-
-        assertNotNull(deploymentManifest, "Expected Deployment manifest");
-        Map<String, Object> spec = castMap(deploymentManifest.get("spec"));
-        Map<String, Object> template = castMap(spec.get("template"));
-        Map<String, Object> podSpec = castMap(template.get("spec"));
-        var containers = (List<Map<String, Object>>) podSpec.get("containers");
-        Map<String, Object> container = containers.get(0);
-        List<Map<String, Object>> envFrom = (List<Map<String, Object>>) container.get("envFrom");
-
-        Map<String, Object> configMapRef = envFrom.stream()
-                .map(entry -> castMap(entry.get("configMapRef")))
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
-        Map<String, Object> secretRef = envFrom.stream()
-                .map(entry -> castMap(entry.get("secretRef")))
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
-
-        assertNotNull(configMapRef, "Expected a configMapRef entry");
-        assertNotNull(secretRef, "Expected a secretRef entry");
-        assertEquals("config-bundle-split", configMapRef.get("name"));
-        assertEquals("config-bundle-split", secretRef.get("name"));
+        assertEquals(List.of("web-app", "logger"), names);
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> castMap(Object value) {
-        return (Map<String, Object>) value;
+    @Test
+    void initContainersOmittedWhenEmpty() {
+        DeploymentDTO deployment = buildDeployment("dep-3", "web-app", "main-asset");
+
+        Deployment manifest = renderDeployment(deployment);
+        assertTrue(manifest.getSpec().getTemplate().getSpec().getInitContainers() == null
+                || manifest.getSpec().getTemplate().getSpec().getInitContainers().isEmpty());
     }
 
-    private static class StubContainerProcessor extends ContainerProcessor {
-        StubContainerProcessor() {
-            super(null);
-        }
+    @Test
+    void containersAreOrderedDeterministically() {
+        DeploymentDTO deployment = buildDeployment("dep-4", "web-app", "main-asset");
 
-        @Override
-        public Container buildPrimaryContainer(DeploymentDTO deployment, List<io.fabric8.kubernetes.api.model.VolumeMount> volumeMounts) {
-            return new ContainerBuilder().withName(" db ").build();
-        }
+        ContainerDTO initB = new ContainerDTO("c-init-b", "b-init", "init-b", 8080, null);
+        ContainerDTO initA = new ContainerDTO("c-init-a", "a-init", "init-a", 8080, ContainerRole.INIT);
 
-        @Override
-        public Container processContainer(com.izylife.izykube.dto.cluster.ContainerDTO dto, List<io.fabric8.kubernetes.api.model.VolumeMount> volumeMounts) {
-            return new ContainerBuilder().withName(dto.getName()).build();
-        }
+        ContainerDTO sidecarB = new ContainerDTO("c-side-b", "beta", "side-b", 9090, null);
+        ContainerDTO sidecarA = new ContainerDTO("c-side-a", "alpha", "side-a", 9090, ContainerRole.SIDECAR);
+
+        deployment.setTargetNodes(List.of(initB, initA, sidecarB, sidecarA));
+        List<LinkDTO> links = new ArrayList<>();
+        links.add(link(deployment.getId(), initB.getId(), ContainerRole.INIT, "link-init-b"));
+        links.add(link(deployment.getId(), initA.getId(), ContainerRole.INIT, "link-init-a"));
+        links.add(link(deployment.getId(), sidecarB.getId(), ContainerRole.SIDECAR, "link-side-b"));
+        links.add(link(deployment.getId(), sidecarA.getId(), ContainerRole.SIDECAR, "link-side-a"));
+        deployment.setOutgoingLinks(links);
+
+        Deployment manifest = renderDeployment(deployment);
+        PodSpec spec = manifest.getSpec().getTemplate().getSpec();
+
+        assertEquals(List.of("a-init", "b-init"), spec.getInitContainers().stream().map(c -> c.getName()).toList());
+        assertEquals(List.of("web-app", "alpha", "beta"), spec.getContainers().stream().map(c -> c.getName()).toList());
+    }
+
+    @Test
+    void duplicateContainerNamesAreRejected() {
+        DeploymentDTO deployment = buildDeployment("dep-5", "web-app", "main-asset");
+        ContainerDTO sidecar = new ContainerDTO("c-dup", "web-app", "side-asset", 8080, ContainerRole.SIDECAR);
+        deployment.setTargetNodes(List.of(sidecar));
+        deployment.setOutgoingLinks(List.of(link(deployment.getId(), sidecar.getId(), ContainerRole.SIDECAR, "link-dup")));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> renderDeployment(deployment));
+        assertTrue(ex.getMessage().contains("dep-5"));
+        assertTrue(ex.getMessage().contains("web-app"));
+        assertTrue(ex.getMessage().contains("link-dup"));
+    }
+
+    @Test
+    void missingRoleDefaultsToSidecar() {
+        DeploymentDTO deployment = buildDeployment("dep-6", "web-app", "main-asset");
+        ContainerDTO sidecar = new ContainerDTO("c-no-role", "helper", "helper-asset", 8080);
+        deployment.setTargetNodes(List.of(sidecar));
+        deployment.setOutgoingLinks(List.of(link(deployment.getId(), sidecar.getId(), null, "link-helper")));
+
+        Deployment manifest = renderDeployment(deployment);
+        List<String> names = manifest.getSpec().getTemplate().getSpec().getContainers().stream()
+                .map(c -> c.getName())
+                .toList();
+
+        assertEquals(List.of("web-app", "helper"), names);
+    }
+
+    @Test
+    void containerRoleOverridesLinkRole() {
+        DeploymentDTO deployment = buildDeployment("dep-7", "web-app", "main-asset");
+        ContainerDTO container = new ContainerDTO("c-override", "prep", "prep-asset", 8080, ContainerRole.INIT);
+        deployment.setTargetNodes(List.of(container));
+        deployment.setOutgoingLinks(List.of(link(deployment.getId(), container.getId(), ContainerRole.SIDECAR, "link-override")));
+
+        Deployment manifest = renderDeployment(deployment);
+        PodSpec spec = manifest.getSpec().getTemplate().getSpec();
+
+        assertEquals(List.of("prep"), spec.getInitContainers().stream().map(c -> c.getName()).toList());
+        assertEquals(List.of("web-app"), spec.getContainers().stream().map(c -> c.getName()).toList());
+    }
+
+    @Test
+    void initContainerRoleFromNodeWorksWithExposeLinkAndNullLinkRole() {
+        DeploymentDTO deployment = buildDeployment("dep-8", "web-app", "main-asset");
+        ContainerDTO initContainer = new ContainerDTO("c-init-expose", "init-task", "init-asset", 8080, ContainerRole.INIT);
+        deployment.setTargetNodes(List.of(initContainer));
+        deployment.setOutgoingLinks(List.of(link(deployment.getId(), initContainer.getId(), null, "Expose", "link-expose")));
+
+        Deployment manifest = renderDeployment(deployment);
+        PodSpec spec = manifest.getSpec().getTemplate().getSpec();
+
+        assertNotNull(spec.getInitContainers());
+        assertEquals(List.of("init-task"), spec.getInitContainers().stream().map(c -> c.getName()).toList());
+    }
+
+    @Test
+    void initAndSidecarPlacementWorksForStatefulSets() {
+        DeploymentDTO deployment = buildDeployment("sts-1", "my-statefulset", "main-asset", DeploymentWorkloadType.STATEFULSET);
+        ContainerDTO init = new ContainerDTO("c-init", "init-container-1", "init-asset", 8080, ContainerRole.INIT);
+        ContainerDTO sidecar = new ContainerDTO("c-side", "sidecar-container-1", "side-asset", 8081, ContainerRole.SIDECAR);
+        deployment.setTargetNodes(List.of(init, sidecar));
+        deployment.setOutgoingLinks(List.of(
+                link(deployment.getId(), init.getId(), null, "Expose", "link-sts-init"),
+                link(deployment.getId(), sidecar.getId(), null, "Expose", "link-sts-side")
+        ));
+
+        StatefulSet manifest = Serialization.unmarshal(deploymentProcessor.createTemplate(deployment), StatefulSet.class);
+        PodSpec spec = manifest.getSpec().getTemplate().getSpec();
+        assertEquals(List.of("init-container-1"), spec.getInitContainers().stream().map(c -> c.getName()).toList());
+        assertEquals(List.of("my-statefulset", "sidecar-container-1"), spec.getContainers().stream().map(c -> c.getName()).toList());
+        assertNotNull(manifest.getSpec().getServiceName());
+        assertFalse(manifest.getSpec().getServiceName().isBlank());
+    }
+
+    @Test
+    void initAndSidecarPlacementWorksForDaemonSets() {
+        DeploymentDTO deployment = buildDeployment("ds-1", "my-daemonset", "main-asset", DeploymentWorkloadType.DAEMONSET);
+        ContainerDTO init = new ContainerDTO("c-init", "init-container-1", "init-asset", 8080, ContainerRole.INIT);
+        ContainerDTO sidecar = new ContainerDTO("c-side", "sidecar-container-1", "side-asset", 8081, ContainerRole.SIDECAR);
+        deployment.setTargetNodes(List.of(init, sidecar));
+        deployment.setOutgoingLinks(List.of(
+                link(deployment.getId(), init.getId(), ContainerRole.INIT, "link-ds-init"),
+                link(deployment.getId(), sidecar.getId(), ContainerRole.SIDECAR, "link-ds-side")
+        ));
+
+        DaemonSet manifest = Serialization.unmarshal(deploymentProcessor.createTemplate(deployment), DaemonSet.class);
+        PodSpec spec = manifest.getSpec().getTemplate().getSpec();
+        assertEquals(List.of("init-container-1"), spec.getInitContainers().stream().map(c -> c.getName()).toList());
+        assertEquals(List.of("my-daemonset", "sidecar-container-1"), spec.getContainers().stream().map(c -> c.getName()).toList());
+    }
+
+    private DeploymentDTO buildDeployment(String id, String name, String assetId) {
+        DeploymentDTO dto = new DeploymentDTO(id, name, 1, "RollingUpdate", assetId, 8080);
+        dto.setTargetNodes(new ArrayList<>());
+        dto.setOutgoingLinks(new ArrayList<>());
+        return dto;
+    }
+
+    private DeploymentDTO buildDeployment(String id, String name, String assetId, DeploymentWorkloadType workloadType) {
+        DeploymentDTO dto = new DeploymentDTO(id, name, 1, "RollingUpdate", assetId, 8080, workloadType);
+        dto.setTargetNodes(new ArrayList<>());
+        dto.setOutgoingLinks(new ArrayList<>());
+        return dto;
+    }
+
+    private LinkDTO link(String source, String target, ContainerRole role, String id) {
+        return link(source, target, role, "Container", id);
+    }
+
+    private LinkDTO link(String source, String target, ContainerRole role, String type, String id) {
+        LinkDTO link = new LinkDTO();
+        link.setId(id);
+        link.setSource(source);
+        link.setTarget(target);
+        link.setType(type);
+        link.setContainerRole(role);
+        return link;
+    }
+
+    private Deployment renderDeployment(DeploymentDTO dto) {
+        String yaml = deploymentProcessor.createTemplate(dto);
+        return Serialization.unmarshal(yaml, Deployment.class);
     }
 }
