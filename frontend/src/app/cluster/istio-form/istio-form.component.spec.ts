@@ -6,14 +6,16 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Istio } from '../../model/istio.class';
-import { DiagramService } from '../../services/diagram.service';
+import { AutoSaveService } from '../../services/auto-save.service';
 
 describe('IstioFormComponent', () => {
   let component: IstioFormComponent;
   let fixture: ComponentFixture<IstioFormComponent>;
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({
+    const autoSaveStub = { enableAutoSave: () => {}, flushPendingChanges: () => {} };
+
+    TestBed.configureTestingModule({
       imports: [
         ReactiveFormsModule,
         DropdownModule,
@@ -22,10 +24,16 @@ describe('IstioFormComponent', () => {
         NoopAnimationsModule
       ],
       declarations: [IstioFormComponent],
-      providers: [
-        { provide: DiagramService, useValue: { updateClusterNodes: jasmine.createSpy('updateClusterNodes') } }
-      ]
-    }).compileComponents();
+      providers: []
+    });
+
+    TestBed.overrideComponent(IstioFormComponent, {
+      set: {
+        providers: [{ provide: AutoSaveService, useValue: autoSaveStub }],
+      },
+    });
+
+    await TestBed.compileComponents();
 
     fixture = TestBed.createComponent(IstioFormComponent);
     component = fixture.componentInstance;

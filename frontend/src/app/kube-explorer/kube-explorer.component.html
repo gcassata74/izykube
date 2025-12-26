@@ -122,8 +122,11 @@
                             <td>{{ pod.node || '-' }}</td>
                             <td>{{ pod.age }}</td>
                             <td class="text-center">
-                                <button pButton type="button" icon="pi pi-bars" class="p-button-text"
-                                        (click)="onQuickLogClick($event, 'pod', pod)"></button>
+                                <app-kube-row-actions
+                                  [row]="pod"
+                                  (viewLogs)="openPodLogsFromRow($event)"
+                                  (inspectPod)="openPodInspectFromRow($event)"
+                                ></app-kube-row-actions>
                             </td>
                         </tr>
                     </ng-template>
@@ -497,10 +500,38 @@
   [header]="logsTitle"
   [(visible)]="logsDialogVisible"
   [modal]="true"
-  [style]="{ width: '640px' }"
+  [style]="{ width: '780px' }"
   [dismissableMask]="true"
+  position="right"
   (onHide)="logsDialogVisible = false">
   <div class="logs-panel">
+    <div *ngIf="currentLogTarget?.type === 'pod'" class="logs-panel__meta">
+      <div class="logs-panel__meta-row">
+        <span class="logs-panel__meta-label">Namespace</span>
+        <span class="logs-panel__meta-value">{{ currentLogTarget?.namespace }}</span>
+      </div>
+      <div class="logs-panel__meta-row">
+        <span class="logs-panel__meta-label">Pod</span>
+        <span class="logs-panel__meta-value">{{ currentLogTarget?.name }}</span>
+      </div>
+      <div class="logs-panel__meta-row" *ngIf="logsPodContainers.length > 1">
+        <span class="logs-panel__meta-label">Container</span>
+        <p-dropdown
+          inputId="podContainerSelect"
+          [options]="logsPodContainers"
+          [(ngModel)]="logsSelectedContainer"
+          (onChange)="onLogsContainerChange($event.value)"
+          [style.width.px]="240"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Select container"
+        ></p-dropdown>
+      </div>
+      <div class="logs-panel__meta-row" *ngIf="logsPodContainers.length <= 1 && logsSelectedContainer">
+        <span class="logs-panel__meta-label">Container</span>
+        <span class="logs-panel__meta-value">{{ logsSelectedContainer }}</span>
+      </div>
+    </div>
     <p *ngIf="logsLoading">Loading logs...</p>
     <p *ngIf="logsError && !logsLoading" class="text-danger">{{ logsError }}</p>
     <pre *ngIf="!logsLoading" class="logs-panel__content">{{ logsContent }}</pre>
@@ -509,5 +540,72 @@
     <button pButton type="button" icon="pi pi-copy" label="Copy" (click)="copyLogs()" [disabled]="!logsContent"></button>
     <button pButton type="button" icon="pi pi-refresh" label="Refresh" (click)="refreshLogs()" [disabled]="logsLoading || !currentLogTarget"></button>
     <button pButton type="button" icon="pi pi-times" label="Close" class="p-button-text" (click)="logsDialogVisible = false"></button>
+  </ng-template>
+</p-dialog>
+
+<p-dialog
+  [header]="'Inspect Pod • ' + (inspectedPod?.metadata?.name || '')"
+  [(visible)]="inspectDialogVisible"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '780px' }"
+  position="right"
+  (onHide)="inspectDialogVisible = false">
+  <div class="inspect-panel">
+    <p *ngIf="inspectLoading">Loading pod details...</p>
+    <p *ngIf="inspectError && !inspectLoading" class="text-danger">{{ inspectError }}</p>
+
+    <ng-container *ngIf="!inspectLoading && !inspectError">
+      <div class="inspect-panel__meta">
+        <div><strong>Namespace:</strong> {{ inspectedPod?.metadata?.namespace || '-' }}</div>
+        <div><strong>Pod:</strong> {{ inspectedPod?.metadata?.name || '-' }}</div>
+        <div><strong>Phase:</strong> {{ inspectedPod?.status?.phase || '-' }}</div>
+      </div>
+
+      <section class="inspect-panel__section">
+        <h4>Containers</h4>
+        <ng-container *ngIf="inspectedContainerStatuses.length; else noContainerStatus">
+          <div class="inspect-container" *ngFor="let cs of inspectedContainerStatuses">
+            <div class="inspect-container__header">
+              <span class="inspect-container__name">{{ cs.name }}</span>
+              <span class="inspect-container__restarts">restarts: {{ cs.restartCount ?? 0 }}</span>
+            </div>
+            <div class="inspect-container__state">{{ containerStateLabel(cs) }}</div>
+            <div class="inspect-container__last" *ngIf="cs.lastState?.terminated as term">
+              <div><strong>Last termination:</strong> {{ term.reason || '-' }} (exit {{ term.exitCode ?? '-' }})</div>
+              <div *ngIf="term.startedAt || term.finishedAt">
+                <strong>Time:</strong>
+                {{ term.startedAt || '-' }} → {{ term.finishedAt || '-' }}
+              </div>
+              <div *ngIf="term.message"><strong>Message:</strong> {{ term.message }}</div>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #noContainerStatus>
+          <p>No container status available.</p>
+        </ng-template>
+      </section>
+
+      <section class="inspect-panel__section">
+        <h4>Events</h4>
+        <ng-container *ngIf="inspectedEvents.length; else noEvents">
+          <div class="inspect-event" *ngFor="let ev of inspectedEvents">
+            <div class="inspect-event__header">
+              <span class="inspect-event__type">{{ ev.type || '-' }}</span>
+              <span class="inspect-event__reason">{{ ev.reason || '-' }}</span>
+              <span class="inspect-event__time">{{ ev.timestamp || '-' }}</span>
+              <span class="inspect-event__count">x{{ ev.count ?? 0 }}</span>
+            </div>
+            <div class="inspect-event__message">{{ ev.message || '-' }}</div>
+          </div>
+        </ng-container>
+        <ng-template #noEvents>
+          <p>No events found for this Pod.</p>
+        </ng-template>
+      </section>
+    </ng-container>
+  </div>
+  <ng-template pTemplate="footer">
+    <button pButton type="button" icon="pi pi-times" label="Close" class="p-button-text" (click)="inspectDialogVisible = false"></button>
   </ng-template>
 </p-dialog>

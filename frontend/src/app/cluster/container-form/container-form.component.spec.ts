@@ -14,8 +14,9 @@ describe('ContainerFormComponent', () => {
 
   beforeEach(() => {
     autoSaveService = jasmine.createSpyObj('AutoSaveService', ['enableAutoSave']);
-    assetService = jasmine.createSpyObj('AssetService', ['getAssets']);
+    assetService = jasmine.createSpyObj('AssetService', ['getAssets', 'getImageAssets']);
     assetService.getAssets.and.returnValue(of([]));
+    assetService.getImageAssets.and.returnValue(of([]));
     notificationService = jasmine.createSpyObj('NotificationService', ['error']);
 
     component = new ContainerFormComponent(

@@ -3,9 +3,12 @@ package com.izylife.izykube.web;
 import com.izylife.izykube.dto.kube.DeploymentLogsDTO;
 import com.izylife.izykube.dto.kube.NamespaceDTO;
 import com.izylife.izykube.dto.kube.NamespaceSummaryDTO;
+import com.izylife.izykube.dto.kube.PodEventDTO;
 import com.izylife.izykube.dto.kube.PodLogDTO;
+import com.izylife.izykube.dto.kube.PodLogDetailsDTO;
 import com.izylife.izykube.dto.kube.PodSummaryDTO;
 import com.izylife.izykube.services.KubernetesExplorerService;
+import io.fabric8.kubernetes.api.model.Pod;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.CacheControl;
@@ -53,6 +56,41 @@ public class KubernetesExplorerController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(logs);
+    }
+
+    @GetMapping("/pods/{namespace}/{podName}")
+    public ResponseEntity<Pod> getPod(@PathVariable String namespace,
+                                      @PathVariable String podName) {
+        Pod pod = explorerService.getPod(namespace, podName);
+        if (pod == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(pod);
+    }
+
+    @GetMapping("/pods/{namespace}/{podName}/logs")
+    public ResponseEntity<PodLogDetailsDTO> getPodLogsV1(@PathVariable String namespace,
+                                                         @PathVariable String podName,
+                                                         @RequestParam(required = false) String container,
+                                                         @RequestParam(defaultValue = "500") int tail) {
+        PodLogDetailsDTO logs = explorerService.getPodLogsV1(namespace, podName, container, tail);
+        if (logs == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(logs);
+    }
+
+    @GetMapping("/pods/{namespace}/{podName}/events")
+    public ResponseEntity<List<PodEventDTO>> getPodEvents(@PathVariable String namespace,
+                                                         @PathVariable String podName) {
+        List<PodEventDTO> events = explorerService.getPodEvents(namespace, podName);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(events);
     }
 
     @GetMapping("/logs/deployment")

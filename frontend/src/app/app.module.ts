@@ -58,6 +58,7 @@ import { IstioFormComponent } from './cluster/istio-form/istio-form.component';
 import { DragDropDirective } from './directives/drag-drop.directive';
 import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
 import { KubeRatioTextComponent } from './kube-explorer/kube-ratio-text/kube-ratio-text.component';
+import { KubeRowActionsComponent } from './kube-explorer/kube-row-actions/kube-row-actions.component';
 import { PodShellDialogComponent } from './pod-shell-dialog/pod-shell-dialog.component';
 import { HeaderComponent } from './layout/header/header.component';
 import { SidebarComponent } from './layout/sidebar/sidebar.component';
@@ -90,6 +91,7 @@ import { ServiceAccountFormComponent } from './cluster/service-account-form/serv
     DragDropDirective,
     KubeExplorerComponent,
     KubeRatioTextComponent,
+    KubeRowActionsComponent,
     PodShellDialogComponent,
     HeaderComponent,
     SidebarComponent,

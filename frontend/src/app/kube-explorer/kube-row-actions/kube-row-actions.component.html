@@ -1,0 +1,11 @@
+<button
+  pButton
+  type="button"
+  class="p-button-rounded p-button-text kube-row-actions__trigger"
+  icon="pi pi-ellipsis-v"
+  aria-label="Row actions"
+  (click)="toggle($event)"
+></button>
+
+<p-menu #menu [popup]="true" [model]="items" appendTo="body"></p-menu>
+

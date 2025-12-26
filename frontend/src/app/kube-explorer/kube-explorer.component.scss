@@ -79,3 +79,117 @@
   max-width: 120px;
   text-align: center;
 }
+
+.logs-panel__meta {
+  display: grid;
+  gap: 0.35rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.logs-panel__meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.logs-panel__meta-label {
+  color: var(--izy-text-muted);
+  font-weight: 600;
+}
+
+.logs-panel__meta-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--izy-ink);
+  font-weight: 600;
+}
+
+.logs-panel__content {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.85rem;
+  max-height: 55vh;
+  overflow: auto;
+  white-space: pre;
+  margin: 0;
+}
+
+.inspect-panel__meta {
+  display: grid;
+  gap: 0.25rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.inspect-panel__section {
+  margin-top: 1rem;
+}
+
+.inspect-container {
+  padding: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.75);
+  margin-bottom: 0.75rem;
+}
+
+.inspect-container__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-weight: 700;
+}
+
+.inspect-container__name {
+  font-variant-numeric: tabular-nums;
+}
+
+.inspect-container__restarts {
+  color: var(--izy-text-muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspect-container__state {
+  margin-top: 0.25rem;
+  color: var(--izy-ink);
+  font-weight: 600;
+}
+
+.inspect-container__last {
+  margin-top: 0.5rem;
+  color: var(--izy-text-muted);
+}
+
+.inspect-event {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  margin-bottom: 0.6rem;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.inspect-event__header {
+  display: grid;
+  grid-template-columns: 90px 1fr 170px 70px;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.inspect-event__type {
+  text-transform: uppercase;
+}
+
+.inspect-event__count {
+  text-align: right;
+  color: var(--izy-text-muted);
+}
+
+.inspect-event__message {
+  margin-top: 0.35rem;
+  color: var(--izy-text-muted);
+  white-space: pre-wrap;
+}

@@ -52,6 +52,10 @@ describe('DiagramComponent', () => {
   let fixture: ComponentFixture<DiagramComponent>;
   let notificationService: jasmine.SpyObj<NotificationService>;
 
+  afterEach(() => {
+    fixture?.destroy();
+  });
+
   beforeEach(() => {
     notificationService = jasmine.createSpyObj('NotificationService', ['success', 'warn', 'error']);
     TestBed.configureTestingModule({
@@ -72,6 +76,7 @@ describe('DiagramComponent', () => {
     fixture = TestBed.createComponent(DiagramComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+    (component as any).podShellOverlay = { hide: () => {}, show: () => {} };
   });
 
   it('should create', () => {

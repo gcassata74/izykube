@@ -11,6 +11,8 @@ import com.izylife.izykube.dto.kube.JobSummaryDTO;
 import com.izylife.izykube.dto.kube.NamespaceDTO;
 import com.izylife.izykube.dto.kube.NamespaceSummaryDTO;
 import com.izylife.izykube.dto.kube.PodLogDTO;
+import com.izylife.izykube.dto.kube.PodEventDTO;
+import com.izylife.izykube.dto.kube.PodLogDetailsDTO;
 import com.izylife.izykube.dto.kube.PodSummaryDTO;
 import com.izylife.izykube.dto.kube.SecretSummaryDTO;
 import com.izylife.izykube.dto.kube.ServiceSummaryDTO;
@@ -18,9 +20,12 @@ import com.izylife.izykube.dto.kube.StatefulSetSummaryDTO;
 import com.izylife.izykube.repositories.ClusterRepository;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.api.model.Event;
+import io.fabric8.kubernetes.api.model.EventList;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.ListOptionsBuilder;
 import io.fabric8.kubernetes.api.model.apps.DaemonSet;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
@@ -44,6 +49,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -183,6 +189,47 @@ public class KubernetesExplorerService {
         }
         String logs = readPodLog(podResource, sanitizeTail(tailLines));
         return new PodLogDTO(podName, namespace, logs);
+    }
+
+    public Pod getPod(String namespace, String podName) {
+        if (!StringUtils.hasText(namespace) || !StringUtils.hasText(podName)) {
+            return null;
+        }
+        return kubernetesClient.pods().inNamespace(namespace).withName(podName).get();
+    }
+
+    public PodLogDetailsDTO getPodLogsV1(String namespace, String podName, String container, int tailLines) {
+        if (!StringUtils.hasText(namespace) || !StringUtils.hasText(podName)) {
+            return null;
+        }
+        PodResource podResource = kubernetesClient.pods().inNamespace(namespace).withName(podName);
+        Pod pod = podResource.get();
+        if (pod == null) {
+            return null;
+        }
+
+        String selectedContainer = StringUtils.hasText(container) ? container : selectDefaultContainer(pod);
+        String logs = readPodLog(podResource, selectedContainer, sanitizeTail(tailLines));
+        return new PodLogDetailsDTO(podName, namespace, selectedContainer, logs);
+    }
+
+    public List<PodEventDTO> getPodEvents(String namespace, String podName) {
+        if (!StringUtils.hasText(namespace) || !StringUtils.hasText(podName)) {
+            return List.of();
+        }
+
+        var options = new ListOptionsBuilder()
+                .withFieldSelector("involvedObject.kind=Pod,involvedObject.name=" + podName)
+                .build();
+
+        EventList events = kubernetesClient.v1().events().inNamespace(namespace).list(options);
+        if (events == null || events.getItems() == null) {
+            return List.of();
+        }
+
+        return events.getItems().stream()
+                .map(this::mapEvent)
+                .toList();
     }
 
     public DeploymentLogsDTO getDeploymentLogs(String namespace, String deploymentName, int tailLines) {
@@ -486,6 +533,66 @@ public class KubernetesExplorerService {
             log.warn("Failed to read pod logs: {}", ex.getMessage());
             return "Unable to retrieve logs: " + ex.getMessage();
         }
+    }
+
+    private String readPodLog(PodResource podResource, String container, int tailLines) {
+        try {
+            if (StringUtils.hasText(container)) {
+                return Optional.ofNullable(podResource.inContainer(container).tailingLines(tailLines).getLog()).orElse("");
+            }
+            return Optional.ofNullable(podResource.tailingLines(tailLines).getLog()).orElse("");
+        } catch (Exception ex) {
+            log.warn("Failed to read pod logs: {}", ex.getMessage());
+            return "Unable to retrieve logs: " + ex.getMessage();
+        }
+    }
+
+    private String selectDefaultContainer(Pod pod) {
+        List<String> containerNames = Optional.ofNullable(pod.getSpec())
+                .map(spec -> spec.getContainers())
+                .orElse(List.of())
+                .stream()
+                .map(container -> container.getName())
+                .filter(StringUtils::hasText)
+                .toList();
+
+        if (containerNames.isEmpty()) {
+            return null;
+        }
+
+        for (String name : containerNames) {
+            if (!isSidecarName(name)) {
+                return name;
+            }
+        }
+        return containerNames.get(0);
+    }
+
+    private boolean isSidecarName(String name) {
+        String value = name.toLowerCase(Locale.ROOT);
+        return value.equals("istio-proxy")
+                || value.equals("linkerd-proxy")
+                || value.equals("envoy")
+                || value.endsWith("-proxy")
+                || value.startsWith("istio");
+    }
+
+    private PodEventDTO mapEvent(Event event) {
+        if (event == null) {
+            return new PodEventDTO(null, null, null, null, null);
+        }
+
+        String timestamp = Optional.ofNullable(event.getLastTimestamp())
+                .filter(StringUtils::hasText)
+                .orElseGet(() -> Optional.ofNullable(event.getEventTime()).map(Object::toString).orElse(null));
+
+        return new PodEventDTO(
+                event.getType(),
+                event.getReason(),
+                event.getMessage(),
+                timestamp,
+                event.getCount()
+        );
     }
 
     private int sanitizeTail(int tailLines) {

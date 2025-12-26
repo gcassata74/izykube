@@ -7,13 +7,15 @@ import { ButtonModule } from 'primeng/button';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { IngressFormComponent } from './ingress-form.component';
 import { Ingress } from '../../model/ingress.class';
-import { DiagramService } from '../../services/diagram.service';
+import { AutoSaveService } from '../../services/auto-save.service';
 
 describe('IngressFormComponent', () => {
   let component: IngressFormComponent;
   let fixture: ComponentFixture<IngressFormComponent>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    const autoSaveStub = { enableAutoSave: () => {}, flushPendingChanges: () => {} };
+
     TestBed.configureTestingModule({
       imports: [
         ReactiveFormsModule,
@@ -24,10 +26,16 @@ describe('IngressFormComponent', () => {
         NoopAnimationsModule
       ],
       declarations: [IngressFormComponent],
-      providers: [
-        { provide: DiagramService, useValue: { updateClusterNodes: jasmine.createSpy('updateClusterNodes') } }
-      ]
-    }).compileComponents();
+      providers: []
+    });
+
+    TestBed.overrideComponent(IngressFormComponent, {
+      set: {
+        providers: [{ provide: AutoSaveService, useValue: autoSaveStub }],
+      },
+    });
+
+    await TestBed.compileComponents();
     fixture = TestBed.createComponent(IngressFormComponent);
     component = fixture.componentInstance;
     component.selectedNode = new Ingress('ingress:test', 'test', 'example.com', '/', '', 80);

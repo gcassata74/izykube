@@ -30,7 +30,7 @@ describe('ConfigBundleFormComponent', () => {
   let fixture: ComponentFixture<ConfigBundleFormComponent>;
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({
+    TestBed.configureTestingModule({
       imports: [
         BrowserAnimationsModule,
         ReactiveFormsModule,
@@ -45,10 +45,17 @@ describe('ConfigBundleFormComponent', () => {
       ],
       declarations: [ConfigBundleFormComponent],
       providers: [
-        { provide: AutoSaveService, useClass: AutoSaveStub },
         { provide: NotificationService, useClass: NotificationStub }
       ]
-    }).compileComponents();
+    });
+
+    TestBed.overrideComponent(ConfigBundleFormComponent, {
+      set: {
+        providers: [{ provide: AutoSaveService, useClass: AutoSaveStub }],
+      },
+    });
+
+    await TestBed.compileComponents();
   });
 
   beforeEach(() => {

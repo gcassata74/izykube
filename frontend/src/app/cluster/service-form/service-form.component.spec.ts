@@ -14,20 +14,35 @@
  * @since March 2024
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { ReactiveFormsModule } from '@angular/forms';
 
 import { ServiceFormComponent } from './service-form.component';
+import { AutoSaveService } from '../../services/auto-save.service';
 
 describe('ServiceFormComponent', () => {
   let component: ServiceFormComponent;
   let fixture: ComponentFixture<ServiceFormComponent>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    const autoSaveStub = { enableAutoSave: () => {}, flushPendingChanges: () => {} };
+
     TestBed.configureTestingModule({
-      declarations: [ServiceFormComponent]
+      imports: [ReactiveFormsModule],
+      declarations: [ServiceFormComponent],
+      schemas: [NO_ERRORS_SCHEMA],
     });
+
+    TestBed.overrideComponent(ServiceFormComponent, {
+      set: {
+        providers: [{ provide: AutoSaveService, useValue: autoSaveStub }],
+      },
+    });
+
+    await TestBed.compileComponents();
+
     fixture = TestBed.createComponent(ServiceFormComponent);
     component = fixture.componentInstance;
-    fixture.detectChanges();
   });
 
   it('should create', () => {

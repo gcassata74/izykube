@@ -1,10 +1,13 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { Subscription, interval } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { Subscription, forkJoin, interval, of } from 'rxjs';
+import { catchError, finalize } from 'rxjs/operators';
 import { NamespaceOption, NamespaceSummary } from '../model/kube-summary';
+import { KubePod, KubeContainerStatus } from '../model/kube-pod';
+import { KubePodEvent } from '../model/kube-pod-event';
 import { KubeExplorerService } from '../services/kube-explorer.service';
 import { NotificationService } from '../services/notification.service';
 import { Table } from 'primeng/table';
+import { KubeRowRef } from './kube-row-actions/kube-row-actions.component';
 
 type ResourceCollections = Pick<NamespaceSummary, 'pods' | 'deployments' | 'services' | 'ingresses' | 'configMaps' | 'secrets' | 'jobs' | 'cronJobs' | 'daemonSets' | 'statefulSets'>;
 type ResourceKind = keyof ResourceCollections;
@@ -63,6 +66,14 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   logsContent = '';
   logsLoading = false;
   logsError: string | null = null;
+  logsPodContainers: { label: string; value: string }[] = [];
+  logsSelectedContainer: string | null = null;
+
+  inspectDialogVisible = false;
+  inspectLoading = false;
+  inspectError: string | null = null;
+  inspectedPod: KubePod | null = null;
+  inspectedEvents: KubePodEvent[] = [];
 
   @ViewChild('podsTable') podsTable?: Table;
   @ViewChild('deploymentsTable') deploymentsTable?: Table;
@@ -303,6 +314,20 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     }
   }
 
+  openPodLogsFromRow(row: KubeRowRef): void {
+    if (!row?.namespace || !row?.name) {
+      return;
+    }
+    this.fetchPodLogs(row.namespace, row.name);
+  }
+
+  openPodInspectFromRow(row: KubeRowRef): void {
+    if (!row?.namespace || !row?.name) {
+      return;
+    }
+    this.openPodInspect(row.namespace, row.name);
+  }
+
   getSelectedRowEntries(): { label: string; value: string }[] {
     if (!this.selectedRow) {
       return [];
@@ -427,7 +452,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
       return;
     }
     if (this.currentLogTarget.type === 'pod') {
-      this.fetchPodLogs(this.currentLogTarget.namespace, this.currentLogTarget.name, false);
+      this.fetchPodLogsContent(this.currentLogTarget.namespace, this.currentLogTarget.name, this.logsSelectedContainer);
     } else {
       this.fetchDeploymentLogs(this.currentLogTarget.namespace, this.currentLogTarget.name, false);
     }
@@ -598,21 +623,131 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     this.logsLoading = true;
     this.logsError = null;
     this.logsContent = '';
-    this.kubeExplorerService.getPodLogs(namespace, podName).pipe(
+
+    this.kubeExplorerService.getPod(namespace, podName).pipe(
+      finalize(() => this.cdr.markForCheck())
+    ).subscribe({
+      next: (pod) => {
+        this.logsPodContainers = this.buildContainerOptions(pod);
+        this.logsSelectedContainer = this.selectDefaultContainer(pod);
+        this.fetchPodLogsContent(namespace, podName, this.logsSelectedContainer);
+      },
+      error: () => {
+        this.logsPodContainers = [];
+        this.logsSelectedContainer = null;
+        this.fetchPodLogsContent(namespace, podName, undefined);
+      }
+    });
+    this.cdr.markForCheck();
+  }
+
+  onLogsContainerChange(container: string): void {
+    if (this.currentLogTarget?.type !== 'pod') {
+      return;
+    }
+    this.logsSelectedContainer = container;
+    this.fetchPodLogsContent(this.currentLogTarget.namespace, this.currentLogTarget.name, container);
+  }
+
+  private fetchPodLogsContent(namespace: string, podName: string, container?: string | null): void {
+    this.logsLoading = true;
+    this.logsError = null;
+    this.logsContent = '';
+
+    this.kubeExplorerService.getPodLogsV1(namespace, podName, container || undefined).pipe(
       finalize(() => {
         this.logsLoading = false;
         this.cdr.markForCheck();
       })
     ).subscribe({
-      next: (response) => {
-        this.logsContent = response?.logs || '[No log output]';
+      next: (content) => {
+        const normalized = content ?? '';
+        this.logsContent = normalized ? normalized : '[No log output]';
         this.logsDialogVisible = true;
       },
-      error: () => {
-        this.logsError = 'Unable to fetch pod logs.';
+      error: (err) => {
+        const status = err?.status;
+        if (status === 404 || status === 410) {
+          this.logsError = 'No logs found for this Pod.';
+        } else {
+          this.logsError = 'Unable to fetch pod logs.';
+        }
+        this.logsDialogVisible = true;
       }
     });
+  }
+
+  private openPodInspect(namespace: string, podName: string): void {
+    this.inspectDialogVisible = true;
+    this.inspectLoading = true;
+    this.inspectError = null;
+    this.inspectedPod = null;
+    this.inspectedEvents = [];
     this.cdr.markForCheck();
+
+    forkJoin({
+      pod: this.kubeExplorerService.getPod(namespace, podName).pipe(catchError(() => of(null))),
+      events: this.kubeExplorerService.getPodEvents(namespace, podName).pipe(catchError(() => of([]))),
+    }).pipe(
+      finalize(() => {
+        this.inspectLoading = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe(({ pod, events }) => {
+      this.inspectedPod = pod;
+      this.inspectedEvents = events || [];
+      if (!pod) {
+        this.inspectError = 'Unable to fetch Pod details.';
+      }
+    });
+  }
+
+  get inspectedContainerStatuses(): KubeContainerStatus[] {
+    return this.inspectedPod?.status?.containerStatuses || [];
+  }
+
+  containerStateLabel(status: KubeContainerStatus): string {
+    const state = status?.state;
+    if (state?.running) {
+      return `Running${state.running.startedAt ? ' • ' + state.running.startedAt : ''}`;
+    }
+    if (state?.waiting) {
+      return `Waiting${state.waiting.reason ? ' • ' + state.waiting.reason : ''}`;
+    }
+    if (state?.terminated) {
+      return `Terminated${state.terminated.reason ? ' • ' + state.terminated.reason : ''}`;
+    }
+    return 'Unknown';
+  }
+
+  private buildContainerOptions(pod: KubePod | null): { label: string; value: string }[] {
+    const containers = pod?.spec?.containers || [];
+    return containers
+      .map(c => c?.name)
+      .filter((name): name is string => !!name)
+      .map(name => ({ label: name, value: name }));
+  }
+
+  private selectDefaultContainer(pod: KubePod | null): string | null {
+    const containers = pod?.spec?.containers || [];
+    if (!containers.length) {
+      return null;
+    }
+
+    const isSidecar = (name: string, image?: string): boolean => {
+      const lowered = name.toLowerCase();
+      const loweredImage = (image || '').toLowerCase();
+      return lowered === 'istio-proxy'
+        || lowered === 'linkerd-proxy'
+        || lowered === 'envoy'
+        || lowered.endsWith('-proxy')
+        || lowered.startsWith('istio')
+        || loweredImage.includes('istio')
+        || loweredImage.includes('linkerd');
+    };
+
+    const preferred = containers.find(c => c?.name && !isSidecar(c.name, c.image));
+    return preferred?.name || containers[0]?.name || null;
   }
 
   private fetchDeploymentLogs(namespace: string, deploymentName: string, showDialog = true): void {

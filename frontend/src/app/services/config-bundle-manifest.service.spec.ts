@@ -29,7 +29,7 @@ describe('generateManifestsFromBundle', () => {
     });
 
     const manifests = generateManifestsFromBundle(bundle);
-    expect(manifests).toHaveLength(1);
+    expect(manifests.length).toBe(1);
     const manifest = manifests[0];
     expect(manifest.kind).toBe('ConfigMap');
     expect(manifest.metadata.name).toBe('plain-only');
@@ -48,7 +48,7 @@ describe('generateManifestsFromBundle', () => {
     });
 
     const manifests = generateManifestsFromBundle(bundle);
-    expect(manifests).toHaveLength(1);
+    expect(manifests.length).toBe(1);
     const manifest = manifests[0];
     expect(manifest.kind).toBe('Secret');
     expect(manifest.metadata.name).toBe('secrets-only');
@@ -67,7 +67,7 @@ describe('generateManifestsFromBundle', () => {
     });
 
     const manifests = generateManifestsFromBundle(bundle);
-    expect(manifests).toHaveLength(2);
+    expect(manifests.length).toBe(2);
 
     const configMap = manifests.find(m => m.kind === 'ConfigMap') as GeneratedManifest;
     const secret = manifests.find(m => m.kind === 'Secret') as GeneratedManifest;
