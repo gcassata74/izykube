@@ -91,7 +91,9 @@ export const clusterReducer = createReducer(
             ? 'Container'
             : changes.type === 'Expose'
               ? 'Expose'
-              : (link.type || 'Expose');
+              : changes.type === 'serviceAccountBinding'
+                ? 'serviceAccountBinding'
+                : (link.type || 'Expose');
         const nextNote = 'note' in changes ? changes.note : link.note;
         const next: any = {
           ...link,

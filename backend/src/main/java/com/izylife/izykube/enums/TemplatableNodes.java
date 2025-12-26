@@ -12,7 +12,8 @@ public enum TemplatableNodes {
     STATEFUL_SET("statefulset"),
     DAEMON_SET("daemonset"),
     JOB("job"),
-    CRON_JOB("cronjob");
+    CRON_JOB("cronjob"),
+    SERVICE_ACCOUNT("serviceaccount");
 
     private final String kind;
 

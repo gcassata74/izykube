@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Transient;
 
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +29,8 @@ import java.util.List;
         @JsonSubTypes.Type(value = VolumeDTO.class, name = "volume"),
         @JsonSubTypes.Type(value = IngressDTO.class, name = "ingress"),
         @JsonSubTypes.Type(value = VirtualServiceDTO.class, name = "istio"),
-        @JsonSubTypes.Type(value = JobDTO.class, name = "job")
+        @JsonSubTypes.Type(value = JobDTO.class, name = "job"),
+        @JsonSubTypes.Type(value = ServiceAccountDTO.class, name = "serviceaccount")
 })
 public abstract class NodeDTO {
     @JsonProperty("id")
@@ -55,6 +57,10 @@ public abstract class NodeDTO {
     @Transient
     @JsonIgnore
     List<LinkDTO> outgoingLinks;
+    @Setter
+    @Transient
+    @JsonIgnore
+    Map<String, NodeDTO> nodeIndex;
     @JsonProperty("isAffected")
     private boolean affected;
 

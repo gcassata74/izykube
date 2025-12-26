@@ -163,6 +163,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   private panPointerMove?: (event: PointerEvent) => void;
   private panPointerUp?: (event: PointerEvent) => void;
   private readonly dependencyPriority: Record<string, number> = {
+    serviceaccount: 7,
     service: 6,
     ingress: 5,
     istio: 5,
@@ -1116,6 +1117,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     return [
       { name: 'ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress') },
       { name: 'Istio', type: 'istio', icon: this.iconService.getIconPath('istio') },
+      { name: 'ServiceAccount', type: 'serviceaccount', baseName: 'service-account', icon: this.iconService.getIconPath('serviceaccount') },
       { name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },
       { name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
       { name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
@@ -1479,7 +1481,14 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
         link.element.setAttribute('stroke-width', isSelected ? '4' : '3');
         link.element.setAttribute('stroke-dasharray', link.type === 'Use' ? '6 3' : '');
         link.element.setAttribute('data-direction', link.type === 'Use' ? 'reverse' : 'forward');
-        link.element.setAttribute('title', link.type === 'Use' ? 'Use' : 'Expose');
+        const title = link.type === 'Use'
+          ? 'Use'
+          : link.type === 'Container'
+            ? 'Container'
+            : link.type === 'serviceAccountBinding'
+              ? 'ServiceAccount binding'
+              : 'Expose';
+        link.element.setAttribute('title', title);
       }
     });
   }
@@ -1533,6 +1542,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this.saveToUndoStack();
 
+    const normalizedSelected = this.normalizeLinkOrientation(this.selectedLink);
+
     // Remove the SVG element
     if (this.selectedLink.element) {
       this.selectedLink.element.remove();
@@ -1543,6 +1554,13 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     this.selectedLink = null;
     this.diagramService.clearSelectedLink();
     this.renderLinks();
+    if (this.resolveLinkType(normalizedSelected.type) === 'serviceAccountBinding') {
+      const workloadId = normalizedSelected.to;
+      const remaining = this.links
+        .map(link => this.normalizeLinkOrientation(link))
+        .find(link => this.resolveLinkType(link.type) === 'serviceAccountBinding' && link.to === workloadId);
+      this.diagramService.updateClusterNodes(workloadId, { serviceAccountRef: remaining ? remaining.from : null });
+    }
     this.updateDiagramData();
   }
 
@@ -1566,6 +1584,13 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     this.links = this.links.filter(link =>
       link.from !== this.selectedNode!.id && link.to !== this.selectedNode!.id
     );
+
+    connectedLinks
+      .map(link => this.normalizeLinkOrientation(link))
+      .filter(link => this.resolveLinkType(link.type) === 'serviceAccountBinding')
+      .forEach(link => {
+        this.diagramService.updateClusterNodes(link.to, { serviceAccountRef: null });
+      });
 
     const nodeId = this.selectedNode!.id;
 
@@ -1636,16 +1661,47 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
+    const involvesServiceAccount = this.isServiceAccountNode(fromNode) || this.isServiceAccountNode(toNode);
+    const involvesServiceAccountWorkloadBinding =
+      (this.isServiceAccountNode(fromNode) && this.isServiceAccountSupportedWorkloadNode(toNode)) ||
+      (this.isServiceAccountNode(toNode) && this.isServiceAccountSupportedWorkloadNode(fromNode));
+
+    if (involvesServiceAccount && !involvesServiceAccountWorkloadBinding) {
+      this.notificationService.warn(
+        'Invalid connection',
+        'ServiceAccounts can only be linked to workloads (Deployment, StatefulSet, Job).'
+      );
+      return;
+    }
+
     const involvesDeploymentAndContainer =
       (fromNode.type === 'deployment' && toNode.type === 'container') ||
       (fromNode.type === 'container' && toNode.type === 'deployment');
 
-    const type = involvesDeploymentAndContainer ? 'Container' : this.resolveLinkType(options?.type);
+    const type = involvesDeploymentAndContainer
+      ? 'Container'
+      : involvesServiceAccountWorkloadBinding
+        ? 'serviceAccountBinding'
+        : this.resolveLinkType(options?.type);
     const containerRole = involvesDeploymentAndContainer ? this.resolveContainerRoleForLink(fromNode, toNode) : undefined;
     const note = typeof options?.note === 'string' ? options.note : undefined;
     const oriented = this.orientLinkByType(fromNode, toNode, fromPoint, toPoint, type);
     const sourceId = oriented.fromNode.id;
     const targetId = oriented.toNode.id;
+
+    if (type === 'serviceAccountBinding') {
+      const workloadId = targetId;
+      const existingBinding = this.links
+        .map(link => this.normalizeLinkOrientation(link))
+        .find(link => this.resolveLinkType(link.type) === 'serviceAccountBinding' && link.to === workloadId);
+      if (existingBinding && existingBinding.from !== sourceId) {
+        this.notificationService.warn(
+          'ServiceAccount already selected',
+          'Each workload may reference at most one ServiceAccount.'
+        );
+        return;
+      }
+    }
 
     // Check if link already exists (regardless of drawing direction)
     const existingLink = this.links.find(link =>
@@ -1675,6 +1731,9 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this.links.push(link);
     this.renderLink(link);
+    if (type === 'serviceAccountBinding') {
+      this.diagramService.updateClusterNodes(targetId, { serviceAccountRef: sourceId });
+    }
     if (!options?.deferUpdate) {
       this.updateDiagramData();
     }
@@ -1793,11 +1852,14 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       if (!match) {
         return { ...link, type: link.type ?? 'Expose' };
       }
-      const normalizedType: LinkType = match.type === 'Use'
+      const matchType = String(match.type ?? '').trim();
+      const normalizedType: LinkType = matchType === 'Use'
         ? 'Use'
-        : match.type === 'Container'
+        : matchType === 'Container'
           ? 'Container'
-          : 'Expose';
+          : matchType.toLowerCase() === 'serviceaccountbinding'
+            ? 'serviceAccountBinding'
+            : 'Expose';
       const effectiveType: LinkType = isDeploymentContainerLink(link.from, link.to) ? 'Container' : normalizedType;
       const normalizedRole = toContainerRole((match as any).containerRole);
       const next: DiagramLink = {
@@ -2021,6 +2083,15 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     this.updateDiagramData();
   }
 
+  private isServiceAccountNode(node: DiagramNode): boolean {
+    return (node?.type || '').toLowerCase() === 'serviceaccount';
+  }
+
+  private isServiceAccountSupportedWorkloadNode(node: DiagramNode): boolean {
+    const normalized = (node?.type || '').toLowerCase();
+    return normalized === 'deployment' || normalized === 'job';
+  }
+
   private isContainerLinkAllowed(nodeA: DiagramNode, nodeB: DiagramNode): boolean {
     const typeA = nodeA.type?.toLowerCase() ?? '';
     const typeB = nodeB.type?.toLowerCase() ?? '';
@@ -2101,9 +2172,27 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     fromPoint?: ConnectionPoint;
     toPoint?: ConnectionPoint;
   } {
-    const normalizedType: LinkType = type === 'Use' ? 'Use' : type === 'Container' ? 'Container' : 'Expose';
+    const normalizedType: LinkType =
+      type === 'Use'
+        ? 'Use'
+        : type === 'Container'
+          ? 'Container'
+          : type === 'serviceAccountBinding'
+            ? 'serviceAccountBinding'
+            : 'Expose';
     const isService = (node: DiagramNode) => node.type?.toLowerCase() === 'service';
     const isDeployment = (node: DiagramNode) => node.type?.toLowerCase() === 'deployment';
+    const isServiceAccount = (node: DiagramNode) => node.type?.toLowerCase() === 'serviceaccount';
+    const isWorkload = (node: DiagramNode) => this.isServiceAccountSupportedWorkloadNode(node);
+
+    if (normalizedType === 'serviceAccountBinding') {
+      if (isServiceAccount(startNode) && isWorkload(endNode)) {
+        return { fromNode: startNode, toNode: endNode, fromPoint: startPoint, toPoint: endPoint };
+      }
+      if (isServiceAccount(endNode) && isWorkload(startNode)) {
+        return { fromNode: endNode, toNode: startNode, fromPoint: endPoint, toPoint: startPoint };
+      }
+    }
 
     if (isService(startNode) && isDeployment(endNode)) {
       return normalizedType === 'Use'
@@ -2154,7 +2243,17 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private resolveLinkType(type?: any): LinkType {
-    return type === 'Use' ? 'Use' : type === 'Container' ? 'Container' : 'Expose';
+    const value = String(type ?? '').trim();
+    if (value === 'Use') {
+      return 'Use';
+    }
+    if (value === 'Container') {
+      return 'Container';
+    }
+    if (value.toLowerCase() === 'serviceaccountbinding') {
+      return 'serviceAccountBinding';
+    }
+    return 'Expose';
   }
 
   private resolveIconPath(type?: string): string {

@@ -11,14 +11,17 @@ public class JobDTO extends NodeDTO {
 
 
     private String assetId;
+    private String serviceAccountRef;
 
     @JsonCreator
     public JobDTO(
             @JsonProperty("id") String id,
             @JsonProperty("name") String name,
-            @JsonProperty("assetId") String assetId
+            @JsonProperty("assetId") String assetId,
+            @JsonProperty("serviceAccountRef") String serviceAccountRef
     ) {
         super(id, name, "job");
         this.assetId = assetId;
+        this.serviceAccountRef = serviceAccountRef;
     }
 }

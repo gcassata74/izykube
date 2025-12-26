@@ -4,12 +4,14 @@ import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.dto.cluster.LinkDTO;
+import com.izylife.izykube.dto.cluster.ServiceAccountDTO;
 import com.izylife.izykube.factory.TemplateFactory;
 import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.repositories.ClusterTemplateRepository;
 import com.izylife.izykube.services.ai.ClusterYamlService;
+import com.izylife.izykube.services.processors.RbacProcessor;
 import com.izylife.izykube.services.processors.TemplateProcessor;
 import com.izylife.izykube.utils.ClusterUtil;
 import com.izylife.izykube.utils.TemplatableResourceUtil;
@@ -30,6 +32,7 @@ public class TemplateService {
     private final ClusterRepository clusterRepository;
     private final ClusterTemplateRepository clusterTemplateRepository;
     private final ClusterYamlService clusterYamlService;
+    private final RbacProcessor rbacProcessor;
 
     public void createTemplate(String id) throws ObjectNotFoundException {
         Cluster cluster = clusterRepository.findById(id)
@@ -61,8 +64,23 @@ public class TemplateService {
                     .filter(this::isTemplateableResource)
                     .toList();
 
+            Map<String, NodeDTO> nodesById = Optional.ofNullable(clusterDTO.getNodes())
+                    .orElse(List.of())
+                    .stream()
+                    .filter(node -> node != null && node.getId() != null)
+                    .collect(Collectors.toMap(NodeDTO::getId, node -> node, (a, b) -> a, LinkedHashMap::new));
+
+            enforceServiceAccountConstraints(nodesById, namespace);
+
             templateableNodes.forEach(node -> {
-                node.setNamespace(namespace);
+                if (node instanceof ServiceAccountDTO serviceAccount) {
+                    if (serviceAccount.getNamespace() == null || serviceAccount.getNamespace().isBlank()) {
+                        serviceAccount.setNamespace(namespace);
+                    }
+                } else {
+                    node.setNamespace(namespace);
+                }
+                node.setNodeIndex(nodesById);
                 node.setSourceNodes(ClusterUtil.findSourceNodesOf(clusterDTO, node.getId()));
                 node.setTargetNodes(ClusterUtil.findTargetNodesOf(clusterDTO, node.getId()));
                 node.setIncomingLinks(ClusterUtil.findLinksByTarget(clusterDTO, node.getId()));
@@ -73,8 +91,12 @@ public class TemplateService {
                     .filter(node -> !processedNodes.contains(node.getId()))
                     .forEach(node -> processNodeAndLinkedNodes(clusterDTO, node, yamlList, processedNodes));
 
+            yamlList.addAll(rbacProcessor.createTemplates(namespace, clusterDTO.getNodes()));
+
             return saveTemplateForCluster(id, yamlList);
 
+        } catch (IllegalArgumentException validationException) {
+            throw validationException;
         } catch (Exception primaryException) {
             log.warn("Primary template generation failed for cluster {}: {}. Falling back to raw manifests.",
                     id, primaryException.getMessage());
@@ -150,6 +172,31 @@ public class TemplateService {
     private String processSpecificNodeDTO(NodeDTO node) {
         TemplateProcessor<NodeDTO> processor = templateFactory.getProcessor(node);
         return processor.createTemplate(node);
+    }
+
+    private void enforceServiceAccountConstraints(Map<String, NodeDTO> nodesById, String namespace) {
+        if (nodesById == null || namespace == null || namespace.isBlank()) {
+            return;
+        }
+
+        Map<String, String> seenNames = new LinkedHashMap<>();
+        for (NodeDTO node : nodesById.values()) {
+            if (!(node instanceof ServiceAccountDTO sa)) {
+                continue;
+            }
+            String saNamespace = sa.getNamespace();
+            if (saNamespace != null && !saNamespace.isBlank() && !namespace.equals(saNamespace)) {
+                throw new IllegalArgumentException("Workload namespace must match ServiceAccount namespace. Kubernetes does not allow using a ServiceAccount across namespaces.");
+            }
+            String name = sa.getName() == null ? "" : sa.getName().trim();
+            if (name.isBlank()) {
+                throw new IllegalArgumentException("ServiceAccount name is required");
+            }
+            String existingId = seenNames.putIfAbsent(name, sa.getId());
+            if (existingId != null && !existingId.equals(sa.getId())) {
+                throw new IllegalArgumentException("Duplicate ServiceAccount name '" + name + "' in namespace '" + namespace + "'");
+            }
+        }
     }
 
     public void deleteTemplate(String clusterId) throws ObjectNotFoundException {

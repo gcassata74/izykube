@@ -888,6 +888,12 @@ body {
   }
 }
 
+// Hide PrimeNG table loading overlay/progress indicator across the app
+.p-datatable-loading-overlay,
+.p-treetable-loading-overlay {
+  display: none !important;
+}
+
 // Shared styling for Izy tables
 .izy-table {
   width: 100%;

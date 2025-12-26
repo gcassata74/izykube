@@ -5,6 +5,8 @@ import com.izylife.izykube.dto.cluster.ContainerRole;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.DeploymentWorkloadType;
 import com.izylife.izykube.dto.cluster.LinkDTO;
+import com.izylife.izykube.dto.cluster.NodeDTO;
+import com.izylife.izykube.dto.cluster.ServiceAccountDTO;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.repositories.AssetRepository;
 import io.fabric8.kubernetes.api.model.PodSpec;
@@ -18,6 +20,7 @@ import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -212,6 +215,35 @@ class DeploymentProcessorTest {
         PodSpec spec = manifest.getSpec().getTemplate().getSpec();
         assertEquals(List.of("init-container-1"), spec.getInitContainers().stream().map(c -> c.getName()).toList());
         assertEquals(List.of("my-daemonset", "sidecar-container-1"), spec.getContainers().stream().map(c -> c.getName()).toList());
+    }
+
+    @Test
+    void injectsServiceAccountNameWhenServiceAccountRefPresent() {
+        DeploymentDTO deployment = buildDeployment("dep-sa", "web-app", "main-asset");
+        deployment.setNamespace("demo");
+        deployment.setServiceAccountRef("sa-1");
+
+        ServiceAccountDTO sa = new ServiceAccountDTO("sa-1", "example-sa");
+        sa.setNamespace("demo");
+        deployment.setNodeIndex(Map.of(sa.getId(), (NodeDTO) sa));
+
+        Deployment manifest = renderDeployment(deployment);
+        PodSpec spec = manifest.getSpec().getTemplate().getSpec();
+        assertEquals("example-sa", spec.getServiceAccountName());
+    }
+
+    @Test
+    void rejectsCrossNamespaceServiceAccountUsage() {
+        DeploymentDTO deployment = buildDeployment("dep-sa-ns", "web-app", "main-asset");
+        deployment.setNamespace("demo");
+        deployment.setServiceAccountRef("sa-1");
+
+        ServiceAccountDTO sa = new ServiceAccountDTO("sa-1", "example-sa");
+        sa.setNamespace("other");
+        deployment.setNodeIndex(Map.of(sa.getId(), (NodeDTO) sa));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> deploymentProcessor.createTemplate(deployment));
+        assertTrue(ex.getMessage().contains("Workload namespace must match ServiceAccount namespace"));
     }
 
     private DeploymentDTO buildDeployment(String id, String name, String assetId) {

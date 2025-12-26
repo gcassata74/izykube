@@ -56,3 +56,4 @@ ai:
     model: mistral
     connect-timeout-ms: 5000
     read-timeout-ms: 120000
+

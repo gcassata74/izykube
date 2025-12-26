@@ -86,6 +86,10 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         if (hostAlias != null) {
             podSpecBuilder.withHostAliases(List.of(hostAlias));
         }
+        String serviceAccountName = resolveServiceAccountName(dto, namespace);
+        if (StringUtils.hasText(serviceAccountName)) {
+            podSpecBuilder.withServiceAccountName(serviceAccountName);
+        }
 
         PodSpec podSpec = podSpecBuilder.build();
         podSpec.getContainers().forEach(container -> container.setEnvFrom(envFromSources));
@@ -107,6 +111,89 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         };
 
         return Serialization.asYaml(workload);
+    }
+
+    private String resolveServiceAccountName(DeploymentDTO dto, String workloadNamespace) {
+        if (dto == null) {
+            return null;
+        }
+        List<LinkDTO> incomingBindings = Optional.ofNullable(dto.getIncomingLinks())
+                .orElse(List.of())
+                .stream()
+                .filter(Objects::nonNull)
+                .filter(link -> "serviceAccountBinding".equalsIgnoreCase(link.getType()))
+                .toList();
+        if (incomingBindings.size() > 1) {
+            throw new IllegalArgumentException("Workload " + dto.getName() + " references multiple ServiceAccounts; only one is allowed");
+        }
+
+        String ref = dto.getServiceAccountRef();
+        ServiceAccountDTO serviceAccount = null;
+        if (StringUtils.hasText(ref)) {
+            serviceAccount = resolveServiceAccountById(dto, ref);
+        } else {
+            if (incomingBindings.size() == 1) {
+                String sourceId = incomingBindings.get(0).getSource();
+                if (StringUtils.hasText(sourceId)) {
+                    dto.setServiceAccountRef(sourceId);
+                    serviceAccount = resolveServiceAccountById(dto, sourceId);
+                }
+            }
+        }
+
+        if (serviceAccount != null && incomingBindings.size() == 1 && incomingBindings.get(0).getSource() != null) {
+            String linkedId = incomingBindings.get(0).getSource();
+            if (StringUtils.hasText(linkedId) && StringUtils.hasText(ref) && !linkedId.equals(ref)) {
+                throw new IllegalArgumentException("Workload " + dto.getName() + " ServiceAccount reference does not match its diagram binding");
+            }
+        }
+
+        if (serviceAccount == null) {
+            return null;
+        }
+
+        String saNamespace = serviceAccount.getNamespace();
+        String effectiveSaNamespace = saNamespace == null || saNamespace.isBlank() ? workloadNamespace : saNamespace;
+        if (!Objects.equals(workloadNamespace, effectiveSaNamespace)) {
+            throw new IllegalArgumentException("Workload namespace must match ServiceAccount namespace. Kubernetes does not allow using a ServiceAccount across namespaces.");
+        }
+
+        String name = normalizeName(serviceAccount.getName());
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("ServiceAccount name is required");
+        }
+        validateDns1123Subdomain(name);
+        return name;
+    }
+
+    private ServiceAccountDTO resolveServiceAccountById(DeploymentDTO dto, String serviceAccountId) {
+        if (dto == null || !StringUtils.hasText(serviceAccountId)) {
+            return null;
+        }
+        Map<String, NodeDTO> nodeIndex = dto.getNodeIndex();
+        if (nodeIndex == null) {
+            throw new IllegalArgumentException("Workload " + dto.getName() + " cannot resolve ServiceAccount reference (node index missing)");
+        }
+        NodeDTO resolved = nodeIndex.get(serviceAccountId);
+        if (resolved == null) {
+            throw new IllegalArgumentException("Workload " + dto.getName() + " references missing ServiceAccount: " + serviceAccountId);
+        }
+        if (!(resolved instanceof ServiceAccountDTO serviceAccount)) {
+            throw new IllegalArgumentException("Workload " + dto.getName() + " references non-ServiceAccount node: " + serviceAccountId);
+        }
+        return serviceAccount;
+    }
+
+    private void validateDns1123Subdomain(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("ServiceAccount name is required");
+        }
+        if (name.length() > 253) {
+            throw new IllegalArgumentException("ServiceAccount name must be <= 253 characters");
+        }
+        if (!name.matches("^[a-z0-9]([a-z0-9-.]*[a-z0-9])?$")) {
+            throw new IllegalArgumentException("ServiceAccount name must be a valid DNS-1123 subdomain (lowercase alphanumeric, '-', '.', start/end alphanumeric)");
+        }
     }
 
     private void applyPodContainers(ContainerGroups containerGroups, PodSpecBuilder podSpecBuilder) {

@@ -81,6 +81,7 @@
                         #podsTable
                         [value]="summary?.pods || []"
                         [loading]="loading"
+                        [showLoader]="false"
                         [paginator]="true"
                         [rows]="15"
                         [rowsPerPageOptions]="[10, 15, 25, 50]"
@@ -115,13 +116,7 @@
                 </span>
                             </td>
                             <td>
-                                <div class="progress-cell">
-                                    <div class="progress-meta">
-                                        <span>{{ pod.ready }}</span>
-                                        <span class="progress-hint">ready</span>
-                                    </div>
-                                    <p-progressBar [value]="parseReady(pod.ready)"></p-progressBar>
-                                </div>
+                                <app-kube-ratio-text [value]="pod.ready"></app-kube-ratio-text>
                             </td>
                             <td>{{ pod.restarts }}</td>
                             <td>{{ pod.node || '-' }}</td>
@@ -141,6 +136,7 @@
                         #deploymentsTable
                         [value]="summary?.deployments || []"
                         [loading]="loading"
+                        [showLoader]="false"
                         [paginator]="true"
                         [rows]="15"
                         [rowsPerPageOptions]="[10, 15, 25, 50]"
@@ -168,13 +164,7 @@
                             <td>{{ deployment.name }}</td>
                             <td>{{ deployment.namespace }}</td>
                             <td>
-                                <div class="progress-cell">
-                                    <div class="progress-meta">
-                                        <span>{{ deployment.readyReplicas }}/{{ deployment.replicas }}</span>
-                                        <span class="progress-hint">ready</span>
-                                    </div>
-                                    <p-progressBar [value]="replicaPercent(deployment)"></p-progressBar>
-                                </div>
+                                <app-kube-ratio-text [numerator]="deployment.readyReplicas" [denominator]="deployment.replicas"></app-kube-ratio-text>
                             </td>
                             <td>{{ deployment.replicas }}</td>
                             <td>{{ deployment.updatedReplicas }}</td>
@@ -195,6 +185,7 @@
                         #servicesTable
                         [value]="summary?.services || []"
                         [loading]="loading"
+                        [showLoader]="false"
                         [paginator]="true"
                         [rows]="15"
                         [rowsPerPageOptions]="[10, 15, 25, 50]"
@@ -352,13 +343,7 @@
                             <td>{{ job.name }}</td>
                             <td>{{ job.namespace }}</td>
                             <td>
-                                <div class="progress-cell">
-                                    <div class="progress-meta">
-                                        <span>{{ job.succeeded ?? 0 }}/{{ job.completions ?? job.succeeded ?? 0 }}</span>
-                                        <span class="progress-hint">done</span>
-                                    </div>
-                                    <p-progressBar [value]="jobPercent(job)"></p-progressBar>
-                                </div>
+                                <app-kube-ratio-text [numerator]="job.succeeded ?? 0" [denominator]="job.completions ?? job.succeeded ?? 0"></app-kube-ratio-text>
                             </td>
                             <td>{{ job.completions ?? '-' }}</td>
                             <td>{{ job.succeeded ?? '-' }}</td>
@@ -434,13 +419,7 @@
                             <td>{{ daemon.desired ?? '-' }}</td>
                             <td>{{ daemon.current ?? '-' }}</td>
                             <td>
-                                <div class="progress-cell">
-                                    <div class="progress-meta">
-                                        <span>{{ daemon.ready ?? 0 }}/{{ daemon.desired ?? '-' }}</span>
-                                        <span class="progress-hint">ready</span>
-                                    </div>
-                                    <p-progressBar [value]="daemonPercent(daemon)"></p-progressBar>
-                                </div>
+                                <app-kube-ratio-text [numerator]="daemon.ready ?? 0" [denominator]="daemon.desired ?? 0"></app-kube-ratio-text>
                             </td>
                             <td>{{ daemon.available ?? '-' }}</td>
                             <td>{{ daemon.updated ?? '-' }}</td>
@@ -475,13 +454,7 @@
                             <td>{{ stateful.name }}</td>
                             <td>{{ stateful.namespace }}</td>
                             <td>
-                                <div class="progress-cell">
-                                    <div class="progress-meta">
-                                        <span>{{ stateful.readyReplicas ?? 0 }}/{{ stateful.replicas ?? '-' }}</span>
-                                        <span class="progress-hint">ready</span>
-                                    </div>
-                                    <p-progressBar [value]="replicaPercent(stateful)"></p-progressBar>
-                                </div>
+                                <app-kube-ratio-text [numerator]="stateful.readyReplicas ?? 0" [denominator]="stateful.replicas ?? 0"></app-kube-ratio-text>
                             </td>
                             <td>{{ stateful.replicas ?? '-' }}</td>
                             <td>{{ stateful.updatedReplicas ?? '-' }}</td>

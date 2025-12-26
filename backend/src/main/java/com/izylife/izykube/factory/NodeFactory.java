@@ -28,7 +28,7 @@ public class NodeFactory {
                 break;
             case "job":
                 JobDTO job = (JobDTO) node;
-                sanitized = new JobDTO(job.getId(), job.getName(), job.getAssetId());
+                sanitized = new JobDTO(job.getId(), job.getName(), job.getAssetId(), job.getServiceAccountRef());
                 break;
             case "pod":
                 PodDTO pod = (PodDTO) node;
@@ -53,8 +53,19 @@ public class NodeFactory {
                         deployment.getStrategyType(),
                         deployment.getAssetId(),
                         deployment.getContainerPort(),
-                        deployment.getWorkloadType()
+                        deployment.getWorkloadType(),
+                        deployment.getServiceAccountRef()
                 );
+                break;
+            case "serviceaccount":
+                ServiceAccountDTO serviceAccount = (ServiceAccountDTO) node;
+                ServiceAccountDTO sanitizedServiceAccount = new ServiceAccountDTO(serviceAccount.getId(), serviceAccount.getName());
+                sanitizedServiceAccount.setNamespace(serviceAccount.getNamespace());
+                sanitizedServiceAccount.setAutomountServiceAccountToken(serviceAccount.getAutomountServiceAccountToken());
+                sanitizedServiceAccount.setLabels(serviceAccount.getLabels());
+                sanitizedServiceAccount.setAnnotations(serviceAccount.getAnnotations());
+                sanitizedServiceAccount.setRbacProfile(serviceAccount.getRbacProfile());
+                sanitized = sanitizedServiceAccount;
                 break;
             case "service":
                 ServiceDTO service = (ServiceDTO) node;
@@ -122,6 +133,16 @@ public class NodeFactory {
                 return new DeploymentDTO(id, name, 1, "RollingUpdate", "", 80, DeploymentWorkloadType.DEPLOYMENT);
             case "service":
                 return new ServiceDTO(id, name, "ClusterIP", 80);
+            case "job":
+                return new JobDTO(id, name, "", null);
+            case "serviceaccount":
+                ServiceAccountDTO serviceAccount = new ServiceAccountDTO(id, name);
+                serviceAccount.setNamespace("default");
+                serviceAccount.setAutomountServiceAccountToken(true);
+                serviceAccount.setLabels(new LinkedHashMap<>());
+                serviceAccount.setAnnotations(new LinkedHashMap<>());
+                serviceAccount.setRbacProfile("NONE");
+                return serviceAccount;
             case "ingress":
                 return new IngressDTO(id, name, "example.com", "/", "default-service", 80, null, new LinkedHashMap<>());
             case "istio":

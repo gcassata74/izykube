@@ -3,7 +3,10 @@ package com.izylife.izykube.services.processors;
 import com.izylife.izykube.dto.cluster.ConfigMapDTO;
 import com.izylife.izykube.dto.cluster.ContainerDTO;
 import com.izylife.izykube.dto.cluster.JobDTO;
+import com.izylife.izykube.dto.cluster.LinkDTO;
+import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.dto.cluster.ServiceDTO;
+import com.izylife.izykube.dto.cluster.ServiceAccountDTO;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.repositories.AssetRepository;
 import io.fabric8.kubernetes.api.model.Container;
@@ -14,10 +17,13 @@ import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 @Processor(JobDTO.class)
 @Service
@@ -120,7 +126,103 @@ public class JobProcessor implements TemplateProcessor<JobDTO> {
                 .endSpec()
                 .build();
 
+        String serviceAccountName = resolveServiceAccountName(dto, namespace);
+        if (StringUtils.hasText(serviceAccountName)
+                && job.getSpec() != null
+                && job.getSpec().getTemplate() != null
+                && job.getSpec().getTemplate().getSpec() != null) {
+            job.getSpec().getTemplate().getSpec().setServiceAccountName(serviceAccountName);
+        }
+
         return Serialization.asYaml(job);
+    }
+
+    private String resolveServiceAccountName(JobDTO dto, String workloadNamespace) {
+        if (dto == null) {
+            return null;
+        }
+        List<LinkDTO> incomingBindings = safeStream(dto.getIncomingLinks()).stream()
+                .filter(link -> link != null && "serviceAccountBinding".equalsIgnoreCase(link.getType()))
+                .toList();
+        if (incomingBindings.size() > 1) {
+            throw new IllegalArgumentException("Job " + dto.getName() + " references multiple ServiceAccounts; only one is allowed");
+        }
+
+        String ref = dto.getServiceAccountRef();
+        ServiceAccountDTO serviceAccount = null;
+        if (StringUtils.hasText(ref)) {
+            serviceAccount = resolveServiceAccountById(dto, ref);
+        } else {
+            if (incomingBindings.size() == 1) {
+                String sourceId = incomingBindings.get(0).getSource();
+                if (StringUtils.hasText(sourceId)) {
+                    dto.setServiceAccountRef(sourceId);
+                    serviceAccount = resolveServiceAccountById(dto, sourceId);
+                }
+            }
+        }
+
+        if (serviceAccount != null && incomingBindings.size() == 1 && incomingBindings.get(0).getSource() != null) {
+            String linkedId = incomingBindings.get(0).getSource();
+            if (StringUtils.hasText(linkedId) && StringUtils.hasText(ref) && !linkedId.equals(ref)) {
+                throw new IllegalArgumentException("Job " + dto.getName() + " ServiceAccount reference does not match its diagram binding");
+            }
+        }
+
+        if (serviceAccount == null) {
+            return null;
+        }
+
+        String saNamespace = serviceAccount.getNamespace();
+        String effectiveSaNamespace = saNamespace == null || saNamespace.isBlank() ? workloadNamespace : saNamespace;
+        if (!Objects.equals(workloadNamespace, effectiveSaNamespace)) {
+            throw new IllegalArgumentException("Workload namespace must match ServiceAccount namespace. Kubernetes does not allow using a ServiceAccount across namespaces.");
+        }
+
+        String name = normalizeName(serviceAccount.getName());
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("ServiceAccount name is required");
+        }
+        validateDns1123Subdomain(name);
+        return name;
+    }
+
+    private ServiceAccountDTO resolveServiceAccountById(JobDTO dto, String serviceAccountId) {
+        if (dto == null || !StringUtils.hasText(serviceAccountId)) {
+            return null;
+        }
+        Map<String, NodeDTO> nodeIndex = dto.getNodeIndex();
+        if (nodeIndex == null) {
+            throw new IllegalArgumentException("Job " + dto.getName() + " cannot resolve ServiceAccount reference (node index missing)");
+        }
+        NodeDTO resolved = nodeIndex.get(serviceAccountId);
+        if (resolved == null) {
+            throw new IllegalArgumentException("Job " + dto.getName() + " references missing ServiceAccount: " + serviceAccountId);
+        }
+        if (!(resolved instanceof ServiceAccountDTO serviceAccount)) {
+            throw new IllegalArgumentException("Job " + dto.getName() + " references non-ServiceAccount node: " + serviceAccountId);
+        }
+        return serviceAccount;
+    }
+
+    private List<LinkDTO> safeStream(List<LinkDTO> links) {
+        return links == null ? List.of() : links;
+    }
+
+    private String normalizeName(String name) {
+        return name == null ? "" : name.trim();
+    }
+
+    private void validateDns1123Subdomain(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("ServiceAccount name is required");
+        }
+        if (name.length() > 253) {
+            throw new IllegalArgumentException("ServiceAccount name must be <= 253 characters");
+        }
+        if (!name.matches("^[a-z0-9]([a-z0-9-.]*[a-z0-9])?$")) {
+            throw new IllegalArgumentException("ServiceAccount name must be a valid DNS-1123 subdomain (lowercase alphanumeric, '-', '.', start/end alphanumeric)");
+        }
     }
 
     private List<EnvVar> createEnvironmentVariables(ServiceDTO targetService, String namespace) {
@@ -151,4 +253,3 @@ public class JobProcessor implements TemplateProcessor<JobDTO> {
         return dto.getNamespace() == null || dto.getNamespace().isBlank() ? "default" : dto.getNamespace();
     }
 }
-

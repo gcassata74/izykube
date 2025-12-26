@@ -16,6 +16,7 @@ import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
 import com.izylife.izykube.dto.cluster.SecretDTO;
 import com.izylife.izykube.dto.cluster.ServiceDTO;
+import com.izylife.izykube.dto.cluster.ServiceAccountDTO;
 import com.izylife.izykube.dto.cluster.VirtualServiceDTO;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.repositories.AssetRepository;
@@ -240,7 +241,15 @@ public class ClusterYamlService {
                 .collect(Collectors.toMap(ManifestEntry::getName, entry -> entry, (a, b) -> a, LinkedHashMap::new));
 
         List<NodeDTO> nodes = cluster.getNodes() != null ? cluster.getNodes() : List.of();
-        nodes.forEach(node -> node.setNamespace(namespace));
+        nodes.forEach(node -> {
+            if (node instanceof ServiceAccountDTO serviceAccount) {
+                if (serviceAccount.getNamespace() == null || serviceAccount.getNamespace().isBlank()) {
+                    serviceAccount.setNamespace(namespace);
+                }
+            } else {
+                node.setNamespace(namespace);
+            }
+        });
         Map<String, NodeDTO> nodesById = nodes.stream()
                 .filter(node -> node.getId() != null)
                 .collect(Collectors.toMap(NodeDTO::getId, node -> node, (a, b) -> a, LinkedHashMap::new));
@@ -257,8 +266,9 @@ public class ClusterYamlService {
             switch (node.getKind().toLowerCase(Locale.ROOT)) {
                 case "configmap" -> updateConfigMapManifest((ConfigMapDTO) node, manifestsByName);
                 case "secret" -> updateSecretManifest((SecretDTO) node, manifestsByName);
-                case "deployment" -> updateDeploymentManifest((DeploymentDTO) node, manifestsByName, targetsBySource, sourcesByTarget, statefulServiceNamesByDeployment, links);
+                case "deployment" -> updateDeploymentManifest((DeploymentDTO) node, manifestsByName, targetsBySource, sourcesByTarget, statefulServiceNamesByDeployment, links, nodesById);
                 case "service" -> updateServiceManifest((ServiceDTO) node, manifestsByName, statefulServiceSelectors);
+                case "serviceaccount" -> updateServiceAccountManifest((ServiceAccountDTO) node, manifestsByName);
                 case "ingress" -> {
                     resolveIngressTargetsFromLinks((IngressDTO) node, targetsBySource);
                     updateIngressLikeManifest((IngressDTO) node, manifestsByName);
@@ -270,6 +280,8 @@ public class ClusterYamlService {
                 default -> log.debug("Skipping export update for node kind: {}", node.getKind());
             }
         }
+
+        updateRbacManifests(manifestsByName, nodesById, namespace);
 
         return new ArrayList<>(manifestsByName.values());
     }
@@ -769,6 +781,108 @@ public class ClusterYamlService {
         manifests.put(node.getId(), new ManifestEntry("secret", resourceName, manifest));
     }
 
+    private void updateServiceAccountManifest(ServiceAccountDTO node, Map<String, ManifestEntry> manifests) {
+        if (node == null) {
+            return;
+        }
+        String namespace = resolveNamespace(node);
+        String name = Optional.ofNullable(trimName(node.getName()))
+                .filter(n -> !n.isBlank())
+                .orElse(node.getId());
+
+        Map<String, Object> manifest = createBaseManifest(name, "ServiceAccount", namespace);
+        manifest.put("apiVersion", "v1");
+        manifest.put("kind", "ServiceAccount");
+
+        Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
+        metadata.put("name", name);
+        metadata.put("namespace", namespace);
+        if (node.getLabels() != null && !node.getLabels().isEmpty()) {
+            metadata.put("labels", new LinkedHashMap<>(node.getLabels()));
+        }
+        if (node.getAnnotations() != null && !node.getAnnotations().isEmpty()) {
+            metadata.put("annotations", new LinkedHashMap<>(node.getAnnotations()));
+        }
+        manifest.put("metadata", metadata);
+        manifest.put("automountServiceAccountToken", Optional.ofNullable(node.getAutomountServiceAccountToken()).orElse(true));
+
+        manifests.put(node.getId(), new ManifestEntry("serviceaccount", name, manifest));
+    }
+
+    private void updateRbacManifests(Map<String, ManifestEntry> manifests,
+                                    Map<String, NodeDTO> nodesById,
+                                    String namespace) {
+        if (manifests == null || nodesById == null) {
+            return;
+        }
+
+        manifests.entrySet().removeIf(entry -> entry.getKey() != null && entry.getKey().contains(":rbac:"));
+
+        Map<String, String> usedRoleBindingNames = new LinkedHashMap<>();
+        Map<String, String> seenServiceAccountNames = new LinkedHashMap<>();
+        for (NodeDTO node : nodesById.values()) {
+            if (!(node instanceof ServiceAccountDTO sa)) {
+                continue;
+            }
+            String saName = trimName(sa.getName());
+            if (saName == null || saName.isBlank()) {
+                throw new IllegalArgumentException("ServiceAccount name is required");
+            }
+            String saNamespace = resolveNamespace(sa);
+            if (!Objects.equals(namespace, saNamespace)) {
+                throw new IllegalArgumentException("Workload namespace must match ServiceAccount namespace. Kubernetes does not allow using a ServiceAccount across namespaces.");
+            }
+            String existingId = seenServiceAccountNames.putIfAbsent(saName, sa.getId());
+            if (existingId != null && !existingId.equals(sa.getId())) {
+                throw new IllegalArgumentException("Duplicate ServiceAccount name '" + saName + "' in namespace '" + namespace + "'");
+            }
+
+            String profile = Optional.ofNullable(sa.getRbacProfile()).orElse("NONE").trim().toUpperCase(Locale.ROOT);
+            if (profile.isBlank() || "NONE".equals(profile)) {
+                continue;
+            }
+            String clusterRoleName = switch (profile) {
+                case "VIEW" -> "view";
+                case "EDIT" -> "edit";
+                case "ADMIN" -> "admin";
+                default -> throw new IllegalArgumentException("Unsupported RBAC profile for ServiceAccount " + saName + ": " + profile);
+            };
+
+            String baseName = saName + "-" + clusterRoleName;
+            String bindingName = baseName;
+            if (usedRoleBindingNames.containsKey(bindingName) && !sa.getId().equals(usedRoleBindingNames.get(bindingName))) {
+                bindingName = baseName + "-" + shortId(sa.getId());
+            }
+            usedRoleBindingNames.putIfAbsent(bindingName, sa.getId());
+
+            Map<String, Object> roleBinding = createBaseManifest(bindingName, "RoleBinding", namespace);
+            roleBinding.put("apiVersion", "rbac.authorization.k8s.io/v1");
+            roleBinding.put("kind", "RoleBinding");
+            roleBinding.put("subjects", List.of(Map.of(
+                    "kind", "ServiceAccount",
+                    "name", saName,
+                    "namespace", namespace
+            )));
+            Map<String, Object> roleRef = new LinkedHashMap<>();
+            roleRef.put("apiGroup", "rbac.authorization.k8s.io");
+            roleRef.put("kind", "ClusterRole");
+            roleRef.put("name", clusterRoleName);
+            roleBinding.put("roleRef", roleRef);
+            manifests.put(sa.getId() + ":rbac:binding", new ManifestEntry("rolebinding", bindingName, roleBinding));
+        }
+    }
+
+    private String shortId(String id) {
+        if (id == null) {
+            return "sa";
+        }
+        String normalized = id.replaceAll("[^a-zA-Z0-9]+", "");
+        if (normalized.length() <= 6) {
+            return normalized.isBlank() ? "sa" : normalized.toLowerCase(Locale.ROOT);
+        }
+        return normalized.substring(0, 6).toLowerCase(Locale.ROOT);
+    }
+
     private Map<String, Object> buildKeyValueManifest(ConfigMapDTO node, String resourceName, boolean secret) {
         String namespace = resolveNamespace(node);
         Map<String, Object> manifest = Optional.ofNullable(loadManifestFromYaml(node.getYaml()))
@@ -1053,7 +1167,8 @@ public class ClusterYamlService {
                                           Map<String, List<NodeDTO>> targetsBySource,
                                           Map<String, List<NodeDTO>> sourcesByTarget,
                                           Map<String, String> statefulServiceNamesByDeployment,
-                                          List<LinkDTO> links) {
+                                          List<LinkDTO> links,
+                                          Map<String, NodeDTO> nodesById) {
         ManifestEntry entry = manifests.get(node.getId());
         if (entry == null) {
             entry = new ManifestEntry("deployment", node.getId(), createBaseDeploymentManifest(node));
@@ -1096,6 +1211,7 @@ public class ClusterYamlService {
         applyPrimaryContainerSpec(node, templateSpec);
         applyAttachedContainerSpecs(node, templateSpec, targetsBySource, sourcesByTarget, links);
         applyLinkedConfigReferences(node, templateSpec, targetsBySource, sourcesByTarget);
+        applyServiceAccountBinding(node, templateSpec, nodesById, links);
         template.put("spec", templateSpec);
         Map<String, Object> selector = new LinkedHashMap<>(Optional.ofNullable(getMap(spec, "selector")).orElseGet(LinkedHashMap::new));
         Map<String, Object> matchLabels = new LinkedHashMap<>(Optional.ofNullable(getMap(selector, "matchLabels")).orElseGet(LinkedHashMap::new));
@@ -1113,6 +1229,68 @@ public class ClusterYamlService {
         }
         spec.put("template", template);
         manifest.put("spec", spec);
+    }
+
+    private void applyServiceAccountBinding(DeploymentDTO node,
+                                           Map<String, Object> templateSpec,
+                                           Map<String, NodeDTO> nodesById,
+                                           List<LinkDTO> links) {
+        if (node == null || templateSpec == null || nodesById == null) {
+            return;
+        }
+
+        String serviceAccountId = Optional.ofNullable(node.getServiceAccountRef()).map(String::trim).orElse("");
+        if (serviceAccountId.isBlank()) {
+            List<LinkDTO> bindings = Optional.ofNullable(links).orElse(List.of())
+                    .stream()
+                    .filter(link -> link != null
+                            && "serviceAccountBinding".equalsIgnoreCase(link.getType())
+                            && Objects.equals(node.getId(), link.getTarget()))
+                    .toList();
+            if (bindings.size() > 1) {
+                throw new IllegalArgumentException("Workload " + node.getName() + " references multiple ServiceAccounts; only one is allowed");
+            }
+            if (bindings.size() == 1) {
+                serviceAccountId = Optional.ofNullable(bindings.get(0).getSource()).map(String::trim).orElse("");
+                node.setServiceAccountRef(serviceAccountId);
+            }
+        }
+
+        if (serviceAccountId.isBlank()) {
+            templateSpec.remove("serviceAccountName");
+            return;
+        }
+
+        NodeDTO resolved = nodesById.get(serviceAccountId);
+        if (!(resolved instanceof ServiceAccountDTO sa)) {
+            throw new IllegalArgumentException("Workload " + node.getName() + " references missing ServiceAccount: " + serviceAccountId);
+        }
+
+        String saNamespace = resolveNamespace(sa);
+        String workloadNamespace = resolveNamespace(node);
+        if (!Objects.equals(saNamespace, workloadNamespace)) {
+            throw new IllegalArgumentException("ServiceAccount " + sa.getName() + " must be in the same namespace as workload " + node.getName());
+        }
+
+        String saName = trimName(sa.getName());
+        if (saName == null || saName.isBlank()) {
+            throw new IllegalArgumentException("ServiceAccount name is required for workload " + node.getName());
+        }
+        validateDns1123Subdomain(saName);
+
+        templateSpec.put("serviceAccountName", saName);
+    }
+
+    private void validateDns1123Subdomain(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("ServiceAccount name is required");
+        }
+        if (name.length() > 253) {
+            throw new IllegalArgumentException("ServiceAccount name must be <= 253 characters");
+        }
+        if (!name.matches("^[a-z0-9]([a-z0-9-.]*[a-z0-9])?$")) {
+            throw new IllegalArgumentException("ServiceAccount name must be a valid DNS-1123 subdomain (lowercase alphanumeric, '-', '.', start/end alphanumeric)");
+        }
     }
 
     private void applyAttachedContainerSpecs(DeploymentDTO node,

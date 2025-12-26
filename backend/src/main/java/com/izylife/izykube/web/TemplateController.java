@@ -25,7 +25,7 @@ public class TemplateController {
             response.setMessage("The template was created successfully");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            response.setError("The template could not be created");
+            response.setError(e instanceof IllegalArgumentException ? e.getMessage() : "The template could not be created");
             return ResponseEntity.badRequest().body(response);
         }
     }
@@ -38,7 +38,7 @@ public class TemplateController {
             response.setMessage("The template was created successfully");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            response.setError("The template could not be created");
+            response.setError(e instanceof IllegalArgumentException ? e.getMessage() : "The template could not be created");
             return ResponseEntity.badRequest().body(response);
         }
     }

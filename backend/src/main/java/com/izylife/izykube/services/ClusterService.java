@@ -506,6 +506,9 @@ public class ClusterService {
         if ("Container".equalsIgnoreCase(normalized)) {
             return "Container";
         }
+        if ("serviceAccountBinding".equalsIgnoreCase(normalized)) {
+            return "serviceAccountBinding";
+        }
         return "Expose";
     }
 

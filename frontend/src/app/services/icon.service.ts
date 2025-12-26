@@ -15,6 +15,7 @@ export class IconService {
     'secret': 'pi pi-lock',
     'container': 'pi pi-box',
     'deployment': 'pi pi-sitemap',
+    'serviceaccount': 'pi pi-id-card',
     'volume': 'pi pi-database',
     'job': 'pi pi-refresh',
     'istio': 'assets/images/diagram/istio.svg'

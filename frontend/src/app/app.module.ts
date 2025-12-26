@@ -57,6 +57,7 @@ import { JobFormComponent } from './cluster/job-form/job-form.component';
 import { IstioFormComponent } from './cluster/istio-form/istio-form.component';
 import { DragDropDirective } from './directives/drag-drop.directive';
 import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
+import { KubeRatioTextComponent } from './kube-explorer/kube-ratio-text/kube-ratio-text.component';
 import { PodShellDialogComponent } from './pod-shell-dialog/pod-shell-dialog.component';
 import { HeaderComponent } from './layout/header/header.component';
 import { SidebarComponent } from './layout/sidebar/sidebar.component';
@@ -65,6 +66,7 @@ import { SettingsComponent } from './settings/settings.component';
 import { PersistentVolumeAdminComponent } from './settings/persistent-volume-admin/persistent-volume-admin.component';
 import { LinkPropertiesFormComponent } from './diagram/link-properties-form/link-properties-form.component';
 import { FormWorkbenchComponent } from './dev/form-workbench/form-workbench.component';
+import { ServiceAccountFormComponent } from './cluster/service-account-form/service-account-form.component';
 
 @NgModule({
   declarations: [
@@ -87,6 +89,7 @@ import { FormWorkbenchComponent } from './dev/form-workbench/form-workbench.comp
     IstioFormComponent,
     DragDropDirective,
     KubeExplorerComponent,
+    KubeRatioTextComponent,
     PodShellDialogComponent,
     HeaderComponent,
     SidebarComponent,
@@ -94,6 +97,7 @@ import { FormWorkbenchComponent } from './dev/form-workbench/form-workbench.comp
     PersistentVolumeAdminComponent,
     LinkPropertiesFormComponent,
     FormWorkbenchComponent,
+    ServiceAccountFormComponent,
   ],
   imports: [
     SharedModule,

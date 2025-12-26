@@ -16,6 +16,7 @@ import { AssetFormComponent } from 'src/app/assets/asset-form/asset-form.compone
 import { Cluster } from 'src/app/model/cluster.class';
 import { Link } from 'src/app/model/link.class';
 import { take } from 'rxjs/operators';
+import { ServiceAccountFormComponent } from '../service-account-form/service-account-form.component';
 
 
 @Component({
@@ -42,6 +43,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     'container': ContainerFormComponent,
     'volume': VolumeFormComponent,
     'job': JobFormComponent,
+    'serviceaccount': ServiceAccountFormComponent,
     'asset': AssetFormComponent
   };
 
@@ -111,6 +113,8 @@ export class NodeFormComponent implements OnInit, OnDestroy {
       } else if (componentType === ConfigBundleFormComponent) {
         inputs['sourceNodes'] = sourceNodes;
         inputs['targetNodes'] = targetNodes;
+        inputs['clusterNamespace'] = cluster?.nameSpace || 'default';
+      } else if (componentType === ServiceAccountFormComponent) {
         inputs['clusterNamespace'] = cluster?.nameSpace || 'default';
       }
 

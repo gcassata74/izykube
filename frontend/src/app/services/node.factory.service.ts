@@ -8,6 +8,7 @@ import { Ingress } from '../model/ingress.class';
 import { Volume, VolumeConfig } from '../model/volume.class';
 import { Job } from '../model/job.class';
 import { Istio } from '../model/istio.class';
+import { ServiceAccount } from '../model/service-account.class';
 
 @Injectable({
   providedIn: 'root'
@@ -61,12 +62,14 @@ export class NodeFactoryService {
           annotations: {},
           entries: []
         }, 'secret');
-        case 'job':
+      case 'job':
           return new Job(
             id,
             trimmedName,
             ''
           );  
+      case 'serviceaccount':
+        return new ServiceAccount(id, trimmedName, 'default', true, {}, {}, 'NONE');
       case 'volume':
         return new Volume(
           id,
