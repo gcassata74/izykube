@@ -9,6 +9,7 @@ import { Volume, VolumeConfig } from '../model/volume.class';
 import { Job } from '../model/job.class';
 import { Istio } from '../model/istio.class';
 import { ServiceAccount } from '../model/service-account.class';
+import { AccessPolicy } from '../model/access-policy.class';
 
 @Injectable({
   providedIn: 'root'
@@ -70,6 +71,8 @@ export class NodeFactoryService {
           );  
       case 'serviceaccount':
         return new ServiceAccount(id, trimmedName, 'default', true, {}, {}, 'NONE');
+      case 'accesspolicy':
+        return new AccessPolicy(id, trimmedName, 'default', [], 'WORKLOAD_SA_PER_WORKLOAD', null);
       case 'volume':
         return new Volume(
           id,

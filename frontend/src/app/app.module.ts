@@ -3,6 +3,7 @@ import { NgModule, isDevMode } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { MenuModule } from 'primeng/menu';
 import { DropdownModule } from 'primeng/dropdown';
+import { MultiSelectModule } from 'primeng/multiselect';
 import { TableModule } from 'primeng/table';
 import { SplitButtonModule } from 'primeng/splitbutton';
 import { DialogModule } from 'primeng/dialog';
@@ -68,6 +69,7 @@ import { PersistentVolumeAdminComponent } from './settings/persistent-volume-adm
 import { LinkPropertiesFormComponent } from './diagram/link-properties-form/link-properties-form.component';
 import { FormWorkbenchComponent } from './dev/form-workbench/form-workbench.component';
 import { ServiceAccountFormComponent } from './cluster/service-account-form/service-account-form.component';
+import { AccessPolicyFormComponent } from './cluster/access-policy-form/access-policy-form.component';
 
 @NgModule({
   declarations: [
@@ -100,6 +102,7 @@ import { ServiceAccountFormComponent } from './cluster/service-account-form/serv
     LinkPropertiesFormComponent,
     FormWorkbenchComponent,
     ServiceAccountFormComponent,
+    AccessPolicyFormComponent,
   ],
   imports: [
     SharedModule,
@@ -108,6 +111,7 @@ import { ServiceAccountFormComponent } from './cluster/service-account-form/serv
     AppRoutingModule,
     ToolbarModule,
     DropdownModule,
+    MultiSelectModule,
     InputTextModule,
     TabViewModule,
     InputNumberModule,

@@ -141,6 +141,11 @@ public class JobProcessor implements TemplateProcessor<JobDTO> {
         if (dto == null) {
             return null;
         }
+        String directName = normalizeName(dto.getServiceAccountName());
+        if (StringUtils.hasText(directName)) {
+            validateDns1123Subdomain(directName);
+            return directName;
+        }
         List<LinkDTO> incomingBindings = safeStream(dto.getIncomingLinks()).stream()
                 .filter(link -> link != null && "serviceAccountBinding".equalsIgnoreCase(link.getType()))
                 .toList();

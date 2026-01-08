@@ -1,0 +1,116 @@
+<div class="node-form">
+  <div class="p-fluid" [formGroup]="form">
+    <div class="p-field">
+      <label for="apName">Name</label>
+      <input id="apName" pInputText formControlName="name" placeholder="e.g. my-app-reader" />
+      <small class="p-error" *ngIf="form.get('name')?.invalid && form.get('name')?.touched">Name is required</small>
+    </div>
+
+    <div class="p-field">
+      <label for="apNamespace">Namespace</label>
+      <input id="apNamespace" pInputText formControlName="namespace" placeholder="default" />
+    </div>
+
+    <div class="p-field">
+      <label for="apStrategy">Binding strategy</label>
+      <p-dropdown
+        id="apStrategy"
+        formControlName="targetBindingStrategy"
+        [options]="strategyOptions"
+        optionLabel="label"
+        optionValue="value">
+      </p-dropdown>
+    </div>
+
+    <div class="p-field" *ngIf="usesExplicitServiceAccount">
+      <label for="apExistingSa">Existing ServiceAccount name</label>
+      <input id="apExistingSa" pInputText formControlName="existingServiceAccountName" placeholder="e.g. my-existing-sa" />
+    </div>
+
+    <div class="p-field">
+      <label>Rules</label>
+      <div formArrayName="rules">
+        <div class="p-mb-3" *ngFor="let rule of rulesArray.controls; let i = index; trackBy: trackByIndex" [formGroupName]="i">
+          <div class="p-d-flex p-ai-center p-jc-end p-mb-2" style="gap: 0.5rem;">
+            <button
+              type="button"
+              pButton
+              icon="pi pi-plus"
+              class="p-button-rounded p-button-text"
+              (click)="addRule()"
+              pTooltip="Add rule"
+              tooltipPosition="top">
+            </button>
+            <button
+              *ngIf="rulesArray.length > 1"
+              type="button"
+              pButton
+              icon="pi pi-trash"
+              class="p-button-rounded p-button-text p-button-danger"
+              (click)="removeRule(i)"
+              pTooltip="Remove rule"
+              tooltipPosition="top">
+            </button>
+          </div>
+          <div class="p-grid">
+            <div class="p-col-12">
+              <label [for]="'apiGroups-' + i">apiGroups (comma-separated)</label>
+              <p-multiSelect
+                [inputId]="'apiGroups-' + i"
+                formControlName="apiGroups"
+                [options]="apiGroupOptions"
+                optionLabel="label"
+                optionValue="value"
+                defaultLabel="Select apiGroups"
+                [showClear]="true"
+                [filter]="true"
+                display="chip">
+              </p-multiSelect>
+            </div>
+            <div class="p-col-12">
+              <label [for]="'resources-' + i">resources (comma-separated)</label>
+              <p-multiSelect
+                [inputId]="'resources-' + i"
+                formControlName="resources"
+                [options]="resourceOptions"
+                optionLabel="label"
+                optionValue="value"
+                defaultLabel="Select resources"
+                [showClear]="true"
+                [filter]="true"
+                display="chip">
+              </p-multiSelect>
+            </div>
+            <div class="p-col-12">
+              <label [for]="'verbs-' + i">verbs</label>
+              <p-multiSelect
+                [inputId]="'verbs-' + i"
+                formControlName="verbs"
+                [options]="verbOptions"
+                optionLabel="label"
+                optionValue="value"
+                defaultLabel="Select verbs"
+                [showClear]="true"
+                display="chip">
+              </p-multiSelect>
+            </div>
+            <div class="p-col-12">
+              <label [for]="'resourceNames-' + i">resourceNames (optional)</label>
+              <p-multiSelect
+                [inputId]="'resourceNames-' + i"
+                formControlName="resourceNames"
+                [options]="resourceNameOptions"
+                optionLabel="label"
+                optionValue="value"
+                defaultLabel="Select resourceNames"
+                [showClear]="true"
+                [filter]="true"
+                display="chip">
+              </p-multiSelect>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -15,6 +15,7 @@ export class IconService {
     'secret': 'pi pi-lock',
     'container': 'pi pi-box',
     'deployment': 'pi pi-sitemap',
+    'accesspolicy': 'pi pi-shield',
     'serviceaccount': 'pi pi-id-card',
     'volume': 'pi pi-database',
     'job': 'pi pi-refresh',

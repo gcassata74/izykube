@@ -17,6 +17,7 @@ import { Cluster } from 'src/app/model/cluster.class';
 import { Link } from 'src/app/model/link.class';
 import { take } from 'rxjs/operators';
 import { ServiceAccountFormComponent } from '../service-account-form/service-account-form.component';
+import { AccessPolicyFormComponent } from '../access-policy-form/access-policy-form.component';
 
 
 @Component({
@@ -44,6 +45,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     'volume': VolumeFormComponent,
     'job': JobFormComponent,
     'serviceaccount': ServiceAccountFormComponent,
+    'accesspolicy': AccessPolicyFormComponent,
     'asset': AssetFormComponent
   };
 
@@ -116,6 +118,9 @@ export class NodeFormComponent implements OnInit, OnDestroy {
         inputs['clusterNamespace'] = cluster?.nameSpace || 'default';
       } else if (componentType === ServiceAccountFormComponent) {
         inputs['clusterNamespace'] = cluster?.nameSpace || 'default';
+      } else if (componentType === AccessPolicyFormComponent) {
+        inputs['clusterNamespace'] = cluster?.nameSpace || 'default';
+        inputs['clusterNodes'] = cluster?.nodes || [];
       }
 
       this.updateComponentInputs(inputs);

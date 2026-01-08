@@ -502,7 +502,6 @@
   [modal]="true"
   [style]="{ width: '780px' }"
   [dismissableMask]="true"
-  position="right"
   (onHide)="logsDialogVisible = false">
   <div class="logs-panel">
     <div *ngIf="currentLogTarget?.type === 'pod'" class="logs-panel__meta">
@@ -549,7 +548,6 @@
   [modal]="true"
   [dismissableMask]="true"
   [style]="{ width: '780px' }"
-  position="right"
   (onHide)="inspectDialogVisible = false">
   <div class="inspect-panel">
     <p *ngIf="inspectLoading">Loading pod details...</p>

@@ -11,6 +11,9 @@ import com.izylife.izykube.dto.cluster.ContainerDTO;
 import com.izylife.izykube.dto.cluster.ContainerRole;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.DeploymentWorkloadType;
+import com.izylife.izykube.dto.cluster.AccessPolicyBindingStrategy;
+import com.izylife.izykube.dto.cluster.AccessPolicyDTO;
+import com.izylife.izykube.dto.cluster.AccessPolicyRuleDTO;
 import com.izylife.izykube.dto.cluster.IngressDTO;
 import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.NodeDTO;
@@ -246,6 +249,10 @@ public class ClusterYamlService {
                 if (serviceAccount.getNamespace() == null || serviceAccount.getNamespace().isBlank()) {
                     serviceAccount.setNamespace(namespace);
                 }
+            } else if (node instanceof AccessPolicyDTO policy) {
+                if (policy.getNamespace() == null || policy.getNamespace().isBlank()) {
+                    policy.setNamespace(namespace);
+                }
             } else {
                 node.setNamespace(namespace);
             }
@@ -258,6 +265,9 @@ public class ClusterYamlService {
         Map<String, String> statefulServiceSelectors = resolveStatefulServiceSelectors(cluster.getLinks(), nodesById);
         Map<String, String> statefulServiceNamesByDeployment = resolveStatefulServiceNames(cluster.getLinks(), nodesById);
         List<LinkDTO> links = cluster.getLinks() != null ? cluster.getLinks() : List.of();
+
+        applyAccessPoliciesToWorkloads(nodesById, links, namespace);
+
         for (NodeDTO node : nodes) {
             if (node.getKind() == null) {
                 continue;
@@ -281,9 +291,53 @@ public class ClusterYamlService {
             }
         }
 
-        updateRbacManifests(manifestsByName, nodesById, namespace);
+        updateRbacManifests(manifestsByName, nodesById, links, namespace);
 
         return new ArrayList<>(manifestsByName.values());
+    }
+
+    private void applyAccessPoliciesToWorkloads(Map<String, NodeDTO> nodesById, List<LinkDTO> links, String namespace) {
+        if (nodesById == null || links == null) {
+            return;
+        }
+
+        List<AccessPolicyDTO> policies = nodesById.values().stream()
+                .filter(node -> node instanceof AccessPolicyDTO)
+                .map(node -> (AccessPolicyDTO) node)
+                .toList();
+        if (policies.isEmpty()) {
+            return;
+        }
+
+        Map<String, List<LinkDTO>> linksByPolicy = links.stream()
+                .filter(link -> link != null && link.getSource() != null && link.getTarget() != null)
+                .collect(Collectors.groupingBy(LinkDTO::getSource, LinkedHashMap::new, Collectors.toList()));
+
+        for (AccessPolicyDTO policy : policies) {
+            String policyNs = resolveNamespace(policy);
+            if (!Objects.equals(policyNs, namespace)) {
+                throw new IllegalArgumentException("AccessPolicy '" + trimName(policy.getName()) + "' must be in the cluster namespace '" + namespace + "'");
+            }
+            validateAccessPolicyRules(policy);
+
+            List<LinkDTO> connected = new ArrayList<>();
+            connected.addAll(linksByPolicy.getOrDefault(policy.getId(), List.of()));
+            connected.addAll(links.stream()
+                    .filter(link -> link != null && Objects.equals(policy.getId(), link.getTarget()))
+                    .toList());
+
+            for (LinkDTO link : connected) {
+                String otherId = Objects.equals(policy.getId(), link.getSource()) ? link.getTarget() : link.getSource();
+                NodeDTO target = nodesById.get(otherId);
+                if (target instanceof DeploymentDTO deployment) {
+                    String workloadName = trimName(deployment.getName());
+                    String saName = resolveAccessPolicyServiceAccountName(policy, workloadName, deployment.getId());
+                    deployment.setServiceAccountName(saName);
+                } else if (target != null) {
+                    throw new IllegalArgumentException("AccessPolicy '" + trimName(policy.getName()) + "' cannot be linked to target kind '" + target.getKind() + "'");
+                }
+            }
+        }
     }
 
     private ConfigMapDTO buildConfigMapNode(String name, Map<String, Object> manifest) {
@@ -788,7 +842,8 @@ public class ClusterYamlService {
         String namespace = resolveNamespace(node);
         String name = Optional.ofNullable(trimName(node.getName()))
                 .filter(n -> !n.isBlank())
-                .orElse(node.getId());
+                .orElseThrow(() -> new IllegalArgumentException("ServiceAccount name is required"));
+        validateDns1123Subdomain(name, "ServiceAccount");
 
         Map<String, Object> manifest = createBaseManifest(name, "ServiceAccount", namespace);
         manifest.put("apiVersion", "v1");
@@ -811,6 +866,7 @@ public class ClusterYamlService {
 
     private void updateRbacManifests(Map<String, ManifestEntry> manifests,
                                     Map<String, NodeDTO> nodesById,
+                                    List<LinkDTO> links,
                                     String namespace) {
         if (manifests == null || nodesById == null) {
             return;
@@ -818,57 +874,220 @@ public class ClusterYamlService {
 
         manifests.entrySet().removeIf(entry -> entry.getKey() != null && entry.getKey().contains(":rbac:"));
 
+        List<AccessPolicyDTO> policies = nodesById.values().stream()
+                .filter(node -> node instanceof AccessPolicyDTO)
+                .map(node -> (AccessPolicyDTO) node)
+                .toList();
+        if (policies.isEmpty()) {
+            return;
+        }
+
+        Map<String, String> seenRoleNames = new LinkedHashMap<>();
         Map<String, String> usedRoleBindingNames = new LinkedHashMap<>();
-        Map<String, String> seenServiceAccountNames = new LinkedHashMap<>();
-        for (NodeDTO node : nodesById.values()) {
-            if (!(node instanceof ServiceAccountDTO sa)) {
+        Map<String, String> usedServiceAccountNames = new LinkedHashMap<>();
+
+        for (AccessPolicyDTO policy : policies) {
+            String policyName = trimName(policy.getName());
+            if (policyName == null || policyName.isBlank()) {
+                throw new IllegalArgumentException("AccessPolicy name is required");
+            }
+            String policyNamespace = resolveNamespace(policy);
+            if (!Objects.equals(policyNamespace, namespace)) {
+                throw new IllegalArgumentException("AccessPolicy '" + policyName + "' must be in the cluster namespace '" + namespace + "'");
+            }
+
+            validateAccessPolicyRules(policy);
+
+            String roleName = sanitizeDnsLabel(policyName, 63);
+            String existingPolicyId = seenRoleNames.putIfAbsent(roleName, policy.getId());
+            if (existingPolicyId != null && !existingPolicyId.equals(policy.getId())) {
+                throw new IllegalArgumentException("Duplicate AccessPolicy name '" + policyName + "' in namespace '" + namespace + "'");
+            }
+
+            Map<String, Object> role = createBaseManifest(roleName, "Role", namespace);
+            role.put("apiVersion", "rbac.authorization.k8s.io/v1");
+            role.put("kind", "Role");
+            role.put("rules", policy.getRules().stream().filter(Objects::nonNull).map(this::toRoleRule).toList());
+            manifests.put(policy.getId() + ":rbac:role", new ManifestEntry("role", roleName, role));
+
+            List<LinkDTO> connectedLinks = Optional.ofNullable(links).orElse(List.of()).stream()
+                    .filter(link -> link != null && link.getSource() != null && link.getTarget() != null)
+                    .filter(link -> Objects.equals(policy.getId(), link.getSource()) || Objects.equals(policy.getId(), link.getTarget()))
+                    .toList();
+
+            Set<String> targetIds = new LinkedHashSet<>();
+            for (LinkDTO link : connectedLinks) {
+                if (link == null) {
+                    continue;
+                }
+                String otherId = Objects.equals(policy.getId(), link.getSource()) ? link.getTarget() : link.getSource();
+                if (otherId != null) {
+                    targetIds.add(otherId);
+                }
+            }
+
+            if (targetIds.isEmpty()) {
+                throw new IllegalArgumentException("AccessPolicy '" + policyName + "' is not applied to any target");
+            }
+
+            for (String targetId : targetIds) {
+                NodeDTO target = nodesById.get(targetId);
+                if (target == null) {
+                    throw new IllegalArgumentException("AccessPolicy '" + policyName + "' references missing target node: " + targetId);
+                }
+
+                if (target instanceof DeploymentDTO deployment) {
+                    String workloadName = trimName(deployment.getName());
+                    String saName = resolveAccessPolicyServiceAccountName(policy, workloadName, deployment.getId());
+                    String saKey = namespace + ":" + saName;
+                    if (!usedServiceAccountNames.containsKey(saKey)) {
+                        Map<String, Object> saManifest = createBaseManifest(saName, "ServiceAccount", namespace);
+                        saManifest.put("apiVersion", "v1");
+                        saManifest.put("kind", "ServiceAccount");
+                        manifests.put(policy.getId() + ":rbac:sa:" + saName, new ManifestEntry("serviceaccount", saName, saManifest));
+                        usedServiceAccountNames.put(saKey, policy.getId());
+                    }
+
+                    String bindingName = sanitizeDnsLabel(policyName, 30) + "-" + sanitizeDnsLabel(workloadName, 24) + "-rb";
+                    if (usedRoleBindingNames.containsKey(bindingName) && !Objects.equals(usedRoleBindingNames.get(bindingName), targetId)) {
+                        bindingName = ensureDnsLabelSuffix(bindingName, shortId(targetId), 63);
+                    }
+                    usedRoleBindingNames.putIfAbsent(bindingName, targetId);
+                    validateDns1123Label(bindingName, "RoleBinding");
+
+                    Map<String, Object> roleBinding = createBaseManifest(bindingName, "RoleBinding", namespace);
+                    roleBinding.put("apiVersion", "rbac.authorization.k8s.io/v1");
+                    roleBinding.put("kind", "RoleBinding");
+                    roleBinding.put("subjects", List.of(Map.of(
+                            "kind", "ServiceAccount",
+                            "name", saName,
+                            "namespace", namespace
+                    )));
+                    roleBinding.put("roleRef", Map.of(
+                            "apiGroup", "rbac.authorization.k8s.io",
+                            "kind", "Role",
+                            "name", roleName
+                    ));
+                    manifests.put(policy.getId() + ":rbac:binding:" + targetId, new ManifestEntry("rolebinding", bindingName, roleBinding));
+                } else {
+                    throw new IllegalArgumentException("AccessPolicy '" + policyName + "' cannot be linked to target kind '" + target.getKind() + "'");
+                }
+            }
+        }
+    }
+
+    private Map<String, Object> toRoleRule(AccessPolicyRuleDTO rule) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        List<String> apiGroups = Optional.ofNullable(rule.getApiGroups()).orElse(List.of("")).stream()
+                .map(value -> value == null ? "" : value.trim())
+                .toList();
+        List<String> resources = Optional.ofNullable(rule.getResources()).orElse(List.of()).stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(v -> !v.isBlank())
+                .toList();
+        List<String> verbs = Optional.ofNullable(rule.getVerbs()).orElse(List.of()).stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(v -> !v.isBlank())
+                .toList();
+        map.put("apiGroups", apiGroups.isEmpty() ? List.of("") : apiGroups);
+        map.put("resources", resources);
+        map.put("verbs", verbs);
+        List<String> resourceNames = Optional.ofNullable(rule.getResourceNames()).orElse(List.of()).stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(v -> !v.isBlank())
+                .toList();
+        if (!resourceNames.isEmpty()) {
+            map.put("resourceNames", resourceNames);
+        }
+        return map;
+    }
+
+    private void validateAccessPolicyRules(AccessPolicyDTO policy) {
+        List<AccessPolicyRuleDTO> rules = Optional.ofNullable(policy.getRules()).orElse(List.of());
+        if (rules.isEmpty()) {
+            throw new IllegalArgumentException("AccessPolicy '" + trimName(policy.getName()) + "' must define at least one rule");
+        }
+        int idx = 0;
+        for (AccessPolicyRuleDTO rule : rules) {
+            idx++;
+            if (rule == null) {
                 continue;
             }
-            String saName = trimName(sa.getName());
-            if (saName == null || saName.isBlank()) {
-                throw new IllegalArgumentException("ServiceAccount name is required");
+            List<String> resources = Optional.ofNullable(rule.getResources()).orElse(List.of()).stream().filter(Objects::nonNull).map(String::trim).filter(v -> !v.isBlank()).toList();
+            List<String> verbs = Optional.ofNullable(rule.getVerbs()).orElse(List.of()).stream().filter(Objects::nonNull).map(String::trim).filter(v -> !v.isBlank()).toList();
+            if (resources.isEmpty()) {
+                throw new IllegalArgumentException("AccessPolicy '" + trimName(policy.getName()) + "' rule #" + idx + " must include at least one resource");
             }
-            String saNamespace = resolveNamespace(sa);
-            if (!Objects.equals(namespace, saNamespace)) {
-                throw new IllegalArgumentException("Workload namespace must match ServiceAccount namespace. Kubernetes does not allow using a ServiceAccount across namespaces.");
+            if (verbs.isEmpty()) {
+                throw new IllegalArgumentException("AccessPolicy '" + trimName(policy.getName()) + "' rule #" + idx + " must include at least one verb");
             }
-            String existingId = seenServiceAccountNames.putIfAbsent(saName, sa.getId());
-            if (existingId != null && !existingId.equals(sa.getId())) {
-                throw new IllegalArgumentException("Duplicate ServiceAccount name '" + saName + "' in namespace '" + namespace + "'");
-            }
+        }
+    }
 
-            String profile = Optional.ofNullable(sa.getRbacProfile()).orElse("NONE").trim().toUpperCase(Locale.ROOT);
-            if (profile.isBlank() || "NONE".equals(profile)) {
-                continue;
-            }
-            String clusterRoleName = switch (profile) {
-                case "VIEW" -> "view";
-                case "EDIT" -> "edit";
-                case "ADMIN" -> "admin";
-                default -> throw new IllegalArgumentException("Unsupported RBAC profile for ServiceAccount " + saName + ": " + profile);
-            };
+    private String resolveAccessPolicyServiceAccountName(AccessPolicyDTO policy, String workloadName, String workloadId) {
+        String policyName = trimName(policy.getName());
+        String safeWorkload = workloadName == null ? "" : workloadName;
+        AccessPolicyBindingStrategy strategy = Optional.ofNullable(policy.getTargetBindingStrategy())
+                .orElse(AccessPolicyBindingStrategy.WORKLOAD_SA_PER_WORKLOAD);
 
-            String baseName = saName + "-" + clusterRoleName;
-            String bindingName = baseName;
-            if (usedRoleBindingNames.containsKey(bindingName) && !sa.getId().equals(usedRoleBindingNames.get(bindingName))) {
-                bindingName = baseName + "-" + shortId(sa.getId());
+        String name = switch (strategy) {
+            case WORKLOAD_SA_PER_WORKLOAD -> sanitizeDnsLabel(safeWorkload + "-sa", 63);
+            case WORKLOAD_SA_PER_POLICY -> sanitizeDnsLabel(policyName + "-sa", 63);
+            case WORKLOAD_SA_EXPLICIT_REFERENCE -> {
+                String explicit = trimName(policy.getExistingServiceAccountName());
+                if (explicit == null || explicit.isBlank()) {
+                    throw new IllegalArgumentException("AccessPolicy '" + policyName + "' requires existingServiceAccountName when using WORKLOAD_SA_EXPLICIT_REFERENCE");
+                }
+                yield sanitizeDnsLabel(explicit, 63);
             }
-            usedRoleBindingNames.putIfAbsent(bindingName, sa.getId());
+        };
 
-            Map<String, Object> roleBinding = createBaseManifest(bindingName, "RoleBinding", namespace);
-            roleBinding.put("apiVersion", "rbac.authorization.k8s.io/v1");
-            roleBinding.put("kind", "RoleBinding");
-            roleBinding.put("subjects", List.of(Map.of(
-                    "kind", "ServiceAccount",
-                    "name", saName,
-                    "namespace", namespace
-            )));
-            Map<String, Object> roleRef = new LinkedHashMap<>();
-            roleRef.put("apiGroup", "rbac.authorization.k8s.io");
-            roleRef.put("kind", "ClusterRole");
-            roleRef.put("name", clusterRoleName);
-            roleBinding.put("roleRef", roleRef);
-            manifests.put(sa.getId() + ":rbac:binding", new ManifestEntry("rolebinding", bindingName, roleBinding));
+        if (name.length() > 63) {
+            name = ensureDnsLabelSuffix(name, shortId(workloadId), 63);
+        }
+        validateDns1123Label(name, "ServiceAccount");
+        return name;
+    }
+
+    private String sanitizeDnsLabel(String raw, int maxLen) {
+        String value = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+        value = value.replaceAll("[^a-z0-9-]+", "-");
+        value = value.replaceAll("^-+", "");
+        value = value.replaceAll("-+$", "");
+        value = value.replaceAll("-{2,}", "-");
+        if (value.isEmpty()) {
+            value = "rbac";
+        }
+        if (value.length() > maxLen) {
+            value = value.substring(0, maxLen);
+            value = value.replaceAll("-+$", "");
+        }
+        if (value.isEmpty()) {
+            value = "rbac";
+        }
+        return value;
+    }
+
+    private String ensureDnsLabelSuffix(String base, String suffix, int maxLen) {
+        String normalized = sanitizeDnsLabel(base, maxLen);
+        String safeSuffix = sanitizeDnsLabel(suffix, 12);
+        int available = Math.max(1, maxLen - safeSuffix.length() - 1);
+        String prefix = sanitizeDnsLabel(normalized, available);
+        return prefix + "-" + safeSuffix;
+    }
+
+    private void validateDns1123Label(String name, String resourceType) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException(resourceType + " name is required");
+        }
+        if (name.length() > 63) {
+            throw new IllegalArgumentException(resourceType + " name must be <= 63 characters");
+        }
+        if (!name.matches("^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")) {
+            throw new IllegalArgumentException(resourceType + " name must be a valid DNS-1123 label (lowercase alphanumeric, '-', start/end alphanumeric)");
         }
     }
 
@@ -1239,6 +1458,13 @@ public class ClusterYamlService {
             return;
         }
 
+        String explicitName = Optional.ofNullable(trimName(node.getServiceAccountName())).orElse("");
+        if (!explicitName.isBlank()) {
+            validateDns1123Subdomain(explicitName, "ServiceAccount");
+            templateSpec.put("serviceAccountName", explicitName);
+            return;
+        }
+
         String serviceAccountId = Optional.ofNullable(node.getServiceAccountRef()).map(String::trim).orElse("");
         if (serviceAccountId.isBlank()) {
             List<LinkDTO> bindings = Optional.ofNullable(links).orElse(List.of())
@@ -1282,14 +1508,18 @@ public class ClusterYamlService {
     }
 
     private void validateDns1123Subdomain(String name) {
+        validateDns1123Subdomain(name, "ServiceAccount");
+    }
+
+    private void validateDns1123Subdomain(String name, String resourceType) {
         if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("ServiceAccount name is required");
+            throw new IllegalArgumentException(resourceType + " name is required");
         }
         if (name.length() > 253) {
-            throw new IllegalArgumentException("ServiceAccount name must be <= 253 characters");
+            throw new IllegalArgumentException(resourceType + " name must be <= 253 characters");
         }
         if (!name.matches("^[a-z0-9]([a-z0-9-.]*[a-z0-9])?$")) {
-            throw new IllegalArgumentException("ServiceAccount name must be a valid DNS-1123 subdomain (lowercase alphanumeric, '-', '.', start/end alphanumeric)");
+            throw new IllegalArgumentException(resourceType + " name must be a valid DNS-1123 subdomain (lowercase alphanumeric, '-', '.', start/end alphanumeric)");
         }
     }
 

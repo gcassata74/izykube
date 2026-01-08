@@ -1117,7 +1117,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     return [
       { name: 'ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress') },
       { name: 'Istio', type: 'istio', icon: this.iconService.getIconPath('istio') },
-      { name: 'ServiceAccount', type: 'serviceaccount', baseName: 'service-account', icon: this.iconService.getIconPath('serviceaccount') },
+      { name: 'Role', type: 'accesspolicy', baseName: 'role', icon: this.iconService.getIconPath('accesspolicy') },
       { name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },
       { name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
       { name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
@@ -1487,6 +1487,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
             ? 'Container'
             : link.type === 'serviceAccountBinding'
               ? 'ServiceAccount binding'
+              : link.type === 'appliesTo'
+                ? 'Applies to'
               : 'Expose';
         link.element.setAttribute('title', title);
       }
@@ -1661,6 +1663,19 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
+    const involvesAccessPolicy = this.isAccessPolicyNode(fromNode) || this.isAccessPolicyNode(toNode);
+    if (involvesAccessPolicy) {
+      const policyNode = this.isAccessPolicyNode(fromNode) ? fromNode : toNode;
+      const targetNode = policyNode.id === fromNode.id ? toNode : fromNode;
+      if (!this.isWorkloadForAccessPolicy(targetNode)) {
+        this.notificationService.warn(
+          'Invalid connection',
+          'Roles can only be linked to workloads (Deployment, Job).'
+        );
+        return;
+      }
+    }
+
     const involvesServiceAccount = this.isServiceAccountNode(fromNode) || this.isServiceAccountNode(toNode);
     const involvesServiceAccountWorkloadBinding =
       (this.isServiceAccountNode(fromNode) && this.isServiceAccountSupportedWorkloadNode(toNode)) ||
@@ -1678,11 +1693,17 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       (fromNode.type === 'deployment' && toNode.type === 'container') ||
       (fromNode.type === 'container' && toNode.type === 'deployment');
 
+    const involvesAccessPolicyWorkloadBinding =
+      (this.isAccessPolicyNode(fromNode) && this.isWorkloadForAccessPolicy(toNode)) ||
+      (this.isAccessPolicyNode(toNode) && this.isWorkloadForAccessPolicy(fromNode));
+
     const type = involvesDeploymentAndContainer
       ? 'Container'
-      : involvesServiceAccountWorkloadBinding
-        ? 'serviceAccountBinding'
-        : this.resolveLinkType(options?.type);
+      : involvesAccessPolicyWorkloadBinding
+        ? 'appliesTo'
+        : involvesServiceAccountWorkloadBinding
+          ? 'serviceAccountBinding'
+          : this.resolveLinkType(options?.type);
     const containerRole = involvesDeploymentAndContainer ? this.resolveContainerRoleForLink(fromNode, toNode) : undefined;
     const note = typeof options?.note === 'string' ? options.note : undefined;
     const oriented = this.orientLinkByType(fromNode, toNode, fromPoint, toPoint, type);
@@ -1853,12 +1874,15 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
         return { ...link, type: link.type ?? 'Expose' };
       }
       const matchType = String(match.type ?? '').trim();
+      const lowerMatchType = matchType.toLowerCase();
       const normalizedType: LinkType = matchType === 'Use'
         ? 'Use'
         : matchType === 'Container'
           ? 'Container'
-          : matchType.toLowerCase() === 'serviceaccountbinding'
+          : lowerMatchType === 'serviceaccountbinding'
             ? 'serviceAccountBinding'
+            : lowerMatchType === 'appliesto'
+              ? 'appliesTo'
             : 'Expose';
       const effectiveType: LinkType = isDeploymentContainerLink(link.from, link.to) ? 'Container' : normalizedType;
       const normalizedRole = toContainerRole((match as any).containerRole);
@@ -1901,6 +1925,39 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     const current = this.links[index];
+    const fromNode = this.nodes.find(n => n.id === current.from);
+    const toNode = this.nodes.find(n => n.id === current.to);
+
+    if (fromNode && toNode) {
+      const involvesAccessPolicy = this.isAccessPolicyNode(fromNode) || this.isAccessPolicyNode(toNode);
+      if (involvesAccessPolicy) {
+        const policyNode = this.isAccessPolicyNode(fromNode) ? fromNode : toNode;
+        const otherNode = policyNode.id === fromNode.id ? toNode : fromNode;
+        const forcedType: LinkType | null = this.isWorkloadForAccessPolicy(otherNode) ? 'appliesTo' : null;
+        if (!forcedType) {
+          this.notificationService.warn(
+            'Invalid connection',
+            'Roles can only be linked to workloads (Deployment, Job).'
+          );
+          return;
+        }
+        changes = { ...changes, type: forcedType };
+      } else if (changes.type === 'appliesTo') {
+        this.notificationService.warn(
+          'Invalid link type',
+          'Only Role links can use Applies to.'
+        );
+        changes = { ...changes, type: current.type ?? 'Expose' };
+      }
+
+      const involvesDeploymentAndContainer =
+        (fromNode.type === 'deployment' && toNode.type === 'container') ||
+        (fromNode.type === 'container' && toNode.type === 'deployment');
+      if (involvesDeploymentAndContainer) {
+        changes = { ...changes, type: 'Container' };
+      }
+    }
+
     const updated: DiagramLink = {
       ...current,
       type: changes.type ?? current.type ?? 'Expose',
@@ -2087,6 +2144,15 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     return (node?.type || '').toLowerCase() === 'serviceaccount';
   }
 
+  private isAccessPolicyNode(node: DiagramNode): boolean {
+    return (node?.type || '').toLowerCase() === 'accesspolicy';
+  }
+
+  private isWorkloadForAccessPolicy(node: DiagramNode): boolean {
+    const normalized = (node?.type || '').toLowerCase();
+    return normalized === 'deployment' || normalized === 'job';
+  }
+
   private isServiceAccountSupportedWorkloadNode(node: DiagramNode): boolean {
     const normalized = (node?.type || '').toLowerCase();
     return normalized === 'deployment' || normalized === 'job';
@@ -2179,17 +2245,30 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
           ? 'Container'
           : type === 'serviceAccountBinding'
             ? 'serviceAccountBinding'
-            : 'Expose';
+            : type === 'appliesTo'
+              ? 'appliesTo'
+                : 'Expose';
     const isService = (node: DiagramNode) => node.type?.toLowerCase() === 'service';
     const isDeployment = (node: DiagramNode) => node.type?.toLowerCase() === 'deployment';
     const isServiceAccount = (node: DiagramNode) => node.type?.toLowerCase() === 'serviceaccount';
     const isWorkload = (node: DiagramNode) => this.isServiceAccountSupportedWorkloadNode(node);
+    const isAccessPolicy = (node: DiagramNode) => node.type?.toLowerCase() === 'accesspolicy';
+    const isPolicyWorkload = (node: DiagramNode) => this.isWorkloadForAccessPolicy(node);
 
     if (normalizedType === 'serviceAccountBinding') {
       if (isServiceAccount(startNode) && isWorkload(endNode)) {
         return { fromNode: startNode, toNode: endNode, fromPoint: startPoint, toPoint: endPoint };
       }
       if (isServiceAccount(endNode) && isWorkload(startNode)) {
+        return { fromNode: endNode, toNode: startNode, fromPoint: endPoint, toPoint: startPoint };
+      }
+    }
+
+    if (normalizedType === 'appliesTo') {
+      if (isAccessPolicy(startNode) && isPolicyWorkload(endNode)) {
+        return { fromNode: startNode, toNode: endNode, fromPoint: startPoint, toPoint: endPoint };
+      }
+      if (isAccessPolicy(endNode) && isPolicyWorkload(startNode)) {
         return { fromNode: endNode, toNode: startNode, fromPoint: endPoint, toPoint: startPoint };
       }
     }
@@ -2252,6 +2331,9 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }
     if (value.toLowerCase() === 'serviceaccountbinding') {
       return 'serviceAccountBinding';
+    }
+    if (value.toLowerCase() === 'appliesto') {
+      return 'appliesTo';
     }
     return 'Expose';
   }

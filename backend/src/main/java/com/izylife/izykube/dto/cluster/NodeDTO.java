@@ -30,7 +30,8 @@ import java.util.List;
         @JsonSubTypes.Type(value = IngressDTO.class, name = "ingress"),
         @JsonSubTypes.Type(value = VirtualServiceDTO.class, name = "istio"),
         @JsonSubTypes.Type(value = JobDTO.class, name = "job"),
-        @JsonSubTypes.Type(value = ServiceAccountDTO.class, name = "serviceaccount")
+        @JsonSubTypes.Type(value = ServiceAccountDTO.class, name = "serviceaccount"),
+        @JsonSubTypes.Type(value = AccessPolicyDTO.class, name = "accesspolicy")
 })
 public abstract class NodeDTO {
     @JsonProperty("id")

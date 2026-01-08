@@ -117,6 +117,11 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
         if (dto == null) {
             return null;
         }
+        String directName = normalizeName(dto.getServiceAccountName());
+        if (StringUtils.hasText(directName)) {
+            validateDns1123Subdomain(directName);
+            return directName;
+        }
         List<LinkDTO> incomingBindings = Optional.ofNullable(dto.getIncomingLinks())
                 .orElse(List.of())
                 .stream()

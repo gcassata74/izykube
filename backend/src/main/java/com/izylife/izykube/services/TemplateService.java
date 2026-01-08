@@ -72,6 +72,9 @@ public class TemplateService {
 
             enforceServiceAccountConstraints(nodesById, namespace);
 
+            RbacProcessor.Generation rbacGeneration = rbacProcessor.generateAndApply(namespace, clusterDTO.getNodes(), clusterDTO.getLinks());
+            yamlList.addAll(rbacGeneration.yamls());
+
             templateableNodes.forEach(node -> {
                 if (node instanceof ServiceAccountDTO serviceAccount) {
                     if (serviceAccount.getNamespace() == null || serviceAccount.getNamespace().isBlank()) {
@@ -90,8 +93,6 @@ public class TemplateService {
             templateableNodes.stream()
                     .filter(node -> !processedNodes.contains(node.getId()))
                     .forEach(node -> processNodeAndLinkedNodes(clusterDTO, node, yamlList, processedNodes));
-
-            yamlList.addAll(rbacProcessor.createTemplates(namespace, clusterDTO.getNodes()));
 
             return saveTemplateForCluster(id, yamlList);
 

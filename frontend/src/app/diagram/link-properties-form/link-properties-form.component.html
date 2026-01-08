@@ -22,7 +22,8 @@
           <option value="Expose">Expose</option>
           <option value="Use">Use</option>
           <option value="Container">Container</option>
-          <option value="serviceAccountBinding">ServiceAccount binding</option>
+          <option value="appliesTo">Applies to</option>
+          <option value="serviceAccountBinding">ServiceAccount binding (legacy)</option>
         </select>
       </div>
 
@@ -31,7 +32,8 @@
         <div class="link-form__info-text">
           <div>Expose → Service exposes Deployment</div>
           <div>Use → Deployment uses Service (DB, API)</div>
-          <div *ngIf="selectedType === 'serviceAccountBinding'">ServiceAccount binding → Workload runs as this ServiceAccount</div>
+          <div *ngIf="selectedType === 'appliesTo'">Applies to → Access Policy applies to this Workload</div>
+          <div *ngIf="selectedType === 'serviceAccountBinding'">ServiceAccount binding (legacy) → Workload runs as this ServiceAccount</div>
         </div>
       </div>
 

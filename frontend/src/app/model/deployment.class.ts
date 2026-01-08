@@ -8,6 +8,7 @@ export class Deployment extends Node {
   assetId: string;
   containerPort: number;
   serviceAccountRef?: string | null;
+  serviceAccountName?: string | null;
   override workloadType: WorkloadType;
 
   constructor(
@@ -18,7 +19,8 @@ export class Deployment extends Node {
     assetId: string = '',
     containerPort: number = 80,
     workloadType: WorkloadType = 'DEPLOYMENT',
-    serviceAccountRef: string | null = null
+    serviceAccountRef: string | null = null,
+    serviceAccountName: string | null = null
   ) {
     super(id, name, 'deployment');
     this.replicas = replicas;
@@ -27,5 +29,6 @@ export class Deployment extends Node {
     this.containerPort = containerPort;
     this.workloadType = workloadType;
     this.serviceAccountRef = serviceAccountRef;
+    this.serviceAccountName = serviceAccountName;
   }
 }

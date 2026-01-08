@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { ContainerRole, toContainerRole } from './container.class';
 
-export type LinkType = 'Expose' | 'Use' | 'Container' | 'serviceAccountBinding';
+export type LinkType = 'Expose' | 'Use' | 'Container' | 'serviceAccountBinding' | 'appliesTo';
 
 export class Link {
     id: string;
@@ -33,13 +33,16 @@ export class Link {
         }
 
         const typeRaw = String(data.type ?? '').trim();
+        const lowerType = typeRaw.toLowerCase();
         const type: LinkType = typeRaw === 'Use'
             ? 'Use'
             : typeRaw === 'Container'
                 ? 'Container'
-                : typeRaw.toLowerCase() === 'serviceaccountbinding'
+                : lowerType === 'serviceaccountbinding'
                     ? 'serviceAccountBinding'
-                    : 'Expose';
+                    : lowerType === 'appliesto'
+                        ? 'appliesTo'
+                            : 'Expose';
         const note = typeof data.note === 'string' ? data.note : undefined;
         const id = typeof data.id === 'string' && data.id.trim() ? data.id : uuidv4();
         const containerRole = toContainerRole(data.containerRole);

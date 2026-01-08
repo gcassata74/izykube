@@ -6,10 +6,13 @@ import com.izylife.izykube.dto.cluster.ConfigEntrySensitivity;
 import com.izylife.izykube.dto.cluster.ConfigMapDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.DeploymentWorkloadType;
+import com.izylife.izykube.dto.cluster.AccessPolicyDTO;
+import com.izylife.izykube.dto.cluster.AccessPolicyRuleDTO;
 import com.izylife.izykube.dto.cluster.IngressDTO;
 import com.izylife.izykube.dto.cluster.LinkDTO;
 import com.izylife.izykube.dto.cluster.SecretDTO;
 import com.izylife.izykube.dto.cluster.ServiceDTO;
+import com.izylife.izykube.dto.cluster.ServiceAccountDTO;
 import com.izylife.izykube.dto.cluster.VirtualServiceDTO;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
@@ -28,6 +31,7 @@ import java.util.zip.ZipInputStream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -178,6 +182,81 @@ class ClusterYamlServiceTest {
 
         assertTrue(exported.contains("kind: Secret"));
         assertTrue(exported.contains("c3VwZXItc2VjcmV0"));
+    }
+
+    @Test
+    void exportClusterRejectsInvalidServiceAccountName() {
+        ClusterDTO cluster = ClusterDTO.builder().diagram("{}").build();
+        ServiceAccountDTO sa = new ServiceAccountDTO("sa-1", "Example-SA");
+        sa.setNamespace("test-ns");
+        cluster.getNodes().add(sa);
+
+        assertThrows(IllegalArgumentException.class, () -> service.exportCluster(cluster));
+    }
+
+    @Test
+    void exportClusterGeneratesRbacForAccessPolicyWorkload() {
+        ClusterDTO cluster = ClusterDTO.builder()
+                .diagram("{}")
+                .nameSpace("demo")
+                .build();
+
+        DeploymentDTO deployment = new DeploymentDTO("dep-1", "my-app", 1, "RollingUpdate", "", 80);
+        cluster.getNodes().add(deployment);
+
+        AccessPolicyDTO policy = new AccessPolicyDTO("ap-1", "my-app-reader");
+        policy.setNamespace("demo");
+        AccessPolicyRuleDTO rule = new AccessPolicyRuleDTO();
+        rule.setApiGroups(List.of(""));
+        rule.setResources(List.of("pods"));
+        rule.setVerbs(List.of("get", "list"));
+        policy.setRules(List.of(rule));
+        cluster.getNodes().add(policy);
+
+        LinkDTO link = new LinkDTO();
+        link.setSource(policy.getId());
+        link.setTarget(deployment.getId());
+        link.setType("appliesTo");
+        cluster.getLinks().add(link);
+
+        String exported = service.exportCluster(cluster);
+
+        Map<String, Object> serviceAccountDoc = null;
+        Map<String, Object> roleDoc = null;
+        Map<String, Object> roleBindingDoc = null;
+        Map<String, Object> deploymentDoc = null;
+        for (Object doc : new Yaml().loadAll(exported)) {
+            if (!(doc instanceof Map<?, ?> map)) {
+                continue;
+            }
+            if ("ServiceAccount".equals(map.get("kind"))) {
+                serviceAccountDoc = castMap(doc);
+            } else if ("Role".equals(map.get("kind"))) {
+                roleDoc = castMap(doc);
+            } else if ("RoleBinding".equals(map.get("kind"))) {
+                roleBindingDoc = castMap(doc);
+            } else if ("Deployment".equals(map.get("kind"))) {
+                deploymentDoc = castMap(doc);
+            }
+        }
+
+        assertNotNull(serviceAccountDoc);
+        assertNotNull(roleDoc);
+        assertNotNull(roleBindingDoc);
+        Map<String, Object> roleRef = castMap(roleBindingDoc.get("roleRef"));
+        assertEquals("Role", roleRef.get("kind"));
+        assertEquals("my-app-reader", roleRef.get("name"));
+        List<Map<String, Object>> subjects = (List<Map<String, Object>>) roleBindingDoc.get("subjects");
+        assertNotNull(subjects);
+        assertEquals("ServiceAccount", subjects.get(0).get("kind"));
+        assertEquals("my-app-sa", subjects.get(0).get("name"));
+        assertEquals("demo", subjects.get(0).get("namespace"));
+
+        assertNotNull(deploymentDoc);
+        Map<String, Object> spec = castMap(deploymentDoc.get("spec"));
+        Map<String, Object> template = castMap(spec.get("template"));
+        Map<String, Object> podSpec = castMap(template.get("spec"));
+        assertEquals("my-app-sa", podSpec.get("serviceAccountName"));
     }
 
     @Test

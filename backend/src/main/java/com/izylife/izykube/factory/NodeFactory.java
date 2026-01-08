@@ -28,7 +28,7 @@ public class NodeFactory {
                 break;
             case "job":
                 JobDTO job = (JobDTO) node;
-                sanitized = new JobDTO(job.getId(), job.getName(), job.getAssetId(), job.getServiceAccountRef());
+                sanitized = new JobDTO(job.getId(), job.getName(), job.getAssetId(), job.getServiceAccountRef(), job.getServiceAccountName());
                 break;
             case "pod":
                 PodDTO pod = (PodDTO) node;
@@ -56,6 +56,7 @@ public class NodeFactory {
                         deployment.getWorkloadType(),
                         deployment.getServiceAccountRef()
                 );
+                ((DeploymentDTO) sanitized).setServiceAccountName(deployment.getServiceAccountName());
                 break;
             case "serviceaccount":
                 ServiceAccountDTO serviceAccount = (ServiceAccountDTO) node;
@@ -66,6 +67,15 @@ public class NodeFactory {
                 sanitizedServiceAccount.setAnnotations(serviceAccount.getAnnotations());
                 sanitizedServiceAccount.setRbacProfile(serviceAccount.getRbacProfile());
                 sanitized = sanitizedServiceAccount;
+                break;
+            case "accesspolicy":
+                AccessPolicyDTO policy = (AccessPolicyDTO) node;
+                AccessPolicyDTO sanitizedPolicy = new AccessPolicyDTO(policy.getId(), policy.getName());
+                sanitizedPolicy.setNamespace(policy.getNamespace());
+                sanitizedPolicy.setRules(policy.getRules());
+                sanitizedPolicy.setTargetBindingStrategy(policy.getTargetBindingStrategy());
+                sanitizedPolicy.setExistingServiceAccountName(policy.getExistingServiceAccountName());
+                sanitized = sanitizedPolicy;
                 break;
             case "service":
                 ServiceDTO service = (ServiceDTO) node;
@@ -143,6 +153,12 @@ public class NodeFactory {
                 serviceAccount.setAnnotations(new LinkedHashMap<>());
                 serviceAccount.setRbacProfile("NONE");
                 return serviceAccount;
+            case "accesspolicy":
+                AccessPolicyDTO policy = new AccessPolicyDTO(id, name);
+                policy.setNamespace("default");
+                policy.setTargetBindingStrategy(AccessPolicyBindingStrategy.WORKLOAD_SA_PER_WORKLOAD);
+                policy.setRules(List.of());
+                return policy;
             case "ingress":
                 return new IngressDTO(id, name, "example.com", "/", "default-service", 80, null, new LinkedHashMap<>());
             case "istio":

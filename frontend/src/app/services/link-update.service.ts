@@ -52,14 +52,17 @@ export class LinkUpdateService {
   private normalizePayload(raw: any): LinkUpdatePayload | null {
     const type = raw?.linkType ?? raw?.type;
     const typeString = String(type ?? '').trim();
+    const lowerType = typeString.toLowerCase();
     const normalizedType: LinkType =
       typeString === 'Use'
         ? 'Use'
         : typeString === 'Container'
           ? 'Container'
-          : typeString.toLowerCase() === 'serviceaccountbinding'
+          : lowerType === 'serviceaccountbinding'
             ? 'serviceAccountBinding'
-            : 'Expose';
+            : lowerType === 'appliesto'
+              ? 'appliesTo'
+              : 'Expose';
     const note = typeof raw?.note === 'string' ? raw.note : raw?.note === '' ? '' : undefined;
     const containerRoleKeyPresent = raw != null && Object.prototype.hasOwnProperty.call(raw, 'containerRole');
     const normalizedRole = toContainerRole(raw?.containerRole);

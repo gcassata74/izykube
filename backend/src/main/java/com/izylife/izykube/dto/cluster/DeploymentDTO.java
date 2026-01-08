@@ -15,6 +15,7 @@ public class DeploymentDTO extends NodeDTO {
     private String assetId;
     private Integer containerPort;
     private String serviceAccountRef;
+    private String serviceAccountName;
     private DeploymentWorkloadType workloadType = DeploymentWorkloadType.DEPLOYMENT;
 
     public DeploymentDTO(String id, String name, int replicas, String strategyType, String assetId, Integer containerPort) {
