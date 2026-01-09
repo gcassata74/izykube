@@ -8,7 +8,8 @@ public enum AssetType {
     PLAYBOOK("playbook"),
     IMAGE("image"),
     SCRIPT("script"),
-    JVA("jva");
+    JVA("jva"),
+    CONTROLLER("controller");
 
     @JsonValue
     private final String value;

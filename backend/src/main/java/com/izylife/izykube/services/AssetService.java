@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -27,6 +28,13 @@ public class AssetService {
 
     public List<AssetDTO> findAll() {
         return assetRepository.findAll()
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    public List<AssetDTO> findControllerAssets() {
+        return assetRepository.findByType(AssetType.CONTROLLER)
                 .stream()
                 .map(this::toDto)
                 .toList();

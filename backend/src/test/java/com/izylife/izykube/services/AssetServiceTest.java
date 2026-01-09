@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -67,6 +68,39 @@ class AssetServiceTest {
         verify(assetRepository).save(any(Asset.class));
         assertEquals("registry/app:v1", dto.getImage());
         assertEquals("v1", dto.getVersion());
+    }
+
+    @Test
+    void findControllerAssetsReturnsOnlyControllerAssets() {
+        Asset script = new Asset();
+        script.setId("a1");
+        script.setName("script");
+        script.setType(AssetType.SCRIPT);
+
+        Asset playbook = new Asset();
+        playbook.setId("a2");
+        playbook.setName("playbook");
+        playbook.setType(AssetType.PLAYBOOK);
+
+        Asset jva = new Asset();
+        jva.setId("a3");
+        jva.setName("jva");
+        jva.setType(AssetType.JVA);
+
+        Asset image = imageAsset("nginx", "nginx:latest");
+        image.setId("a4");
+
+        Asset controller = new Asset();
+        controller.setId("a5");
+        controller.setName("controller");
+        controller.setType(AssetType.CONTROLLER);
+
+        when(assetRepository.findByType(AssetType.CONTROLLER)).thenReturn(List.of(controller));
+
+        List<AssetDTO> results = assetService.findControllerAssets();
+
+        assertEquals(1, results.size());
+        assertTrue(results.stream().anyMatch(a -> "a5".equals(a.getId())));
     }
 
     private Asset imageAsset(String name, String image) {
