@@ -23,6 +23,7 @@ export class SidebarComponent {
     { label: 'Home', icon: 'pi pi-home', route: '/home' },
     { label: 'Namespaces', icon: 'pi pi-th-large', route: '/namespaces' },
     { label: 'Assets', icon: 'pi pi-briefcase', route: '/assets' },
+    { label: 'CRDs', icon: 'pi pi-table', route: '/crds' },
     { label: 'Kube Explorer', icon: 'pi pi-compass', route: '/kube-explorer' },
   ];
 

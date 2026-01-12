@@ -1,0 +1,107 @@
+<form [formGroup]="form" class="crd-form">
+  <p-card class="izy-card" header="CRD Definition">
+    <div class="crd-form__actions">
+      <button type="button" pButton label="Save" icon="pi pi-save" class="izy-primary-button" (click)="save()"></button>
+      <button type="button" pButton label="Cancel" icon="pi pi-times" class="p-button-outlined" (click)="cancel()"></button>
+    </div>
+
+    <section class="crd-form__section">
+      <h3>Base fields</h3>
+
+      <div class="crd-form__grid">
+        <div class="crd-form__field">
+          <label for="group">Group</label>
+          <input id="group" pInputText formControlName="group" placeholder="example.com" autocomplete="off" />
+          <div class="field-error" *ngIf="form.get('group')?.touched && form.get('group')?.invalid">
+            <span *ngIf="form.get('group')?.errors?.['required']">Group is required.</span>
+          </div>
+        </div>
+
+        <div class="crd-form__field">
+          <label for="singularName">Singular name</label>
+          <input id="singularName" pInputText formControlName="singularName" placeholder="widget" autocomplete="off" />
+          <div class="field-error" *ngIf="form.get('singularName')?.touched && form.get('singularName')?.invalid">
+            <span *ngIf="form.get('singularName')?.errors?.['required']">Singular name is required.</span>
+          </div>
+        </div>
+
+        <div class="crd-form__field">
+          <label for="scope">Scope</label>
+          <p-dropdown inputId="scope" formControlName="scope" [options]="scopeOptions" optionLabel="label" optionValue="value"></p-dropdown>
+          <div class="field-error" *ngIf="form.get('scope')?.touched && form.get('scope')?.invalid">
+            <span>Scope is required.</span>
+          </div>
+        </div>
+
+        <div class="crd-form__field">
+          <label for="version">Version</label>
+          <input id="version" pInputText formControlName="version" placeholder="v1" autocomplete="off" />
+          <div class="field-error" *ngIf="form.get('version')?.touched && form.get('version')?.invalid">
+            <span *ngIf="form.get('version')?.errors?.['required']">Version is required.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="crd-form__preview">
+        <div><span class="crd-form__preview-label">Plural:</span> {{ pluralPreview || '-' }}</div>
+        <div><span class="crd-form__preview-label">Kind:</span> {{ kindPreview || '-' }}</div>
+        <div><span class="crd-form__preview-label">metadata.name:</span> {{ metadataNamePreview || '-' }}</div>
+      </div>
+    </section>
+
+    <section class="crd-form__section">
+      <div class="schema-builder__header">
+        <h3>Schema builder</h3>
+        <button type="button" pButton icon="pi pi-plus" label="Add field" (click)="addSchemaField()"></button>
+      </div>
+
+      <div class="schema-builder" formArrayName="schemaFields">
+        <div
+          class="schema-field"
+          *ngFor="let fieldGroup of schemaFieldGroups; let i = index"
+          [formGroupName]="i"
+          [ngClass]="{ 'schema-field--error': fieldGroup.invalid && (fieldGroup.dirty || fieldGroup.touched) }">
+          <label class="schema-field__label" [for]="'field-name-' + i">Field name</label>
+          <input [id]="'field-name-' + i" pInputText formControlName="fieldName" placeholder="replicas" autocomplete="off" />
+          <div class="field-error" *ngIf="fieldError(fieldGroup, 'fieldName') as err">
+            <span *ngIf="err['required']">Field name is required.</span>
+            <span *ngIf="err['invalidFieldName']">Use only letters, numbers, underscore, dot, dash.</span>
+            <span *ngIf="err['duplicateFieldName']">Duplicate field name.</span>
+          </div>
+
+          <label class="schema-field__label" [for]="'field-type-' + i">Type</label>
+          <p-dropdown
+            [inputId]="'field-type-' + i"
+            formControlName="fieldType"
+            [options]="fieldTypeOptions"
+            optionLabel="label"
+            optionValue="value">
+          </p-dropdown>
+          <div class="field-error" *ngIf="fieldError(fieldGroup, 'fieldType')">
+            Type is required.
+          </div>
+
+          <div class="schema-field__actions">
+            <button
+              type="button"
+              pButton
+              class="p-button-text p-button-danger"
+              icon="pi pi-trash"
+              label="Delete"
+              [disabled]="schemaFieldGroups.length <= 1"
+              (click)="removeSchemaField(i)">
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="crd-form__section crd-form__section--preview">
+      <button type="button" pButton class="p-button-text" icon="pi pi-eye" [label]="showYamlPreview ? 'Hide YAML preview' : 'Show YAML preview'" (click)="toggleYamlPreview()"></button>
+      <p class="yaml-preview__hint" *ngIf="showYamlPreview">Preview only. Apply changes from the form above; this output is not editable.</p>
+      <p class="yaml-preview__error" *ngIf="showYamlPreview && yamlError">{{ yamlError }}</p>
+      <textarea class="yaml-preview__content" *ngIf="showYamlPreview" readonly [value]="yamlPreview"></textarea>
+    </section>
+  </p-card>
+</form>
+

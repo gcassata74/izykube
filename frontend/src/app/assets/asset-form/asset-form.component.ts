@@ -29,7 +29,8 @@ export class AssetFormComponent implements OnInit, OnDestroy {
   assetTypes = [
     { label: 'Playbook', value: AssetType.PLAYBOOK },
     { label: 'Image', value: AssetType.IMAGE },
-    { label: 'Script', value: AssetType.SCRIPT }
+    { label: 'Script', value: AssetType.SCRIPT },
+    { label: 'CRD Controller', value: AssetType.CONTROLLER }
   ];
 
   constructor(
@@ -108,6 +109,9 @@ export class AssetFormComponent implements OnInit, OnDestroy {
         this.setPlaybookState(controls);
         break;
       case AssetType.SCRIPT:
+        this.setScriptState(controls);
+        break;
+      case AssetType.CONTROLLER:
         this.setScriptState(controls);
         break;
       case AssetType.IMAGE:
@@ -223,6 +227,7 @@ export class AssetFormComponent implements OnInit, OnDestroy {
       case AssetType.PLAYBOOK:
         return this.DEFAULT_VALUES.YAML;
       case AssetType.SCRIPT:
+      case AssetType.CONTROLLER:
         return this.DEFAULT_VALUES.BASH;
       default:
         return '';

@@ -1,0 +1,54 @@
+<div class="content">
+  <p-card class="izy-card" header="CRDs">
+    <div class="card-content">
+      <div class="izy-button-container">
+        <button pButton label="Add CRD" icon="pi pi-plus" class="p-button-outlined izy-primary-button" (click)="addCrd()"></button>
+      </div>
+
+      <div class="search-row">
+        <span class="p-input-icon-left">
+          <i class="pi pi-search"></i>
+          <input pInputText type="text" placeholder="Search by name / group / kind" (input)="applyGlobalFilter(dt, $event)" />
+        </span>
+      </div>
+
+      <p-table
+        #dt
+        class="izy-table"
+        [value]="crds"
+        [columns]="cols"
+        [globalFilterFields]="['metadataName','group','singularName','kind']"
+        styleClass="p-datatable-striped p-datatable-rounded"
+      >
+        <ng-template pTemplate="header" let-columns>
+          <tr>
+            <th *ngFor="let col of columns">{{ col.header }}</th>
+            <th>Actions</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-rowData let-columns="columns" let-even="even">
+          <tr [ngClass]="{'izy-row-even': even, 'izy-row-odd': !even}" (click)="onRowClick(rowData)">
+            <td *ngFor="let col of columns">
+              <ng-container [ngSwitch]="col.field">
+                <ng-container *ngSwitchDefault>{{ rowData[col.field] }}</ng-container>
+              </ng-container>
+            </td>
+            <td class="action-column">
+              <div class="action-buttons">
+                <button pButton (click)="$event.stopPropagation(); editCrd(rowData.id)" class="p-button-text">
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button pButton class="context-menu-trigger p-button-text" #rowContextMenu
+                        (click)="$event.stopPropagation(); updateContextMenuItems($event,rowData.id)">
+                  <i class="pi pi-ellipsis-v"></i>
+                </button>
+                <p-contextMenu #cm [model]="items" [target]="rowContextMenu" appendTo="body"></p-contextMenu>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </p-card>
+</div>

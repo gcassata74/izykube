@@ -21,12 +21,19 @@ import * as yaml from 'js-yaml';
 export class YamlDirective implements OnInit, ControlValueAccessor, OnDestroy {
 
   private editor: any;
+  private pendingAnnotations: any[] | null = null;
 
   @Input() theme: string = 'ace/theme/clouds';
   @Input() mode: string = 'ace/mode/yaml';
   @Input() readOnly: boolean = false;
   @Input() height: string = '400px';
   @Input() width: string = '100%';
+  @Input() set annotations(value: any[] | null | undefined) {
+    this.pendingAnnotations = value ? [...value] : [];
+    if (this.editor) {
+      this.editor.session.setAnnotations(this.pendingAnnotations);
+    }
+  }
   @Input() set content(value: string) {
     if (this.editor && value !== this.editor.getValue()) {
       this.editor.setValue(value, 1);
@@ -55,6 +62,9 @@ export class YamlDirective implements OnInit, ControlValueAccessor, OnDestroy {
     this.editor.setTheme(this.theme);
     this.editor.session.setMode(this.mode);
     this.editor.setReadOnly(this.readOnly);
+    if (this.pendingAnnotations) {
+      this.editor.session.setAnnotations(this.pendingAnnotations);
+    }
 
     // Emit content change
     this.editor.on('change', () => {

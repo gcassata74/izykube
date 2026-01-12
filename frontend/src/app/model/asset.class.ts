@@ -2,6 +2,7 @@ export enum AssetType {
   PLAYBOOK = 'playbook',
   IMAGE = 'image',
   SCRIPT = 'script',
+  CONTROLLER = 'controller',
 }
 
 export class Asset {

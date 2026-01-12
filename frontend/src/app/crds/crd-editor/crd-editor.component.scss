@@ -1,0 +1,91 @@
+.crd-form__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.crd-form__section {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.crd-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.crd-form__field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.crd-form__preview {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 6px;
+}
+
+.crd-form__preview-label {
+  font-weight: 600;
+}
+
+.schema-builder__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.schema-builder {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.schema-field {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+}
+
+.schema-field__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.field-error {
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+.yaml-preview__hint {
+  margin: 0.25rem 0;
+  opacity: 0.8;
+}
+
+.yaml-preview__error {
+  color: #b91c1c;
+  margin: 0.25rem 0;
+}
+
+.yaml-preview__content {
+  width: 100%;
+  min-height: 320px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+@media (max-width: 960px) {
+  .crd-form__grid {
+    grid-template-columns: 1fr;
+  }
+}
+

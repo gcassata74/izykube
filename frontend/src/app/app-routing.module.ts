@@ -9,6 +9,8 @@ import { AssetFormComponent } from './assets/asset-form/asset-form.component';
 import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
 import { SettingsComponent } from './settings/settings.component';
 import { FormWorkbenchComponent } from './dev/form-workbench/form-workbench.component';
+import { CrdListComponent } from './crds/crd-list/crd-list.component';
+import { CrdEditorComponent } from './crds/crd-editor/crd-editor.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/home', pathMatch: 'full' },
@@ -23,7 +25,10 @@ const routes: Routes = [
   { path: 'asset-form', component: AssetFormComponent },
   { path: 'asset-form/:id', component: AssetFormComponent },
   { path: 'kube-explorer', component: KubeExplorerComponent },
-  { path: 'settings', component: SettingsComponent }
+  { path: 'settings', component: SettingsComponent },
+  { path: 'crds', component: CrdListComponent },
+  { path: 'crds/new', component: CrdEditorComponent },
+  { path: 'crds/:id/edit', component: CrdEditorComponent }
 ];
 
 if (isDevMode()) {

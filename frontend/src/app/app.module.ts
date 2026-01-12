@@ -70,6 +70,8 @@ import { LinkPropertiesFormComponent } from './diagram/link-properties-form/link
 import { FormWorkbenchComponent } from './dev/form-workbench/form-workbench.component';
 import { ServiceAccountFormComponent } from './cluster/service-account-form/service-account-form.component';
 import { AccessPolicyFormComponent } from './cluster/access-policy-form/access-policy-form.component';
+import { CrdListComponent } from './crds/crd-list/crd-list.component';
+import { CrdEditorComponent } from './crds/crd-editor/crd-editor.component';
 
 @NgModule({
   declarations: [
@@ -103,6 +105,8 @@ import { AccessPolicyFormComponent } from './cluster/access-policy-form/access-p
     FormWorkbenchComponent,
     ServiceAccountFormComponent,
     AccessPolicyFormComponent,
+    CrdListComponent,
+    CrdEditorComponent,
   ],
   imports: [
     SharedModule,

@@ -36,6 +36,11 @@ export class AssetService {
     return this.dataService.get<Asset[]>('/asset/all');
   }
 
+  getControllerAssets(): Observable<Asset[]> {
+    const params = new HttpParams().set('type', 'controller');
+    return this.dataService.get<Asset[]>('/assets', params);
+  }
+
   getAssets(): Observable<Asset[]> {
     return this.getAllAssets().pipe(
       map(assets => assets.map(asset => ({
