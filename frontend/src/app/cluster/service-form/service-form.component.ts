@@ -21,10 +21,14 @@ import { Service } from '../../model/service.class';
 import { Cluster } from '../../model/cluster.class';
 import { Deployment } from '../../model/deployment.class';
 import { Container } from '../../model/container.class';
+import { NotificationService } from '../../services/notification.service';
+import { PortForwardService } from '../../services/port-forward.service';
+import { finalize } from 'rxjs';
 
 @Component({
   selector: 'app-service-form',
   templateUrl: './service-form.component.html',
+  styleUrls: ['./service-form.component.scss'],
   providers: [AutoSaveService]
 })
 export class ServiceFormComponent implements OnInit, OnChanges {
@@ -36,6 +40,7 @@ export class ServiceFormComponent implements OnInit, OnChanges {
   form!: FormGroup;
   deployments: Deployment[] = [];
   connectedDeploymentNames: string[] = [];
+  forwardBusy = false;
 
   serviceTypes = [
     { name: 'ClusterIP', value: 'ClusterIP' },
@@ -45,7 +50,9 @@ export class ServiceFormComponent implements OnInit, OnChanges {
 
   constructor(
     private fb: FormBuilder,
-    private autoSaveService: AutoSaveService
+    private autoSaveService: AutoSaveService,
+    private notificationService: NotificationService,
+    private portForwardService: PortForwardService
   ) {}
 
   ngOnInit() {
@@ -65,13 +72,18 @@ export class ServiceFormComponent implements OnInit, OnChanges {
 
   private initForm() {
     const service = this.selectedNode as Service;
+    const suggestedTargetPort = this.derivePortFromDeployment(this.getPrimaryDeployment() || undefined) ?? service.port ?? 80;
+    const initialForwardTargetPort = service.forwardTargetPort ?? suggestedTargetPort;
+    const initialForwardPort = service.forwardPort ?? initialForwardTargetPort;
     this.form = this.fb.group({
       name: [service.name || '', Validators.required],
       type: [service.type || 'ClusterIP', Validators.required],
       port: [service.port, [Validators.required, Validators.min(1), Validators.max(65535)]],
       nodePort: [service.nodePort, [Validators.min(30000), Validators.max(32767)]],
-      exposeService: [service.exposeService ?? false],
-      frontendUrl: [{ value: service.frontendUrl || '', disabled: !(service.exposeService ?? false) }]
+      forwardEnabled: [service.forwardEnabled ?? false],
+      forwardPort: [initialForwardPort, [Validators.min(1), Validators.max(65535)]],
+      forwardTargetPort: [initialForwardTargetPort, [Validators.min(1), Validators.max(65535)]],
+      forwardActive: [service.forwardActive ?? false]
     });
 
     this.form.get('type')?.valueChanges.subscribe((value) => {
@@ -82,15 +94,27 @@ export class ServiceFormComponent implements OnInit, OnChanges {
       }
     });
 
-    this.form.get('exposeService')?.valueChanges.subscribe((value) => {
-      const frontendUrlControl = this.form.get('frontendUrl');
-      if (value) {
-        frontendUrlControl?.enable({ emitEvent: false });
+    this.form.get('forwardEnabled')?.valueChanges.subscribe((value) => {
+      const enabled = !!value;
+      const forwardPort = this.form.get('forwardPort');
+      const forwardTargetPort = this.form.get('forwardTargetPort');
+      if (enabled) {
+        forwardPort?.enable({ emitEvent: false });
+        forwardTargetPort?.enable({ emitEvent: false });
+        this.applyForwardDefaultsIfMissing();
       } else {
-        frontendUrlControl?.disable({ emitEvent: false });
-        frontendUrlControl?.setValue('', { emitEvent: false });
+        forwardPort?.disable({ emitEvent: false });
+        forwardTargetPort?.disable({ emitEvent: false });
+        this.form.get('forwardActive')?.setValue(false, { emitEvent: false });
       }
+      this.updateForwardValidators(enabled);
     });
+
+    this.updateForwardValidators(this.form.get('forwardEnabled')?.value);
+    if (!this.form.get('forwardEnabled')?.value) {
+      this.form.get('forwardPort')?.disable({ emitEvent: false });
+      this.form.get('forwardTargetPort')?.disable({ emitEvent: false });
+    }
 
     // Additional control-specific listeners can be added here when needed
   }
@@ -104,24 +128,28 @@ export class ServiceFormComponent implements OnInit, OnChanges {
       return;
     }
 
-    const exposeService = service.exposeService ?? false;
     this.form.patchValue({
       name: service.name || '',
       type: service.type || 'ClusterIP',
       port: service.port,
       nodePort: service.nodePort,
-      exposeService,
-      frontendUrl: service.frontendUrl || ''
+      forwardEnabled: service.forwardEnabled ?? false,
+      forwardPort: service.forwardPort ?? null,
+      forwardTargetPort: service.forwardTargetPort ?? null,
+      forwardActive: service.forwardActive ?? false
     }, { emitEvent: false });
 
-    const frontendUrlControl = this.form.get('frontendUrl');
-    if (frontendUrlControl) {
-      if (exposeService) {
-        frontendUrlControl.enable({ emitEvent: false });
-      } else {
-        frontendUrlControl.disable({ emitEvent: false });
-      }
+    const forwardEnabled = service.forwardEnabled ?? false;
+    const forwardPort = this.form.get('forwardPort');
+    const forwardTargetPort = this.form.get('forwardTargetPort');
+    if (forwardEnabled) {
+      forwardPort?.enable({ emitEvent: false });
+      forwardTargetPort?.enable({ emitEvent: false });
+    } else {
+      forwardPort?.disable({ emitEvent: false });
+      forwardTargetPort?.disable({ emitEvent: false });
     }
+    this.updateForwardValidators(forwardEnabled);
   }
 
   private applyLinkedDeploymentDefaults(): void {
@@ -151,9 +179,148 @@ export class ServiceFormComponent implements OnInit, OnChanges {
     if (portControl && derivedPort && this.shouldAutofillPort(portControl.value, derivedPort)) {
       portControl.patchValue(derivedPort, { emitEvent: false });
     }
+
+    this.applyForwardDefaultsIfMissing(derivedPort ?? undefined);
   }
 
-  private derivePortFromDeployment(deployment: Deployment): number | null {
+  private getPrimaryDeployment(): Deployment | null {
+    const deployments = (this.targetNodes || [])
+      .filter(node => node.kind?.toLowerCase() === 'deployment')
+      .map(node => node as Deployment);
+    return deployments[0] ?? null;
+  }
+
+  private applyForwardDefaultsIfMissing(derivedPort?: number): void {
+    if (!this.form) {
+      return;
+    }
+    const suggested = derivedPort ?? this.derivePortFromDeployment(this.getPrimaryDeployment() as Deployment) ?? this.form.get('port')?.value ?? 80;
+    const targetControl = this.form.get('forwardTargetPort');
+    const forwardControl = this.form.get('forwardPort');
+    if (targetControl && !targetControl.value) {
+      targetControl.patchValue(suggested, { emitEvent: false });
+    }
+    if (forwardControl && !forwardControl.value) {
+      forwardControl.patchValue(suggested, { emitEvent: false });
+    }
+  }
+
+  private updateForwardValidators(enabled: boolean): void {
+    const forwardPort = this.form.get('forwardPort');
+    const forwardTargetPort = this.form.get('forwardTargetPort');
+    if (!forwardPort || !forwardTargetPort) {
+      return;
+    }
+    if (enabled) {
+      forwardPort.setValidators([Validators.required, Validators.min(1), Validators.max(65535)]);
+      forwardTargetPort.setValidators([Validators.required, Validators.min(1), Validators.max(65535)]);
+    } else {
+      forwardPort.setValidators([Validators.min(1), Validators.max(65535)]);
+      forwardTargetPort.setValidators([Validators.min(1), Validators.max(65535)]);
+    }
+    forwardPort.updateValueAndValidity({ emitEvent: false });
+    forwardTargetPort.updateValueAndValidity({ emitEvent: false });
+  }
+
+  activateForward(): void {
+    if (!this.form) {
+      return;
+    }
+    if (!this.form.get('forwardEnabled')?.value) {
+      this.notificationService.warn('Enable forwarding', 'Turn on the forward toggle before activating.');
+      return;
+    }
+    const forwardPort = this.form.get('forwardPort')?.value;
+    const targetPort = this.form.get('forwardTargetPort')?.value;
+    if (!forwardPort || !targetPort) {
+      this.notificationService.warn('Ports required', 'Provide both local and target ports.');
+      return;
+    }
+    const serviceName = (this.selectedNode as Service)?.name;
+    if (!serviceName) {
+      this.notificationService.warn('Service name required', 'Set a service name before forwarding.');
+      return;
+    }
+    const namespace = this.cluster?.nameSpace || 'default';
+    this.forwardBusy = true;
+    this.portForwardService.checkLocalPort(forwardPort).subscribe({
+      next: (check) => {
+        if (!check?.available) {
+          this.forwardBusy = false;
+          this.notificationService.error('Port unavailable', check?.message || `Port ${forwardPort} is not available.`);
+          return;
+        }
+        this.portForwardService.startForward({
+          namespace,
+          serviceName,
+          localPort: forwardPort,
+          targetPort
+        }).pipe(
+          finalize(() => {
+            this.forwardBusy = false;
+          })
+        ).subscribe({
+          next: (response) => {
+            if (response?.localPort && response.localPort !== forwardPort) {
+              this.form.get('forwardPort')?.setValue(response.localPort);
+            }
+            this.form.get('forwardActive')?.setValue(true);
+            const activePort = response?.localPort ?? forwardPort;
+            this.notificationService.success('Port forward active', `Forwarding localhost:${activePort} → ${targetPort}`);
+          },
+          error: (error) => {
+            const detail = error?.error || error?.message || 'Unable to start port forward.';
+            this.notificationService.error('Port forward failed', typeof detail === 'string' ? detail : undefined);
+          }
+        });
+      },
+      error: (error) => {
+        const detail = error?.error || error?.message || 'Unable to check port availability.';
+        this.notificationService.error('Port check failed', typeof detail === 'string' ? detail : undefined);
+        this.forwardBusy = false;
+      }
+    });
+  }
+
+  deactivateForward(): void {
+    const forwardPort = this.form.get('forwardPort')?.value;
+    const targetPort = this.form.get('forwardTargetPort')?.value;
+    const serviceName = (this.selectedNode as Service)?.name;
+    if (!serviceName) {
+      this.form.get('forwardActive')?.setValue(false);
+      return;
+    }
+    const namespace = this.cluster?.nameSpace || 'default';
+    if (!forwardPort || !targetPort) {
+      this.form.get('forwardActive')?.setValue(false);
+      return;
+    }
+    this.forwardBusy = true;
+    this.portForwardService.stopForward({
+      namespace,
+      serviceName,
+      localPort: forwardPort,
+      targetPort
+    }).pipe(
+      finalize(() => {
+        this.forwardBusy = false;
+      })
+    ).subscribe({
+      next: () => {
+        this.form.get('forwardActive')?.setValue(false);
+        this.notificationService.success('Port forward stopped', `Stopped forwarding localhost:${forwardPort}`);
+      },
+      error: (error) => {
+        const detail = error?.error || error?.message || 'Unable to stop port forward.';
+        this.notificationService.error('Stop failed', typeof detail === 'string' ? detail : undefined);
+      },
+    });
+  }
+
+  private derivePortFromDeployment(deployment?: Deployment | null): number | null {
+    if (!deployment) {
+      return null;
+    }
     if (deployment?.containerPort) {
       return deployment.containerPort;
     }

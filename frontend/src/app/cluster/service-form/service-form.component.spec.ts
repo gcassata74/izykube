@@ -19,6 +19,8 @@ import { ReactiveFormsModule } from '@angular/forms';
 
 import { ServiceFormComponent } from './service-form.component';
 import { AutoSaveService } from '../../services/auto-save.service';
+import { NotificationService } from '../../services/notification.service';
+import { PortForwardService } from '../../services/port-forward.service';
 
 describe('ServiceFormComponent', () => {
   let component: ServiceFormComponent;
@@ -26,6 +28,8 @@ describe('ServiceFormComponent', () => {
 
   beforeEach(async () => {
     const autoSaveStub = { enableAutoSave: () => {}, flushPendingChanges: () => {} };
+    const notificationStub = { success: () => {}, warn: () => {}, error: () => {} };
+    const portForwardStub = { startForward: () => ({ subscribe: () => {} }), stopForward: () => ({ subscribe: () => {} }) };
 
     TestBed.configureTestingModule({
       imports: [ReactiveFormsModule],
@@ -35,7 +39,11 @@ describe('ServiceFormComponent', () => {
 
     TestBed.overrideComponent(ServiceFormComponent, {
       set: {
-        providers: [{ provide: AutoSaveService, useValue: autoSaveStub }],
+        providers: [
+          { provide: AutoSaveService, useValue: autoSaveStub },
+          { provide: NotificationService, useValue: notificationStub },
+          { provide: PortForwardService, useValue: portForwardStub }
+        ],
       },
     });
 

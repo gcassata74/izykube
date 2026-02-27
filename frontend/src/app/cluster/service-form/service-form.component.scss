@@ -1,0 +1,25 @@
+.service-form__forward {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+
+.service-form__forward-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.service-form__forward-active {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(249, 115, 22, 0.1);
+  color: #b45309;
+  font-size: 12px;
+}

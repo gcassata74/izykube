@@ -75,27 +75,71 @@
   </div>
 
   <div class="p-field-checkbox">
-    <div class="flex items-center" style="margin-bottom: 20px;">
-      <p-checkbox id="exposeService"
-                  formControlName="exposeService"
+    <div class="flex items-center" style="margin-bottom: 12px;">
+      <p-checkbox id="forwardEnabled"
+                  formControlName="forwardEnabled"
                   [binary]="true">
       </p-checkbox>
-      <label for="exposeService"
+      <label for="forwardEnabled"
              class="ml-2"
-             i18n="@@serviceForm.exposeService.label">
-        Expose service
+             i18n="@@serviceForm.forwardEnabled.label">
+        Enable port forward
       </label>
     </div>
   </div>
 
-  <div class="p-field" *ngIf="form.get('exposeService')?.value">
-    <span class="p-float-label">
-      <input id="frontendUrl"
-             type="text"
-             pInputText
-             formControlName="frontendUrl"
-             class="w-full">
-      <label for="frontendUrl" i18n="@@serviceForm.frontendUrl.label">Frontend URL</label>
-    </span>
+  <div *ngIf="form.get('forwardEnabled')?.value" class="service-form__forward">
+    <div class="p-field">
+      <span class="p-float-label">
+        <p-inputNumber id="forwardPort"
+                       formControlName="forwardPort"
+                       [min]="1"
+                       [max]="65535"
+                       [useGrouping]="false"
+                       class="w-full">
+        </p-inputNumber>
+        <label for="forwardPort" i18n="@@serviceForm.forwardPort.label">Local port</label>
+      </span>
+    </div>
+
+    <div class="p-field">
+      <span class="p-float-label">
+        <p-inputNumber id="forwardTargetPort"
+                       formControlName="forwardTargetPort"
+                       [min]="1"
+                       [max]="65535"
+                       [useGrouping]="false"
+                       class="w-full">
+        </p-inputNumber>
+        <label for="forwardTargetPort" i18n="@@serviceForm.forwardTargetPort.label">Target port</label>
+      </span>
+    </div>
+
+    <div class="service-form__forward-actions">
+      <button
+        pButton
+        type="button"
+        class="p-button-sm p-button-rounded p-button-warning"
+        icon="pi pi-bolt"
+        label="Activate"
+        [disabled]="forwardBusy || form.get('forwardActive')?.value || form.get('forwardPort')?.invalid || form.get('forwardTargetPort')?.invalid"
+        (click)="activateForward()">
+      </button>
+    </div>
+
+    <div *ngIf="form.get('forwardActive')?.value" class="service-form__forward-active">
+      <span>
+        Forward active: localhost:{{ form.get('forwardPort')?.value }} → {{ form.get('forwardTargetPort')?.value }}
+      </span>
+      <button
+        pButton
+        type="button"
+        class="p-button-text p-button-sm"
+        icon="pi pi-times"
+        [disabled]="forwardBusy"
+        (click)="deactivateForward()">
+      </button>
+    </div>
   </div>
+
 </form>

@@ -24,7 +24,8 @@ import com.izylife.izykube.dto.cluster.VirtualServiceDTO;
 import com.izylife.izykube.enums.AssetType;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.repositories.AssetRepository;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.DumperOptions;
@@ -54,8 +55,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 @Service
-@Slf4j
 public class ClusterYamlService {
+
+    private static final Logger log = LoggerFactory.getLogger(ClusterYamlService.class);
 
     private static final Map<String, String> ICON_MAP = Map.ofEntries(
             Map.entry("deployment", "assets/images/diagram/deployment.svg"),

@@ -6,6 +6,10 @@ export class Service extends Node {
     nodePort?: number;
     exposeService: boolean;
     frontendUrl?: string;
+    forwardEnabled?: boolean;
+    forwardPort?: number;
+    forwardTargetPort?: number;
+    forwardActive?: boolean;
 
     constructor(
         id: string,
@@ -14,7 +18,11 @@ export class Service extends Node {
         port: number,
         exposeService: boolean = false,
         frontendUrl?: string,
-        nodePort?: number
+        nodePort?: number,
+        forwardEnabled: boolean = false,
+        forwardPort?: number,
+        forwardTargetPort?: number,
+        forwardActive: boolean = false
     ) {
         super(id, name, 'service');
         this.type = type;
@@ -22,6 +30,10 @@ export class Service extends Node {
         this.nodePort = nodePort;
         this.exposeService = exposeService;
         this.frontendUrl = frontendUrl;
+        this.forwardEnabled = forwardEnabled;
+        this.forwardPort = forwardPort;
+        this.forwardTargetPort = forwardTargetPort;
+        this.forwardActive = forwardActive;
     }
 
     // Existing methods...

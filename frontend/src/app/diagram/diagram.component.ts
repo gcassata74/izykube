@@ -43,6 +43,7 @@ interface DiagramNode {
   role?: ContainerRole;
   workloadType?: 'DEPLOYMENT' | 'STATEFULSET' | 'DAEMONSET';
   isAffected?: boolean;
+  forwardActive?: boolean;
   element?: HTMLElement;
   bundleMeta?: ConfigBundleMeta;
 }
@@ -1153,6 +1154,18 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       default:
         return null;
     }
+  }
+
+  getServiceForwardBadge(node: DiagramNode): { label: string; title: string } | null {
+    const type = (node?.type || '').toLowerCase();
+    if (type !== 'service') {
+      return null;
+    }
+    const active = Boolean((node as any)?.forwardActive);
+    if (!active) {
+      return null;
+    }
+    return { label: '>>', title: 'Port forward active' };
   }
 
   getWorkloadBadge(node: DiagramNode): { label: string; title: string } | null {

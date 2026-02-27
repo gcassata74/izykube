@@ -107,6 +107,14 @@
         </span>
       </ng-container>
 
+      <ng-container *ngIf="getServiceForwardBadge(node) as forwardBadge">
+        <span
+          class="diagram-node__forward-badge"
+          [attr.title]="forwardBadge.title">
+          {{ forwardBadge.label }}
+        </span>
+      </ng-container>
+
       <ng-container *ngIf="getWorkloadBadge(node) as workloadBadge">
         <span
           class="diagram-node__workload-badge"

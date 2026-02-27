@@ -33,7 +33,14 @@ export class NodeFactoryService {
           id,
           trimmedName,
           'ClusterIP',
-          80
+          80,
+          false,
+          undefined,
+          undefined,
+          false,
+          undefined,
+          undefined,
+          false
         );
       case 'deployment':
         return new Deployment(
