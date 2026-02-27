@@ -419,7 +419,7 @@
         class="p-button-outlined diagram-yaml-dialog__file-btn"
         (click)="yamlFileInput?.click()">
       </button>
-      <input #yamlFileInput type="file" accept=".yml,.yaml,text/yaml" hidden (change)="onYamlFileSelected($event)" />
+      <input #yamlFileInput type="file" accept=".yml,.yaml,text/yaml" multiple hidden (change)="onYamlFileSelected($event)" />
       <span class="diagram-yaml-dialog__file-name" *ngIf="clusterYamlFileName">{{ clusterYamlFileName }}</span>
     </div>
     <div class="diagram-yaml-dialog__mode" *ngIf="clusterYamlMode === 'export'">

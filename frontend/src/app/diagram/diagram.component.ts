@@ -937,23 +937,35 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    const file = input.files[0];
-    this.clusterYamlFileName = file.name;
-    const reader = new FileReader();
+    const files = Array.from(input.files);
+    this.clusterYamlFileName = files.length === 1
+      ? files[0].name
+      : `${files.length} files`;
 
-    reader.onload = () => {
-      const result = reader.result;
-      this.clusterYamlText = typeof result === 'string'
-        ? result
-        : new TextDecoder().decode(result as ArrayBuffer);
-    };
+    const readFile = (file: File): Promise<string> => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        resolve(typeof result === 'string' ? result : new TextDecoder().decode(result as ArrayBuffer));
+      };
+      reader.onerror = () => reject(new Error('Unable to read the selected YAML file.'));
+      reader.readAsText(file);
+    });
 
-    reader.onerror = () => {
-      this.notificationService.error('File read failed', 'Unable to read the selected YAML file.');
-    };
-
-    reader.readAsText(file);
-    input.value = '';
+    Promise.all(files.map(readFile))
+      .then(contents => {
+        const joined = contents
+          .map(text => text.trim())
+          .filter(text => text.length > 0)
+          .join('\n---\n');
+        this.clusterYamlText = joined;
+      })
+      .catch(() => {
+        this.notificationService.error('File read failed', 'Unable to read the selected YAML file.');
+      })
+      .finally(() => {
+        input.value = '';
+      });
   }
 
   private sanitizeFileName(value: string): string {

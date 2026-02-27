@@ -101,8 +101,7 @@ export class YamlDirective implements OnInit, ControlValueAccessor, OnDestroy {
       }
 
       try {
-        const currentContent = this.editor.getValue();
-        yaml.load(control.value);
+        yaml.loadAll(control.value);
         return null;
       } catch (e: any) {
         if (e instanceof yaml.YAMLException) {
