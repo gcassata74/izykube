@@ -2,8 +2,10 @@ FROM openjdk:21-jdk-slim
 
 WORKDIR /app
 
-COPY target/*.jar app.jar
+# The backend module builds the runnable jar under backend/target.
+COPY backend/target/*.jar app.jar
 
-EXPOSE 8080
+# Default server.port is 8090 (see backend application.yaml).
+EXPOSE 8090
 
 CMD ["java", "-jar", "app.jar"]

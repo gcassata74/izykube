@@ -42,6 +42,7 @@
         <openapi-generator-maven-plugin.version>7.0.1</openapi-generator-maven-plugin.version>
 
         <start-class>com.izylife.izykube.IzykubeApplication</start-class>
+        <spring-boot.run.skip>true</spring-boot.run.skip>
     </properties>
 
     <modules>
@@ -98,6 +99,16 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+                <inherited>false</inherited>
+            </plugin>
+        </plugins>
     </build>
 
 </project>

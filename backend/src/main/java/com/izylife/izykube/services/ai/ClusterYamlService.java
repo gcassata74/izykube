@@ -21,6 +21,7 @@ import com.izylife.izykube.dto.cluster.SecretDTO;
 import com.izylife.izykube.dto.cluster.ServiceDTO;
 import com.izylife.izykube.dto.cluster.ServiceAccountDTO;
 import com.izylife.izykube.dto.cluster.VirtualServiceDTO;
+import com.izylife.izykube.enums.AssetType;
 import com.izylife.izykube.model.Asset;
 import com.izylife.izykube.repositories.AssetRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -402,8 +403,88 @@ public class ClusterYamlService {
         info.containerPorts.addAll(extractContainerPorts(podSpec));
 
         info.containerPorts.stream().findFirst().ifPresent(port -> deploymentNode.setContainerPort(port));
+        resolveAssetIdFromPodSpec(podSpec).ifPresent(deploymentNode::setAssetId);
 
         return new DeploymentArtifacts(deploymentNode, info);
+    }
+
+    private Optional<String> resolveAssetIdFromPodSpec(Map<String, Object> podSpec) {
+        if (podSpec == null || assetRepository == null) {
+            return Optional.empty();
+        }
+        List<Map<String, Object>> containers = getList(podSpec, "containers");
+        if (containers == null || containers.isEmpty()) {
+            return Optional.empty();
+        }
+        for (Map<String, Object> container : containers) {
+            String image = getString(container, "image", null);
+            Optional<Asset> asset = findAssetForImage(image);
+            if (asset.isPresent()) {
+                return asset.map(Asset::getId);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<Asset> findAssetForImage(String imageRef) {
+        if (assetRepository == null) {
+            return Optional.empty();
+        }
+        String normalized = normalizeImageRef(imageRef);
+        if (normalized == null) {
+            return Optional.empty();
+        }
+        ImageRef parsed = parseImageRef(normalized);
+        if (parsed != null && parsed.name() != null && parsed.version() != null) {
+            Optional<Asset> byNameVersion = assetRepository
+                    .findFirstByTypeAndNameIgnoreCaseAndVersionIgnoreCase(AssetType.IMAGE, parsed.name(), parsed.version());
+            if (byNameVersion.isPresent()) {
+                return byNameVersion;
+            }
+        }
+        return assetRepository.findByTypeAndImageIgnoreCase(AssetType.IMAGE, normalized);
+    }
+
+    private String normalizeImageRef(String imageRef) {
+        if (imageRef == null) {
+            return null;
+        }
+        String trimmed = imageRef.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private ImageRef parseImageRef(String imageRef) {
+        if (imageRef == null || imageRef.isBlank()) {
+            return null;
+        }
+        String ref = imageRef.trim();
+        int digestIndex = ref.indexOf('@');
+        if (digestIndex > -1) {
+            ref = ref.substring(0, digestIndex);
+        }
+        int lastSlash = ref.lastIndexOf('/');
+        int lastColon = ref.lastIndexOf(':');
+        String namePart = ref;
+        String version = "latest";
+        if (lastColon > lastSlash) {
+            version = ref.substring(lastColon + 1).trim();
+            namePart = ref.substring(0, lastColon);
+        }
+        if (version.isEmpty()) {
+            version = "latest";
+        }
+        String name = namePart;
+        if (lastSlash >= 0 && lastSlash + 1 < namePart.length()) {
+            name = namePart.substring(lastSlash + 1);
+        }
+        name = name == null ? null : name.trim();
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        return new ImageRef(name, version, imageRef);
+    }
+
+    private record ImageRef(String name, String version, String normalized) {
     }
 
     private ServiceArtifacts buildServiceNode(String name, Map<String, Object> manifest) {

@@ -14,4 +14,6 @@ public interface AssetRepository extends MongoRepository<Asset, String> {
     boolean existsByTypeAndImageIgnoreCase(AssetType type, String image);
 
     Optional<Asset> findByTypeAndImageIgnoreCase(AssetType type, String image);
+
+    Optional<Asset> findFirstByTypeAndNameIgnoreCaseAndVersionIgnoreCase(AssetType type, String name, String version);
 }

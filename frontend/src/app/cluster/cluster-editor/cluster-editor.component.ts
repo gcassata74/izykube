@@ -105,31 +105,41 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
       this.store.select(getCurrentAction).pipe(
         filter((action): action is string => !!action),
         switchMap(action => {
+          let handler$ = of(null);
           switch (action) {
             case 'save-diagram':
-              return this.saveCluster();
+              handler$ = this.saveCluster();
+              break;
             case 'update-template':
-              return this.updateTemplate();
+              handler$ = this.updateTemplate();
+              break;
             case 'update-cluster':
-              return this.updateCluster();
+              handler$ = this.updateCluster();
+              break;
             case 'import-cluster-yaml':
               this.diagramComponent?.openClusterYamlDialog('import');
-              return of(null);
+              handler$ = of(null);
+              break;
             case 'export-cluster-yaml':
               if (!this.exportActionsEnabled) {
                 this.notificationService.warn('Template required', 'Generate the template before exporting YAML.');
-                return of(null);
+                handler$ = of(null);
+                break;
               }
               this.diagramComponent?.openClusterYamlDialog('export');
-              return of(null);
+              handler$ = of(null);
+              break;
             case 'open-ai-chat':
               this.diagramComponent?.openChatDialog();
-              return of(null);
+              handler$ = of(null);
+              break;
             default:
-              return of(null);
+              handler$ = of(null);
           }
+          return handler$.pipe(
+            finalize(() => this.store.dispatch(actions.resetCurrentAction()))
+          );
         }),
-        finalize(() => this.store.dispatch(actions.resetCurrentAction())),
         catchError((error) => {
           console.error('Error in save action:', error);
           this.store.dispatch(actions.resetCurrentAction());
