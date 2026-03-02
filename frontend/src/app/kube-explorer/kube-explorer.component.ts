@@ -51,6 +51,8 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   resourceMenu: ResourceMenuItem[] = [];
   activeView: ResourceKind = 'pods';
   selectedRow: any = null;
+  yamlDialogVisible = false;
+  yamlDialogTarget: { kind: string; namespace: string; name: string } | null = null;
   private selectedRowKeys: Partial<Record<ResourceKind, string>> = {};
   private globalFilters: Record<ResourceKind, string> = this.resourceOrder.reduce((acc, kind) => {
     acc[kind] = '';
@@ -240,6 +242,18 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     }
     this.delayReapplyFilter();
     this.cdr.markForCheck();
+  }
+
+  openYamlEditor(kind: string, row: { name: string; namespace: string }): void {
+    if (!row?.name || !row?.namespace) {
+      return;
+    }
+    this.yamlDialogTarget = {
+      kind,
+      name: row.name,
+      namespace: row.namespace
+    };
+    this.yamlDialogVisible = true;
   }
 
   toggleAutoRefresh(): void {

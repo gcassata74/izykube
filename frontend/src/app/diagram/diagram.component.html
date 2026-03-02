@@ -50,12 +50,13 @@
       *ngFor="let node of nodes"
       class="diagram-node"
       [class.diagram-node--affected]="node.isAffected"
+      [class.diagram-node--unhealthy]="node.hasHealthIssue"
       [style.position]="'absolute'"
       [style.left.px]="node.x"
       [style.top.px]="node.y"
       [style.width.px]="node.width || nodeContentSize"
       [style.height.px]="node.height || nodeContentSize"
-      [style.border]="selectedNode?.id === node.id ? '3px solid #007bff' : '3px solid #ccc'"
+      [style.border]="selectedNode?.id === node.id ? '3px solid #007bff' : (node.hasHealthIssue ? '3px solid #d92d20' : '3px solid #ccc')"
       [style.border-radius.px]="10"
       [style.background-color]="'white'"
       [style.display]="'flex'"
@@ -72,6 +73,10 @@
           class="pi pi-sync"
           [class.pi-spin]="resourceSyncService.isRestarting(node.id)">
         </i>
+      </div>
+
+      <div class="diagram-node__status diagram-node__status--health" *ngIf="node.hasHealthIssue" [attr.title]="node.healthReason || 'Health check failed'">
+        <i class="pi pi-exclamation-triangle"></i>
       </div>
 
       <!-- Connection points -->
@@ -97,6 +102,7 @@
         (click)="onPodShellIconClick($event, node)">
         <i class="pi pi-desktop"></i>
       </button>
+
 
       <ng-container *ngIf="getContainerBadge(node) as badge">
         <span

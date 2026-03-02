@@ -1,6 +1,7 @@
 import { Node } from './../../model/node.class';
 import { Store } from '@ngrx/store';
 import { Component, ComponentRef, OnDestroy, OnInit, Type, ViewChild, ViewContainerRef } from '@angular/core';
+import { FormControl } from '@angular/forms';
 import { switchMap, filter, tap, Subscription, distinctUntilChanged } from 'rxjs';
 import { DiagramService } from 'src/app/services/diagram.service';
 import { getCurrentCluster, getNodeById } from 'src/app/store/selectors/selectors';
@@ -18,6 +19,9 @@ import { Link } from 'src/app/model/link.class';
 import { take } from 'rxjs/operators';
 import { ServiceAccountFormComponent } from '../service-account-form/service-account-form.component';
 import { AccessPolicyFormComponent } from '../access-policy-form/access-policy-form.component';
+import { KubeExplorerService } from 'src/app/services/kube-explorer.service';
+import { NotificationService } from 'src/app/services/notification.service';
+import { ClusterStatusEnum } from '../enum/cluster.-status-enum';
 
 
 @Component({
@@ -32,6 +36,15 @@ export class NodeFormComponent implements OnInit, OnDestroy {
   private currentNodeId: string | null = null;
   subscription: Subscription = new Subscription();
   private componentRef: ComponentRef<any> | null = null;
+  yamlControl = new FormControl('', { nonNullable: true });
+  yamlAnnotations: any[] = [];
+  yamlLoading = false;
+  yamlSaving = false;
+  yamlError: string | null = null;
+  yamlKind: string | null = null;
+  yamlNamespace: string | null = null;
+  yamlName: string | null = null;
+  yamlEnabled = false;
   @ViewChild('dynamicHost', { read: ViewContainerRef, static: true }) dynamicHost!: ViewContainerRef;
   formMapper: Record<string, Type<any>> = {
     'deployment': DeploymentFormComponent,
@@ -52,9 +65,16 @@ export class NodeFormComponent implements OnInit, OnDestroy {
   constructor(
     private diagramService: DiagramService,
     private store: Store,
+    private kubeExplorerService: KubeExplorerService,
+    private notificationService: NotificationService,
   ) { }
 
   ngOnInit(): void {
+    this.subscription.add(
+      this.yamlControl.statusChanges.subscribe(() => {
+        this.updateYamlAnnotations();
+      })
+    );
     this.subscription.add(
       this.diagramService.selectedNodeId$.pipe(
         distinctUntilChanged(),
@@ -95,11 +115,12 @@ export class NodeFormComponent implements OnInit, OnDestroy {
 
     this.currentNodeId = node.id;
 
-    this.store.select(getCurrentCluster).pipe(take(1)).subscribe((cluster: Cluster) => {
-      if (!cluster) {
-        this.updateComponentInputs({ selectedNode: node });
-        return;
-      }
+      this.store.select(getCurrentCluster).pipe(take(1)).subscribe((cluster: Cluster) => {
+        if (!cluster) {
+          this.updateComponentInputs({ selectedNode: node });
+          this.resetYamlContext();
+          return;
+        }
 
       const sourceNodes = this.findLinkedNodes(cluster, node.id, 'incoming');
       const targetNodes = this.findLinkedNodes(cluster, node.id, 'outgoing');
@@ -124,6 +145,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
       }
 
       this.updateComponentInputs(inputs);
+      this.updateYamlContext(node, cluster);
     });
   }
 
@@ -131,6 +153,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     this.currentNodeId = null;
     this.node = null;
     this.activeComponentType = null;
+    this.resetYamlContext();
     this.dynamicHost?.clear();
     if (this.componentRef) {
       this.componentRef.destroy();
@@ -173,6 +196,120 @@ export class NodeFormComponent implements OnInit, OnDestroy {
       this.componentRef!.setInput(key, value);
     });
     this.componentRef.changeDetectorRef.detectChanges();
+  }
+
+  loadYaml(): void {
+    if (!this.yamlEnabled || !this.yamlKind || !this.yamlNamespace || !this.yamlName) {
+      return;
+    }
+    this.yamlLoading = true;
+    this.yamlError = null;
+    this.kubeExplorerService.getResourceYaml(this.yamlKind, this.yamlNamespace, this.yamlName).subscribe({
+      next: (yaml) => {
+        this.yamlControl.setValue(yaml || '');
+        this.yamlLoading = false;
+      },
+      error: (error) => {
+        const detail = error?.error || error?.message || 'Unable to load YAML.';
+        this.yamlError = typeof detail === 'string' ? detail : 'Unable to load YAML.';
+        this.yamlLoading = false;
+      }
+    });
+  }
+
+  saveYaml(): void {
+    if (this.yamlSaving || this.yamlLoading || !this.yamlEnabled) {
+      return;
+    }
+    if (!this.yamlKind || !this.yamlNamespace || !this.yamlName) {
+      return;
+    }
+    if (this.yamlControl.invalid) {
+      this.yamlControl.markAsTouched();
+      return;
+    }
+    const yaml = this.yamlControl.value?.trim();
+    if (!yaml) {
+      this.notificationService.warn('YAML required', 'Paste YAML before saving.');
+      return;
+    }
+    this.yamlSaving = true;
+    this.yamlError = null;
+    this.kubeExplorerService.updateResourceYaml(this.yamlKind, this.yamlNamespace, this.yamlName, yaml).subscribe({
+      next: (updated) => {
+        this.yamlControl.setValue(updated || yaml);
+        this.yamlSaving = false;
+        this.notificationService.success('Resource updated', `${this.yamlKind} ${this.yamlName} patched.`);
+      },
+      error: (error) => {
+        const detail = error?.error || error?.message || 'Unable to update resource.';
+        this.yamlError = typeof detail === 'string' ? detail : 'Unable to update resource.';
+        this.yamlSaving = false;
+      }
+    });
+  }
+
+  private updateYamlContext(node: Node, cluster: Cluster): void {
+    const kind = this.resolveYamlKind(node.kind);
+    const namespace = cluster?.nameSpace || null;
+    const isDeployed = cluster?.status === ClusterStatusEnum.DEPLOYED;
+    this.yamlKind = kind;
+    this.yamlNamespace = namespace;
+    this.yamlName = node?.name || null;
+    this.yamlEnabled = !!kind && !!namespace && isDeployed;
+    this.yamlError = null;
+
+    if (this.yamlEnabled) {
+      this.loadYaml();
+    } else {
+      this.yamlControl.setValue('');
+    }
+  }
+
+  private resetYamlContext(): void {
+    this.yamlKind = null;
+    this.yamlNamespace = null;
+    this.yamlName = null;
+    this.yamlEnabled = false;
+    this.yamlError = null;
+    this.yamlControl.setValue('');
+  }
+
+  private resolveYamlKind(kind?: string): string | null {
+    const normalized = (kind || '').toLowerCase();
+    const map: Record<string, string> = {
+      deployment: 'deployment',
+      statefulset: 'statefulset',
+      daemonset: 'daemonset',
+      service: 'service',
+      configmap: 'configmap',
+      configbundle: 'configmap',
+      secret: 'secret',
+      job: 'job',
+      cronjob: 'cronjob'
+    };
+    return map[normalized] || null;
+  }
+
+  private updateYamlAnnotations(): void {
+    const yamlError = this.yamlControl.errors?.['yamlError'];
+    if (yamlError?.line != null && yamlError?.column != null) {
+      this.yamlAnnotations = [{
+        row: yamlError.line,
+        column: yamlError.column,
+        text: yamlError.reason || 'Invalid YAML',
+        type: 'error'
+      }];
+    } else if (yamlError?.message) {
+      this.yamlAnnotations = [{
+        row: 0,
+        column: 0,
+        text: yamlError.message,
+        type: 'error'
+      }];
+    } else {
+      this.yamlAnnotations = [];
+    }
   }
 
   ngOnDestroy(): void {

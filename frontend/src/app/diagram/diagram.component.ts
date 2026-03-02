@@ -3,7 +3,7 @@ import { IconService } from './../services/icon.service';
 import { AfterViewInit, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Store, select } from '@ngrx/store';
 import { v4 as uuidv4 } from 'uuid';
-import { Subscription, debounceTime, filter, finalize, take, tap } from 'rxjs';
+import { Subscription, debounceTime, filter, finalize, interval, of, switchMap, take, tap, catchError } from 'rxjs';
 import * as actions from '../store/actions/actions';
 import { getCurrentCluster, getNodeById, selectClusterDiagram } from '../store/selectors/selectors';
 import { Cluster, ClusterExportMode } from '../model/cluster.class';
@@ -14,7 +14,8 @@ import { Link, LinkType } from '../model/link.class';
 import { ContainerRole, toContainerRole } from '../model/container.class';
 import { ClusterStatusEnum } from '../cluster/enum/cluster.-status-enum';
 import { PodShellService } from '../services/pod-shell.service';
-import { PodSummary } from '../model/kube-summary';
+import { KubeExplorerService } from '../services/kube-explorer.service';
+import { PodSummary, WorkloadHealth } from '../model/kube-summary';
 import { OverlayPanel } from 'primeng/overlaypanel';
 import { ConfigurationChangeService } from '../services/configuration-change.service';
 import { ResourceSyncService } from '../services/resource-sync.service';
@@ -46,6 +47,8 @@ interface DiagramNode {
   forwardActive?: boolean;
   element?: HTMLElement;
   bundleMeta?: ConfigBundleMeta;
+  hasHealthIssue?: boolean;
+  healthReason?: string;
 }
 
 interface ConnectionPoint {
@@ -184,6 +187,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   private podMenuContext: { namespace: string; deploymentName: string } | null = null;
   podShellDialogVisible = false;
   activeShellTarget: { namespace: string; podName: string; containerName?: string } | null = null;
+  private workloadHealthMap = new Map<string, WorkloadHealth>();
   private testHarnessRegistered = false;
 
   constructor(
@@ -194,6 +198,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     private aiAssistantService: AiAssistantService,
     private notificationService: NotificationService,
     private podShellService: PodShellService,
+    private kubeExplorerService: KubeExplorerService,
     private configurationChangeService: ConfigurationChangeService,
     public resourceSyncService: ResourceSyncService,
     private zone: NgZone
@@ -226,6 +231,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
           this.syncAffectedStateFromCluster();
           this.syncConfigBundleMetaFromCluster();
           this.syncLinkMetadataFromCluster();
+          this.refreshWorkloadHealth();
         })
       ).subscribe()
     );
@@ -233,6 +239,21 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     this.subscription.add(
       this.linkUpdateService.redraw$.subscribe(({ linkId, changes }) => {
         this.zone.run(() => this.applyLinkUpdate(linkId, changes));
+      })
+    );
+
+    this.subscription.add(
+      interval(15000).pipe(
+        switchMap(() => {
+          if (!this.isNamespaceDeployed() || !this.currentClusterSnapshot?.nameSpace) {
+            return of<WorkloadHealth[]>([]);
+          }
+          return this.kubeExplorerService.getWorkloadHealth(this.currentClusterSnapshot.nameSpace).pipe(
+            catchError(() => of<WorkloadHealth[]>([]))
+          );
+        })
+      ).subscribe(health => {
+        this.applyWorkloadHealth(health);
       })
     );
   }
@@ -1102,6 +1123,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       width: typeof rawNode?.width === 'number' ? rawNode.width : this.nodeContentSize,
       height: typeof rawNode?.height === 'number' ? rawNode.height : this.nodeContentSize,
       isAffected: !!rawNode?.isAffected,
+      hasHealthIssue: !!rawNode?.hasHealthIssue,
+      healthReason: rawNode?.healthReason,
       ...overrides
     };
 
@@ -1279,6 +1302,57 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private isNamespaceDeployed(): boolean {
     return this.currentClusterSnapshot?.status === ClusterStatusEnum.DEPLOYED;
+  }
+
+  private refreshWorkloadHealth(): void {
+    if (!this.isNamespaceDeployed() || !this.currentClusterSnapshot?.nameSpace) {
+      this.applyWorkloadHealth([]);
+      return;
+    }
+    this.kubeExplorerService.getWorkloadHealth(this.currentClusterSnapshot.nameSpace).pipe(
+      catchError(() => of<WorkloadHealth[]>([]))
+    ).subscribe(health => {
+      this.applyWorkloadHealth(health);
+    });
+  }
+
+  private applyWorkloadHealth(health: WorkloadHealth[]): void {
+    this.workloadHealthMap.clear();
+    health.forEach(entry => {
+      if (entry?.kind && entry?.name) {
+        this.workloadHealthMap.set(this.buildHealthKey(entry.kind, entry.name), entry);
+      }
+    });
+    this.nodes = this.nodes.map(node => {
+      const kind = this.mapNodeKindForHealth(node);
+      if (!kind) {
+        if (node.hasHealthIssue) {
+          return { ...node, hasHealthIssue: false, healthReason: undefined };
+        }
+        return node;
+      }
+      const key = this.buildHealthKey(kind, node.name);
+      const entry = this.workloadHealthMap.get(key);
+      if (entry?.unhealthy) {
+        return { ...node, hasHealthIssue: true, healthReason: entry.reason || 'Health check failed' };
+      }
+      if (node.hasHealthIssue) {
+        return { ...node, hasHealthIssue: false, healthReason: undefined };
+      }
+      return node;
+    });
+  }
+
+  private buildHealthKey(kind: string, name: string): string {
+    return `${kind}:${name}`;
+  }
+
+  private mapNodeKindForHealth(node: DiagramNode): string {
+    const type = node?.type?.toLowerCase() || '';
+    if (type === 'statefulset' || type === 'daemonset' || type === 'deployment') {
+      return type;
+    }
+    return '';
   }
 
   private resolveContainerRole(node: DiagramNode): ContainerRole | undefined {

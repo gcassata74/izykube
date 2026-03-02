@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { DeploymentLogs, IngressClassSummary, IngressGatewayInfo, NamespaceOption, NamespaceSummary, PodLogs } from '../model/kube-summary';
+import { DeploymentLogs, IngressClassSummary, IngressGatewayInfo, NamespaceOption, NamespaceSummary, PodLogs, WorkloadHealth } from '../model/kube-summary';
 import { KubePod } from '../model/kube-pod';
 import { KubePodEvent } from '../model/kube-pod-event';
 
@@ -30,6 +30,26 @@ export class KubeExplorerService {
 
   getIngressGatewayInfo(): Observable<IngressGatewayInfo> {
     return this.http.get<IngressGatewayInfo>(`${this.baseUrl}/ingress-gateway`);
+  }
+
+  getResourceYaml(kind: string, namespace: string, name: string): Observable<string> {
+    return this.http.get(
+      `${this.baseUrl}/resources/${encodeURIComponent(kind)}/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/yaml`,
+      { responseType: 'text' }
+    );
+  }
+
+  updateResourceYaml(kind: string, namespace: string, name: string, yaml: string): Observable<string> {
+    return this.http.put(
+      `${this.baseUrl}/resources/${encodeURIComponent(kind)}/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/yaml`,
+      yaml,
+      { responseType: 'text' }
+    );
+  }
+
+  getWorkloadHealth(namespace: string): Observable<WorkloadHealth[]> {
+    const params = new HttpParams().set('namespace', namespace);
+    return this.http.get<WorkloadHealth[]>(`${this.baseUrl}/workloads/health`, { params });
   }
 
   getPodLogs(namespace: string, name: string, tail = 500): Observable<PodLogs> {

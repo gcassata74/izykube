@@ -5,6 +5,7 @@ import com.izylife.izykube.dto.kube.IngressClassSummaryDTO;
 import com.izylife.izykube.dto.kube.IngressGatewayInfoDTO;
 import com.izylife.izykube.dto.kube.NamespaceDTO;
 import com.izylife.izykube.dto.kube.NamespaceSummaryDTO;
+import com.izylife.izykube.dto.kube.WorkloadHealthDTO;
 import com.izylife.izykube.dto.kube.PodEventDTO;
 import com.izylife.izykube.dto.kube.PodLogDTO;
 import com.izylife.izykube.dto.kube.PodLogDetailsDTO;
@@ -64,6 +65,14 @@ public class KubernetesExplorerController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(gateway);
+    }
+
+    @GetMapping("/workloads/health")
+    public ResponseEntity<List<WorkloadHealthDTO>> getWorkloadHealth(@RequestParam String namespace) {
+        List<WorkloadHealthDTO> health = explorerService.getWorkloadHealth(namespace);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(health);
     }
 
     @GetMapping("/logs/pod")

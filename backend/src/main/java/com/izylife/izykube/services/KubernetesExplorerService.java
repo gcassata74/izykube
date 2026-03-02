@@ -9,6 +9,7 @@ import com.izylife.izykube.dto.kube.DeploymentSummaryDTO;
 import com.izylife.izykube.dto.kube.IngressClassSummaryDTO;
 import com.izylife.izykube.dto.kube.IngressGatewayInfoDTO;
 import com.izylife.izykube.dto.kube.IngressSummaryDTO;
+import com.izylife.izykube.dto.kube.WorkloadHealthDTO;
 import com.izylife.izykube.dto.kube.JobSummaryDTO;
 import com.izylife.izykube.dto.kube.NamespaceDTO;
 import com.izylife.izykube.dto.kube.NamespaceSummaryDTO;
@@ -24,12 +25,17 @@ import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Event;
 import io.fabric8.kubernetes.api.model.EventList;
+import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.PodCondition;
+import io.fabric8.kubernetes.api.model.PodStatus;
 import io.fabric8.kubernetes.api.model.ListOptionsBuilder;
 import io.fabric8.kubernetes.api.model.apps.DaemonSet;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
+import io.fabric8.kubernetes.api.model.apps.DaemonSet;
+import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.batch.v1.CronJob;
 import io.fabric8.kubernetes.api.model.batch.v1.CronJobStatus;
@@ -40,6 +46,7 @@ import io.fabric8.kubernetes.api.model.networking.v1.IngressClass;
 import io.fabric8.kubernetes.api.model.networking.v1.IngressRule;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.PodResource;
+import io.fabric8.kubernetes.client.utils.Serialization;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -253,6 +260,79 @@ public class KubernetesExplorerService {
         }
 
         return new IngressGatewayInfoDTO(nodeHost, httpNodePort, httpsNodePort, false);
+    }
+
+    public List<WorkloadHealthDTO> getWorkloadHealth(String namespace) {
+        if (!StringUtils.hasText(namespace)) {
+            return List.of();
+        }
+        List<WorkloadHealthDTO> results = new java.util.ArrayList<>();
+
+        List<Deployment> deployments = kubernetesClient.apps().deployments().inNamespace(namespace).list().getItems();
+        for (Deployment deployment : deployments) {
+            results.add(buildWorkloadHealth("deployment", namespace, deployment.getMetadata().getName(),
+                    Optional.ofNullable(deployment.getSpec()).map(spec -> spec.getSelector()).map(sel -> sel.getMatchLabels()).orElseGet(Collections::emptyMap)));
+        }
+
+        List<StatefulSet> statefulSets = kubernetesClient.apps().statefulSets().inNamespace(namespace).list().getItems();
+        for (StatefulSet statefulSet : statefulSets) {
+            results.add(buildWorkloadHealth("statefulset", namespace, statefulSet.getMetadata().getName(),
+                    Optional.ofNullable(statefulSet.getSpec()).map(spec -> spec.getSelector()).map(sel -> sel.getMatchLabels()).orElseGet(Collections::emptyMap)));
+        }
+
+        List<DaemonSet> daemonSets = kubernetesClient.apps().daemonSets().inNamespace(namespace).list().getItems();
+        for (DaemonSet daemonSet : daemonSets) {
+            results.add(buildWorkloadHealth("daemonset", namespace, daemonSet.getMetadata().getName(),
+                    Optional.ofNullable(daemonSet.getSpec()).map(spec -> spec.getSelector()).map(sel -> sel.getMatchLabels()).orElseGet(Collections::emptyMap)));
+        }
+
+        return results;
+    }
+
+    public String getResourceYaml(String kind, String namespace, String name) {
+        if (!StringUtils.hasText(kind) || !StringUtils.hasText(namespace) || !StringUtils.hasText(name)) {
+            return null;
+        }
+        Optional<? extends HasMetadata> resource = fetchResource(normalizeKind(kind), namespace, name);
+        return resource.map(Serialization::asYaml).orElse(null);
+    }
+
+    public String applyResourceYaml(String kind, String namespace, String name, String yaml) {
+        if (!StringUtils.hasText(kind) || !StringUtils.hasText(namespace) || !StringUtils.hasText(name)) {
+            throw new IllegalArgumentException("Kind, namespace, and name are required.");
+        }
+        if (!StringUtils.hasText(yaml)) {
+            throw new IllegalArgumentException("YAML body is required.");
+        }
+        HasMetadata resource = Serialization.unmarshal(yaml);
+        if (resource == null) {
+            throw new IllegalArgumentException("Unable to parse YAML.");
+        }
+        String expectedKind = normalizeKind(kind);
+        String resourceKind = normalizeKind(resource.getKind());
+        if (!expectedKind.equals(resourceKind)) {
+            throw new IllegalArgumentException("YAML kind does not match requested resource.");
+        }
+        if (resource.getMetadata() == null || !StringUtils.hasText(resource.getMetadata().getName())) {
+            throw new IllegalArgumentException("YAML must include metadata.name.");
+        }
+        String resourceName = resource.getMetadata().getName();
+        if (!name.equals(resourceName)) {
+            throw new IllegalArgumentException("YAML metadata.name does not match requested resource.");
+        }
+        if (!StringUtils.hasText(resource.getMetadata().getNamespace())) {
+            resource.getMetadata().setNamespace(namespace);
+        } else if (!namespace.equals(resource.getMetadata().getNamespace())) {
+            throw new IllegalArgumentException("YAML metadata.namespace does not match requested resource.");
+        }
+
+        HasMetadata updated = kubernetesClient.resource(resource)
+                .inNamespace(namespace)
+                .patch();
+        if (updated == null) {
+            throw new IllegalStateException("Resource update failed.");
+        }
+        return Serialization.asYaml(updated);
     }
 
     public PodLogDTO getPodLogs(String namespace, String podName, int tailLines) {
@@ -525,6 +605,118 @@ public class KubernetesExplorerService {
                 .map(spec -> StringUtils.hasText(spec.getController()) ? spec.getController() : "")
                 .orElse("");
         return new IngressClassSummaryDTO(name, controller);
+    }
+
+    private WorkloadHealthDTO buildWorkloadHealth(String kind, String namespace, String name, Map<String, String> selectorLabels) {
+        Map<String, String> labelsToUse = selectorLabels.isEmpty()
+                ? Map.of("app", name)
+                : selectorLabels;
+        List<Pod> pods = kubernetesClient.pods()
+                .inNamespace(namespace)
+                .withLabels(labelsToUse)
+                .list()
+                .getItems();
+
+        String reason = findUnhealthyReason(pods);
+        boolean unhealthy = StringUtils.hasText(reason);
+        return new WorkloadHealthDTO(kind, name, namespace, unhealthy, reason);
+    }
+
+    private String findUnhealthyReason(List<Pod> pods) {
+        if (pods == null || pods.isEmpty()) {
+            return "";
+        }
+        for (Pod pod : pods) {
+            PodStatus status = pod.getStatus();
+            List<io.fabric8.kubernetes.api.model.ContainerStatus> containerStatuses = Optional.ofNullable(status)
+                    .map(PodStatus::getContainerStatuses)
+                    .orElse(List.of());
+            for (io.fabric8.kubernetes.api.model.ContainerStatus containerStatus : containerStatuses) {
+                if (containerStatus == null) {
+                    continue;
+                }
+                var state = containerStatus.getState();
+                if (state != null && state.getWaiting() != null) {
+                    String reason = state.getWaiting().getReason();
+                    if (StringUtils.hasText(reason) && isFailureReason(reason)) {
+                        return reason;
+                    }
+                }
+                if (state != null && state.getTerminated() != null) {
+                    Integer exitCode = state.getTerminated().getExitCode();
+                    if (exitCode != null && exitCode != 0) {
+                        return "Terminated (exit " + exitCode + ")";
+                    }
+                }
+                if (!Boolean.TRUE.equals(containerStatus.getReady())) {
+                    String waitingReason = state != null && state.getWaiting() != null ? state.getWaiting().getReason() : null;
+                    if (StringUtils.hasText(waitingReason)) {
+                        return waitingReason;
+                    }
+                }
+            }
+
+            List<PodCondition> conditions = Optional.ofNullable(status)
+                    .map(PodStatus::getConditions)
+                    .orElse(List.of());
+            for (PodCondition condition : conditions) {
+                if (condition != null && "Ready".equalsIgnoreCase(condition.getType()) && "False".equalsIgnoreCase(condition.getStatus())) {
+                    if (StringUtils.hasText(condition.getReason())) {
+                        return condition.getReason();
+                    }
+                    return "NotReady";
+                }
+            }
+        }
+        return "";
+    }
+
+    private boolean isFailureReason(String reason) {
+        return switch (reason) {
+            case "CrashLoopBackOff",
+                 "ErrImagePull",
+                 "ImagePullBackOff",
+                 "CreateContainerConfigError",
+                 "RunContainerError",
+                 "ContainerCannotRun" -> true;
+            default -> false;
+        };
+    }
+
+    private Optional<? extends HasMetadata> fetchResource(String kind, String namespace, String name) {
+        return switch (kind) {
+            case "pod" -> Optional.ofNullable(kubernetesClient.pods().inNamespace(namespace).withName(name).get());
+            case "deployment" -> Optional.ofNullable(kubernetesClient.apps().deployments().inNamespace(namespace).withName(name).get());
+            case "statefulset" -> Optional.ofNullable(kubernetesClient.apps().statefulSets().inNamespace(namespace).withName(name).get());
+            case "daemonset" -> Optional.ofNullable(kubernetesClient.apps().daemonSets().inNamespace(namespace).withName(name).get());
+            case "service" -> Optional.ofNullable(kubernetesClient.services().inNamespace(namespace).withName(name).get());
+            case "configmap" -> Optional.ofNullable(kubernetesClient.configMaps().inNamespace(namespace).withName(name).get());
+            case "secret" -> Optional.ofNullable(kubernetesClient.secrets().inNamespace(namespace).withName(name).get());
+            case "job" -> Optional.ofNullable(kubernetesClient.batch().v1().jobs().inNamespace(namespace).withName(name).get());
+            case "cronjob" -> Optional.ofNullable(kubernetesClient.batch().v1().cronjobs().inNamespace(namespace).withName(name).get());
+            case "ingress" -> Optional.ofNullable(kubernetesClient.network().v1().ingresses().inNamespace(namespace).withName(name).get());
+            default -> Optional.empty();
+        };
+    }
+
+    private String normalizeKind(String kind) {
+        if (!StringUtils.hasText(kind)) {
+            return "";
+        }
+        String normalized = kind.trim().toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "pods" -> "pod";
+            case "deployments" -> "deployment";
+            case "statefulsets" -> "statefulset";
+            case "daemonsets" -> "daemonset";
+            case "services" -> "service";
+            case "configmaps" -> "configmap";
+            case "secrets" -> "secret";
+            case "jobs" -> "job";
+            case "cronjobs" -> "cronjob";
+            case "ingresses" -> "ingress";
+            default -> normalized;
+        };
     }
 
     private ConfigMapSummaryDTO mapConfigMap(ConfigMap configMap) {

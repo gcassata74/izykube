@@ -1,0 +1,42 @@
+<p-dialog
+  header="Edit YAML"
+  [(visible)]="visible"
+  [modal]="true"
+  [dismissableMask]="!saving"
+  [style]="{ width: '720px' }"
+  (onHide)="close()"
+>
+  <div class="resource-yaml-dialog">
+    <div class="resource-yaml-dialog__meta" *ngIf="kind && name && namespace">
+      <span>{{ kind }}</span>
+      <span>/</span>
+      <span>{{ namespace }}</span>
+      <span>/</span>
+      <span>{{ name }}</span>
+    </div>
+
+    <div
+      class="resource-yaml-dialog__editor"
+      appYaml
+      [formControl]="yamlControl"
+      [annotations]="yamlAnnotations"
+      [readOnly]="loading || saving"
+      [height]="'420px'"
+    ></div>
+
+    <div *ngIf="errorMessage" class="resource-yaml-dialog__error">
+      {{ errorMessage }}
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button pButton type="button" class="p-button-text" label="Close" (click)="close()" [disabled]="saving"></button>
+    <button
+      pButton
+      type="button"
+      label="Save"
+      [disabled]="saving || loading || yamlControl.invalid"
+      (click)="save()"
+    ></button>
+  </ng-template>
+</p-dialog>

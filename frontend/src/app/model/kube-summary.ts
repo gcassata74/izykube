@@ -46,6 +46,14 @@ export interface IngressGatewayInfo {
   loadBalancer: boolean;
 }
 
+export interface WorkloadHealth {
+  kind: string;
+  name: string;
+  namespace: string;
+  unhealthy: boolean;
+  reason?: string;
+}
+
 export interface IngressClassSummary {
   name: string;
   controller: string;

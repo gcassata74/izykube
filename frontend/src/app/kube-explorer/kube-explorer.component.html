@@ -102,6 +102,8 @@
                             <th>Node</th>
                             <th>Age</th>
                             <th class="text-center">Logs</th>
+                            <th class="text-center">YAML</th>
+                            <th class="text-center">YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-pod>
@@ -127,6 +129,16 @@
                                   (viewLogs)="openPodLogsFromRow($event)"
                                   (inspectPod)="openPodInspectFromRow($event)"
                                 ></app-kube-row-actions>
+                            </td>
+                            <td class="text-center">
+                              <button
+                                pButton
+                                type="button"
+                                icon="pi pi-file-edit"
+                                class="p-button-text"
+                                (click)="openYamlEditor('pod', pod)"
+                                pTooltip="Edit YAML"
+                              ></button>
                             </td>
                         </tr>
                     </ng-template>
@@ -177,6 +189,16 @@
                                 <button pButton type="button" icon="pi pi-bars" class="p-button-text"
                                         (click)="onQuickLogClick($event, 'deployment', deployment)"></button>
                             </td>
+                            <td class="text-center">
+                              <button
+                                pButton
+                                type="button"
+                                icon="pi pi-file-edit"
+                                class="p-button-text"
+                                (click)="openYamlEditor('deployment', deployment)"
+                                pTooltip="Edit YAML"
+                              ></button>
+                            </td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -221,6 +243,16 @@
                             <td>{{ service.externalIp || '-' }}</td>
                             <td>{{ service.ports || '-' }}</td>
                             <td>{{ service.age }}</td>
+                            <td class="text-center">
+                              <button
+                                pButton
+                                type="button"
+                                icon="pi pi-file-edit"
+                                class="p-button-text"
+                                (click)="openYamlEditor('service', service)"
+                                pTooltip="Edit YAML"
+                              ></button>
+                            </td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -244,6 +276,7 @@
                             <th>Services</th>
                             <th>TLS</th>
                             <th>Age</th>
+                            <th class="text-center">YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-ingress>
@@ -275,6 +308,7 @@
                             <th>Namespace</th>
                             <th>Entries</th>
                             <th>Age</th>
+                            <th class="text-center">YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-configMap>
@@ -283,6 +317,16 @@
                             <td>{{ configMap.namespace }}</td>
                             <td>{{ configMap.dataEntries }}</td>
                             <td>{{ configMap.age }}</td>
+                            <td class="text-center">
+                              <button
+                                pButton
+                                type="button"
+                                icon="pi pi-file-edit"
+                                class="p-button-text"
+                                (click)="openYamlEditor('configmap', configMap)"
+                                pTooltip="Edit YAML"
+                              ></button>
+                            </td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -305,6 +349,7 @@
                             <th>Type</th>
                             <th>Entries</th>
                             <th>Age</th>
+                            <th class="text-center">YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-secret>
@@ -314,6 +359,16 @@
                             <td>{{ secret.type }}</td>
                             <td>{{ secret.dataEntries }}</td>
                             <td>{{ secret.age }}</td>
+                            <td class="text-center">
+                              <button
+                                pButton
+                                type="button"
+                                icon="pi pi-file-edit"
+                                class="p-button-text"
+                                (click)="openYamlEditor('secret', secret)"
+                                pTooltip="Edit YAML"
+                              ></button>
+                            </td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -339,6 +394,7 @@
                             <th>Failed</th>
                             <th>Active</th>
                             <th>Age</th>
+                            <th class="text-center">YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-job>
@@ -353,6 +409,16 @@
                             <td>{{ job.failed ?? '-' }}</td>
                             <td>{{ job.active ?? '-' }}</td>
                             <td>{{ job.age }}</td>
+                            <td class="text-center">
+                              <button
+                                pButton
+                                type="button"
+                                icon="pi pi-file-edit"
+                                class="p-button-text"
+                                (click)="openYamlEditor('job', job)"
+                                pTooltip="Edit YAML"
+                              ></button>
+                            </td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -377,6 +443,7 @@
                             <th>Last Schedule</th>
                             <th>Active Jobs</th>
                             <th>Age</th>
+                            <th class="text-center">YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-cron>
@@ -388,6 +455,16 @@
                             <td>{{ cron.lastScheduleTime }}</td>
                             <td>{{ cron.activeJobs }}</td>
                             <td>{{ cron.age }}</td>
+                            <td class="text-center">
+                              <button
+                                pButton
+                                type="button"
+                                icon="pi pi-file-edit"
+                                class="p-button-text"
+                                (click)="openYamlEditor('cronjob', cron)"
+                                pTooltip="Edit YAML"
+                              ></button>
+                            </td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -413,6 +490,7 @@
                             <th>Available</th>
                             <th>Updated</th>
                             <th>Age</th>
+                            <th class="text-center">YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-daemon>
@@ -427,6 +505,16 @@
                             <td>{{ daemon.available ?? '-' }}</td>
                             <td>{{ daemon.updated ?? '-' }}</td>
                             <td>{{ daemon.age }}</td>
+                            <td class="text-center">
+                              <button
+                                pButton
+                                type="button"
+                                icon="pi pi-file-edit"
+                                class="p-button-text"
+                                (click)="openYamlEditor('daemonset', daemon)"
+                                pTooltip="Edit YAML"
+                              ></button>
+                            </td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -450,6 +538,7 @@
                             <th>Replicas</th>
                             <th>Updated</th>
                             <th>Age</th>
+                            <th class="text-center">YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-stateful>
@@ -462,6 +551,16 @@
                             <td>{{ stateful.replicas ?? '-' }}</td>
                             <td>{{ stateful.updatedReplicas ?? '-' }}</td>
                             <td>{{ stateful.age }}</td>
+                            <td class="text-center">
+                              <button
+                                pButton
+                                type="button"
+                                icon="pi pi-file-edit"
+                                class="p-button-text"
+                                (click)="openYamlEditor('statefulset', stateful)"
+                                pTooltip="Edit YAML"
+                              ></button>
+                            </td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -495,6 +594,13 @@
         </aside>
     </main>
 </div>
+
+<app-resource-yaml-dialog
+  [(visible)]="yamlDialogVisible"
+  [kind]="yamlDialogTarget?.kind || null"
+  [namespace]="yamlDialogTarget?.namespace || null"
+  [name]="yamlDialogTarget?.name || null"
+></app-resource-yaml-dialog>
 
 <p-dialog
   [header]="logsTitle"

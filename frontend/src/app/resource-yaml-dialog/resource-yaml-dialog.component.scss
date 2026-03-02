@@ -1,0 +1,23 @@
+.resource-yaml-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resource-yaml-dialog__meta {
+  display: flex;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: #475467;
+}
+
+.resource-yaml-dialog__editor {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.resource-yaml-dialog__error {
+  color: #b42318;
+  font-size: 0.9rem;
+}

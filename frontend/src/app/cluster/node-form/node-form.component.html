@@ -6,12 +6,63 @@
   </div>
 
   <div class="node-form-body">
-    <ng-template #dynamicHost></ng-template>
-    <ng-container *ngIf="!activeComponentType">
-      <div class="node-form-placeholder">
-        <i class="pi pi-hand-pointer"></i>
-        <p>Select a node in the diagram to edit its settings.</p>
-      </div>
-    </ng-container>
+    <p-tabView>
+      <p-tabPanel header="Configuration">
+        <ng-template #dynamicHost></ng-template>
+        <ng-container *ngIf="!activeComponentType">
+          <div class="node-form-placeholder">
+            <i class="pi pi-hand-pointer"></i>
+            <p>Select a node in the diagram to edit its settings.</p>
+          </div>
+        </ng-container>
+      </p-tabPanel>
+      <p-tabPanel header="YAML">
+        <div class="node-form-yaml">
+          <div class="node-form-yaml__meta" *ngIf="yamlKind && yamlNamespace && yamlName">
+            <span>{{ yamlKind }}</span>
+            <span>/</span>
+            <span>{{ yamlNamespace }}</span>
+            <span>/</span>
+            <span>{{ yamlName }}</span>
+          </div>
+
+          <div *ngIf="!yamlEnabled" class="node-form-yaml__empty">
+            YAML editing is available only for deployed namespaces and supported resources.
+          </div>
+
+          <div
+            class="node-form-yaml__editor"
+            *ngIf="yamlEnabled"
+            appYaml
+            [formControl]="yamlControl"
+            [annotations]="yamlAnnotations"
+            [readOnly]="yamlLoading || yamlSaving"
+            [height]="'420px'"
+          ></div>
+
+          <div *ngIf="yamlError" class="node-form-yaml__error">
+            {{ yamlError }}
+          </div>
+
+          <div class="node-form-yaml__actions" *ngIf="yamlEnabled">
+            <button
+              pButton
+              type="button"
+              label="Reload"
+              class="p-button-text"
+              [disabled]="yamlLoading || yamlSaving"
+              (click)="loadYaml()"
+            ></button>
+            <button
+              pButton
+              type="button"
+              label="Save"
+              [disabled]="yamlLoading || yamlSaving || yamlControl.invalid"
+              (click)="saveYaml()"
+            ></button>
+          </div>
+        </div>
+      </p-tabPanel>
+    </p-tabView>
   </div>
 </div>

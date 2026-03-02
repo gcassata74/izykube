@@ -70,6 +70,41 @@
   background: linear-gradient(180deg, rgba(2, 28, 63, 0.02), transparent 60%);
 }
 
+.node-form-yaml {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.node-form-yaml__meta {
+  display: flex;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: #475467;
+}
+
+.node-form-yaml__editor {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.node-form-yaml__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.node-form-yaml__error {
+  color: #b42318;
+  font-size: 0.9rem;
+}
+
+.node-form-yaml__empty {
+  color: #667085;
+  font-size: 0.9rem;
+}
+
 .node-form-placeholder {
   position: absolute;
   inset: 0;
