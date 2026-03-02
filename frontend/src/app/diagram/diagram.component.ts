@@ -1128,7 +1128,6 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private createNodes(): DragDropData[] {
     return [
-      { name: 'ingress', type: 'ingress', icon: this.iconService.getIconPath('ingress') },
       { name: 'Istio', type: 'istio', icon: this.iconService.getIconPath('istio') },
       { name: 'Role', type: 'accesspolicy', baseName: 'role', icon: this.iconService.getIconPath('accesspolicy') },
       { name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },

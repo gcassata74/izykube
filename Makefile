@@ -68,6 +68,48 @@ install-istio:
 # Updated target to include Istio installation
 start-k3d-cluster-with-istio: create-k3d-registry create-k3d-cluster install-istio
 
+# Install ingress-nginx via Helm
+install-ingress-nginx:
+	helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+	helm repo update
+	helm install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace
+
+# Install ingress-nginx via Helm in a container (avoids local Helm deps)
+install-ingress-nginx-docker:
+	docker run --rm \
+		-v "$(HOME)/.kube:/root/.kube" \
+		-v "$(HOME)/.config/helm:/root/.config/helm" \
+		-v "$(HOME)/.cache/helm:/root/.cache/helm" \
+		alpine/helm:3.14.4 repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+	docker run --rm \
+		-v "$(HOME)/.kube:/root/.kube" \
+		-v "$(HOME)/.config/helm:/root/.config/helm" \
+		-v "$(HOME)/.cache/helm:/root/.cache/helm" \
+		alpine/helm:3.14.4 repo update
+	docker run --rm \
+		-v "$(HOME)/.kube:/root/.kube" \
+		-v "$(HOME)/.config/helm:/root/.config/helm" \
+		-v "$(HOME)/.cache/helm:/root/.cache/helm" \
+		alpine/helm:3.14.4 install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace
+
+# Create a default IngressClass for Izykube
+install-izykube-ingress-class:
+	kubectl apply -f - <<'EOF'
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: izykube-class
+spec:
+  controller: k8s.io/ingress-nginx
+EOF
+
+# Bootstrap cluster with ingress-nginx, Istio, and default IngressClass
+bootstrap-k3d-cluster:
+	$(MAKE) start-k3d-cluster
+	$(MAKE) install-ingress-nginx
+	$(MAKE) install-istio
+	$(MAKE) install-izykube-ingress-class
+
 # Local Ollama helpers
 OLLAMA_COMPOSE ?= docker-compose.ollama.yaml
 OLLAMA_SERVICE ?= ollama

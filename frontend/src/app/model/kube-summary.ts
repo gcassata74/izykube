@@ -33,8 +33,22 @@ export interface IngressSummary {
   namespace: string;
   hosts: string;
   serviceTargets: string;
+  ingressClassName: string;
+  path: string;
   tls: string;
   age: string;
+}
+
+export interface IngressGatewayInfo {
+  host: string;
+  httpPort?: number;
+  httpsPort?: number;
+  loadBalancer: boolean;
+}
+
+export interface IngressClassSummary {
+  name: string;
+  controller: string;
 }
 
 export interface ConfigMapSummary {

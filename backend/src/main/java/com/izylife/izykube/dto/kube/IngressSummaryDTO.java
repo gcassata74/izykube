@@ -5,6 +5,8 @@ public record IngressSummaryDTO(
         String namespace,
         String hosts,
         String serviceTargets,
+        String ingressClassName,
+        String path,
         String tls,
         String age
 ) {

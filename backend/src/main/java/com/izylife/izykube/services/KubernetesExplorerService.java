@@ -6,6 +6,8 @@ import com.izylife.izykube.dto.kube.CronJobSummaryDTO;
 import com.izylife.izykube.dto.kube.DaemonSetSummaryDTO;
 import com.izylife.izykube.dto.kube.DeploymentLogsDTO;
 import com.izylife.izykube.dto.kube.DeploymentSummaryDTO;
+import com.izylife.izykube.dto.kube.IngressClassSummaryDTO;
+import com.izylife.izykube.dto.kube.IngressGatewayInfoDTO;
 import com.izylife.izykube.dto.kube.IngressSummaryDTO;
 import com.izylife.izykube.dto.kube.JobSummaryDTO;
 import com.izylife.izykube.dto.kube.NamespaceDTO;
@@ -34,6 +36,7 @@ import io.fabric8.kubernetes.api.model.batch.v1.CronJobStatus;
 import io.fabric8.kubernetes.api.model.batch.v1.Job;
 import io.fabric8.kubernetes.api.model.networking.v1.HTTPIngressPath;
 import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
+import io.fabric8.kubernetes.api.model.networking.v1.IngressClass;
 import io.fabric8.kubernetes.api.model.networking.v1.IngressRule;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.PodResource;
@@ -63,6 +66,8 @@ public class KubernetesExplorerService {
     private static final String ALL_NAMESPACES = "all";
     private static final int DEFAULT_TAIL_LINES = 500;
     private static final int MAX_TAIL_LINES = 2000;
+    private static final String INGRESS_NGINX_NAMESPACE = "ingress-nginx";
+    private static final String INGRESS_NGINX_SERVICE = "ingress-nginx-controller";
 
     private final KubernetesClient kubernetesClient;
     private final ClusterRepository clusterRepository;
@@ -176,6 +181,78 @@ public class KubernetesExplorerService {
                 daemonSets,
                 statefulSets
         );
+    }
+
+    public List<IngressClassSummaryDTO> listIngressClasses() {
+        return kubernetesClient.network().v1().ingressClasses()
+                .list()
+                .getItems()
+                .stream()
+                .map(this::mapIngressClass)
+                .sorted(Comparator.comparing(IngressClassSummaryDTO::name))
+                .toList();
+    }
+
+    public IngressGatewayInfoDTO getIngressGatewayInfo() {
+        io.fabric8.kubernetes.api.model.Service service = kubernetesClient.services()
+                .inNamespace(INGRESS_NGINX_NAMESPACE)
+                .withName(INGRESS_NGINX_SERVICE)
+                .get();
+        if (service == null || service.getSpec() == null) {
+            return null;
+        }
+
+        String lbHost = Optional.ofNullable(service.getStatus())
+                .map(status -> status.getLoadBalancer())
+                .map(loadBalancer -> loadBalancer.getIngress())
+                .orElse(List.of())
+                .stream()
+                .map(entry -> StringUtils.hasText(entry.getHostname()) ? entry.getHostname() : entry.getIp())
+                .filter(StringUtils::hasText)
+                .findFirst()
+                .orElse(null);
+
+        Integer httpNodePort = Optional.ofNullable(service.getSpec().getPorts())
+                .orElse(List.of())
+                .stream()
+                .filter(port -> port != null && port.getPort() == 80)
+                .map(port -> port.getNodePort())
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+
+        Integer httpsNodePort = Optional.ofNullable(service.getSpec().getPorts())
+                .orElse(List.of())
+                .stream()
+                .filter(port -> port != null && port.getPort() == 443)
+                .map(port -> port.getNodePort())
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+
+        if (StringUtils.hasText(lbHost)) {
+            return new IngressGatewayInfoDTO(lbHost, 80, 443, true);
+        }
+
+        String nodeHost = kubernetesClient.nodes()
+                .list()
+                .getItems()
+                .stream()
+                .flatMap(node -> Optional.ofNullable(node.getStatus())
+                        .map(status -> status.getAddresses())
+                        .orElse(List.of())
+                        .stream())
+                .filter(address -> address != null && "InternalIP".equalsIgnoreCase(address.getType()))
+                .map(address -> address.getAddress())
+                .filter(StringUtils::hasText)
+                .findFirst()
+                .orElse(null);
+
+        if (!StringUtils.hasText(nodeHost)) {
+            return null;
+        }
+
+        return new IngressGatewayInfoDTO(nodeHost, httpNodePort, httpsNodePort, false);
     }
 
     public PodLogDTO getPodLogs(String namespace, String podName, int tailLines) {
@@ -382,6 +459,20 @@ public class KubernetesExplorerService {
     private IngressSummaryDTO mapIngress(Ingress ingress) {
         String name = Optional.ofNullable(ingress.getMetadata()).map(meta -> StringUtils.hasText(meta.getName()) ? meta.getName() : "").orElse("");
         String namespace = Optional.ofNullable(ingress.getMetadata()).map(meta -> StringUtils.hasText(meta.getNamespace()) ? meta.getNamespace() : "").orElse("");
+        String ingressClassName = Optional.ofNullable(ingress.getSpec())
+                .map(spec -> StringUtils.hasText(spec.getIngressClassName()) ? spec.getIngressClassName() : "")
+                .orElse("");
+        String path = Optional.ofNullable(ingress.getSpec())
+                .map(spec -> spec.getRules())
+                .orElse(List.of())
+                .stream()
+                .map(IngressRule::getHttp)
+                .filter(Objects::nonNull)
+                .flatMap(http -> Optional.ofNullable(http.getPaths()).orElse(List.of()).stream())
+                .map(HTTPIngressPath::getPath)
+                .filter(StringUtils::hasText)
+                .findFirst()
+                .orElse("/");
         String hosts = Optional.ofNullable(ingress.getSpec())
                 .map(spec -> spec.getRules())
                 .orElse(List.of())
@@ -423,7 +514,17 @@ public class KubernetesExplorerService {
 
         String age = formatAge(ingress);
 
-        return new IngressSummaryDTO(name, namespace, hosts, services, tls, age);
+        return new IngressSummaryDTO(name, namespace, hosts, services, ingressClassName, path, tls, age);
+    }
+
+    private IngressClassSummaryDTO mapIngressClass(IngressClass ingressClass) {
+        String name = Optional.ofNullable(ingressClass.getMetadata())
+                .map(meta -> StringUtils.hasText(meta.getName()) ? meta.getName() : "")
+                .orElse("");
+        String controller = Optional.ofNullable(ingressClass.getSpec())
+                .map(spec -> StringUtils.hasText(spec.getController()) ? spec.getController() : "")
+                .orElse("");
+        return new IngressClassSummaryDTO(name, controller);
     }
 
     private ConfigMapSummaryDTO mapConfigMap(ConfigMap configMap) {

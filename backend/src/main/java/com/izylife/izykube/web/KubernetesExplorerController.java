@@ -1,6 +1,8 @@
 package com.izylife.izykube.web;
 
 import com.izylife.izykube.dto.kube.DeploymentLogsDTO;
+import com.izylife.izykube.dto.kube.IngressClassSummaryDTO;
+import com.izylife.izykube.dto.kube.IngressGatewayInfoDTO;
 import com.izylife.izykube.dto.kube.NamespaceDTO;
 import com.izylife.izykube.dto.kube.NamespaceSummaryDTO;
 import com.izylife.izykube.dto.kube.PodEventDTO;
@@ -43,6 +45,25 @@ public class KubernetesExplorerController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(summary);
+    }
+
+    @GetMapping("/ingress-classes")
+    public ResponseEntity<List<IngressClassSummaryDTO>> listIngressClasses() {
+        List<IngressClassSummaryDTO> ingressClasses = explorerService.listIngressClasses();
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(ingressClasses);
+    }
+
+    @GetMapping("/ingress-gateway")
+    public ResponseEntity<IngressGatewayInfoDTO> getIngressGateway() {
+        IngressGatewayInfoDTO gateway = explorerService.getIngressGatewayInfo();
+        if (gateway == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(gateway);
     }
 
     @GetMapping("/logs/pod")

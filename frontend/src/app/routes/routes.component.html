@@ -1,0 +1,212 @@
+<div class="routes-page" [class.routes-page--loading]="loading">
+  <header class="routes-page__toolbar">
+    <div class="routes-page__title">
+      <h1>Routes</h1>
+      <p>Ingress-driven entrypoints per namespace.</p>
+    </div>
+    <div class="routes-page__actions">
+      <div class="routes-page__field">
+        <span>Namespace</span>
+        <p-dropdown
+          inputId="routesNamespaceSelect"
+          [options]="namespaces"
+          [(ngModel)]="selectedNamespace"
+          (onChange)="onNamespaceChange($event.value)"
+          [style.width.px]="220"
+          placeholder="Select namespace"
+          optionLabel="name"
+          optionValue="name"
+        ></p-dropdown>
+      </div>
+      <div class="routes-page__field routes-page__field--filter">
+        <span>Filter</span>
+        <div class="routes-page__filter">
+          <input
+            pInputText
+            type="text"
+            [value]="filterValue"
+            (input)="onFilterChange($any($event.target).value)"
+            placeholder="Search routes"
+          />
+          <button
+            pButton
+            type="button"
+            icon="pi pi-times"
+            class="p-button-rounded p-button-text"
+            (click)="clearFilter()"
+            [disabled]="!filterValue"
+            pTooltip="Clear"
+          ></button>
+        </div>
+      </div>
+      <button
+        pButton
+        type="button"
+        icon="pi pi-refresh"
+        class="p-button-rounded p-button-text"
+        [disabled]="loading"
+        (click)="refreshRoutes()"
+        pTooltip="Refresh"
+      ></button>
+      <button
+        pButton
+        type="button"
+        icon="pi pi-plus"
+        label="Create Route"
+        class="p-button-sm"
+        (click)="openCreateDialog()"
+      ></button>
+    </div>
+  </header>
+
+  <section class="routes-page__table">
+    <p-table
+      #routesTable
+      class="izy-table"
+      styleClass="p-datatable-rounded"
+      [value]="routes"
+      [loading]="loading"
+      [showLoader]="false"
+      [paginator]="true"
+      [rows]="12"
+      [rowsPerPageOptions]="[10, 12, 25, 50]"
+      [globalFilterFields]="['name', 'namespace', 'hosts', 'serviceTargets', 'ingressClassName', 'tls']"
+      dataKey="name"
+      [rowHover]="true"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Name</th>
+          <th>Namespace</th>
+          <th>Host</th>
+          <th>Service</th>
+          <th>Ingress Class</th>
+          <th>TLS</th>
+          <th>Age</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-route>
+        <tr>
+          <td>{{ route.name }}</td>
+          <td>{{ route.namespace }}</td>
+          <td>{{ route.hosts || '-' }}</td>
+          <td>{{ route.serviceTargets || '-' }}</td>
+          <td>{{ route.ingressClassName || '-' }}</td>
+          <td>{{ route.tls || '-' }}</td>
+          <td>{{ route.age }}</td>
+          <td class="text-center">
+            <button
+              pButton
+              type="button"
+              icon="pi pi-pencil"
+              class="p-button-rounded p-button-text"
+              (click)="editRoute(route)"
+              pTooltip="Edit route"
+            ></button>
+            <button
+              pButton
+              type="button"
+              icon="pi pi-external-link"
+              class="p-button-rounded p-button-text"
+              [disabled]="!gatewayInfo"
+              (click)="toggleRouteMenu($event, routeMenu)"
+              pTooltip="Test route"
+            ></button>
+            <p-menu #routeMenu [popup]="true" [model]="getRouteMenuItems(route)" appendTo="body"></p-menu>
+            <button
+              pButton
+              type="button"
+              icon="pi pi-trash"
+              class="p-button-rounded p-button-text p-button-danger"
+              (click)="deleteRoute(route)"
+              pTooltip="Delete route"
+            ></button>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="8" class="routes-page__empty">No routes found for this namespace.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </section>
+</div>
+
+<p-dialog
+  header="{{ editingRoute ? 'Edit Route' : 'Create Route' }}"
+  [(visible)]="createDialogVisible"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '520px' }"
+  (onHide)="closeCreateDialog()"
+>
+  <form [formGroup]="createForm" class="routes-form">
+    <div class="routes-form__row">
+      <label for="routeName">Name</label>
+      <input id="routeName" pInputText formControlName="name" placeholder="route-name" />
+      <small *ngIf="createForm.get('name')?.invalid && createForm.get('name')?.touched" class="routes-form__error">
+        Name is required.
+      </small>
+    </div>
+
+    <div class="routes-form__row">
+      <label for="routeHost">Host (optional)</label>
+      <input id="routeHost" pInputText formControlName="host" placeholder="example.com" />
+    </div>
+
+    <div class="routes-form__row">
+      <label for="routePath">Path</label>
+      <input id="routePath" pInputText formControlName="path" placeholder="/" />
+      <small *ngIf="createForm.get('path')?.invalid && createForm.get('path')?.touched" class="routes-form__error">
+        Path must start with '/' (example: / or /api).
+      </small>
+    </div>
+
+    <div class="routes-form__row">
+      <label for="routeService">Service</label>
+      <p-dropdown
+        inputId="routeService"
+        [options]="services"
+        optionLabel="name"
+        optionValue="name"
+        formControlName="serviceName"
+        placeholder="Select service"
+        (onChange)="onServiceChange($event.value)"
+      ></p-dropdown>
+      <small *ngIf="createForm.get('serviceName')?.invalid && createForm.get('serviceName')?.touched" class="routes-form__error">
+        Service is required.
+      </small>
+    </div>
+
+    <div class="routes-form__row">
+      <label for="routePort">Service Port</label>
+      <p-dropdown
+        inputId="routePort"
+        [options]="servicePortOptions"
+        formControlName="servicePort"
+        placeholder="Select port"
+      ></p-dropdown>
+      <small *ngIf="createForm.get('servicePort')?.invalid && createForm.get('servicePort')?.touched" class="routes-form__error">
+        Service port is required.
+      </small>
+    </div>
+
+    <div class="routes-form__row">
+      <label for="routeTls">TLS Secret (optional)</label>
+      <input id="routeTls" pInputText formControlName="tlsSecret" placeholder="tls-secret-name" />
+    </div>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <button pButton type="button" label="Cancel" class="p-button-text" (click)="closeCreateDialog()"></button>
+    <button
+      pButton
+      type="button"
+      label="{{ editingRoute ? 'Save' : 'Create' }}"
+      [disabled]="createSubmitting || createForm.invalid"
+      (click)="submitCreate()"
+    ></button>
+  </ng-template>
+</p-dialog>

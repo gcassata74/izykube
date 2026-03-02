@@ -25,6 +25,7 @@ export class SidebarComponent {
     { label: 'Assets', icon: 'pi pi-briefcase', route: '/assets' },
     { label: 'CRDs', icon: 'pi pi-table', route: '/crds' },
     { label: 'Kube Explorer', icon: 'pi pi-compass', route: '/kube-explorer' },
+    { label: 'Routes', icon: 'pi pi-globe', route: '/routes' },
   ];
 
   onNavigate(route: string): void {

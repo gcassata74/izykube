@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { DeploymentLogs, NamespaceOption, NamespaceSummary, PodLogs } from '../model/kube-summary';
+import { DeploymentLogs, IngressClassSummary, IngressGatewayInfo, NamespaceOption, NamespaceSummary, PodLogs } from '../model/kube-summary';
 import { KubePod } from '../model/kube-pod';
 import { KubePodEvent } from '../model/kube-pod-event';
 
@@ -22,6 +22,14 @@ export class KubeExplorerService {
   getNamespaceSummary(namespace: string): Observable<NamespaceSummary> {
     const params = new HttpParams().set('namespace', namespace || 'all');
     return this.http.get<NamespaceSummary>(`${this.baseUrl}/summary`, { params });
+  }
+
+  getIngressClasses(): Observable<IngressClassSummary[]> {
+    return this.http.get<IngressClassSummary[]>(`${this.baseUrl}/ingress-classes`);
+  }
+
+  getIngressGatewayInfo(): Observable<IngressGatewayInfo> {
+    return this.http.get<IngressGatewayInfo>(`${this.baseUrl}/ingress-gateway`);
   }
 
   getPodLogs(namespace: string, name: string, tail = 500): Observable<PodLogs> {
