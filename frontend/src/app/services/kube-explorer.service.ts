@@ -52,6 +52,16 @@ export class KubeExplorerService {
     return this.http.get<WorkloadHealth[]>(`${this.baseUrl}/workloads/health`, { params });
   }
 
+  getWorkloadLogs(kind: string, namespace: string, name: string, tail = 500, previous = false): Observable<DeploymentLogs> {
+    const params = new HttpParams()
+      .set('kind', kind)
+      .set('namespace', namespace)
+      .set('name', name)
+      .set('tail', tail.toString())
+      .set('previous', String(previous));
+    return this.http.get<DeploymentLogs>(`${this.baseUrl}/logs/workload`, { params });
+  }
+
   getPodLogs(namespace: string, name: string, tail = 500): Observable<PodLogs> {
     const params = new HttpParams()
       .set('namespace', namespace)

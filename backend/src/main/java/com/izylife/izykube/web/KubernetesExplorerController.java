@@ -136,6 +136,21 @@ public class KubernetesExplorerController {
                 .body(logs);
     }
 
+    @GetMapping("/logs/workload")
+    public ResponseEntity<DeploymentLogsDTO> getWorkloadLogs(@RequestParam String kind,
+                                                             @RequestParam String namespace,
+                                                             @RequestParam String name,
+                                                             @RequestParam(defaultValue = "500") int tail,
+                                                             @RequestParam(defaultValue = "false") boolean previous) {
+        DeploymentLogsDTO logs = explorerService.getWorkloadLogs(kind, namespace, name, tail, previous);
+        if (logs == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(logs);
+    }
+
     @GetMapping("/deployments/{deployment}/pods")
     public ResponseEntity<List<PodSummaryDTO>> getDeploymentPods(@PathVariable("deployment") String deploymentName,
                                                                  @RequestParam String namespace) {

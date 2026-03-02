@@ -1,0 +1,26 @@
+.log-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.log-header__label {
+  font-size: 0.85rem;
+  color: #475467;
+  font-weight: 600;
+}
+
+.log-header__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+::ng-deep .log-header .p-dropdown {
+  min-width: 180px;
+}
+
+::ng-deep .log-header .p-button {
+  height: 2.25rem;
+  width: 2.25rem;
+}

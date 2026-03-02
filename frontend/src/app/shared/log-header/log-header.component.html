@@ -1,0 +1,25 @@
+<div class="log-header">
+  <label class="log-header__label" for="previousLogsSelect">Previous logs</label>
+  <div class="log-header__controls">
+    <p-dropdown
+      inputId="previousLogsSelect"
+      [options]="options"
+      [ngModel]="selected"
+      (onChange)="onSelectionChange($event.value)"
+      optionLabel="label"
+      optionValue="value"
+      [disabled]="disabled || loading"
+      placeholder="Select logs"
+    ></p-dropdown>
+    <button
+      pButton
+      type="button"
+      icon="pi pi-refresh"
+      class="p-button-rounded p-button-text"
+      aria-label="Reload logs"
+      [disabled]="disabled || loading"
+      [loading]="loading"
+      (click)="onReload()"
+    ></button>
+  </div>
+</div>

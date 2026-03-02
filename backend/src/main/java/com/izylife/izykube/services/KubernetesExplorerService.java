@@ -407,22 +407,59 @@ public class KubernetesExplorerService {
                 ? Map.of("app", deploymentName)
                 : selectorLabels;
 
-        List<Pod> pods = kubernetesClient.pods()
-                .inNamespace(namespace)
-                .withLabels(labelsToUse)
-                .list()
-                .getItems();
+        List<Pod> pods = findWorkloadPods(namespace, labelsToUse, deploymentName);
 
         int tail = sanitizeTail(tailLines);
         List<PodLogDTO> podLogs = pods.stream()
                 .map(pod -> {
                     PodResource podResource = kubernetesClient.pods().inNamespace(namespace).withName(pod.getMetadata().getName());
-                    String logContent = readPodLog(podResource, tail);
+                    String logContent = readPodLog(podResource, tail, false);
                     return new PodLogDTO(pod.getMetadata().getName(), namespace, logContent);
                 })
                 .toList();
 
         return new DeploymentLogsDTO(deploymentName, namespace, podLogs);
+    }
+
+    public DeploymentLogsDTO getWorkloadLogs(String kind, String namespace, String name, int tailLines, boolean previous) {
+        if (!StringUtils.hasText(kind) || !StringUtils.hasText(namespace) || !StringUtils.hasText(name)) {
+            return null;
+        }
+        String normalized = normalizeKind(kind);
+        Map<String, String> selectorLabels = switch (normalized) {
+            case "deployment" -> Optional.ofNullable(kubernetesClient.apps().deployments().inNamespace(namespace).withName(name).get())
+                    .map(resource -> resource.getSpec())
+                    .map(spec -> spec.getSelector())
+                    .map(sel -> sel.getMatchLabels())
+                    .orElseGet(Collections::emptyMap);
+            case "statefulset" -> Optional.ofNullable(kubernetesClient.apps().statefulSets().inNamespace(namespace).withName(name).get())
+                    .map(resource -> resource.getSpec())
+                    .map(spec -> spec.getSelector())
+                    .map(sel -> sel.getMatchLabels())
+                    .orElseGet(Collections::emptyMap);
+            case "daemonset" -> Optional.ofNullable(kubernetesClient.apps().daemonSets().inNamespace(namespace).withName(name).get())
+                    .map(resource -> resource.getSpec())
+                    .map(spec -> spec.getSelector())
+                    .map(sel -> sel.getMatchLabels())
+                    .orElseGet(Collections::emptyMap);
+            default -> Collections.emptyMap();
+        };
+
+        List<Pod> pods = findWorkloadPods(namespace, selectorLabels, name);
+        if (pods.isEmpty()) {
+            return new DeploymentLogsDTO(name, namespace, List.of());
+        }
+
+        int tail = sanitizeTail(tailLines);
+        List<PodLogDTO> podLogs = pods.stream()
+                .map(pod -> {
+                    PodResource podResource = kubernetesClient.pods().inNamespace(namespace).withName(pod.getMetadata().getName());
+                    String logContent = readPodLog(podResource, tail, previous);
+                    return new PodLogDTO(pod.getMetadata().getName(), namespace, logContent);
+                })
+                .toList();
+
+        return new DeploymentLogsDTO(name, namespace, podLogs);
     }
 
     public List<PodSummaryDTO> getPodsByDeployment(String namespace, String deploymentName) {
@@ -444,11 +481,7 @@ public class KubernetesExplorerService {
                 ? Map.of("app", deploymentName)
                 : selectorLabels;
 
-        List<Pod> pods = kubernetesClient.pods()
-                .inNamespace(namespace)
-                .withLabels(labelsToUse)
-                .list()
-                .getItems();
+        List<Pod> pods = findWorkloadPods(namespace, labelsToUse, deploymentName);
 
         return pods.stream()
                 .map(this::mapPod)
@@ -608,14 +641,7 @@ public class KubernetesExplorerService {
     }
 
     private WorkloadHealthDTO buildWorkloadHealth(String kind, String namespace, String name, Map<String, String> selectorLabels) {
-        Map<String, String> labelsToUse = selectorLabels.isEmpty()
-                ? Map.of("app", name)
-                : selectorLabels;
-        List<Pod> pods = kubernetesClient.pods()
-                .inNamespace(namespace)
-                .withLabels(labelsToUse)
-                .list()
-                .getItems();
+        List<Pod> pods = findWorkloadPods(namespace, selectorLabels, name);
 
         String reason = findUnhealthyReason(pods);
         boolean unhealthy = StringUtils.hasText(reason);
@@ -681,6 +707,39 @@ public class KubernetesExplorerService {
                  "ContainerCannotRun" -> true;
             default -> false;
         };
+    }
+
+    private List<Pod> findWorkloadPods(String namespace, Map<String, String> selectorLabels, String fallbackName) {
+        Map<String, String> labelsToUse = selectorLabels == null ? Map.of() : selectorLabels;
+        if (!labelsToUse.isEmpty()) {
+            List<Pod> pods = kubernetesClient.pods()
+                    .inNamespace(namespace)
+                    .withLabels(labelsToUse)
+                    .list()
+                    .getItems();
+            if (!pods.isEmpty()) {
+                return pods;
+            }
+        }
+        if (StringUtils.hasText(fallbackName)) {
+            List<Pod> byApp = kubernetesClient.pods()
+                    .inNamespace(namespace)
+                    .withLabel("app", fallbackName)
+                    .list()
+                    .getItems();
+            if (!byApp.isEmpty()) {
+                return byApp;
+            }
+            List<Pod> byName = kubernetesClient.pods()
+                    .inNamespace(namespace)
+                    .withLabel("name", fallbackName)
+                    .list()
+                    .getItems();
+            if (!byName.isEmpty()) {
+                return byName;
+            }
+        }
+        return List.of();
     }
 
     private Optional<? extends HasMetadata> fetchResource(String kind, String namespace, String name) {
@@ -820,20 +879,26 @@ public class KubernetesExplorerService {
     }
 
     private String readPodLog(PodResource podResource, int tailLines) {
-        try {
-            return Optional.ofNullable(podResource.tailingLines(tailLines).getLog()).orElse("");
-        } catch (Exception ex) {
-            log.warn("Failed to read pod logs: {}", ex.getMessage());
-            return "Unable to retrieve logs: " + ex.getMessage();
-        }
+        return readPodLog(podResource, null, tailLines, false);
+    }
+
+    private String readPodLog(PodResource podResource, int tailLines, boolean previous) {
+        return readPodLog(podResource, null, tailLines, previous);
     }
 
     private String readPodLog(PodResource podResource, String container, int tailLines) {
+        return readPodLog(podResource, container, tailLines, false);
+    }
+
+    private String readPodLog(PodResource podResource, String container, int tailLines, boolean previous) {
         try {
-            if (StringUtils.hasText(container)) {
-                return Optional.ofNullable(podResource.inContainer(container).tailingLines(tailLines).getLog()).orElse("");
+            var loggable = StringUtils.hasText(container)
+                    ? podResource.inContainer(container)
+                    : podResource;
+            if (previous) {
+                return Optional.ofNullable(loggable.terminated().tailingLines(tailLines).getLog()).orElse("");
             }
-            return Optional.ofNullable(podResource.tailingLines(tailLines).getLog()).orElse("");
+            return Optional.ofNullable(loggable.tailingLines(tailLines).getLog()).orElse("");
         } catch (Exception ex) {
             log.warn("Failed to read pod logs: {}", ex.getMessage());
             return "Unable to retrieve logs: " + ex.getMessage();

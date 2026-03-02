@@ -45,6 +45,18 @@ export class NodeFormComponent implements OnInit, OnDestroy {
   yamlNamespace: string | null = null;
   yamlName: string | null = null;
   yamlEnabled = false;
+  logsEnabled = false;
+  logsLoading = false;
+  logsError: string | null = null;
+  logsData: { name: string; namespace: string; pods: { name: string; namespace: string; logs: string }[] } | null = null;
+  logsPrevious = false;
+  logsReason: string | null = null;
+  logsFilter = '';
+  readonly logsOptions = [
+    { label: 'Current logs', value: false },
+    { label: 'Previous logs', value: true }
+  ];
+  activeTabIndex = 0;
   @ViewChild('dynamicHost', { read: ViewContainerRef, static: true }) dynamicHost!: ViewContainerRef;
   formMapper: Record<string, Type<any>> = {
     'deployment': DeploymentFormComponent,
@@ -146,6 +158,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
 
       this.updateComponentInputs(inputs);
       this.updateYamlContext(node, cluster);
+      this.updateLogsContext(node, cluster);
     });
   }
 
@@ -249,6 +262,55 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     });
   }
 
+  onTabChange(event: { index: number }): void {
+    this.activeTabIndex = event.index;
+    if (event.index === 2) {
+      this.loadLogs();
+    }
+  }
+
+  loadLogs(): void {
+    if (!this.logsEnabled || !this.yamlNamespace || !this.yamlName) {
+      return;
+    }
+    const kind = this.resolveLogKind(this.node?.kind);
+    if (!kind) {
+      return;
+    }
+    this.logsLoading = true;
+    this.logsError = null;
+    this.kubeExplorerService.getWorkloadLogs(kind, this.yamlNamespace, this.yamlName, 500, this.logsPrevious).subscribe({
+      next: (logs) => {
+        this.logsData = logs;
+        this.logsLoading = false;
+      },
+      error: (error) => {
+        const detail = error?.error || error?.message || 'Unable to load logs.';
+        this.logsError = typeof detail === 'string' ? detail : 'Unable to load logs.';
+        this.logsLoading = false;
+      }
+    });
+  }
+
+  onLogsOptionChange(value: boolean): void {
+    this.logsPrevious = value;
+    this.loadLogs();
+  }
+
+  onLogsFilterChange(value: string): void {
+    this.logsFilter = value || '';
+  }
+
+  getFilteredPods(): { name: string; namespace: string; logs: string }[] {
+    const pods = this.logsData?.pods || [];
+    if (!this.logsFilter.trim()) {
+      return pods;
+    }
+    return pods
+      .map(pod => ({ ...pod, logs: this.filterLogText(pod.logs) }))
+      .filter(pod => pod.logs.trim().length > 0);
+  }
+
   private updateYamlContext(node: Node, cluster: Cluster): void {
     const kind = this.resolveYamlKind(node.kind);
     const namespace = cluster?.nameSpace || null;
@@ -266,6 +328,39 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     }
   }
 
+  private updateLogsContext(node: Node, cluster: Cluster): void {
+    const namespace = cluster?.nameSpace || null;
+    const isDeployed = cluster?.status === ClusterStatusEnum.DEPLOYED;
+    const kind = this.resolveLogKind(node.kind);
+    this.logsEnabled = !!kind && !!namespace && isDeployed;
+    this.logsError = null;
+    this.logsData = null;
+    this.logsReason = null;
+    this.logsPrevious = false;
+
+    if (!this.logsEnabled || !namespace || !node?.name) {
+      return;
+    }
+
+    this.kubeExplorerService.getWorkloadHealth(namespace).subscribe({
+      next: (health) => {
+        const entry = health.find(item => item.kind === kind && item.name === node.name);
+        if (entry?.reason === 'CrashLoopBackOff') {
+          this.logsPrevious = true;
+          this.logsReason = entry.reason || null;
+        }
+        if (this.activeTabIndex === 2) {
+          this.loadLogs();
+        }
+      },
+      error: () => {
+        if (this.activeTabIndex === 2) {
+          this.loadLogs();
+        }
+      }
+    });
+  }
+
   private resetYamlContext(): void {
     this.yamlKind = null;
     this.yamlNamespace = null;
@@ -273,6 +368,11 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     this.yamlEnabled = false;
     this.yamlError = null;
     this.yamlControl.setValue('');
+    this.logsEnabled = false;
+    this.logsError = null;
+    this.logsData = null;
+    this.logsPrevious = false;
+    this.logsReason = null;
   }
 
   private resolveYamlKind(kind?: string): string | null {
@@ -289,6 +389,25 @@ export class NodeFormComponent implements OnInit, OnDestroy {
       cronjob: 'cronjob'
     };
     return map[normalized] || null;
+  }
+
+  private resolveLogKind(kind?: string): string | null {
+    const normalized = (kind || '').toLowerCase();
+    if (normalized === 'deployment' || normalized === 'statefulset' || normalized === 'daemonset') {
+      return normalized;
+    }
+    return null;
+  }
+
+  private filterLogText(logs: string): string {
+    const query = this.logsFilter.trim().toLowerCase();
+    if (!query) {
+      return logs || '';
+    }
+    return (logs || '')
+      .split('\n')
+      .filter(line => line.toLowerCase().includes(query))
+      .join('\n');
   }
 
   private updateYamlAnnotations(): void {
