@@ -49,6 +49,8 @@ export class ClusterListComponent implements OnInit, OnDestroy {
   private readonly OPERATION_TIMEOUT_MS = 120000;
   private readonly MAX_NETWORK_ERRORS = 3;
   private readonly RESULT_VISIBILITY_MS = 5000;
+  private readonly grafanaBaseUrl = 'http://localhost:3000';
+  private readonly grafanaNamespaceParam = 'var-namespace';
   private subscriptions = new Subscription();
   private cleanupTimers = new Map<string, number>();
 
@@ -67,7 +69,8 @@ export class ClusterListComponent implements OnInit, OnDestroy {
     this.cols = [
       { field: 'name', header: 'Diagram' },
       { field: 'nameSpace', header: 'Namespace' },
-      { field: 'status', header: 'Status' }
+      { field: 'status', header: 'Status' },
+      { field: 'grafana', header: 'Grafana' }
     ];
   }
 
@@ -158,6 +161,32 @@ export class ClusterListComponent implements OnInit, OnDestroy {
         ]
       }
     ];
+  }
+
+  hasMeshedResources(cluster: Cluster): boolean {
+    const nodes = cluster?.nodes || [];
+    return nodes.some(node => {
+      const kind = (node as any)?.kind ?? (node as any)?.type ?? '';
+      const normalized = String(kind).toLowerCase();
+      if (normalized !== 'deployment' && normalized !== 'statefulset' && normalized !== 'daemonset') {
+        return false;
+      }
+      return (node as any)?.addToMesh === true;
+    });
+  }
+
+  grafanaUrlFor(cluster: Cluster): string {
+    const ns = cluster?.nameSpace || 'default';
+    const params = new URLSearchParams();
+    params.set(this.grafanaNamespaceParam, ns);
+    return `${this.grafanaBaseUrl}/?${params.toString()}`;
+  }
+
+  openGrafana(cluster: Cluster): void {
+    if (!this.hasMeshedResources(cluster)) {
+      return;
+    }
+    window.open(this.grafanaUrlFor(cluster), '_blank');
   }
 
   undeploy(selectedId: string): void {

@@ -37,6 +37,18 @@
                       </ng-template>
                     </div>
                   </ng-container>
+                  <ng-container *ngSwitchCase="'grafana'">
+                    <button
+                      pButton
+                      type="button"
+                      class="p-button-text p-button-sm"
+                      icon="pi pi-chart-line"
+                      [disabled]="!hasMeshedResources(rowData)"
+                      [pTooltip]="hasMeshedResources(rowData) ? 'Open Grafana' : 'No meshed resources'"
+                      tooltipPosition="top"
+                      (click)="openGrafana(rowData)"
+                    ></button>
+                  </ng-container>
                   <ng-container *ngSwitchDefault>
                     {{ rowData[col.field] }}
                   </ng-container>

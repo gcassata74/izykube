@@ -105,6 +105,13 @@ install-grafana:
 	helm repo add grafana https://grafana.github.io/helm-charts
 	helm repo update
 	helm install grafana grafana/grafana -n istio-system-db --create-namespace
+	$(MAKE) grafana-port-forward
+
+# Start Grafana port-forward in background
+grafana-port-forward:
+	@nohup kubectl -n istio-system-db port-forward svc/grafana 3000:80 >/tmp/izykube-grafana-pf.log 2>&1 & \
+	echo $$! > /tmp/izykube-grafana-pf.pid; \
+	disown || true
 
 # Install Ollama in-cluster (lightweight model)
 install-ollama:
