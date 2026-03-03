@@ -6,119 +6,117 @@
   </div>
 
   <div class="node-form-body">
-    <p-tabView [(activeIndex)]="activeTabIndex" (onChange)="onTabChange($event)">
+    <p-tabView [(activeIndex)]="activeTabIndex" (onChange)="onTabChange($event)" [style.display]="node ? 'block' : 'none'">
       <p-tabPanel header="Configuration">
         <ng-template #dynamicHost></ng-template>
-        <ng-container *ngIf="!activeComponentType">
-          <div class="node-form-placeholder">
-            <i class="pi pi-hand-pointer"></i>
-            <p>Select a node in the diagram to edit its settings.</p>
-          </div>
-        </ng-container>
       </p-tabPanel>
-      <p-tabPanel header="YAML" *ngIf="yamlTabVisible">
-        <div class="node-form-yaml">
-          <div class="node-form-yaml__meta" *ngIf="yamlKind && yamlNamespace && yamlName">
-            <span>{{ yamlKind }}</span>
-            <span>/</span>
-            <span>{{ yamlNamespace }}</span>
-            <span>/</span>
-            <span>{{ yamlName }}</span>
-          </div>
+        <p-tabPanel header="YAML" *ngIf="yamlTabVisible">
+          <div class="node-form-yaml">
+            <div class="node-form-yaml__meta" *ngIf="yamlKind && yamlNamespace && yamlName">
+              <span>{{ yamlKind }}</span>
+              <span>/</span>
+              <span>{{ yamlNamespace }}</span>
+              <span>/</span>
+              <span>{{ yamlName }}</span>
+            </div>
 
-          <div
-            class="node-form-yaml__editor"
-            *ngIf="yamlEnabled"
-            appYaml
-            [formControl]="yamlControl"
-            [annotations]="yamlAnnotations"
-            [readOnly]="yamlLoading || yamlSaving"
-            [height]="'420px'"
-          ></div>
+            <div
+              class="node-form-yaml__editor"
+              *ngIf="yamlEnabled"
+              appYaml
+              [formControl]="yamlControl"
+              [annotations]="yamlAnnotations"
+              [readOnly]="yamlLoading || yamlSaving"
+              [height]="'420px'"
+            ></div>
 
-          <div *ngIf="yamlError" class="node-form-yaml__error">
-            {{ yamlError }}
-          </div>
+            <div *ngIf="yamlError" class="node-form-yaml__error">
+              {{ yamlError }}
+            </div>
 
-          <div class="node-form-yaml__actions" *ngIf="yamlEnabled">
-            <button
-              pButton
-              type="button"
-              label="Reload"
-              class="p-button-text"
-              [disabled]="yamlLoading || yamlSaving"
-              (click)="loadYaml()"
-            ></button>
-            <button
-              pButton
-              type="button"
-              label="Save"
-              [disabled]="yamlLoading || yamlSaving || yamlControl.invalid"
-              (click)="saveYaml()"
-            ></button>
-          </div>
-        </div>
-      </p-tabPanel>
-      <p-tabPanel header="Logs" *ngIf="logsTabVisible">
-        <div class="node-form-logs">
-          <div class="node-form-logs__toolbar">
-            <app-log-header
-              [options]="logsOptions"
-              [selected]="logsPrevious"
-              [loading]="logsLoading"
-              [disabled]="!logsEnabled"
-              (selectedChange)="onLogsOptionChange($event)"
-              (reload)="loadLogs()"
-            ></app-log-header>
-            <div class="node-form-logs__search">
-              <input
-                pInputText
-                type="text"
-                [value]="logsFilter"
-                (input)="onLogsFilterChange($any($event.target).value)"
-                placeholder="Search logs"
-                [disabled]="!logsEnabled || logsLoading"
-              />
+            <div class="node-form-yaml__actions" *ngIf="yamlEnabled">
               <button
                 pButton
                 type="button"
-                class="p-button-rounded p-button-text"
-                icon="pi pi-times"
-                (click)="onLogsFilterChange('')"
-                [disabled]="!logsFilter"
-                pTooltip="Clear"
+                label="Reload"
+                class="p-button-text"
+                [disabled]="yamlLoading || yamlSaving"
+                (click)="loadYaml()"
+              ></button>
+              <button
+                pButton
+                type="button"
+                label="Save"
+                [disabled]="yamlLoading || yamlSaving || yamlControl.invalid"
+                (click)="saveYaml()"
               ></button>
             </div>
           </div>
+        </p-tabPanel>
+        <p-tabPanel header="Logs" *ngIf="logsTabVisible">
+          <div class="node-form-logs">
+            <div class="node-form-logs__toolbar">
+              <app-log-header
+                [options]="logsOptions"
+                [selected]="logsPrevious"
+                [loading]="logsLoading"
+                [disabled]="!logsEnabled"
+                (selectedChange)="onLogsOptionChange($event)"
+                (reload)="loadLogs()"
+              ></app-log-header>
+              <div class="node-form-logs__search">
+                <input
+                  pInputText
+                  type="text"
+                  [value]="logsFilter"
+                  (input)="onLogsFilterChange($any($event.target).value)"
+                  placeholder="Search logs"
+                  [disabled]="!logsEnabled || logsLoading"
+                />
+                <button
+                  pButton
+                  type="button"
+                  class="p-button-rounded p-button-text"
+                  icon="pi pi-times"
+                  (click)="onLogsFilterChange('')"
+                  [disabled]="!logsFilter"
+                  pTooltip="Clear"
+                ></button>
+              </div>
+            </div>
 
-          <div *ngIf="!logsEnabled" class="node-form-logs__empty">
-            Logs are available only for deployed workloads (deployment, statefulset, daemonset).
-          </div>
+            <div *ngIf="!logsEnabled" class="node-form-logs__empty">
+              Logs are available only for deployed workloads (deployment, statefulset, daemonset).
+            </div>
 
-          <div *ngIf="logsReason" class="node-form-logs__hint">
-            CrashLoopBackOff detected. Showing previous logs by default.
-          </div>
+            <div *ngIf="logsReason" class="node-form-logs__hint">
+              CrashLoopBackOff detected. Showing previous logs by default.
+            </div>
 
-          <div *ngIf="logsError" class="node-form-logs__error">
-            {{ logsError }}
-          </div>
+            <div *ngIf="logsError" class="node-form-logs__error">
+              {{ logsError }}
+            </div>
 
-          <div *ngIf="getFilteredPods().length" class="node-form-logs__list">
-            <div class="node-form-logs__pod" *ngFor="let pod of getFilteredPods()">
-              <div class="node-form-logs__pod-name">{{ pod.name }}</div>
-              <pre class="node-form-logs__pod-logs">{{ pod.logs || 'No logs available.' }}</pre>
+            <div *ngIf="getFilteredPods().length" class="node-form-logs__list">
+              <div class="node-form-logs__pod" *ngFor="let pod of getFilteredPods()">
+                <div class="node-form-logs__pod-name">{{ pod.name }}</div>
+                <pre class="node-form-logs__pod-logs">{{ pod.logs || 'No logs available.' }}</pre>
+              </div>
+            </div>
+
+            <div *ngIf="logsEnabled && !logsLoading && (!logsData || !logsData.pods?.length)" class="node-form-logs__empty">
+              No logs available for this workload.
+            </div>
+
+            <div *ngIf="logsEnabled && !logsLoading && logsData?.pods?.length && !getFilteredPods().length" class="node-form-logs__empty">
+              No log lines match your search.
             </div>
           </div>
-
-          <div *ngIf="logsEnabled && !logsLoading && (!logsData || !logsData.pods?.length)" class="node-form-logs__empty">
-            No logs available for this workload.
-          </div>
-
-          <div *ngIf="logsEnabled && !logsLoading && logsData?.pods?.length && !getFilteredPods().length" class="node-form-logs__empty">
-            No log lines match your search.
-          </div>
-        </div>
-      </p-tabPanel>
+        </p-tabPanel>
     </p-tabView>
+    <div class="node-form-placeholder" *ngIf="!node">
+      <i class="pi pi-hand-pointer"></i>
+      <p>Select a node in the diagram to edit its settings.</p>
+    </div>
   </div>
 </div>
