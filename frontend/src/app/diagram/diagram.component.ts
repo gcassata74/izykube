@@ -141,6 +141,11 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   clusterYamlError: string | null = null;
   clusterYamlLoading = false;
   clusterYamlFileName = '';
+  clusterYamlImportMode: 'replace' | 'append' = 'replace';
+  clusterYamlImportModeOptions = [
+    { label: 'Overwrite diagram', value: 'replace' as const },
+    { label: 'Add to diagram', value: 'append' as const }
+  ];
   clusterExportMode: ClusterExportMode = 'FLAT_YAML';
   clusterExportModeOptions = [
     { label: 'Flat YAML', value: 'FLAT_YAML' as ClusterExportMode },
@@ -722,8 +727,11 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       finalize(() => this.clusterYamlLoading = false)
     ).subscribe({
       next: (response: AiImportYamlResponse) => {
-        this.applyImportedCluster(response);
-        this.notificationService.success('Diagram imported', 'Diagram updated from YAML.');
+        this.applyImportedCluster(response, this.clusterYamlImportMode);
+        const message = this.clusterYamlImportMode === 'append'
+          ? 'Diagram updated with the imported YAML.'
+          : 'Diagram updated from YAML.';
+        this.notificationService.success('Diagram imported', message);
         this.clusterYamlDialogVisible = false;
       },
       error: (error) => {
@@ -900,8 +908,11 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     this.importingFromChat = true;
     this.aiAssistantService.importYaml({ yaml, name: 'AI Generated Diagram' }).subscribe({
       next: (response) => {
-        this.applyImportedCluster(response);
-        this.notificationService.success('Diagram imported', 'Diagram updated from YAML.');
+        this.applyImportedCluster(response, this.clusterYamlImportMode);
+        const message = this.clusterYamlImportMode === 'append'
+          ? 'Diagram updated with the imported YAML.'
+          : 'Diagram updated from YAML.';
+        this.notificationService.success('Diagram imported', message);
         this.importingFromChat = false;
       },
       error: (error) => {
@@ -923,8 +934,15 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     return content.trim();
   }
 
-  private applyImportedCluster(imported: AiImportYamlResponse): void {
+  private applyImportedCluster(imported: AiImportYamlResponse, mode: 'replace' | 'append' = 'replace'): void {
     const cluster = Cluster.fromJSON(imported);
+
+    if (mode === 'append' && this.nodes.length) {
+      this.appendImportedCluster(cluster);
+      this.diagramService.clearSelectedNode();
+      return;
+    }
+
     this.store.dispatch(actions.loadCluster({ cluster }));
 
     this.clearDiagram();
@@ -952,6 +970,164 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     this.renderLinks();
     this.updateLinkStyles();
     this.diagramService.clearSelectedNode();
+  }
+
+  private appendImportedCluster(cluster: Cluster): void {
+    const snapshot = this.buildImportedSnapshot(cluster);
+    if (!snapshot.nodes.length) {
+      return;
+    }
+
+    const offset = this.computeAppendOffset(this.nodes, snapshot.nodes);
+    const existingIds = new Set(this.nodes.map(node => node.id));
+    const idMap = new Map<string, string>();
+
+    const mappedNodes = snapshot.nodes.map(node => {
+      const originalId = node.id;
+      let nextId = originalId;
+      if (existingIds.has(nextId) || idMap.has(nextId)) {
+        nextId = uuidv4();
+      }
+      idMap.set(originalId, nextId);
+      return {
+        ...node,
+        id: nextId,
+        x: node.x + offset.x,
+        y: node.y + offset.y
+      };
+    });
+
+    const existingLinkKeys = new Set(this.links.map(link => `${link.from}->${link.to}`));
+    const mappedLinks = snapshot.links
+      .map(link => {
+        const from = idMap.get(link.from) ?? link.from;
+        const to = idMap.get(link.to) ?? link.to;
+        if (!from || !to) {
+          return null;
+        }
+        const key = `${from}->${to}`;
+        if (existingLinkKeys.has(key)) {
+          return null;
+        }
+        existingLinkKeys.add(key);
+        return {
+          ...link,
+          id: uuidv4(),
+          from,
+          to
+        };
+      })
+      .filter((link): link is DiagramLink => !!link);
+
+    this.nodes = [...this.nodes, ...mappedNodes];
+    this.links = [...this.links, ...mappedLinks];
+    if (snapshot.rawManifests.length) {
+      this.rawManifests = [...this.rawManifests, ...snapshot.rawManifests];
+    }
+
+    this.appendClusterSnapshot(cluster, idMap);
+    this.enforceLinkOrientation();
+    this.renderLinks();
+    this.updateLinkStyles();
+    this.updateDiagramData();
+  }
+
+  private buildImportedSnapshot(cluster: Cluster): { nodes: DiagramNode[]; links: DiagramLink[]; rawManifests: any[] } {
+    if (cluster.diagram) {
+      return this.parseDiagramData(cluster.diagram);
+    }
+    const snapshot = this.buildDiagramFromClusterData(cluster);
+    return { nodes: snapshot.nodes, links: snapshot.links, rawManifests: [] };
+  }
+
+  private parseDiagramData(diagramData: string): { nodes: DiagramNode[]; links: DiagramLink[]; rawManifests: any[] } {
+    try {
+      const data = JSON.parse(diagramData);
+      const parsedNodes = Array.isArray(data.nodes) ? data.nodes : [];
+      const nodes: DiagramNode[] = parsedNodes
+        .filter((node: any) => ((node?.type || node?.kind || '') as string).toLowerCase() !== 'pod')
+        .map((node: any) => this.normalizeDiagramNode(node));
+
+      const parsedLinks = Array.isArray(data.links) ? data.links : [];
+      const links = parsedLinks
+        .filter((link: any) => link.from && link.to &&
+          nodes.some((node: DiagramNode) => node.id === link.from) &&
+          nodes.some((node: DiagramNode) => node.id === link.to))
+        .map((link: any) => ({
+          ...link,
+          id: link?.id || uuidv4(),
+          type: this.resolveLinkType(link?.type),
+          note: typeof link?.note === 'string' ? link.note : undefined,
+          containerRole: toContainerRole(link?.containerRole) || undefined
+        })) as DiagramLink[];
+
+      return {
+        nodes,
+        links,
+        rawManifests: Array.isArray(data.rawManifests) ? data.rawManifests : []
+      };
+    } catch (error) {
+      console.error('Error parsing diagram data:', error);
+      return { nodes: [], links: [], rawManifests: [] };
+    }
+  }
+
+  private computeAppendOffset(existing: DiagramNode[], incoming: DiagramNode[]): { x: number; y: number } {
+    if (!existing.length || !incoming.length) {
+      return { x: 0, y: 0 };
+    }
+    const maxX = Math.max(...existing.map(node => node.x));
+    const minIncomingX = Math.min(...incoming.map(node => node.x));
+    const padding = 200;
+    return { x: maxX + padding - minIncomingX, y: 0 };
+  }
+
+  private appendClusterSnapshot(cluster: Cluster, idMap: Map<string, string>): void {
+    if (!this.currentClusterSnapshot) {
+      this.currentClusterSnapshot = new Cluster();
+    }
+
+    const existingNodes = Array.isArray(this.currentClusterSnapshot.nodes) ? this.currentClusterSnapshot.nodes : [];
+    const existingLinks = Array.isArray(this.currentClusterSnapshot.links) ? this.currentClusterSnapshot.links : [];
+
+    const mappedNodes = (cluster.nodes || []).map((node: any) => ({
+      ...node,
+      id: idMap.get(node.id) ?? node.id
+    }));
+
+    const mappedLinks = (cluster.links || [])
+      .map((link: any) => {
+        const source = idMap.get(link.source ?? link.from ?? link.src ?? link.sourceId) ?? link.source ?? link.from ?? link.src ?? link.sourceId;
+        const target = idMap.get(link.target ?? link.to ?? link.dst ?? link.targetId) ?? link.target ?? link.to ?? link.dst ?? link.targetId;
+        if (!source || !target) {
+          return null;
+        }
+        return new Link({
+          id: link.id || uuidv4(),
+          source: String(source),
+          target: String(target),
+          type: link.type,
+          note: link.note,
+          containerRole: link.containerRole
+        });
+      })
+      .filter((link: Link | null): link is Link => !!link);
+
+    const mergedNodes = [...existingNodes, ...mappedNodes];
+    const mergedLinks = [...existingLinks, ...mappedLinks];
+
+    const base = this.currentClusterSnapshot ?? new Cluster();
+    const updatedCluster = new Cluster(
+      base.id,
+      base.name,
+      mergedNodes,
+      mergedLinks,
+      base.diagram,
+      base.nameSpace,
+      base.status,
+      base.exportMode
+    );
+    this.store.dispatch(actions.updateCluster({ cluster: updatedCluster }));
   }
 
   onYamlFileSelected(event: Event): void {

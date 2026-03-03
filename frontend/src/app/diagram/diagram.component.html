@@ -429,8 +429,20 @@
   (onHide)="clusterYamlDialogVisible = false">
   <div class="diagram-yaml-dialog">
     <p class="diagram-ai-dialog__hint" *ngIf="clusterYamlMode === 'import'">
-      Paste Kubernetes manifests separated by <code>---</code> to replace the current diagram.
+      Paste Kubernetes manifests separated by <code>---</code> and choose whether to replace or add to the diagram.
     </p>
+    <div class="diagram-yaml-dialog__mode" *ngIf="clusterYamlMode === 'import'">
+      <label for="cluster-import-mode" class="diagram-yaml-dialog__mode-label">Import mode</label>
+      <p-dropdown
+        inputId="cluster-import-mode"
+        [options]="clusterYamlImportModeOptions"
+        [(ngModel)]="clusterYamlImportMode"
+        [ngModelOptions]="{ standalone: true }"
+        optionLabel="label"
+        optionValue="value"
+        [disabled]="clusterYamlLoading">
+      </p-dropdown>
+    </div>
     <div class="diagram-yaml-dialog__actions" *ngIf="clusterYamlMode === 'import'">
       <button
         pButton
