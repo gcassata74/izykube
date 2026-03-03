@@ -130,6 +130,13 @@
       </ng-container>
 
       <span
+        *ngIf="(node.type === 'deployment' || node.type === 'statefulset' || node.type === 'daemonset') && (node.replicas || 0) > 1"
+        class="diagram-node__replica-badge"
+        [attr.title]="'Replicas: ' + node.replicas">
+        {{ node.replicas }}
+      </span>
+
+      <span
         *ngIf="shouldShowSecretBadge(node)"
         class="diagram-node__secret-badge"
         [ngClass]="getConfigBundleBadgeClass(node)"

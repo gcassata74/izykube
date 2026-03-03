@@ -18,6 +18,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -158,5 +159,13 @@ public class KubernetesExplorerController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(pods);
+    }
+
+    @PostMapping("/deployments/{deployment}/mesh")
+    public ResponseEntity<Void> updateDeploymentMesh(@PathVariable("deployment") String deploymentName,
+                                                     @RequestParam String namespace,
+                                                     @RequestParam(defaultValue = "false") boolean enabled) {
+        explorerService.setDeploymentMesh(namespace, deploymentName, enabled);
+        return ResponseEntity.noContent().build();
     }
 }

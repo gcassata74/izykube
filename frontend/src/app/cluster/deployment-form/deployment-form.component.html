@@ -97,4 +97,18 @@
       <label for="containerPort" i18n="@@deploymentPort">Container Port</label>
     </span>
   </div>
+
+  <div class="p-field-checkbox">
+    <div class="flex items-center" style="margin-bottom: 12px;">
+      <p-checkbox id="addToMesh"
+                  formControlName="addToMesh"
+                  [binary]="true">
+      </p-checkbox>
+      <label for="addToMesh"
+             class="ml-2"
+             i18n="@@deploymentAddToMesh.label">
+        Add to mesh
+      </label>
+    </div>
+  </div>
 </form>

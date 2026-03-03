@@ -34,8 +34,7 @@ import io.fabric8.kubernetes.api.model.PodStatus;
 import io.fabric8.kubernetes.api.model.ListOptionsBuilder;
 import io.fabric8.kubernetes.api.model.apps.DaemonSet;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.api.model.apps.DaemonSet;
-import io.fabric8.kubernetes.api.model.apps.StatefulSet;
+import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.batch.v1.CronJob;
 import io.fabric8.kubernetes.api.model.batch.v1.CronJobStatus;
@@ -54,6 +53,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Collections;
@@ -353,6 +353,28 @@ public class KubernetesExplorerService {
             return null;
         }
         return kubernetesClient.pods().inNamespace(namespace).withName(podName).get();
+    }
+
+    public void setDeploymentMesh(String namespace, String name, boolean enabled) {
+        if (!StringUtils.hasText(namespace) || !StringUtils.hasText(name)) {
+            throw new IllegalArgumentException("Namespace and deployment name are required.");
+        }
+        String resolvedNamespace = namespace.trim();
+        Deployment deployment = kubernetesClient.apps().deployments().inNamespace(resolvedNamespace).withName(name).get();
+        if (deployment == null) {
+            throw new IllegalArgumentException("Deployment not found.");
+        }
+        String injectValue = enabled ? "true" : "false";
+        String timestamp = Instant.now().toString();
+        kubernetesClient.apps().deployments()
+                .inNamespace(resolvedNamespace)
+                .withName(name)
+                .edit(d -> new DeploymentBuilder(d)
+                        .editSpec().editTemplate().editMetadata()
+                        .addToAnnotations("sidecar.istio.io/inject", injectValue)
+                        .addToAnnotations("kubectl.kubernetes.io/restartedAt", timestamp)
+                        .endMetadata().endTemplate().endSpec()
+                        .build());
     }
 
     public PodLogDetailsDTO getPodLogsV1(String namespace, String podName, String container, int tailLines) {

@@ -395,6 +395,13 @@ public class ClusterYamlService {
         Map<String, Object> template = Optional.ofNullable(getMap(spec, "template")).orElseGet(LinkedHashMap::new);
         Map<String, Object> podSpec = getMap(template, "spec");
         Map<String, Object> podMetadata = getMap(template, "metadata");
+        Map<String, Object> podAnnotations = getMap(podMetadata, "annotations");
+        String inject = podAnnotations != null ? String.valueOf(podAnnotations.get("sidecar.istio.io/inject")) : null;
+        if (inject != null && inject.equalsIgnoreCase("true")) {
+            deploymentNode.setAddToMesh(true);
+        } else {
+            deploymentNode.setAddToMesh(false);
+        }
 
         DeploymentInfo info = new DeploymentInfo();
         info.labels.putAll(LabelMatcher.normalize(getMap(podMetadata, "labels")));
@@ -1509,6 +1516,24 @@ public class ClusterYamlService {
             spec.remove("updateStrategy");
         }
         Map<String, Object> template = Optional.ofNullable(getMap(spec, "template")).orElseGet(LinkedHashMap::new);
+        Map<String, Object> templateMetadata = Optional.ofNullable(getMap(template, "metadata")).orElseGet(LinkedHashMap::new);
+        Map<String, Object> podAnnotations = Optional.ofNullable(getMap(templateMetadata, "annotations")).orElseGet(LinkedHashMap::new);
+        podAnnotations.put("sidecar.istio.io/inject", node.isAddToMesh() ? "true" : "false");
+        Map<String, Object> podLabels = Optional.ofNullable(getMap(templateMetadata, "labels")).orElseGet(LinkedHashMap::new);
+        if (node.isAddToMesh()) {
+            podLabels.put("sidecar.istio.io/inject", "true");
+        } else {
+            podLabels.remove("sidecar.istio.io/inject");
+        }
+        if (podAnnotations.isEmpty()) {
+            templateMetadata.remove("annotations");
+        } else {
+            templateMetadata.put("annotations", podAnnotations);
+        }
+        if (!podLabels.isEmpty()) {
+            templateMetadata.put("labels", podLabels);
+        }
+        template.put("metadata", templateMetadata);
         Map<String, Object> templateSpec = Optional.ofNullable(getMap(template, "spec")).orElseGet(LinkedHashMap::new);
         applyPrimaryContainerSpec(node, templateSpec);
         applyAttachedContainerSpecs(node, templateSpec, targetsBySource, sourcesByTarget, links);
@@ -2290,6 +2315,7 @@ public class ClusterYamlService {
         manifest.put("spec", spec);
         return manifest;
     }
+
 
     private String resolveNamespace(ClusterDTO cluster) {
         return cluster == null ? "default" : resolveNamespace(cluster.getNameSpace());

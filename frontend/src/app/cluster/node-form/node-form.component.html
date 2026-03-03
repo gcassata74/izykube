@@ -16,7 +16,7 @@
           </div>
         </ng-container>
       </p-tabPanel>
-      <p-tabPanel header="YAML">
+      <p-tabPanel header="YAML" *ngIf="yamlTabVisible">
         <div class="node-form-yaml">
           <div class="node-form-yaml__meta" *ngIf="yamlKind && yamlNamespace && yamlName">
             <span>{{ yamlKind }}</span>
@@ -24,10 +24,6 @@
             <span>{{ yamlNamespace }}</span>
             <span>/</span>
             <span>{{ yamlName }}</span>
-          </div>
-
-          <div *ngIf="!yamlEnabled" class="node-form-yaml__empty">
-            YAML editing is available only for deployed namespaces and supported resources.
           </div>
 
           <div
@@ -63,7 +59,7 @@
           </div>
         </div>
       </p-tabPanel>
-      <p-tabPanel header="Logs">
+      <p-tabPanel header="Logs" *ngIf="logsTabVisible">
         <div class="node-form-logs">
           <div class="node-form-logs__toolbar">
             <app-log-header

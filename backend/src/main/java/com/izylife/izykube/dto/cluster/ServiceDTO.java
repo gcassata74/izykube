@@ -84,6 +84,7 @@ public class ServiceDTO extends NodeDTO {
         this.frontendUrl = frontendUrl;
     }
 
+
     public boolean isForwardEnabled() {
         return forwardEnabled;
     }

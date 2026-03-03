@@ -103,7 +103,6 @@
                             <th>Age</th>
                             <th class="text-center">Logs</th>
                             <th class="text-center">YAML</th>
-                            <th class="text-center">YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-pod>
@@ -172,6 +171,7 @@
                             <th>Available</th>
                             <th>Age</th>
                             <th class="text-center">Logs</th>
+                            <th class="text-center">YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-deployment>
@@ -230,6 +230,7 @@
                             <th>External IP</th>
                             <th>Ports</th>
                             <th>Age</th>
+                            <th class="text-center">YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-service>
@@ -287,6 +288,16 @@
                             <td>{{ ingress.serviceTargets || '-' }}</td>
                             <td>{{ ingress.tls || '-' }}</td>
                             <td>{{ ingress.age }}</td>
+                            <td class="text-center">
+                              <button
+                                pButton
+                                type="button"
+                                icon="pi pi-file-edit"
+                                class="p-button-text"
+                                (click)="openYamlEditor('ingress', ingress)"
+                                pTooltip="Edit YAML"
+                              ></button>
+                            </td>
                         </tr>
                     </ng-template>
                 </p-table>

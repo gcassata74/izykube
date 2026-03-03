@@ -9,6 +9,7 @@ export class Deployment extends Node {
   containerPort: number;
   serviceAccountRef?: string | null;
   serviceAccountName?: string | null;
+  addToMesh?: boolean;
   override workloadType: WorkloadType;
 
   constructor(
@@ -20,7 +21,8 @@ export class Deployment extends Node {
     containerPort: number = 80,
     workloadType: WorkloadType = 'DEPLOYMENT',
     serviceAccountRef: string | null = null,
-    serviceAccountName: string | null = null
+    serviceAccountName: string | null = null,
+    addToMesh: boolean = false
   ) {
     super(id, name, 'deployment');
     this.replicas = replicas;
@@ -30,5 +32,6 @@ export class Deployment extends Node {
     this.workloadType = workloadType;
     this.serviceAccountRef = serviceAccountRef;
     this.serviceAccountName = serviceAccountName;
+    this.addToMesh = addToMesh;
   }
 }

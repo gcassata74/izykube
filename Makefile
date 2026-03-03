@@ -61,7 +61,7 @@ install-istio:
 		curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.18.2 sh -; \
 	fi
 	./istio-1.18.2/bin/istioctl install --set profile=default -y
-	kubectl label namespace default istio-injection=enabled
+	kubectl label namespace default istio-injection=enabled --overwrite
 	@echo "Istio installation complete."
 	rm -rf istio-1.18.2
 
@@ -72,54 +72,62 @@ start-k3d-cluster-with-istio: create-k3d-registry create-k3d-cluster install-ist
 install-ingress-nginx:
 	helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 	helm repo update
-	helm install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace
+	helm install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace \
+		--set controller.ingressClassResource.name=nginx \
+		--set controller.ingressClassResource.default=true \
+		--set controller.ingressClass=nginx
 
-# Install ingress-nginx via Helm in a container (avoids local Helm deps)
-install-ingress-nginx-docker:
-	docker run --rm \
-		-v "$(HOME)/.kube:/root/.kube" \
-		-v "$(HOME)/.config/helm:/root/.config/helm" \
-		-v "$(HOME)/.cache/helm:/root/.cache/helm" \
-		alpine/helm:3.14.4 repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-	docker run --rm \
-		-v "$(HOME)/.kube:/root/.kube" \
-		-v "$(HOME)/.config/helm:/root/.config/helm" \
-		-v "$(HOME)/.cache/helm:/root/.cache/helm" \
-		alpine/helm:3.14.4 repo update
-	docker run --rm \
-		-v "$(HOME)/.kube:/root/.kube" \
-		-v "$(HOME)/.config/helm:/root/.config/helm" \
-		-v "$(HOME)/.cache/helm:/root/.cache/helm" \
-		alpine/helm:3.14.4 install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace
+# Create a default IngressClass for NGINX (idempotent)
+install-nginx-ingress-class:
+	@printf '%s\n' \
+	  'apiVersion: networking.k8s.io/v1' \
+	  'kind: IngressClass' \
+	  'metadata:' \
+	  '  name: nginx' \
+	  '  annotations:' \
+	  '    ingressclass.kubernetes.io/is-default-class: "true"' \
+	  'spec:' \
+	  '  controller: k8s.io/ingress-nginx' \
+	| kubectl apply -f -
 
-# Create a default IngressClass for Izykube
-install-izykube-ingress-class:
-	kubectl apply -f - <<'EOF'
-apiVersion: networking.k8s.io/v1
-kind: IngressClass
-metadata:
-  name: izykube-class
-spec:
-  controller: k8s.io/ingress-nginx
-EOF
+# Create monitoring namespace
+create-istio-system-db:
+	kubectl create namespace istio-system-db --dry-run=client -o yaml | kubectl apply -f -
 
-# Bootstrap cluster with ingress-nginx, Istio, and default IngressClass
+# Install Prometheus stack into istio-system-db
+install-prometheus:
+	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+	helm repo update
+	helm install prometheus prometheus-community/kube-prometheus-stack -n istio-system-db --create-namespace
+
+# Install Grafana into istio-system-db
+install-grafana:
+	helm repo add grafana https://grafana.github.io/helm-charts
+	helm repo update
+	helm install grafana grafana/grafana -n istio-system-db --create-namespace
+
+# Install Ollama in-cluster (lightweight model)
+install-ollama:
+	kubectl apply -f yaml/ollama.yaml
+# temporary port-forward until izykube is not deployend into the cluster
+	kubectl -n izykube-system port-forward svc/ollama 11434:11434 >/tmp/ollama-pf.log 2>&1 &
+
+# Install all cluster addons (ingress, istio, monitoring)
+install-cluster-addons:
+	$(MAKE) install-ingress-nginx
+	$(MAKE) install-nginx-ingress-class
+	$(MAKE) install-istio
+	$(MAKE) create-istio-system-db
+	$(MAKE) install-prometheus
+	$(MAKE) install-grafana
+	$(MAKE) create-izykube-system
+	$(MAKE) install-ollama
+
+# Bootstrap cluster with addons
 bootstrap-k3d-cluster:
 	$(MAKE) start-k3d-cluster
-	$(MAKE) install-ingress-nginx
-	$(MAKE) install-istio
-	$(MAKE) install-izykube-ingress-class
+	$(MAKE) install-cluster-addons
 
-# Local Ollama helpers
-OLLAMA_COMPOSE ?= docker-compose.ollama.yaml
-OLLAMA_SERVICE ?= ollama
-OLLAMA_MODEL ?= mistral
-
-ollama-up:
-	docker compose -f $(OLLAMA_COMPOSE) up -d
-
-ollama-down:
-	docker compose -f $(OLLAMA_COMPOSE) down
-
-ollama-pull:
-	docker compose -f $(OLLAMA_COMPOSE) exec $(OLLAMA_SERVICE) ollama pull $(OLLAMA_MODEL)
+# Create izykube system namespace
+create-izykube-system:
+	kubectl create namespace izykube-system --dry-run=client -o yaml | kubectl apply -f -

@@ -78,6 +78,17 @@ export class KubeExplorerService {
     return this.http.get<DeploymentLogs>(`${this.baseUrl}/logs/deployment`, { params });
   }
 
+  setDeploymentMesh(namespace: string, name: string, enabled: boolean): Observable<void> {
+    const params = new HttpParams()
+      .set('namespace', namespace)
+      .set('enabled', String(enabled));
+    return this.http.post<void>(
+      `${this.baseUrl}/deployments/${encodeURIComponent(name)}/mesh`,
+      {},
+      { params }
+    );
+  }
+
   getPod(namespace: string, podName: string): Observable<KubePod> {
     return this.http.get<KubePod>(`${this.kubeV1BaseUrl}/namespaces/${encodeURIComponent(namespace)}/pods/${encodeURIComponent(podName)}`);
   }

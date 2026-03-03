@@ -16,6 +16,7 @@ public class DeploymentDTO extends NodeDTO {
     private Integer containerPort;
     private String serviceAccountRef;
     private String serviceAccountName;
+    private boolean addToMesh;
     private DeploymentWorkloadType workloadType = DeploymentWorkloadType.DEPLOYMENT;
 
     public DeploymentDTO(String id, String name, int replicas, String strategyType, String assetId, Integer containerPort) {
@@ -34,6 +35,7 @@ public class DeploymentDTO extends NodeDTO {
         this.containerPort = containerPort;
         this.workloadType = workloadType == null ? DeploymentWorkloadType.DEPLOYMENT : workloadType;
         this.serviceAccountRef = serviceAccountRef;
+        this.addToMesh = false;
     }
 
     public DeploymentWorkloadType resolveWorkloadType() {

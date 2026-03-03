@@ -2,7 +2,9 @@ import { Node } from './../../model/node.class';
 import { Store } from '@ngrx/store';
 import { Component, ComponentRef, OnDestroy, OnInit, Type, ViewChild, ViewContainerRef } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import { switchMap, filter, tap, Subscription, distinctUntilChanged } from 'rxjs';
+import * as yaml from 'js-yaml';
+import { switchMap, filter, tap, Subscription, distinctUntilChanged, interval, of, map } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { DiagramService } from 'src/app/services/diagram.service';
 import { getCurrentCluster, getNodeById } from 'src/app/store/selectors/selectors';
 import { DeploymentFormComponent } from '../deployment-form/deployment-form.component';
@@ -32,6 +34,7 @@ import { ClusterStatusEnum } from '../enum/cluster.-status-enum';
 export class NodeFormComponent implements OnInit, OnDestroy {
 
   node: Node | null = null;
+  private currentCluster: Cluster | null = null;
   activeComponentType: Type<any> | null = null;
   private currentNodeId: string | null = null;
   subscription: Subscription = new Subscription();
@@ -45,7 +48,9 @@ export class NodeFormComponent implements OnInit, OnDestroy {
   yamlNamespace: string | null = null;
   yamlName: string | null = null;
   yamlEnabled = false;
+  yamlTabVisible = true;
   logsEnabled = false;
+  logsTabVisible = true;
   logsLoading = false;
   logsError: string | null = null;
   logsData: { name: string; namespace: string; pods: { name: string; namespace: string; logs: string }[] } | null = null;
@@ -57,6 +62,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     { label: 'Previous logs', value: true }
   ];
   activeTabIndex = 0;
+  private readonly logsRefreshMs = 15000;
   @ViewChild('dynamicHost', { read: ViewContainerRef, static: true }) dynamicHost!: ViewContainerRef;
   formMapper: Record<string, Type<any>> = {
     'deployment': DeploymentFormComponent,
@@ -83,6 +89,22 @@ export class NodeFormComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.subscription.add(
+      this.store.select(getCurrentCluster).pipe(
+        map((cluster: Cluster) => cluster || null),
+        distinctUntilChanged((prev, curr) =>
+          (prev?.diagram || '') === (curr?.diagram || '') &&
+          (prev?.status || null) === (curr?.status || null)
+        )
+      ).subscribe((cluster) => {
+        this.currentCluster = cluster;
+        const isYamlVisible =
+          this.currentCluster?.status === ClusterStatusEnum.DEPLOYED ||
+          this.currentCluster?.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT;
+        this.yamlTabVisible = !!this.currentCluster?.diagram && isYamlVisible;
+        this.logsTabVisible = this.currentCluster?.status === ClusterStatusEnum.DEPLOYED;
+      })
+    );
+    this.subscription.add(
       this.yamlControl.statusChanges.subscribe(() => {
         this.updateYamlAnnotations();
       })
@@ -104,6 +126,31 @@ export class NodeFormComponent implements OnInit, OnDestroy {
         ),
         tap((node: Node) => this.loadForm(node))
       ).subscribe()
+    );
+
+    this.subscription.add(
+      interval(this.logsRefreshMs).pipe(
+        switchMap(() => {
+          if (this.activeTabIndex !== 2 || !this.logsEnabled) {
+            return of(null);
+          }
+          this.logsLoading = true;
+          return this.kubeExplorerService.getWorkloadLogs(
+            this.resolveLogKind(this.node?.kind) || '',
+            this.yamlNamespace || '',
+            this.yamlName || '',
+            500,
+            this.logsPrevious
+          ).pipe(
+            catchError(() => of(null))
+          );
+        })
+      ).subscribe((logs) => {
+        if (logs) {
+          this.logsData = logs;
+        }
+        this.logsLoading = false;
+      })
     );
   }
 
@@ -128,6 +175,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     this.currentNodeId = node.id;
 
       this.store.select(getCurrentCluster).pipe(take(1)).subscribe((cluster: Cluster) => {
+        this.currentCluster = cluster || null;
         if (!cluster) {
           this.updateComponentInputs({ selectedNode: node });
           this.resetYamlContext();
@@ -143,6 +191,8 @@ export class NodeFormComponent implements OnInit, OnDestroy {
         inputs['sourceNodes'] = sourceNodes;
         inputs['targetNodes'] = targetNodes;
         inputs['cluster'] = cluster;
+      } else if (componentType === DeploymentFormComponent) {
+        inputs['clusterNamespace'] = cluster?.nameSpace || 'default';
       } else if (componentType === IngressFormComponent || componentType === IstioFormComponent) {
         inputs['sourceNodes'] = sourceNodes;
       } else if (componentType === ConfigBundleFormComponent) {
@@ -223,6 +273,13 @@ export class NodeFormComponent implements OnInit, OnDestroy {
         this.yamlLoading = false;
       },
       error: (error) => {
+        const fallback = this.getTemplateYamlFallback();
+        if (fallback) {
+          this.yamlControl.setValue(fallback);
+          this.yamlError = null;
+          this.yamlLoading = false;
+          return;
+        }
         const detail = error?.error || error?.message || 'Unable to load YAML.';
         this.yamlError = typeof detail === 'string' ? detail : 'Unable to load YAML.';
         this.yamlLoading = false;
@@ -279,6 +336,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     }
     this.logsLoading = true;
     this.logsError = null;
+    this.logsData = null;
     this.kubeExplorerService.getWorkloadLogs(kind, this.yamlNamespace, this.yamlName, 500, this.logsPrevious).subscribe({
       next: (logs) => {
         this.logsData = logs;
@@ -314,12 +372,16 @@ export class NodeFormComponent implements OnInit, OnDestroy {
   private updateYamlContext(node: Node, cluster: Cluster): void {
     const kind = this.resolveYamlKind(node.kind);
     const namespace = cluster?.nameSpace || null;
-    const isDeployed = cluster?.status === ClusterStatusEnum.DEPLOYED;
     this.yamlKind = kind;
     this.yamlNamespace = namespace;
     this.yamlName = node?.name || null;
-    this.yamlEnabled = !!kind && !!namespace && isDeployed;
+    this.yamlEnabled = !!kind && !!namespace && !!this.yamlName;
     this.yamlError = null;
+    const isYamlVisible =
+      this.currentCluster?.status === ClusterStatusEnum.DEPLOYED ||
+      this.currentCluster?.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT;
+    this.yamlTabVisible = !!this.currentCluster?.diagram && isYamlVisible;
+    this.logsTabVisible = this.currentCluster?.status === ClusterStatusEnum.DEPLOYED;
 
     if (this.yamlEnabled) {
       this.loadYaml();
@@ -368,6 +430,11 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     this.yamlEnabled = false;
     this.yamlError = null;
     this.yamlControl.setValue('');
+    const isYamlVisible =
+      this.currentCluster?.status === ClusterStatusEnum.DEPLOYED ||
+      this.currentCluster?.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT;
+    this.yamlTabVisible = !!this.currentCluster?.diagram && isYamlVisible;
+    this.logsTabVisible = this.currentCluster?.status === ClusterStatusEnum.DEPLOYED;
     this.logsEnabled = false;
     this.logsError = null;
     this.logsData = null;
@@ -376,19 +443,37 @@ export class NodeFormComponent implements OnInit, OnDestroy {
   }
 
   private resolveYamlKind(kind?: string): string | null {
-    const normalized = (kind || '').toLowerCase();
-    const map: Record<string, string> = {
-      deployment: 'deployment',
-      statefulset: 'statefulset',
-      daemonset: 'daemonset',
-      service: 'service',
-      configmap: 'configmap',
-      configbundle: 'configmap',
-      secret: 'secret',
-      job: 'job',
-      cronjob: 'cronjob'
-    };
-    return map[normalized] || null;
+    const normalized = (kind || '').toLowerCase().trim();
+    if (!normalized) {
+      return null;
+    }
+    if (normalized === 'configbundle') {
+      return 'configmap';
+    }
+    return normalized;
+  }
+
+  private getTemplateYamlFallback(): string | null {
+    if (!this.currentCluster?.diagram || !this.yamlKind || !this.yamlName) {
+      return null;
+    }
+    try {
+      const diagram = JSON.parse(this.currentCluster.diagram);
+      const rawManifests = Array.isArray(diagram?.rawManifests) ? diagram.rawManifests : [];
+      const normalizedKind = this.yamlKind.toLowerCase();
+      const normalizedName = this.yamlName;
+      const entry = rawManifests.find((item: any) => {
+        const kind = String(item?.kind || '').toLowerCase();
+        const name = String(item?.name || '');
+        return kind === normalizedKind && name === normalizedName;
+      });
+      if (!entry?.manifest) {
+        return null;
+      }
+      return yaml.dump(entry.manifest, { noRefs: true, lineWidth: 120 });
+    } catch {
+      return null;
+    }
   }
 
   private resolveLogKind(kind?: string): string | null {

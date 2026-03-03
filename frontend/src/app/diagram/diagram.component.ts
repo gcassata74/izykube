@@ -49,6 +49,7 @@ interface DiagramNode {
   bundleMeta?: ConfigBundleMeta;
   hasHealthIssue?: boolean;
   healthReason?: string;
+  replicas?: number;
 }
 
 interface ConnectionPoint {
@@ -1125,6 +1126,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       isAffected: !!rawNode?.isAffected,
       hasHealthIssue: !!rawNode?.hasHealthIssue,
       healthReason: rawNode?.healthReason,
+      replicas: typeof rawNode?.replicas === 'number' ? rawNode.replicas : undefined,
       ...overrides
     };
 

@@ -645,6 +645,23 @@
   text-transform: uppercase;
 }
 
+.diagram-node__replica-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
 .connection-point {
   position: absolute;
   width: 12px;

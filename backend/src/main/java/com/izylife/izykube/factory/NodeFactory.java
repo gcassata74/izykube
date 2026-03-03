@@ -57,6 +57,7 @@ public class NodeFactory {
                         deployment.getServiceAccountRef()
                 );
                 ((DeploymentDTO) sanitized).setServiceAccountName(deployment.getServiceAccountName());
+                ((DeploymentDTO) sanitized).setAddToMesh(deployment.isAddToMesh());
                 break;
             case "serviceaccount":
                 ServiceAccountDTO serviceAccount = (ServiceAccountDTO) node;

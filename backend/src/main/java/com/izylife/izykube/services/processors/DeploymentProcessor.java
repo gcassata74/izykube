@@ -11,6 +11,7 @@ import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.PodSpec;
 import io.fabric8.kubernetes.api.model.PodSpecBuilder;
 import io.fabric8.kubernetes.api.model.PodTemplateSpec;
+import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import io.fabric8.kubernetes.api.model.PodTemplateSpecBuilder;
 import io.fabric8.kubernetes.api.model.Volume;
 import io.fabric8.kubernetes.api.model.VolumeMount;
@@ -97,10 +98,13 @@ public class DeploymentProcessor implements TemplateProcessor<DeploymentDTO> {
             podSpec.getInitContainers().forEach(container -> container.setEnvFrom(envFromSources));
         }
 
+        ObjectMetaBuilder metaBuilder = new ObjectMetaBuilder().withLabels(labels);
+        metaBuilder.addToAnnotations("sidecar.istio.io/inject", dto.isAddToMesh() ? "true" : "false");
+        if (dto.isAddToMesh()) {
+            metaBuilder.addToLabels("sidecar.istio.io/inject", "true");
+        }
         PodTemplateSpec podTemplate = new PodTemplateSpecBuilder()
-                .withNewMetadata()
-                .withLabels(labels)
-                .endMetadata()
+                .withMetadata(metaBuilder.build())
                 .withSpec(podSpec)
                 .build();
 

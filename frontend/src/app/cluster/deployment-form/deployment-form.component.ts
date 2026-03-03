@@ -1,21 +1,26 @@
-import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { catchError, map, Observable, of } from 'rxjs';
+import { catchError, map, Observable, of, Subscription } from 'rxjs';
 import { AutoSaveService } from '../../services/auto-save.service';
 import { Deployment } from '../../model/deployment.class';
 import { AssetType } from 'src/app/model/asset.class';
 import { AssetService } from '../../services/asset.service';
 import { NotificationService } from '../../services/notification.service';
+import { KubeExplorerService } from '../../services/kube-explorer.service';
+import { distinctUntilChanged, filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-deployment-form',
   templateUrl: './deployment-form.component.html',
   providers: [AutoSaveService]
 })
-export class DeploymentFormComponent implements OnInit, OnChanges {
+export class DeploymentFormComponent implements OnInit, OnChanges, OnDestroy {
   @Input() selectedNode!: Deployment;
+  @Input() clusterNamespace?: string;
   form!: FormGroup;
   assets$!: Observable<any[]>;
+  private subscription = new Subscription();
+  private meshToggleReady = false;
   strategyTypes = [
     { label: 'Recreate', value: 'Recreate' },
     { label: 'Rolling Update', value: 'RollingUpdate' }
@@ -30,13 +35,15 @@ export class DeploymentFormComponent implements OnInit, OnChanges {
     private fb: FormBuilder,
     private autoSaveService: AutoSaveService,
     private assetService: AssetService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private kubeExplorerService: KubeExplorerService
   ) {}
 
   ngOnInit() {
     this.initForm();
     this.setupAutoSave();
     this.loadAssets();
+    this.setupMeshToggleListener();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -52,7 +59,12 @@ export class DeploymentFormComponent implements OnInit, OnChanges {
       strategyType: [this.selectedNode.strategyType, Validators.required],
       assetId: [this.selectedNode.assetId || '', Validators.required],
       containerPort: [this.selectedNode.containerPort ?? 80, [Validators.required, Validators.min(1)]],
-      workloadType: [this.selectedNode.workloadType ?? 'DEPLOYMENT', Validators.required]
+      workloadType: [this.selectedNode.workloadType ?? 'DEPLOYMENT', Validators.required],
+      addToMesh: [this.selectedNode.addToMesh ?? false]
+    });
+    this.meshToggleReady = false;
+    queueMicrotask(() => {
+      this.meshToggleReady = true;
     });
   }
 
@@ -60,14 +72,19 @@ export class DeploymentFormComponent implements OnInit, OnChanges {
     if (!this.form) {
       return;
     }
+    this.meshToggleReady = false;
     this.form.patchValue({
       name: node.name,
       replicas: node.replicas,
       strategyType: node.strategyType,
       assetId: node.assetId || '',
       containerPort: node.containerPort ?? 80,
-      workloadType: node.workloadType ?? 'DEPLOYMENT'
+      workloadType: node.workloadType ?? 'DEPLOYMENT',
+      addToMesh: node.addToMesh ?? false
     }, { emitEvent: false });
+    queueMicrotask(() => {
+      this.meshToggleReady = true;
+    });
   }
 
   private loadAssets() {
@@ -83,5 +100,38 @@ export class DeploymentFormComponent implements OnInit, OnChanges {
 
   private setupAutoSave() {
     this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.form.valueChanges);
+  }
+
+  private setupMeshToggleListener(): void {
+    const control = this.form.get('addToMesh');
+    if (!control) {
+      return;
+    }
+    this.subscription.add(
+      control.valueChanges.pipe(
+        distinctUntilChanged(),
+        filter(() => this.meshToggleReady)
+      ).subscribe((enabled) => {
+        const namespace = this.clusterNamespace || 'default';
+        const name = this.form.get('name')?.value;
+        if (!name) {
+          this.notificationService.warn('Deployment name required', 'Set a deployment name before updating mesh.');
+          return;
+        }
+        this.kubeExplorerService.setDeploymentMesh(namespace, name, !!enabled).subscribe({
+          next: () => {
+            this.notificationService.success('Mesh updated', `${name} ${enabled ? 'added to' : 'removed from'} mesh.`);
+          },
+          error: (error) => {
+            const detail = error?.error || error?.message || 'Unable to update mesh settings.';
+            this.notificationService.error('Mesh update failed', typeof detail === 'string' ? detail : undefined);
+          }
+        });
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subscription.unsubscribe();
   }
 }

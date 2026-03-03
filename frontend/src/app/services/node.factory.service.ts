@@ -50,7 +50,10 @@ export class NodeFactoryService {
           'RollingUpdate',
           '',
           80,
-          'DEPLOYMENT'
+          'DEPLOYMENT',
+          null,
+          null,
+          false
         );
       case 'configmap':
         return new ConfigBundleNode(id, trimmedName, {
