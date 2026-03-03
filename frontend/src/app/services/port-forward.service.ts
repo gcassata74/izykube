@@ -38,6 +38,23 @@ export class PortForwardService {
     return this.dataService.post<PortForwardResponse>('port-forward/stop', request);
   }
 
+  listActiveForwards(): Observable<PortForwardResponse[]> {
+    return this.dataService.get<PortForwardResponse[]>('port-forward/active');
+  }
+
+  listForwards(): Observable<PortForwardResponse[]> {
+    return this.dataService.get<PortForwardResponse[]>('port-forward/entries');
+  }
+
+  getStatus(namespace: string, serviceName: string, targetPort: number): Observable<PortForwardResponse> {
+    const query = `port-forward/status?namespace=${encodeURIComponent(namespace)}&serviceName=${encodeURIComponent(serviceName)}&targetPort=${targetPort}`;
+    return this.dataService.get<PortForwardResponse>(query);
+  }
+
+  deleteForward(request: PortForwardRequest): Observable<void> {
+    return this.dataService.post<void>('port-forward/delete', request);
+  }
+
   checkLocalPort(port: number): Observable<PortAvailabilityResponse> {
     return this.dataService.get<PortAvailabilityResponse>(`port-forward/check?port=${port}`);
   }

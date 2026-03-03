@@ -48,6 +48,57 @@
         </aside>
 
         <section class="resource-panel">
+            <div class="resource-panel__port-forward" *ngIf="portForwards.length || portForwardsLoading">
+                <div class="resource-panel__port-forward-header">
+                    <span>Active Port Forwards</span>
+                    <button
+                      pButton
+                      type="button"
+                      icon="pi pi-refresh"
+                      class="p-button-text p-button-sm"
+                      [disabled]="portForwardsLoading"
+                      (click)="loadPortForwards()"
+                      pTooltip="Refresh port forwards"
+                    ></button>
+                </div>
+                <p-table
+                  class="izy-table"
+                  styleClass="p-datatable-rounded"
+                  [value]="portForwards"
+                  [loading]="portForwardsLoading"
+                  [showLoader]="false"
+                  [rows]="5"
+                  [paginator]="portForwards.length > 5"
+                >
+                  <ng-template pTemplate="header">
+                    <tr>
+                      <th>Namespace</th>
+                      <th>Service</th>
+                      <th>Local</th>
+                      <th>Target</th>
+                      <th class="text-center">Action</th>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="body" let-forward>
+                    <tr>
+                      <td>{{ forward.namespace }}</td>
+                      <td>{{ forward.serviceName }}</td>
+                      <td>{{ forward.localPort }}</td>
+                      <td>{{ forward.targetPort }}</td>
+                      <td class="text-center">
+                        <button
+                          pButton
+                          type="button"
+                          icon="pi pi-times"
+                          class="p-button-text p-button-sm"
+                          (click)="stopPortForward(forward)"
+                          pTooltip="Stop"
+                        ></button>
+                      </td>
+                    </tr>
+                  </ng-template>
+                </p-table>
+            </div>
             <div class="resource-panel__toolbar">
                 <div class="resource-panel__title">
                     <span class="resource-panel__kind">{{ activeLabel }}</span>

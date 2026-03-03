@@ -68,6 +68,7 @@ import { SidebarComponent } from './layout/sidebar/sidebar.component';
 import { TooltipModule } from 'primeng/tooltip';
 import { SettingsComponent } from './settings/settings.component';
 import { PersistentVolumeAdminComponent } from './settings/persistent-volume-admin/persistent-volume-admin.component';
+import { PortForwardListComponent } from './port-forward/port-forward-list.component';
 import { LinkPropertiesFormComponent } from './diagram/link-properties-form/link-properties-form.component';
 import { FormWorkbenchComponent } from './dev/form-workbench/form-workbench.component';
 import { ServiceAccountFormComponent } from './cluster/service-account-form/service-account-form.component';
@@ -105,6 +106,7 @@ import { CrdEditorComponent } from './crds/crd-editor/crd-editor.component';
     SidebarComponent,
     SettingsComponent,
     PersistentVolumeAdminComponent,
+    PortForwardListComponent,
     LinkPropertiesFormComponent,
     FormWorkbenchComponent,
     ServiceAccountFormComponent,

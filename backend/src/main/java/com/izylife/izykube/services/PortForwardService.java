@@ -3,6 +3,8 @@ package com.izylife.izykube.services;
 import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.repositories.ClusterRepository;
+import com.izylife.izykube.repositories.PortForwardRepository;
+import com.izylife.izykube.model.PortForwardEntry;
 import com.izylife.izykube.web.request.PortForwardRequest;
 import com.izylife.izykube.web.response.PortAvailabilityResponse;
 import com.izylife.izykube.web.response.PortForwardResponse;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import jakarta.annotation.PreDestroy;
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -30,7 +33,18 @@ public class PortForwardService {
     private static final Logger log = LoggerFactory.getLogger(PortForwardService.class);
     private final KubernetesClient kubernetesClient;
     private final ClusterRepository clusterRepository;
-    private final Map<String, ForwardHandle> activeForwards = new ConcurrentHashMap<>();
+    private final Map<String, ForwardEntry> forwards = new ConcurrentHashMap<>();
+    private final PortForwardRepository portForwardRepository;
+
+    @PostConstruct
+    public void resetPersistedActiveFlags() {
+        portForwardRepository.findAll().forEach(entry -> {
+            if (entry.isActive()) {
+                entry.setActive(false);
+                portForwardRepository.save(entry);
+            }
+        });
+    }
 
     public PortForwardResponse start(PortForwardRequest request) {
         validateRequest(request);
@@ -40,8 +54,8 @@ public class PortForwardService {
         }
 
         String key = buildKey(request);
-        ForwardHandle existing = activeForwards.get(key);
-        if (existing != null && existing.forward != null) {
+        ForwardEntry existing = forwards.get(key);
+        if (existing != null && existing.active && existing.forward != null) {
             return buildResponse(request, true, "Port forward already active.");
         }
 
@@ -71,9 +85,12 @@ public class PortForwardService {
 
         int actualLocalPort = forward.getLocalPort();
         if (actualLocalPort != request.getLocalPort()) {
-            key = buildKey(request.getNamespace(), request.getServiceName(), actualLocalPort, request.getTargetPort());
+            String newKey = buildKey(request.getNamespace(), request.getServiceName(), actualLocalPort, request.getTargetPort());
+            forwards.remove(key);
+            key = newKey;
         }
-        activeForwards.put(key, new ForwardHandle(forward));
+        forwards.put(key, new ForwardEntry(forward, request.getNamespace(), request.getServiceName(), actualLocalPort, request.getTargetPort(), true));
+        upsertEntry(request.getNamespace(), request.getServiceName(), actualLocalPort, request.getTargetPort(), true);
         log.info("Port forward started for service {} in namespace {}: {} -> {}",
                 request.getServiceName(), request.getNamespace(), actualLocalPort, request.getTargetPort());
 
@@ -84,18 +101,88 @@ public class PortForwardService {
     public PortForwardResponse stop(PortForwardRequest request) {
         validateRequest(request);
         String key = buildKey(request);
-        ForwardHandle handle = activeForwards.remove(key);
-        if (handle == null || handle.forward == null) {
+        ForwardEntry entry = forwards.get(key);
+        if (entry == null || entry.forward == null || !entry.active) {
             return buildResponse(request, false, "Port forward not active.");
         }
         try {
-            handle.forward.close();
+            entry.forward.close();
         } catch (Exception ex) {
             log.warn("Error closing port forward {}: {}", key, ex.getMessage());
         }
+        entry.forward = null;
+        entry.active = false;
+        upsertEntry(request.getNamespace(), request.getServiceName(), request.getLocalPort(), request.getTargetPort(), false);
         log.info("Port forward stopped for service {} in namespace {}: {} -> {}",
                 request.getServiceName(), request.getNamespace(), request.getLocalPort(), request.getTargetPort());
         return buildResponse(request, false, "Port forward stopped.");
+    }
+
+    public java.util.List<PortForwardResponse> listForwards() {
+        return portForwardRepository.findAll().stream()
+                .map(entry -> buildResponse(entry.getNamespace(), entry.getServiceName(), entry.getLocalPort(), entry.getTargetPort(), entry.isActive(), entry.isActive() ? "Active" : "Stopped"))
+                .toList();
+    }
+
+    public java.util.List<PortForwardResponse> listActive() {
+        return forwards.values().stream()
+                .filter(handle -> handle.active)
+                .map(handle -> buildResponse(handle.namespace, handle.serviceName, handle.localPort, handle.targetPort, true, "Active"))
+                .toList();
+    }
+
+    public PortForwardResponse getStatus(PortForwardRequest request) {
+        validateRequest(request);
+
+        ForwardEntry activeForward = findActiveForward(request.getNamespace(), request.getServiceName(), request.getTargetPort());
+        if (activeForward != null) {
+            return buildResponse(request.getNamespace(), request.getServiceName(), activeForward.localPort, activeForward.targetPort, true, "Active");
+        }
+
+        PortForwardEntry persisted = findPersistedEntry(request.getNamespace(), request.getServiceName(), request.getTargetPort());
+        if (persisted != null) {
+            return buildResponse(persisted.getNamespace(), persisted.getServiceName(), persisted.getLocalPort(), persisted.getTargetPort(), false, "Inactive");
+        }
+
+        return buildResponse(request, false, "Inactive");
+    }
+
+    public PortForwardResponse getStatus(String namespace, String serviceName, int targetPort) {
+        if (!StringUtils.hasText(namespace)) {
+            throw new IllegalArgumentException("Namespace is required.");
+        }
+        if (!StringUtils.hasText(serviceName)) {
+            throw new IllegalArgumentException("Service name is required.");
+        }
+        if (targetPort < 1 || targetPort > 65535) {
+            throw new IllegalArgumentException("Target port must be between 1 and 65535.");
+        }
+
+        ForwardEntry activeForward = findActiveForward(namespace, serviceName, targetPort);
+        if (activeForward != null) {
+            return buildResponse(namespace, serviceName, activeForward.localPort, activeForward.targetPort, true, "Active");
+        }
+
+        PortForwardEntry persisted = findPersistedEntry(namespace, serviceName, targetPort);
+        if (persisted != null) {
+            return buildResponse(persisted.getNamespace(), persisted.getServiceName(), persisted.getLocalPort(), persisted.getTargetPort(), false, "Inactive");
+        }
+
+        return buildResponse(namespace, serviceName, 0, targetPort, false, "Inactive");
+    }
+
+    public void deleteForward(PortForwardRequest request) {
+        validateRequest(request);
+        String key = buildKey(request);
+        ForwardEntry entry = forwards.remove(key);
+        if (entry != null && entry.forward != null) {
+            try {
+                entry.forward.close();
+            } catch (Exception ex) {
+                log.warn("Error closing port forward {}: {}", key, ex.getMessage());
+            }
+        }
+        portForwardRepository.deleteById(key);
     }
 
     public PortAvailabilityResponse checkLocalPort(int port) {
@@ -114,7 +201,7 @@ public class PortForwardService {
 
     @PreDestroy
     public void shutdown() {
-        activeForwards.forEach((key, handle) -> {
+        forwards.forEach((key, handle) -> {
             try {
                 if (handle != null && handle.forward != null) {
                     handle.forward.close();
@@ -123,7 +210,13 @@ public class PortForwardService {
                 log.warn("Error closing port forward {} on shutdown: {}", key, ex.getMessage());
             }
         });
-        activeForwards.clear();
+        forwards.clear();
+        portForwardRepository.findAll().forEach(entry -> {
+            if (entry.isActive()) {
+                entry.setActive(false);
+                portForwardRepository.save(entry);
+            }
+        });
     }
 
     private boolean isNamespaceForwardAllowed(String namespace) {
@@ -132,8 +225,8 @@ public class PortForwardService {
         }
         return clusterRepository.findByNameSpaceIgnoreCase(namespace)
                 .map(Cluster::getStatus)
-                .filter(status -> status == ClusterStatusEnum.DEPLOYED)
-                .isPresent();
+                .map(status -> status == ClusterStatusEnum.DEPLOYED)
+                .orElse(true);
     }
 
     private void validateRequest(PortForwardRequest request) {
@@ -164,6 +257,35 @@ public class PortForwardService {
                 localPort + ":" + targetPort;
     }
 
+    private void upsertEntry(String namespace, String serviceName, int localPort, int targetPort, boolean active) {
+        String key = buildKey(namespace, serviceName, localPort, targetPort);
+        PortForwardEntry entry = portForwardRepository.findById(key).orElseGet(PortForwardEntry::new);
+        entry.setId(key);
+        entry.setNamespace(namespace);
+        entry.setServiceName(serviceName);
+        entry.setLocalPort(localPort);
+        entry.setTargetPort(targetPort);
+        entry.setActive(active);
+        portForwardRepository.save(entry);
+    }
+
+    private ForwardEntry findActiveForward(String namespace, String serviceName, int targetPort) {
+        return forwards.values().stream()
+                .filter(handle -> handle.active)
+                .filter(handle -> handle.namespace.equalsIgnoreCase(namespace))
+                .filter(handle -> handle.serviceName.equalsIgnoreCase(serviceName))
+                .filter(handle -> handle.targetPort == targetPort)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private PortForwardEntry findPersistedEntry(String namespace, String serviceName, int targetPort) {
+        return portForwardRepository.findByNamespaceIgnoreCaseAndServiceNameIgnoreCase(namespace, serviceName).stream()
+                .filter(entry -> entry.getTargetPort() == targetPort)
+                .findFirst()
+                .orElse(null);
+    }
+
     private PortForwardResponse buildResponse(PortForwardRequest request, boolean active, String message) {
         return buildResponse(request.getNamespace(), request.getServiceName(), request.getLocalPort(), request.getTargetPort(), active, message);
     }
@@ -192,11 +314,21 @@ public class PortForwardService {
         return root.getMessage() != null ? root.getMessage() : ex.getMessage();
     }
 
-    private static class ForwardHandle {
-        private final LocalPortForward forward;
+    private static class ForwardEntry {
+        private LocalPortForward forward;
+        private final String namespace;
+        private final String serviceName;
+        private final int localPort;
+        private final int targetPort;
+        private boolean active;
 
-        private ForwardHandle(LocalPortForward forward) {
+        private ForwardEntry(LocalPortForward forward, String namespace, String serviceName, int localPort, int targetPort, boolean active) {
             this.forward = forward;
+            this.namespace = namespace;
+            this.serviceName = serviceName;
+            this.localPort = localPort;
+            this.targetPort = targetPort;
+            this.active = active;
         }
     }
 }

@@ -1,0 +1,61 @@
+<section class="port-forward-list">
+  <header class="port-forward-list__header">
+    <div>
+      <p class="eyebrow">Cluster</p>
+      <h1>Port Forwards</h1>
+      <p class="subtitle">Port forwards created by IzyKube.</p>
+    </div>
+    <button pButton type="button" icon="pi pi-refresh" class="p-button-text" (click)="loadForwards()" [disabled]="loading"></button>
+  </header>
+
+  <p-table
+    class="izy-table"
+    styleClass="p-datatable-striped p-datatable-rounded"
+    [value]="forwards"
+    [loading]="loading"
+    [showLoader]="false"
+    [paginator]="forwards.length > 10"
+    [rows]="10"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Namespace</th>
+        <th>Service</th>
+        <th>Local</th>
+        <th>Target</th>
+        <th>Status</th>
+        <th class="text-center">Active</th>
+        <th class="text-center">Delete</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-forward>
+      <tr>
+        <td>{{ forward.namespace }}</td>
+        <td>{{ forward.serviceName }}</td>
+        <td>{{ forward.localPort }}</td>
+        <td>{{ forward.targetPort }}</td>
+        <td>
+          <span class="status-chip" [class.status-chip--ok]="forward.active" [class.status-chip--warn]="!forward.active">
+            {{ forward.active ? 'Active' : 'Stopped' }}
+          </span>
+        </td>
+        <td class="text-center">
+          <p-inputSwitch
+            [ngModel]="forward.active"
+            (ngModelChange)="toggleForward(forward, $event)"
+          ></p-inputSwitch>
+        </td>
+        <td class="text-center">
+          <button
+            pButton
+            type="button"
+            icon="pi pi-trash"
+            class="p-button-text p-button-sm"
+            (click)="deleteForward(forward)"
+            pTooltip="Delete"
+          ></button>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</section>

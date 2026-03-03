@@ -35,9 +35,32 @@ public class PortForwardController {
         return ResponseEntity.ok(portForwardService.stop(request));
     }
 
+    @GetMapping("/active")
+    public ResponseEntity<java.util.List<PortForwardResponse>> listActive() {
+        return ResponseEntity.ok(portForwardService.listActive());
+    }
+
+    @GetMapping("/entries")
+    public ResponseEntity<java.util.List<PortForwardResponse>> listEntries() {
+        return ResponseEntity.ok(portForwardService.listForwards());
+    }
+
+    @PostMapping("/delete")
+    public ResponseEntity<Void> delete(@Valid @RequestBody PortForwardRequest request) {
+        portForwardService.deleteForward(request);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/check")
     public ResponseEntity<PortAvailabilityResponse> check(@RequestParam("port") int port) {
         return ResponseEntity.ok(portForwardService.checkLocalPort(port));
+    }
+
+    @GetMapping("/status")
+    public ResponseEntity<PortForwardResponse> status(@RequestParam("namespace") String namespace,
+                                                      @RequestParam("serviceName") String serviceName,
+                                                      @RequestParam("targetPort") int targetPort) {
+        return ResponseEntity.ok(portForwardService.getStatus(namespace, serviceName, targetPort));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

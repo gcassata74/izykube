@@ -59,6 +59,7 @@ export class ServiceFormComponent implements OnInit, OnChanges {
     this.initForm();
     this.setupAutoSave();
     this.applyLinkedDeploymentDefaults();
+    this.syncForwardStatusFromBackend();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -67,6 +68,7 @@ export class ServiceFormComponent implements OnInit, OnChanges {
     }
     if (changes['selectedNode'] && !changes['selectedNode'].firstChange) {
       this.refreshFormFromNode(changes['selectedNode'].currentValue as Service);
+      this.syncForwardStatusFromBackend();
     }
   }
 
@@ -220,6 +222,49 @@ export class ServiceFormComponent implements OnInit, OnChanges {
     }
     forwardPort.updateValueAndValidity({ emitEvent: false });
     forwardTargetPort.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private syncForwardStatusFromBackend(): void {
+    if (!this.form) {
+      return;
+    }
+    const serviceName = (this.selectedNode as Service)?.name;
+    if (!serviceName) {
+      return;
+    }
+    const namespace = this.cluster?.nameSpace || 'default';
+    const targetPort = this.form.get('forwardTargetPort')?.value || this.form.get('port')?.value;
+    if (!targetPort) {
+      return;
+    }
+
+    this.portForwardService.getStatus(namespace, serviceName, targetPort).subscribe({
+      next: (response) => {
+        if (!response) {
+          return;
+        }
+        if (response.active) {
+          this.form.patchValue({
+            forwardEnabled: true,
+            forwardActive: true,
+            forwardPort: response.localPort || this.form.get('forwardPort')?.value,
+            forwardTargetPort: response.targetPort || this.form.get('forwardTargetPort')?.value
+          }, { emitEvent: false });
+          this.form.get('forwardPort')?.enable({ emitEvent: false });
+          this.form.get('forwardTargetPort')?.enable({ emitEvent: false });
+          this.updateForwardValidators(true);
+          return;
+        }
+
+        this.form.get('forwardActive')?.setValue(false, { emitEvent: false });
+        if (response.localPort && this.form.get('forwardEnabled')?.value) {
+          this.form.get('forwardPort')?.setValue(response.localPort, { emitEvent: false });
+        }
+      },
+      error: () => {
+        // do not block UI on status failures
+      }
+    });
   }
 
   activateForward(): void {

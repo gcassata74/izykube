@@ -8,6 +8,7 @@ import { KubeExplorerService } from '../services/kube-explorer.service';
 import { NotificationService } from '../services/notification.service';
 import { Table } from 'primeng/table';
 import { KubeRowRef } from './kube-row-actions/kube-row-actions.component';
+import { PortForwardResponse, PortForwardService } from '../services/port-forward.service';
 
 type ResourceCollections = Pick<NamespaceSummary, 'pods' | 'deployments' | 'services' | 'ingresses' | 'configMaps' | 'secrets' | 'jobs' | 'cronJobs' | 'daemonSets' | 'statefulSets'>;
 type ResourceKind = keyof ResourceCollections;
@@ -76,6 +77,8 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   inspectError: string | null = null;
   inspectedPod: KubePod | null = null;
   inspectedEvents: KubePodEvent[] = [];
+  portForwards: PortForwardResponse[] = [];
+  portForwardsLoading = false;
 
   @ViewChild('podsTable') podsTable?: Table;
   @ViewChild('deploymentsTable') deploymentsTable?: Table;
@@ -143,6 +146,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   constructor(
     private kubeExplorerService: KubeExplorerService,
     private notificationService: NotificationService,
+    private portForwardService: PortForwardService,
     private cdr: ChangeDetectorRef,
   ) {}
 
@@ -152,6 +156,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
       this.startAutoRefresh();
     }
     this.fetchNamespaces();
+    this.loadPortForwards();
   }
 
   ngOnDestroy(): void {
@@ -193,6 +198,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
         this.updateResourceMenu();
         this.restoreSelectionForActiveView();
         this.reapplyFilterForActiveView();
+        this.loadPortForwards();
         this.cdr.markForCheck();
       },
       error: () => {
@@ -200,6 +206,44 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
         }
       });
+  }
+
+  loadPortForwards(): void {
+    this.portForwardsLoading = true;
+    this.portForwardService.listActiveForwards().pipe(
+      finalize(() => {
+        this.portForwardsLoading = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (forwards) => {
+        this.portForwards = forwards || [];
+      },
+      error: () => {
+        this.portForwards = [];
+      }
+    });
+  }
+
+  stopPortForward(row: PortForwardResponse): void {
+    if (!row) {
+      return;
+    }
+    this.portForwardService.stopForward({
+      namespace: row.namespace,
+      serviceName: row.serviceName,
+      localPort: row.localPort,
+      targetPort: row.targetPort
+    }).subscribe({
+      next: () => {
+        this.notificationService.success('Port forward stopped', `${row.serviceName} (${row.namespace})`);
+        this.loadPortForwards();
+      },
+      error: (error) => {
+        const detail = error?.error || error?.message || 'Unable to stop port forward.';
+        this.notificationService.error('Stop failed', typeof detail === 'string' ? detail : undefined);
+      }
+    });
   }
 
   onNamespaceChange(namespace: string): void {

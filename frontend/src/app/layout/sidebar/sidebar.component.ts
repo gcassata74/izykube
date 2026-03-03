@@ -26,6 +26,7 @@ export class SidebarComponent {
     { label: 'CRDs', icon: 'pi pi-table', route: '/crds' },
     { label: 'Kube Explorer', icon: 'pi pi-compass', route: '/kube-explorer' },
     { label: 'Routes', icon: 'pi pi-globe', route: '/routes' },
+    { label: 'Port Forwards', icon: 'pi pi-share-alt', route: '/port-forwards' },
   ];
 
   onNavigate(route: string): void {

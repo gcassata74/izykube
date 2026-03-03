@@ -1,0 +1,33 @@
+.port-forward-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.port-forward-list__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.status-chip--ok {
+  background: #ecfdf3;
+  color: #166534;
+}
+
+.status-chip--warn {
+  background: #fff7ed;
+  color: #9a3412;
+}

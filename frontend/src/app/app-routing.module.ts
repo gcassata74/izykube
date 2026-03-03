@@ -9,6 +9,7 @@ import { AssetFormComponent } from './assets/asset-form/asset-form.component';
 import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
 import { RoutesComponent } from './routes/routes.component';
 import { SettingsComponent } from './settings/settings.component';
+import { PortForwardListComponent } from './port-forward/port-forward-list.component';
 import { FormWorkbenchComponent } from './dev/form-workbench/form-workbench.component';
 import { CrdListComponent } from './crds/crd-list/crd-list.component';
 import { CrdEditorComponent } from './crds/crd-editor/crd-editor.component';
@@ -28,6 +29,7 @@ const routes: Routes = [
   { path: 'kube-explorer', component: KubeExplorerComponent },
   { path: 'routes', component: RoutesComponent },
   { path: 'settings', component: SettingsComponent },
+  { path: 'port-forwards', component: PortForwardListComponent },
   { path: 'crds', component: CrdListComponent },
   { path: 'crds/new', component: CrdEditorComponent },
   { path: 'crds/:id/edit', component: CrdEditorComponent }
