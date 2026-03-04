@@ -28,6 +28,8 @@ export class RoutesComponent implements OnInit {
   createSubmitting = false;
   servicePortOptions: number[] = [];
   editingRoute: RouteSummary | null = null;
+  private readonly httpsOverrideTtlMs = 60_000;
+  private readonly httpsOverrides = new Map<string, { enabled: boolean; expiresAt: number }>();
 
   @ViewChild('routesTable') routesTable?: Table;
 
@@ -75,6 +77,7 @@ export class RoutesComponent implements OnInit {
         next: (summary) => {
           this.routes = summary?.routes || [];
           this.services = summary?.services || [];
+          this.reconcileHttpsOverrides();
           this.applyFilter(this.filterValue);
         },
         error: (error) => {
@@ -143,13 +146,14 @@ export class RoutesComponent implements OnInit {
     }
     const serviceName = this.extractPrimaryServiceName(route.serviceTargets);
     const servicePort = this.extractPrimaryServicePort(route.serviceTargets);
+    const override = this.getHttpsOverride(route.namespace, route.name);
     this.createForm.reset({
       name: route.name,
       host: route.hosts?.includes('<all hosts>') ? '' : route.hosts,
       path: route.path || '/',
       serviceName,
       servicePort,
-      httpsEnabled: !!route.tls
+      httpsEnabled: override ?? !!route.tls
     });
     this.onServiceChange(serviceName);
     this.createDialogVisible = true;
@@ -219,6 +223,11 @@ export class RoutesComponent implements OnInit {
         const message = this.editingRoute ? 'Route updated successfully.' : 'Route created successfully.';
         this.notificationService.success('Route saved', message);
         this.createDialogVisible = false;
+        const key = this.routeKey(payload.namespace, payload.name);
+        this.httpsOverrides.set(key, {
+          enabled: !!payload.httpsEnabled,
+          expiresAt: Date.now() + this.httpsOverrideTtlMs
+        });
         this.editingRoute = null;
         this.refreshRoutes();
       },
@@ -271,13 +280,56 @@ export class RoutesComponent implements OnInit {
   }
 
   prefersTls(route: RouteSummary): boolean {
-    if (route?.tls) {
-      return true;
+    const override = this.getHttpsOverride(route.namespace, route.name);
+    if (override !== null) {
+      return override;
     }
-    if (!route?.hosts || route.hosts.includes('<all hosts>')) {
-      return false;
+    return !!route?.tls;
+  }
+
+  private routeKey(namespace: string | null | undefined, name: string | null | undefined): string {
+    return `${namespace || ''}/${name || ''}`;
+  }
+
+  private getHttpsOverride(namespace: string, name: string): boolean | null {
+    const key = this.routeKey(namespace, name);
+    const override = this.httpsOverrides.get(key);
+    if (!override) {
+      return null;
     }
-    return !!this.gatewayInfo?.httpsPort;
+    if (override.expiresAt < Date.now()) {
+      this.httpsOverrides.delete(key);
+      return null;
+    }
+    return override.enabled;
+  }
+
+  private reconcileHttpsOverrides(): void {
+    const now = Date.now();
+    for (const [key, value] of this.httpsOverrides.entries()) {
+      if (value.expiresAt < now) {
+        this.httpsOverrides.delete(key);
+      }
+    }
+    for (const route of this.routes) {
+      const key = this.routeKey(route.namespace, route.name);
+      if (route.tls) {
+        this.httpsOverrides.delete(key);
+      }
+    }
+  }
+
+  getRouteUrl(route: RouteSummary): string | null {
+    const useTls = this.prefersTls(route);
+    return this.buildRouteUrl(route, useTls);
+  }
+
+  onTestRouteClick(event: Event, route: RouteSummary): void {
+    const url = this.getRouteUrl(route);
+    if (!url) {
+      event.preventDefault();
+      this.notificationService.warn('Route unavailable', 'Gateway endpoint not available yet.');
+    }
   }
 
   private buildForm(): void {

@@ -105,15 +105,17 @@
               (click)="editRoute(route)"
               pTooltip="Edit route"
             ></button>
-            <button
+            <a
               pButton
-              type="button"
               icon="pi pi-external-link"
               class="p-button-rounded p-button-text"
-              [disabled]="!canOpenRoute(route, prefersTls(route))"
-              (click)="openRoute(route, prefersTls(route))"
+              [attr.href]="getRouteUrl(route)"
+              target="_blank"
+              rel="noopener"
+              [class.p-disabled]="!getRouteUrl(route)"
+              (click)="onTestRouteClick($event, route)"
               pTooltip="Test route"
-            ></button>
+            ></a>
             <button
               pButton
               type="button"
