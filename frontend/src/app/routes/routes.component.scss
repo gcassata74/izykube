@@ -57,11 +57,16 @@
 }
 
 .routes-page__empty {
-  text-align: center;
-  padding: 24px 12px;
+  text-align: center !important;
+  padding: 0;
   color: #6b7280;
 }
 
+.routes-page__empty-content {
+  width: 100%;
+  padding: 24px 12px;
+  text-align: center;
+}
 .routes-form {
   display: flex;
   flex-direction: column;
