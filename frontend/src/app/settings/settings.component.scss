@@ -28,3 +28,24 @@
   flex-direction: column;
   gap: 1rem;
 }
+
+.settings-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 16px;
+  background: var(--surface-card);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+}
+
+.settings-card__title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.settings-card__subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--text-color-secondary);
+}

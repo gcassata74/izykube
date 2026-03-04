@@ -29,7 +29,7 @@ describe('KubeExplorerComponent (row actions)', () => {
       pods: [],
       deployments: [],
       services: [],
-      ingresses: [],
+      routes: [],
       configMaps: [],
       secrets: [],
       jobs: [],

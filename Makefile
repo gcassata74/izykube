@@ -68,28 +68,6 @@ install-istio:
 # Updated target to include Istio installation
 start-k3d-cluster-with-istio: create-k3d-registry create-k3d-cluster install-istio
 
-# Install ingress-nginx via Helm
-install-ingress-nginx:
-	helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-	helm repo update
-	helm install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace \
-		--set controller.ingressClassResource.name=nginx \
-		--set controller.ingressClassResource.default=true \
-		--set controller.ingressClass=nginx
-
-# Create a default IngressClass for NGINX (idempotent)
-install-nginx-ingress-class:
-	@printf '%s\n' \
-	  'apiVersion: networking.k8s.io/v1' \
-	  'kind: IngressClass' \
-	  'metadata:' \
-	  '  name: nginx' \
-	  '  annotations:' \
-	  '    ingressclass.kubernetes.io/is-default-class: "true"' \
-	  'spec:' \
-	  '  controller: k8s.io/ingress-nginx' \
-	| kubectl apply -f -
-
 # Create monitoring namespace
 create-istio-system-db:
 	kubectl create namespace istio-system-db --dry-run=client -o yaml | kubectl apply -f -
@@ -119,11 +97,41 @@ install-ollama:
 # temporary port-forward until izykube is not deployend into the cluster
 	kubectl -n izykube-system port-forward svc/ollama 11434:11434 >/tmp/ollama-pf.log 2>&1 &
 
-# Install all cluster addons (ingress, istio, monitoring)
+# Install cert-manager (CRDs + controller)
+install-cert-manager:
+	helm repo add jetstack https://charts.jetstack.io
+	helm repo update
+	helm install cert-manager jetstack/cert-manager -n cert-manager --create-namespace --set crds.enabled=true
+
+# Create internal CA and ClusterIssuer for HTTPS routes
+create-internal-ca:
+	@mkdir -p .certs
+	@openssl req -x509 -newkey rsa:4096 -sha256 -nodes -days 3650 \
+		-keyout .certs/ca.key -out .certs/ca.crt \
+		-subj "/CN=izykube-internal-ca"
+	kubectl -n cert-manager create secret tls izykube-ca \
+		--cert=.certs/ca.crt \
+		--key=.certs/ca.key \
+		--dry-run=client -o yaml | kubectl apply -f -
+	kubectl apply -f yaml/izykube-ca-issuer.yaml
+	@rm -rf .certs
+
+# Install internal CA certificate locally (Ubuntu/Debian)
+install-ca-local:
+	sudo mkdir -p /usr/local/share/ca-certificates
+	kubectl -n cert-manager get secret izykube-ca -o jsonpath='{.data.tls\.crt}' | base64 -d | sudo tee /usr/local/share/ca-certificates/izykube-ca.crt >/dev/null
+	sudo update-ca-certificates
+
+# Create shared Istio Gateway in istio-system
+install-istio-gateway:
+	kubectl apply -f yaml/izykube-gateway.yaml
+
+# Install all cluster addons (istio, monitoring)
 install-cluster-addons:
-	$(MAKE) install-ingress-nginx
-	$(MAKE) install-nginx-ingress-class
+	$(MAKE) install-cert-manager
+	$(MAKE) create-internal-ca
 	$(MAKE) install-istio
+	$(MAKE) install-istio-gateway
 	$(MAKE) create-istio-system-db
 	$(MAKE) install-prometheus
 	$(MAKE) install-grafana

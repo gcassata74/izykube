@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { DeploymentLogs, IngressClassSummary, IngressGatewayInfo, NamespaceOption, NamespaceSummary, PodLogs, WorkloadHealth } from '../model/kube-summary';
+import { DeploymentLogs, IstioGatewayInfo, NamespaceOption, NamespaceSummary, PodLogs, WorkloadHealth } from '../model/kube-summary';
 import { KubePod } from '../model/kube-pod';
 import { KubePodEvent } from '../model/kube-pod-event';
 
@@ -24,12 +24,12 @@ export class KubeExplorerService {
     return this.http.get<NamespaceSummary>(`${this.baseUrl}/summary`, { params });
   }
 
-  getIngressClasses(): Observable<IngressClassSummary[]> {
-    return this.http.get<IngressClassSummary[]>(`${this.baseUrl}/ingress-classes`);
+  getIstioGatewayInfo(): Observable<IstioGatewayInfo> {
+    return this.http.get<IstioGatewayInfo>(`${this.baseUrl}/istio-gateway`);
   }
 
-  getIngressGatewayInfo(): Observable<IngressGatewayInfo> {
-    return this.http.get<IngressGatewayInfo>(`${this.baseUrl}/ingress-gateway`);
+  getInternalCaCertificate(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/ca-cert`, { responseType: 'blob' });
   }
 
   getResourceYaml(kind: string, namespace: string, name: string): Observable<string> {

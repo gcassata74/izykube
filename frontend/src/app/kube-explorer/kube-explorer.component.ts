@@ -10,7 +10,7 @@ import { Table } from 'primeng/table';
 import { KubeRowRef } from './kube-row-actions/kube-row-actions.component';
 import { PortForwardResponse, PortForwardService } from '../services/port-forward.service';
 
-type ResourceCollections = Pick<NamespaceSummary, 'pods' | 'deployments' | 'services' | 'ingresses' | 'configMaps' | 'secrets' | 'jobs' | 'cronJobs' | 'daemonSets' | 'statefulSets'>;
+type ResourceCollections = Pick<NamespaceSummary, 'pods' | 'deployments' | 'services' | 'routes' | 'configMaps' | 'secrets' | 'jobs' | 'cronJobs' | 'daemonSets' | 'statefulSets'>;
 type ResourceKind = keyof ResourceCollections;
 
 interface ResourceMenuItem {
@@ -39,7 +39,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     pods: { label: 'Pods', icon: 'pi pi-box', description: 'Workload containers' },
     deployments: { label: 'Deployments', icon: 'pi pi-sitemap', description: 'Replica management' },
     services: { label: 'Services', icon: 'pi pi-share-alt', description: 'Network endpoints' },
-    ingresses: { label: 'Ingresses', icon: 'pi pi-globe', description: 'Ingress routes' },
+    routes: { label: 'Routes', icon: 'pi pi-globe', description: 'Istio gateway routes' },
     configMaps: { label: 'ConfigMaps', icon: 'pi pi-clone', description: 'Configuration data' },
     secrets: { label: 'Secrets', icon: 'pi pi-lock', description: 'Sensitive data' },
     jobs: { label: 'Jobs', icon: 'pi pi-refresh', description: 'One-off workloads' },
@@ -83,7 +83,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   @ViewChild('podsTable') podsTable?: Table;
   @ViewChild('deploymentsTable') deploymentsTable?: Table;
   @ViewChild('servicesTable') servicesTable?: Table;
-  @ViewChild('ingressesTable') ingressesTable?: Table;
+  @ViewChild('routesTable') routesTable?: Table;
   @ViewChild('configMapsTable') configMapsTable?: Table;
   @ViewChild('secretsTable') secretsTable?: Table;
   @ViewChild('jobsTable') jobsTable?: Table;
@@ -327,8 +327,8 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
       return [];
     }
     switch (this.activeView) {
-      case 'ingresses':
-        return this.summary.ingresses || [];
+      case 'routes':
+        return this.summary.routes || [];
       case 'configMaps':
         return this.summary.configMaps || [];
       case 'secrets':
@@ -392,7 +392,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     }
 
     switch (this.activeView) {
-      case 'ingresses':
+      case 'routes':
         return [
           { label: 'Name', value: this.selectedRow.name },
           { label: 'Namespace', value: this.selectedRow.namespace },
@@ -623,8 +623,8 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
 
   private getActiveTable(): Table | undefined {
     switch (this.activeView) {
-      case 'ingresses':
-        return this.ingressesTable;
+      case 'routes':
+        return this.routesTable;
       case 'configMaps':
         return this.configMapsTable;
       case 'secrets':

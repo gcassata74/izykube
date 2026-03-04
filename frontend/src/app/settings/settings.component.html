@@ -8,6 +8,25 @@
   </header>
 
   <div class="settings__content">
+    <section class="settings-card">
+      <div>
+        <p class="eyebrow">Certificates</p>
+        <h2 class="settings-card__title">Internal CA</h2>
+        <p class="settings-card__subtitle">
+          Download the internal CA certificate to trust HTTPS routes issued by cert-manager.
+        </p>
+      </div>
+      <button
+        pButton
+        type="button"
+        class="p-button-outlined"
+        icon="pi pi-download"
+        label="Download CA"
+        [loading]="downloadingCa"
+        [disabled]="downloadingCa"
+        (click)="downloadCaCertificate()"
+      ></button>
+    </section>
     <app-persistent-volume-admin></app-persistent-volume-admin>
   </div>
 </section>

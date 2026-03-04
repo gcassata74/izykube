@@ -1,11 +1,11 @@
 package com.izylife.izykube.dto.kube;
 
-public record IngressSummaryDTO(
+public record RouteSummaryDTO(
         String name,
         String namespace,
         String hosts,
         String serviceTargets,
-        String ingressClassName,
+        String gatewayName,
         String path,
         String tls,
         String age

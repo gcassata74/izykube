@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.error.YAMLException;
@@ -2062,70 +2063,21 @@ public class ClusterYamlService {
     }
 
     private void updateIngressLikeManifest(IngressDTO node, Map<String, ManifestEntry> manifests) {
-        ManifestEntry entry = manifests.get(node.getId());
-        if (entry == null || !"ingress".equals(entry.kind)) {
-            entry = new ManifestEntry("ingress", node.getId(), createBaseIngressManifest(node));
-            manifests.put(node.getId(), entry);
-        }
-        Map<String, Object> manifest = entry.manifest;
-        manifest.put("apiVersion", "networking.k8s.io/v1");
-        manifest.put("kind", "Ingress");
+        manifests.entrySet().removeIf(entry ->
+                entry.getKey().equals(node.getId()) || entry.getKey().startsWith(node.getId() + ":"));
 
-        Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
-        metadata.put("name", node.getName());
-        metadata.putIfAbsent("namespace", resolveNamespace(node));
-        applyAnnotations(metadata, node.getAnnotations());
-        manifest.put("metadata", metadata);
+        String gatewayName = trimName(node.getName()) + "-gateway";
+        updateGatewayManifestEntry(node.getId() + ":gateway", gatewayName, resolveNamespace(node), node.getHost(), node.getTls(), manifests);
 
-        updateIngressManifest(manifest, node);
-    }
-
-    private void updateIngressManifest(Map<String, Object> manifest, IngressDTO node) {
-        Map<String, Object> spec = Optional.ofNullable(getMap(manifest, "spec")).orElseGet(LinkedHashMap::new);
-        List<Map<String, Object>> rules = Optional.ofNullable(this.<Map<String, Object>>getList(spec, "rules"))
-                .orElseGet(() -> new ArrayList<>());
-        Map<String, Object> rule = rules.isEmpty() ? new LinkedHashMap<>() : rules.get(0);
-        rule.put("host", node.getHost());
-        Set<String> tlsHosts = new LinkedHashSet<>();
-        if (node.getHost() != null && !node.getHost().isBlank()) {
-            tlsHosts.add(node.getHost());
-        }
-        Map<String, Object> http = Optional.ofNullable(getMap(rule, "http")).orElseGet(LinkedHashMap::new);
-        List<Map<String, Object>> paths = Optional.ofNullable(this.<Map<String, Object>>getList(http, "paths"))
-                .orElseGet(() -> new ArrayList<>());
-        Map<String, Object> path = paths.isEmpty() ? new LinkedHashMap<>() : paths.get(0);
-        path.put("path", node.getPath());
-        path.put("pathType", path.getOrDefault("pathType", "Prefix"));
-        Map<String, Object> backend = Optional.ofNullable(getMap(path, "backend")).orElseGet(LinkedHashMap::new);
-        Map<String, Object> service = Optional.ofNullable(getMap(backend, "service")).orElseGet(LinkedHashMap::new);
-        service.put("name", node.getServiceName());
-        Map<String, Object> port = Optional.ofNullable(getMap(service, "port")).orElseGet(LinkedHashMap::new);
-        port.put("number", node.getServicePort());
-        service.put("port", port);
-        backend.put("service", service);
-        path.put("backend", backend);
-        if (paths.isEmpty()) {
-            paths.add(path);
-        }
-        http.put("paths", paths);
-        rule.put("http", http);
-        if (rules.isEmpty()) {
-            rules.add(rule);
-        }
-        spec.put("rules", rules);
-
-        if (node.getTls() != null && !node.getTls().isBlank()) {
-            Map<String, Object> tlsEntry = new LinkedHashMap<>();
-            tlsEntry.put("secretName", node.getTls());
-            if (!tlsHosts.isEmpty()) {
-                tlsEntry.put("hosts", new ArrayList<>(tlsHosts));
-            }
-            spec.put("tls", List.of(tlsEntry));
-        } else {
-            spec.remove("tls");
-        }
-
-        manifest.put("spec", spec);
+        VirtualServiceDTO virtualService = new VirtualServiceDTO(
+                node.getId(),
+                node.getName(),
+                node.getHost(),
+                node.getPath(),
+                node.getServiceName(),
+                node.getServicePort()
+        );
+        updateVirtualServiceManifestEntry(virtualService, manifests);
     }
 
     private void updateVirtualServiceManifestEntry(VirtualServiceDTO node, Map<String, ManifestEntry> manifests) {
@@ -2144,6 +2096,9 @@ public class ClusterYamlService {
         manifest.put("metadata", metadata);
 
         updateVirtualServiceManifest(manifest, node);
+
+        String gatewayName = trimName(node.getName()) + "-gateway";
+        updateGatewayManifestEntry(node.getId() + ":gateway", gatewayName, resolveNamespace(node), node.getHost(), null, manifests);
     }
 
     private void applyAnnotations(Map<String, Object> metadata, Map<String, String> annotations) {
@@ -2203,9 +2158,29 @@ public class ClusterYamlService {
         }
         spec.put("hosts", hosts);
 
+        String gatewayName = trimName(node.getName()) + "-gateway";
+        List<String> gateways = Optional.ofNullable(this.<String>getList(spec, "gateways"))
+                .orElseGet(() -> new ArrayList<>());
+        if (gateways.isEmpty()) {
+            gateways.add(gatewayName);
+        } else {
+            gateways.set(0, gatewayName);
+        }
+        spec.put("gateways", gateways);
+
         List<Map<String, Object>> http = Optional.ofNullable(this.<Map<String, Object>>getList(spec, "http"))
                 .orElseGet(() -> new ArrayList<>());
         Map<String, Object> httpEntry = http.isEmpty() ? new LinkedHashMap<>() : http.get(0);
+        List<Map<String, Object>> matches = Optional.ofNullable(this.<Map<String, Object>>getList(httpEntry, "match"))
+                .orElseGet(() -> new ArrayList<>());
+        Map<String, Object> match = matches.isEmpty() ? new LinkedHashMap<>() : matches.get(0);
+        String path = node.getPath() != null && !node.getPath().isBlank() ? node.getPath() : "/";
+        match.put("uri", Map.of("prefix", path));
+        if (matches.isEmpty()) {
+            matches.add(match);
+        }
+        httpEntry.put("match", matches);
+
         List<Map<String, Object>> routes = Optional.ofNullable(this.<Map<String, Object>>getList(httpEntry, "route"))
                 .orElseGet(() -> new ArrayList<>());
         Map<String, Object> route = routes.isEmpty() ? new LinkedHashMap<>() : routes.get(0);
@@ -2287,18 +2262,6 @@ public class ClusterYamlService {
         return manifest;
     }
 
-    private Map<String, Object> createBaseIngressManifest(IngressDTO node) {
-        Map<String, Object> manifest = new LinkedHashMap<>();
-        manifest.put("apiVersion", "networking.k8s.io/v1");
-        manifest.put("kind", "Ingress");
-        String sanitizedName = trimName(node.getName());
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("name", sanitizedName);
-        metadata.put("namespace", resolveNamespace(node));
-        manifest.put("metadata", metadata);
-        return manifest;
-    }
-
     private Map<String, Object> createBaseVirtualServiceManifest(VirtualServiceDTO node) {
         Map<String, Object> manifest = new LinkedHashMap<>();
         manifest.put("apiVersion", "networking.istio.io/v1beta1");
@@ -2311,9 +2274,70 @@ public class ClusterYamlService {
         Map<String, Object> spec = new LinkedHashMap<>();
         String host = Optional.ofNullable(node.getHost()).orElse("example.com");
         spec.put("hosts", new ArrayList<>(List.of(host)));
+        spec.put("gateways", new ArrayList<>());
         spec.put("http", new ArrayList<>());
         manifest.put("spec", spec);
         return manifest;
+    }
+
+    private void updateGatewayManifestEntry(String entryKey,
+                                            String gatewayName,
+                                            String namespace,
+                                            String host,
+                                            String tlsSecret,
+                                            Map<String, ManifestEntry> manifests) {
+        ManifestEntry entry = manifests.get(entryKey);
+        if (entry == null || !"gateway".equals(entry.kind)) {
+            entry = new ManifestEntry("gateway", gatewayName, createBaseGatewayManifest(gatewayName, namespace));
+            manifests.put(entryKey, entry);
+        }
+        Map<String, Object> manifest = entry.manifest;
+        manifest.put("apiVersion", "networking.istio.io/v1beta1");
+        manifest.put("kind", "Gateway");
+
+        Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
+        metadata.put("name", gatewayName);
+        metadata.putIfAbsent("namespace", namespace);
+        manifest.put("metadata", metadata);
+
+        updateGatewaySpec(manifest, host, tlsSecret);
+    }
+
+    private Map<String, Object> createBaseGatewayManifest(String name, String namespace) {
+        Map<String, Object> manifest = new LinkedHashMap<>();
+        manifest.put("apiVersion", "networking.istio.io/v1beta1");
+        manifest.put("kind", "Gateway");
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("name", name);
+        metadata.put("namespace", namespace);
+        manifest.put("metadata", metadata);
+        Map<String, Object> spec = new LinkedHashMap<>();
+        spec.put("selector", Map.of("istio", "ingressgateway"));
+        spec.put("servers", new ArrayList<>());
+        manifest.put("spec", spec);
+        return manifest;
+    }
+
+    private void updateGatewaySpec(Map<String, Object> manifest, String host, String tlsSecret) {
+        Map<String, Object> spec = Optional.ofNullable(getMap(manifest, "spec")).orElseGet(LinkedHashMap::new);
+        spec.put("selector", Map.of("istio", "ingressgateway"));
+        List<Map<String, Object>> servers = new ArrayList<>();
+
+        Map<String, Object> httpServer = new LinkedHashMap<>();
+        httpServer.put("port", Map.of("number", 80, "name", "http", "protocol", "HTTP"));
+        httpServer.put("hosts", List.of(StringUtils.hasText(host) ? host : "*"));
+        servers.add(httpServer);
+
+        if (StringUtils.hasText(tlsSecret)) {
+            Map<String, Object> httpsServer = new LinkedHashMap<>();
+            httpsServer.put("port", Map.of("number", 443, "name", "https", "protocol", "HTTPS"));
+            httpsServer.put("hosts", List.of(StringUtils.hasText(host) ? host : "*"));
+            httpsServer.put("tls", Map.of("mode", "SIMPLE", "credentialName", tlsSecret.trim()));
+            servers.add(httpsServer);
+        }
+
+        spec.put("servers", servers);
+        manifest.put("spec", spec);
     }
 
 
@@ -2404,8 +2428,8 @@ public class ClusterYamlService {
         switch (kind) {
             case "deployment" -> applyDeploymentHelmValues(manifest, entry.getName(), context);
             case "service" -> applyServiceHelmValues(manifest, entry.getName(), context);
-            case "ingress" -> applyIngressHelmValues(manifest, entry.getName(), context);
-            case "virtualservice", "istio" -> applyVirtualServiceHelmValues(manifest, entry.getName(), context);
+            case "gateway" -> applyGatewayHelmValues(manifest, entry.getName(), context);
+            case "virtualservice", "istio", "ingress" -> applyVirtualServiceHelmValues(manifest, entry.getName(), context);
             default -> templateResourceName(manifest, entry.getName(), context);
         }
     }
@@ -2511,6 +2535,32 @@ public class ClusterYamlService {
         }
     }
 
+    private void applyGatewayHelmValues(Map<String, Object> manifest, String fallbackName, HelmValuesContext context) {
+        templateResourceName(manifest, fallbackName, context);
+        Map<String, Object> spec = ensureChildMap(manifest, "spec");
+        List<Map<String, Object>> servers = this.<Map<String, Object>>getList(spec, "servers");
+        if (servers == null || servers.isEmpty()) {
+            return;
+        }
+        Map<String, Object> server = servers.get(0);
+        List<String> hosts = this.<String>getList(server, "hosts");
+        if (hosts != null && !hosts.isEmpty()) {
+            String host = hosts.get(0);
+            if (host != null && !host.isBlank()) {
+                context.values.put("host", host);
+                hosts.set(0, context.valueRef("host"));
+            }
+        }
+        Map<String, Object> tls = getMap(server, "tls");
+        if (tls != null) {
+            String secret = getString(tls, "credentialName", null);
+            if (secret != null && !secret.isBlank()) {
+                context.values.put("tlsSecretName", secret);
+                tls.put("credentialName", context.valueRef("tlsSecretName"));
+            }
+        }
+    }
+
     private void applyVirtualServiceHelmValues(Map<String, Object> manifest, String fallbackName, HelmValuesContext context) {
         templateResourceName(manifest, fallbackName, context);
         Map<String, Object> spec = ensureChildMap(manifest, "spec");
@@ -2522,11 +2572,29 @@ public class ClusterYamlService {
                 hosts.set(0, context.valueRef("host"));
             }
         }
+        List<String> gateways = this.<String>getList(spec, "gateways");
+        if (gateways != null && !gateways.isEmpty()) {
+            String gateway = gateways.get(0);
+            if (gateway != null && !gateway.isBlank()) {
+                context.values.put("gatewayName", gateway);
+                gateways.set(0, context.valueRef("gatewayName"));
+            }
+        }
         List<Map<String, Object>> http = this.<Map<String, Object>>getList(spec, "http");
         if (http == null || http.isEmpty()) {
             return;
         }
         Map<String, Object> httpEntry = http.get(0);
+        List<Map<String, Object>> matches = this.<Map<String, Object>>getList(httpEntry, "match");
+        if (matches != null && !matches.isEmpty()) {
+            Map<String, Object> match = matches.get(0);
+            Map<String, Object> uri = ensureChildMap(match, "uri");
+            String prefix = getString(uri, "prefix", null);
+            if (prefix != null && !prefix.isBlank()) {
+                context.values.put("pathPrefix", prefix);
+                uri.put("prefix", context.valueRef("pathPrefix"));
+            }
+        }
         List<Map<String, Object>> routes = this.<Map<String, Object>>getList(httpEntry, "route");
         if (routes == null || routes.isEmpty()) {
             return;
@@ -2586,7 +2654,7 @@ public class ClusterYamlService {
         return switch (kind) {
             case "deployment" -> "deployments";
             case "service" -> "services";
-            case "ingress", "virtualservice", "istio" -> "ingresses";
+            case "gateway", "ingress", "virtualservice", "istio" -> "routes";
             case "configmap" -> "configmaps";
             case "secret" -> "secrets";
             default -> "resources";

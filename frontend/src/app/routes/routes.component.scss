@@ -78,6 +78,17 @@
   color: #b42318;
 }
 
+.routes-form__inline {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.routes-form__help {
+  color: #6b7280;
+  font-size: 12px;
+}
+
 
 @media (max-width: 900px) {
   .routes-page {

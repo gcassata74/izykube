@@ -17,7 +17,6 @@ public class RouteCreateRequest {
 
     private String path;
 
-    private String ingressClassName;
 
     @NotBlank
     private String serviceName;
@@ -27,6 +26,7 @@ public class RouteCreateRequest {
     private Integer servicePort;
 
     private String tlsSecret;
+    private Boolean httpsEnabled;
 
     public String getNamespace() {
         return namespace;
@@ -60,13 +60,6 @@ public class RouteCreateRequest {
         this.path = path;
     }
 
-    public String getIngressClassName() {
-        return ingressClassName;
-    }
-
-    public void setIngressClassName(String ingressClassName) {
-        this.ingressClassName = ingressClassName;
-    }
 
     public String getServiceName() {
         return serviceName;
@@ -90,5 +83,13 @@ public class RouteCreateRequest {
 
     public void setTlsSecret(String tlsSecret) {
         this.tlsSecret = tlsSecret;
+    }
+
+    public Boolean getHttpsEnabled() {
+        return httpsEnabled;
+    }
+
+    public void setHttpsEnabled(Boolean httpsEnabled) {
+        this.httpsEnabled = httpsEnabled;
     }
 }

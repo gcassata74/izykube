@@ -2,13 +2,12 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, ViewChil
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { finalize, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
-import { IngressGatewayInfo, IngressSummary, NamespaceOption, ServiceSummary } from '../model/kube-summary';
-import { MenuItem } from 'primeng/api';
-import { Menu } from 'primeng/menu';
+import { IstioGatewayInfo, RouteSummary, NamespaceOption, ServiceSummary } from '../model/kube-summary';
 import { KubeExplorerService } from '../services/kube-explorer.service';
 import { NotificationService } from '../services/notification.service';
 import { Table } from 'primeng/table';
 import { RoutesService } from '../services/routes.service';
+import { ConfirmationService } from 'primeng/api';
 
 @Component({
   selector: 'app-routes',
@@ -19,16 +18,16 @@ import { RoutesService } from '../services/routes.service';
 export class RoutesComponent implements OnInit {
   namespaces: NamespaceOption[] = [];
   selectedNamespace = 'all';
-  routes: IngressSummary[] = [];
+  routes: RouteSummary[] = [];
   services: ServiceSummary[] = [];
   loading = false;
   filterValue = '';
-  gatewayInfo: IngressGatewayInfo | null = null;
+  gatewayInfo: IstioGatewayInfo | null = null;
   createDialogVisible = false;
   createForm!: FormGroup;
   createSubmitting = false;
   servicePortOptions: number[] = [];
-  editingRoute: IngressSummary | null = null;
+  editingRoute: RouteSummary | null = null;
 
   @ViewChild('routesTable') routesTable?: Table;
 
@@ -36,6 +35,7 @@ export class RoutesComponent implements OnInit {
     private kubeExplorerService: KubeExplorerService,
     private notificationService: NotificationService,
     private routesService: RoutesService,
+    private confirmationService: ConfirmationService,
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef
   ) {}
@@ -43,7 +43,7 @@ export class RoutesComponent implements OnInit {
   ngOnInit(): void {
     this.loadNamespaces();
     this.refreshRoutes();
-    this.loadIngressGateway();
+    this.loadIstioGateway();
     this.buildForm();
   }
 
@@ -73,7 +73,7 @@ export class RoutesComponent implements OnInit {
       }))
       .subscribe({
         next: (summary) => {
-          this.routes = summary?.ingresses || [];
+          this.routes = summary?.routes || [];
           this.services = summary?.services || [];
           this.applyFilter(this.filterValue);
         },
@@ -84,8 +84,8 @@ export class RoutesComponent implements OnInit {
       });
   }
 
-  loadIngressGateway(): void {
-    this.kubeExplorerService.getIngressGatewayInfo().subscribe({
+  loadIstioGateway(): void {
+    this.kubeExplorerService.getIstioGatewayInfo().subscribe({
       next: (gatewayInfo) => {
         this.gatewayInfo = gatewayInfo;
         this.cdr.markForCheck();
@@ -119,7 +119,7 @@ export class RoutesComponent implements OnInit {
       path: '/',
       serviceName: '',
       servicePort: null,
-      tlsSecret: ''
+      httpsEnabled: false
     });
     this.servicePortOptions = [];
     this.createDialogVisible = true;
@@ -132,7 +132,7 @@ export class RoutesComponent implements OnInit {
     this.createDialogVisible = false;
   }
 
-  editRoute(route: IngressSummary): void {
+  editRoute(route: RouteSummary): void {
     if (!route?.namespace || !route?.name) {
       return;
     }
@@ -146,10 +146,10 @@ export class RoutesComponent implements OnInit {
     this.createForm.reset({
       name: route.name,
       host: route.hosts?.includes('<all hosts>') ? '' : route.hosts,
-      path: '/',
+      path: route.path || '/',
       serviceName,
       servicePort,
-      tlsSecret: route.tls || ''
+      httpsEnabled: !!route.tls
     });
     this.onServiceChange(serviceName);
     this.createDialogVisible = true;
@@ -189,10 +189,9 @@ export class RoutesComponent implements OnInit {
       name: formValue.name?.trim(),
       host: formValue.host?.trim(),
       path: formValue.path?.trim() || '/',
-      ingressClassName: 'izykube-class',
       serviceName: formValue.serviceName,
       servicePort: Number(formValue.servicePort),
-      tlsSecret: formValue.tlsSecret?.trim() || undefined
+      httpsEnabled: !!formValue.httpsEnabled
     };
     let request$;
     if (this.editingRoute) {
@@ -230,33 +229,39 @@ export class RoutesComponent implements OnInit {
     });
   }
 
-  deleteRoute(route: IngressSummary): void {
+  deleteRoute(route: RouteSummary): void {
     if (!route?.name || !route?.namespace) {
       return;
     }
-    const confirmed = window.confirm(`Delete route "${route.name}" in namespace "${route.namespace}"?`);
-    if (!confirmed) {
-      return;
-    }
-    this.createSubmitting = true;
-    this.routesService.deleteRoute(route.namespace, route.name)
-      .pipe(finalize(() => {
-        this.createSubmitting = false;
-        this.cdr.markForCheck();
-      }))
-      .subscribe({
-        next: () => {
-          this.notificationService.success('Route deleted', `Deleted route ${route.name}.`);
-          this.refreshRoutes();
-        },
-        error: (error: any) => {
-          const detail = error?.error || error?.message || 'Unable to delete route.';
-          this.notificationService.error('Delete failed', typeof detail === 'string' ? detail : undefined);
-        }
-      });
+    this.confirmationService.confirm({
+      header: 'Delete route',
+      message: `Delete route "${route.name}" in namespace "${route.namespace}"?`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Delete',
+      rejectLabel: 'Cancel',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.createSubmitting = true;
+        this.routesService.deleteRoute(route.namespace, route.name)
+          .pipe(finalize(() => {
+            this.createSubmitting = false;
+            this.cdr.markForCheck();
+          }))
+          .subscribe({
+            next: () => {
+              this.notificationService.success('Route deleted', `Deleted route ${route.name}.`);
+              this.refreshRoutes();
+            },
+            error: (error: any) => {
+              const detail = error?.error || error?.message || 'Unable to delete route.';
+              this.notificationService.error('Delete failed', typeof detail === 'string' ? detail : undefined);
+            }
+          });
+      }
+    });
   }
 
-  openRoute(route: IngressSummary, useTls: boolean): void {
+  openRoute(route: RouteSummary, useTls: boolean): void {
     const url = this.buildRouteUrl(route, useTls);
     if (!url) {
       this.notificationService.warn('Route unavailable', 'Gateway endpoint not available yet.');
@@ -265,26 +270,14 @@ export class RoutesComponent implements OnInit {
     window.open(url, '_blank', 'noopener');
   }
 
-  toggleRouteMenu(event: Event, menu: Menu): void {
-    event.stopPropagation();
-    menu.toggle(event);
-  }
-
-  getRouteMenuItems(route: IngressSummary): MenuItem[] {
-    return [
-      {
-        label: 'Open HTTP',
-        icon: 'pi pi-globe',
-        disabled: !this.canOpenRoute(false),
-        command: () => this.openRoute(route, false),
-      },
-      {
-        label: 'Open HTTPS',
-        icon: 'pi pi-lock',
-        disabled: !this.canOpenRoute(true),
-        command: () => this.openRoute(route, true),
-      }
-    ];
+  prefersTls(route: RouteSummary): boolean {
+    if (route?.tls) {
+      return true;
+    }
+    if (!route?.hosts || route.hosts.includes('<all hosts>')) {
+      return false;
+    }
+    return !!this.gatewayInfo?.httpsPort;
   }
 
   private buildForm(): void {
@@ -294,7 +287,7 @@ export class RoutesComponent implements OnInit {
       path: ['/', [Validators.required, Validators.pattern(/^\//)]],
       serviceName: ['', Validators.required],
       servicePort: [null, [Validators.required, Validators.min(1), Validators.max(65535)]],
-      tlsSecret: ['']
+      httpsEnabled: [false]
     });
   }
 
@@ -338,34 +331,42 @@ export class RoutesComponent implements OnInit {
     return Number.isNaN(port) ? null : port;
   }
 
-  private canOpenRoute(useTls: boolean): boolean {
-    if (!this.gatewayInfo || !this.gatewayInfo.host) {
+  canOpenRoute(route: RouteSummary, useTls: boolean): boolean {
+    const host = this.selectRouteHost(route);
+    if (!host) {
       return false;
     }
-    const port = useTls ? this.gatewayInfo.httpsPort : this.gatewayInfo.httpPort;
+    const port = useTls ? this.gatewayInfo?.httpsPort : this.gatewayInfo?.httpPort;
     return !!port;
   }
 
-  private buildRouteUrl(route: IngressSummary, useTls: boolean): string | null {
-    if (!this.gatewayInfo || !this.gatewayInfo.host) {
-      return null;
-    }
-    const port = useTls ? this.gatewayInfo.httpsPort : this.gatewayInfo.httpPort;
+  private buildRouteUrl(route: RouteSummary, useTls: boolean): string | null {
+    const port = useTls ? this.gatewayInfo?.httpsPort : this.gatewayInfo?.httpPort;
     if (!port) {
       return null;
     }
     const host = this.selectRouteHost(route);
+    if (!host) {
+      return null;
+    }
     const scheme = useTls ? 'https' : 'http';
     const path = route.path?.startsWith('/') ? route.path : `/${route.path || ''}`;
-    const needsPort = !(this.gatewayInfo.loadBalancer && ((useTls && port === 443) || (!useTls && port === 80)));
+    const needsPort = !(this.gatewayInfo?.loadBalancer && ((useTls && port === 443) || (!useTls && port === 80)));
     const portSuffix = needsPort ? `:${port}` : '';
     return `${scheme}://${host}${portSuffix}${path}`;
   }
 
-  private selectRouteHost(route: IngressSummary): string {
-    if (!route.hosts || route.hosts.includes('<all hosts>')) {
+  private selectRouteHost(route: RouteSummary): string {
+    if (!route.hosts) {
       return this.gatewayInfo?.host || '';
     }
-    return route.hosts.split(',')[0]?.trim() || this.gatewayInfo?.host || '';
+    const trimmedHosts = route.hosts.trim();
+    if (!trimmedHosts) {
+      return this.gatewayInfo?.host || '';
+    }
+    if (trimmedHosts.includes('<all hosts>')) {
+      return this.gatewayInfo?.host || '';
+    }
+    return trimmedHosts.split(',')[0]?.trim() || this.gatewayInfo?.host || '';
   }
 }

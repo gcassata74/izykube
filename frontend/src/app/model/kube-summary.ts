@@ -28,18 +28,18 @@ export interface ServiceSummary {
   age: string;
 }
 
-export interface IngressSummary {
+export interface RouteSummary {
   name: string;
   namespace: string;
   hosts: string;
   serviceTargets: string;
-  ingressClassName: string;
+  gatewayName: string;
   path: string;
   tls: string;
   age: string;
 }
 
-export interface IngressGatewayInfo {
+export interface IstioGatewayInfo {
   host: string;
   httpPort?: number;
   httpsPort?: number;
@@ -52,11 +52,6 @@ export interface WorkloadHealth {
   namespace: string;
   unhealthy: boolean;
   reason?: string;
-}
-
-export interface IngressClassSummary {
-  name: string;
-  controller: string;
 }
 
 export interface ConfigMapSummary {
@@ -119,7 +114,7 @@ export interface NamespaceSummary {
   pods: PodSummary[];
   deployments: DeploymentSummary[];
   services: ServiceSummary[];
-  ingresses: IngressSummary[];
+  routes: RouteSummary[];
   configMaps: ConfigMapSummary[];
   secrets: SecretSummary[];
   jobs: JobSummary[];

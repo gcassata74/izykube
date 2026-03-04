@@ -64,7 +64,8 @@ export class AccessPolicyFormComponent implements OnInit, OnChanges, OnDestroy {
     { label: 'daemonsets', value: 'daemonsets' },
     { label: 'jobs', value: 'jobs' },
     { label: 'cronjobs', value: 'cronjobs' },
-    { label: 'ingresses', value: 'ingresses' },
+    { label: 'virtualservices', value: 'virtualservices' },
+    { label: 'gateways', value: 'gateways' },
     { label: 'networkpolicies', value: 'networkpolicies' },
     { label: 'persistentvolumeclaims', value: 'persistentvolumeclaims' },
     { label: 'events', value: 'events' }

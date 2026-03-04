@@ -1,8 +1,7 @@
 package com.izylife.izykube.web;
 
 import com.izylife.izykube.dto.kube.DeploymentLogsDTO;
-import com.izylife.izykube.dto.kube.IngressClassSummaryDTO;
-import com.izylife.izykube.dto.kube.IngressGatewayInfoDTO;
+import com.izylife.izykube.dto.kube.IstioGatewayInfoDTO;
 import com.izylife.izykube.dto.kube.NamespaceDTO;
 import com.izylife.izykube.dto.kube.NamespaceSummaryDTO;
 import com.izylife.izykube.dto.kube.WorkloadHealthDTO;
@@ -14,7 +13,9 @@ import com.izylife.izykube.services.KubernetesExplorerService;
 import io.fabric8.kubernetes.api.model.Pod;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,23 +50,28 @@ public class KubernetesExplorerController {
                 .body(summary);
     }
 
-    @GetMapping("/ingress-classes")
-    public ResponseEntity<List<IngressClassSummaryDTO>> listIngressClasses() {
-        List<IngressClassSummaryDTO> ingressClasses = explorerService.listIngressClasses();
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(ingressClasses);
-    }
-
-    @GetMapping("/ingress-gateway")
-    public ResponseEntity<IngressGatewayInfoDTO> getIngressGateway() {
-        IngressGatewayInfoDTO gateway = explorerService.getIngressGatewayInfo();
+    @GetMapping("/istio-gateway")
+    public ResponseEntity<IstioGatewayInfoDTO> getIstioGateway() {
+        IstioGatewayInfoDTO gateway = explorerService.getIstioGatewayInfo();
         if (gateway == null) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(gateway);
+    }
+
+    @GetMapping("/ca-cert")
+    public ResponseEntity<byte[]> getInternalCaCertificate() {
+        byte[] cert = explorerService.getInternalCaCertificate();
+        if (cert == null || cert.length == 0) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"izykube-ca.crt\"")
+                .contentType(MediaType.parseMediaType("application/x-pem-file"))
+                .body(cert);
     }
 
     @GetMapping("/workloads/health")

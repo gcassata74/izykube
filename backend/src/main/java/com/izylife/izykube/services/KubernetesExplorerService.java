@@ -6,9 +6,8 @@ import com.izylife.izykube.dto.kube.CronJobSummaryDTO;
 import com.izylife.izykube.dto.kube.DaemonSetSummaryDTO;
 import com.izylife.izykube.dto.kube.DeploymentLogsDTO;
 import com.izylife.izykube.dto.kube.DeploymentSummaryDTO;
-import com.izylife.izykube.dto.kube.IngressClassSummaryDTO;
-import com.izylife.izykube.dto.kube.IngressGatewayInfoDTO;
-import com.izylife.izykube.dto.kube.IngressSummaryDTO;
+import com.izylife.izykube.dto.kube.IstioGatewayInfoDTO;
+import com.izylife.izykube.dto.kube.RouteSummaryDTO;
 import com.izylife.izykube.dto.kube.WorkloadHealthDTO;
 import com.izylife.izykube.dto.kube.JobSummaryDTO;
 import com.izylife.izykube.dto.kube.NamespaceDTO;
@@ -21,7 +20,6 @@ import com.izylife.izykube.dto.kube.SecretSummaryDTO;
 import com.izylife.izykube.dto.kube.ServiceSummaryDTO;
 import com.izylife.izykube.dto.kube.StatefulSetSummaryDTO;
 import com.izylife.izykube.repositories.ClusterRepository;
-import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Event;
 import io.fabric8.kubernetes.api.model.EventList;
@@ -39,12 +37,10 @@ import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.batch.v1.CronJob;
 import io.fabric8.kubernetes.api.model.batch.v1.CronJobStatus;
 import io.fabric8.kubernetes.api.model.batch.v1.Job;
-import io.fabric8.kubernetes.api.model.networking.v1.HTTPIngressPath;
-import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
-import io.fabric8.kubernetes.api.model.networking.v1.IngressClass;
-import io.fabric8.kubernetes.api.model.networking.v1.IngressRule;
+import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.PodResource;
+import io.fabric8.kubernetes.client.dsl.base.ResourceDefinitionContext;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,13 +52,16 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Base64;
 import java.util.stream.Collectors;
 
 @Service
@@ -73,8 +72,38 @@ public class KubernetesExplorerService {
     private static final String ALL_NAMESPACES = "all";
     private static final int DEFAULT_TAIL_LINES = 500;
     private static final int MAX_TAIL_LINES = 2000;
-    private static final String INGRESS_NGINX_NAMESPACE = "ingress-nginx";
-    private static final String INGRESS_NGINX_SERVICE = "ingress-nginx-controller";
+    private static final String ISTIO_INGRESS_NAMESPACE = "istio-system";
+    private static final String ISTIO_INGRESS_SERVICE = "istio-ingressgateway";
+    private static final String CERT_MANAGER_NAMESPACE = "cert-manager";
+    private static final String INTERNAL_CA_SECRET = "izykube-ca";
+
+    private static final ResourceDefinitionContext VIRTUALSERVICE_CONTEXT = new ResourceDefinitionContext.Builder()
+            .withGroup("networking.istio.io")
+            .withVersion("v1beta1")
+            .withKind("VirtualService")
+            .withPlural("virtualservices")
+            .build();
+
+    private static final ResourceDefinitionContext GATEWAY_CONTEXT = new ResourceDefinitionContext.Builder()
+            .withGroup("networking.istio.io")
+            .withVersion("v1beta1")
+            .withKind("Gateway")
+            .withPlural("gateways")
+            .build();
+
+    private static final ResourceDefinitionContext VIRTUALSERVICE_CONTEXT_V1ALPHA3 = new ResourceDefinitionContext.Builder()
+            .withGroup("networking.istio.io")
+            .withVersion("v1alpha3")
+            .withKind("VirtualService")
+            .withPlural("virtualservices")
+            .build();
+
+    private static final ResourceDefinitionContext GATEWAY_CONTEXT_V1ALPHA3 = new ResourceDefinitionContext.Builder()
+            .withGroup("networking.istio.io")
+            .withVersion("v1alpha3")
+            .withKind("Gateway")
+            .withPlural("gateways")
+            .build();
 
     private final KubernetesClient kubernetesClient;
     private final ClusterRepository clusterRepository;
@@ -119,12 +148,13 @@ public class KubernetesExplorerService {
                 .sorted(Comparator.comparing(ServiceSummaryDTO::namespace).thenComparing(ServiceSummaryDTO::name))
                 .toList();
 
-        List<IngressSummaryDTO> ingresses = (includeAll ? kubernetesClient.network().v1().ingresses().inAnyNamespace() : kubernetesClient.network().v1().ingresses().inNamespace(namespace))
+        ResourceDefinitionContext virtualServiceContext = resolveVirtualServiceContext(includeAll ? null : namespace);
+        List<RouteSummaryDTO> routes = (includeAll ? kubernetesClient.genericKubernetesResources(virtualServiceContext).inAnyNamespace() : kubernetesClient.genericKubernetesResources(virtualServiceContext).inNamespace(namespace))
                 .list()
                 .getItems()
                 .stream()
-                .map(this::mapIngress)
-                .sorted(Comparator.comparing(IngressSummaryDTO::namespace).thenComparing(IngressSummaryDTO::name))
+                .map(this::mapVirtualService)
+                .sorted(Comparator.comparing(RouteSummaryDTO::namespace).thenComparing(RouteSummaryDTO::name))
                 .toList();
 
         List<ConfigMapSummaryDTO> configMaps = (includeAll ? kubernetesClient.configMaps().inAnyNamespace() : kubernetesClient.configMaps().inNamespace(namespace))
@@ -180,7 +210,7 @@ public class KubernetesExplorerService {
                 pods,
                 deployments,
                 services,
-                ingresses,
+                routes,
                 configMaps,
                 secrets,
                 jobs,
@@ -190,20 +220,10 @@ public class KubernetesExplorerService {
         );
     }
 
-    public List<IngressClassSummaryDTO> listIngressClasses() {
-        return kubernetesClient.network().v1().ingressClasses()
-                .list()
-                .getItems()
-                .stream()
-                .map(this::mapIngressClass)
-                .sorted(Comparator.comparing(IngressClassSummaryDTO::name))
-                .toList();
-    }
-
-    public IngressGatewayInfoDTO getIngressGatewayInfo() {
+    public IstioGatewayInfoDTO getIstioGatewayInfo() {
         io.fabric8.kubernetes.api.model.Service service = kubernetesClient.services()
-                .inNamespace(INGRESS_NGINX_NAMESPACE)
-                .withName(INGRESS_NGINX_SERVICE)
+                .inNamespace(ISTIO_INGRESS_NAMESPACE)
+                .withName(ISTIO_INGRESS_SERVICE)
                 .get();
         if (service == null || service.getSpec() == null) {
             return null;
@@ -238,7 +258,7 @@ public class KubernetesExplorerService {
                 .orElse(null);
 
         if (StringUtils.hasText(lbHost)) {
-            return new IngressGatewayInfoDTO(lbHost, 80, 443, true);
+            return new IstioGatewayInfoDTO(lbHost, 80, 443, true);
         }
 
         String nodeHost = kubernetesClient.nodes()
@@ -259,7 +279,7 @@ public class KubernetesExplorerService {
             return null;
         }
 
-        return new IngressGatewayInfoDTO(nodeHost, httpNodePort, httpsNodePort, false);
+        return new IstioGatewayInfoDTO(nodeHost, httpNodePort, httpsNodePort, false);
     }
 
     public List<WorkloadHealthDTO> getWorkloadHealth(String namespace) {
@@ -375,6 +395,24 @@ public class KubernetesExplorerService {
                         .addToAnnotations("kubectl.kubernetes.io/restartedAt", timestamp)
                         .endMetadata().endTemplate().endSpec()
                         .build());
+    }
+
+    public byte[] getInternalCaCertificate() {
+        Secret secret = kubernetesClient.secrets()
+                .inNamespace(CERT_MANAGER_NAMESPACE)
+                .withName(INTERNAL_CA_SECRET)
+                .get();
+        if (secret == null || CollectionUtils.isEmpty(secret.getData())) {
+            return null;
+        }
+        String encoded = secret.getData().get("tls.crt");
+        if (!StringUtils.hasText(encoded)) {
+            encoded = secret.getData().get("ca.crt");
+        }
+        if (!StringUtils.hasText(encoded)) {
+            return null;
+        }
+        return Base64.getDecoder().decode(encoded);
     }
 
     public PodLogDetailsDTO getPodLogsV1(String namespace, String podName, String container, int tailLines) {
@@ -591,75 +629,165 @@ public class KubernetesExplorerService {
         return new ServiceSummaryDTO(name, namespace, type, clusterIp, externalIp, ports, age);
     }
 
-    private IngressSummaryDTO mapIngress(Ingress ingress) {
-        String name = Optional.ofNullable(ingress.getMetadata()).map(meta -> StringUtils.hasText(meta.getName()) ? meta.getName() : "").orElse("");
-        String namespace = Optional.ofNullable(ingress.getMetadata()).map(meta -> StringUtils.hasText(meta.getNamespace()) ? meta.getNamespace() : "").orElse("");
-        String ingressClassName = Optional.ofNullable(ingress.getSpec())
-                .map(spec -> StringUtils.hasText(spec.getIngressClassName()) ? spec.getIngressClassName() : "")
-                .orElse("");
-        String path = Optional.ofNullable(ingress.getSpec())
-                .map(spec -> spec.getRules())
-                .orElse(List.of())
-                .stream()
-                .map(IngressRule::getHttp)
-                .filter(Objects::nonNull)
-                .flatMap(http -> Optional.ofNullable(http.getPaths()).orElse(List.of()).stream())
-                .map(HTTPIngressPath::getPath)
-                .filter(StringUtils::hasText)
-                .findFirst()
-                .orElse("/");
-        String hosts = Optional.ofNullable(ingress.getSpec())
-                .map(spec -> spec.getRules())
-                .orElse(List.of())
-                .stream()
-                .map(rule -> StringUtils.hasText(rule.getHost()) ? rule.getHost() : "<all hosts>")
-                .collect(Collectors.joining(", "));
-
-        String services = Optional.ofNullable(ingress.getSpec())
-                .map(spec -> spec.getRules())
-                .orElse(List.of())
-                .stream()
-                .map(IngressRule::getHttp)
-                .filter(Objects::nonNull)
-                .flatMap(http -> Optional.ofNullable(http.getPaths()).orElse(List.of()).stream())
-                .map(HTTPIngressPath::getBackend)
-                .filter(Objects::nonNull)
-                .map(backend -> Optional.ofNullable(backend.getService())
-                        .map(serviceBackend -> {
-                            String svcName = serviceBackend.getName();
-                            Integer port = Optional.ofNullable(serviceBackend.getPort()).map(portSpec -> portSpec.getNumber()).orElse(null);
-                            return port != null ? svcName + ":" + port : svcName;
-                        })
-                        .orElse("Custom backend"))
-                .collect(Collectors.joining(", "));
-
-        String tls = Optional.ofNullable(ingress.getSpec())
-                .map(spec -> spec.getTls())
-                .orElse(List.of())
-                .stream()
-                .map(entry -> {
-                    String secretName = StringUtils.hasText(entry.getSecretName()) ? entry.getSecretName() : "no-secret";
-                    String hostsEntry = Optional.ofNullable(entry.getHosts()).orElse(List.of())
-                            .stream()
-                            .filter(StringUtils::hasText)
-                            .collect(Collectors.joining(", "));
-                    return secretName + " (" + (StringUtils.hasText(hostsEntry) ? hostsEntry : "all hosts") + ")";
-                })
-                .collect(Collectors.joining("; "));
-
-        String age = formatAge(ingress);
-
-        return new IngressSummaryDTO(name, namespace, hosts, services, ingressClassName, path, tls, age);
-    }
-
-    private IngressClassSummaryDTO mapIngressClass(IngressClass ingressClass) {
-        String name = Optional.ofNullable(ingressClass.getMetadata())
+    private RouteSummaryDTO mapVirtualService(GenericKubernetesResource virtualService) {
+        String name = Optional.ofNullable(virtualService.getMetadata())
                 .map(meta -> StringUtils.hasText(meta.getName()) ? meta.getName() : "")
                 .orElse("");
-        String controller = Optional.ofNullable(ingressClass.getSpec())
-                .map(spec -> StringUtils.hasText(spec.getController()) ? spec.getController() : "")
+        String namespace = Optional.ofNullable(virtualService.getMetadata())
+                .map(meta -> StringUtils.hasText(meta.getNamespace()) ? meta.getNamespace() : "")
                 .orElse("");
-        return new IngressClassSummaryDTO(name, controller);
+
+        Map<String, Object> spec = getSpecMap(virtualService);
+        List<String> hosts = getStringList(spec.get("hosts"));
+        String hostsValue = normalizeHosts(hosts);
+        String gatewayName = getStringList(spec.get("gateways")).stream().findFirst().orElse("");
+
+        Map<String, Object> httpEntry = getFirstMap(spec.get("http"));
+        String path = "/";
+        if (!httpEntry.isEmpty()) {
+            Map<String, Object> match = getFirstMap(httpEntry.get("match"));
+            Map<String, Object> uri = getMap(match.get("uri"));
+            path = Optional.ofNullable(uri.get("prefix"))
+                    .map(Object::toString)
+                    .filter(StringUtils::hasText)
+                    .orElse(path);
+        }
+
+        Map<String, Object> routeEntry = getFirstMap(httpEntry.get("route"));
+        Map<String, Object> destination = getMap(routeEntry.get("destination"));
+        String serviceName = Optional.ofNullable(destination.get("host")).map(Object::toString).orElse("");
+        Integer servicePort = Optional.ofNullable(getMap(destination.get("port")).get("number"))
+                .filter(Objects::nonNull)
+                .map(value -> Integer.parseInt(value.toString()))
+                .orElse(null);
+        String serviceTarget = StringUtils.hasText(serviceName)
+                ? serviceName + (servicePort != null ? ":" + servicePort : "")
+                : "";
+
+        String tls = resolveGatewayTls(namespace, gatewayName);
+        String age = formatAge(virtualService);
+
+        return new RouteSummaryDTO(name, namespace, hostsValue, serviceTarget, gatewayName, path, tls, age);
+    }
+
+    private String resolveGatewayTls(String namespace, String gatewayName) {
+        if (!StringUtils.hasText(gatewayName)) {
+            return "";
+        }
+        String resolvedNamespace = namespace;
+        String resolvedName = gatewayName;
+        if (gatewayName.contains("/")) {
+            String[] parts = gatewayName.split("/", 2);
+            resolvedNamespace = parts[0];
+            resolvedName = parts[1];
+        }
+        GenericKubernetesResource gateway = kubernetesClient.genericKubernetesResources(resolveGatewayContext(resolvedNamespace))
+                .inNamespace(resolvedNamespace)
+                .withName(resolvedName)
+                .get();
+        if (gateway == null) {
+            return "";
+        }
+        Map<String, Object> spec = getSpecMap(gateway);
+        List<Map<String, Object>> servers = getMapList(spec.get("servers"));
+        return servers.stream()
+                .map(server -> getMap(server.get("tls")).get("credentialName"))
+                .filter(Objects::nonNull)
+                .map(Object::toString)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .collect(Collectors.joining(", "));
+    }
+
+    private Map<String, Object> getSpecMap(GenericKubernetesResource resource) {
+        Object spec = resource.getAdditionalProperties().get("spec");
+        return getMap(spec);
+    }
+
+    private Map<String, Object> getMap(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            map.forEach((key, val) -> {
+                if (key != null) {
+                    result.put(key.toString(), val);
+                }
+            });
+            return result;
+        }
+        return new LinkedHashMap<>();
+    }
+
+    private Map<String, Object> getFirstMap(Object value) {
+        List<Map<String, Object>> list = getMapList(value);
+        return list.isEmpty() ? new LinkedHashMap<>() : list.get(0);
+    }
+
+    private List<Map<String, Object>> getMapList(Object value) {
+        if (!(value instanceof List<?> list)) {
+            return List.of();
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object entry : list) {
+            if (entry instanceof Map<?, ?>) {
+                result.add(getMap(entry));
+            }
+        }
+        return result;
+    }
+
+    private List<String> getStringList(Object value) {
+        if (!(value instanceof List<?> list)) {
+            return List.of();
+        }
+        return list.stream()
+                .filter(Objects::nonNull)
+                .map(Object::toString)
+                .collect(Collectors.toList());
+    }
+
+    private String normalizeHosts(List<String> hosts) {
+        if (hosts == null || hosts.isEmpty()) {
+            return "<all hosts>";
+        }
+        if (hosts.stream().anyMatch(host -> host.equals("*"))) {
+            return "<all hosts>";
+        }
+        return hosts.stream().filter(StringUtils::hasText).collect(Collectors.joining(", "));
+    }
+
+    private ResourceDefinitionContext resolveVirtualServiceContext(String namespace) {
+        return resolveContext(VIRTUALSERVICE_CONTEXT, VIRTUALSERVICE_CONTEXT_V1ALPHA3, namespace);
+    }
+
+    private ResourceDefinitionContext resolveGatewayContext(String namespace) {
+        return resolveContext(GATEWAY_CONTEXT, GATEWAY_CONTEXT_V1ALPHA3, namespace);
+    }
+
+    private ResourceDefinitionContext resolveContext(ResourceDefinitionContext primary,
+                                                     ResourceDefinitionContext fallback,
+                                                     String namespace) {
+        try {
+            if (namespace == null || namespace.isBlank()) {
+                kubernetesClient.genericKubernetesResources(primary).inAnyNamespace().list();
+            } else {
+                kubernetesClient.genericKubernetesResources(primary).inNamespace(namespace).list();
+            }
+            return primary;
+        } catch (Exception ex) {
+            try {
+                if (namespace == null || namespace.isBlank()) {
+                    kubernetesClient.genericKubernetesResources(fallback).inAnyNamespace().list();
+                } else {
+                    kubernetesClient.genericKubernetesResources(fallback).inNamespace(namespace).list();
+                }
+                return fallback;
+            } catch (Exception ignored) {
+                if (ex instanceof RuntimeException) {
+                    throw (RuntimeException) ex;
+                }
+                throw new IllegalStateException("Istio CRDs not available for gateways/virtualservices.");
+            }
+        }
     }
 
     private WorkloadHealthDTO buildWorkloadHealth(String kind, String namespace, String name, Map<String, String> selectorLabels) {
@@ -775,7 +903,8 @@ public class KubernetesExplorerService {
             case "secret" -> Optional.ofNullable(kubernetesClient.secrets().inNamespace(namespace).withName(name).get());
             case "job" -> Optional.ofNullable(kubernetesClient.batch().v1().jobs().inNamespace(namespace).withName(name).get());
             case "cronjob" -> Optional.ofNullable(kubernetesClient.batch().v1().cronjobs().inNamespace(namespace).withName(name).get());
-            case "ingress" -> Optional.ofNullable(kubernetesClient.network().v1().ingresses().inNamespace(namespace).withName(name).get());
+            case "virtualservice" -> Optional.ofNullable(kubernetesClient.genericKubernetesResources(VIRTUALSERVICE_CONTEXT).inNamespace(namespace).withName(name).get());
+            case "gateway" -> Optional.ofNullable(kubernetesClient.genericKubernetesResources(GATEWAY_CONTEXT).inNamespace(namespace).withName(name).get());
             default -> Optional.empty();
         };
     }
@@ -795,7 +924,9 @@ public class KubernetesExplorerService {
             case "secrets" -> "secret";
             case "jobs" -> "job";
             case "cronjobs" -> "cronjob";
-            case "ingresses" -> "ingress";
+            case "routes" -> "virtualservice";
+            case "ingresses" -> "virtualservice";
+            case "ingress" -> "virtualservice";
             default -> normalized;
         };
     }

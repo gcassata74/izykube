@@ -7,7 +7,7 @@ public record NamespaceSummaryDTO(
         List<PodSummaryDTO> pods,
         List<DeploymentSummaryDTO> deployments,
         List<ServiceSummaryDTO> services,
-        List<IngressSummaryDTO> ingresses,
+        List<RouteSummaryDTO> routes,
         List<ConfigMapSummaryDTO> configMaps,
         List<SecretSummaryDTO> secrets,
         List<JobSummaryDTO> jobs,

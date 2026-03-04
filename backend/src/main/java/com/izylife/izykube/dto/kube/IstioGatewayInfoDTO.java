@@ -1,6 +1,6 @@
 package com.izylife.izykube.dto.kube;
 
-public record IngressGatewayInfoDTO(
+public record IstioGatewayInfoDTO(
         String host,
         Integer httpPort,
         Integer httpsPort,

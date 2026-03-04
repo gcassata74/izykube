@@ -309,11 +309,11 @@
                     </ng-template>
                 </p-table>
 
-                <p-table *ngSwitchCase="'ingresses'"
+                <p-table *ngSwitchCase="'routes'"
                          class="izy-table"
                          styleClass="p-datatable-rounded"
-                         #ingressesTable
-                         [value]="summary?.ingresses || []"
+                         #routesTable
+                         [value]="summary?.routes || []"
                          dataKey="name"
                          [paginator]="true"
                          [rows]="10"
@@ -331,21 +331,21 @@
                             <th class="text-center">YAML</th>
                         </tr>
                     </ng-template>
-                    <ng-template pTemplate="body" let-ingress>
+                    <ng-template pTemplate="body" let-route>
                         <tr>
-                            <td>{{ ingress.name }}</td>
-                            <td>{{ ingress.namespace }}</td>
-                            <td>{{ ingress.hosts || '-' }}</td>
-                            <td>{{ ingress.serviceTargets || '-' }}</td>
-                            <td>{{ ingress.tls || '-' }}</td>
-                            <td>{{ ingress.age }}</td>
+                            <td>{{ route.name }}</td>
+                            <td>{{ route.namespace }}</td>
+                            <td>{{ route.hosts || '-' }}</td>
+                            <td>{{ route.serviceTargets || '-' }}</td>
+                            <td>{{ route.tls || '-' }}</td>
+                            <td>{{ route.age }}</td>
                             <td class="text-center">
                               <button
                                 pButton
                                 type="button"
                                 icon="pi pi-file-edit"
                                 class="p-button-text"
-                                (click)="openYamlEditor('ingress', ingress)"
+                                (click)="openYamlEditor('virtualservice', route)"
                                 pTooltip="Edit YAML"
                               ></button>
                             </td>

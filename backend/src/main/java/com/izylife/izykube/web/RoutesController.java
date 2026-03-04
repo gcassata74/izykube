@@ -1,6 +1,6 @@
 package com.izylife.izykube.web;
 
-import com.izylife.izykube.dto.kube.IngressSummaryDTO;
+import com.izylife.izykube.dto.kube.RouteSummaryDTO;
 import com.izylife.izykube.services.RouteService;
 import com.izylife.izykube.web.request.RouteCreateRequest;
 import jakarta.validation.Valid;
@@ -26,7 +26,7 @@ public class RoutesController {
     private final RouteService routeService;
 
     @PostMapping
-    public ResponseEntity<IngressSummaryDTO> create(@Valid @RequestBody RouteCreateRequest request) {
+    public ResponseEntity<RouteSummaryDTO> create(@Valid @RequestBody RouteCreateRequest request) {
         return ResponseEntity.ok(routeService.create(request));
     }
 
@@ -37,7 +37,7 @@ public class RoutesController {
     }
 
     @PutMapping("/{namespace}/{name}")
-    public ResponseEntity<IngressSummaryDTO> update(@PathVariable String namespace,
+    public ResponseEntity<RouteSummaryDTO> update(@PathVariable String namespace,
                                                     @PathVariable String name,
                                                     @Valid @RequestBody RouteCreateRequest request) {
         return ResponseEntity.ok(routeService.update(namespace, name, request));

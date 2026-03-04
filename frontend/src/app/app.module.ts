@@ -10,6 +10,7 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ProgressBarModule } from 'primeng/progressbar';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { HomeComponent } from './home/home.component';
@@ -41,7 +42,7 @@ import { ToastModule } from 'primeng/toast';
 import { ConfigBundleFormComponent } from './cluster/config-bundle-form/config-bundle-form.component';
 import { ClusterService } from './services/cluster.service';
 import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.component';
-import { MessageService } from 'primeng/api';
+import { MessageService, ConfirmationService } from 'primeng/api';
 import { CardModule } from 'primeng/card';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { ServiceFormComponent } from './cluster/service-form/service-form.component';
@@ -130,6 +131,7 @@ import { CrdEditorComponent } from './crds/crd-editor/crd-editor.component';
     InputTextareaModule,
     ProgressSpinnerModule,
     ProgressBarModule,
+    ConfirmDialogModule,
     ContextMenuModule,
     CheckboxModule,
     EditorModule,
@@ -156,7 +158,8 @@ import { CrdEditorComponent } from './crds/crd-editor/crd-editor.component';
     ToolbarService,
     DiagramService,
     ClusterService,
-    MessageService
+    MessageService,
+    ConfirmationService
   ],
   bootstrap: [AppComponent]
 })

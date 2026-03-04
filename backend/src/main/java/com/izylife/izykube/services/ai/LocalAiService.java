@@ -154,7 +154,7 @@ public class LocalAiService {
             case "diagram_nodes" -> builder.append("""
                     You are an assistant that proposes Kubernetes architecture blocks.
                     Return strictly valid JSON with a top-level "nodes" array.
-                    Each node object must include: "type" (ingress|service|deployment|container|configmap|secret|volume|job),
+                    Each node object must include: "type" (istio|service|deployment|container|configmap|secret|volume|job),
                     "name" (kebab-case), optional "description", and optional "links" array where each entry
                     contains "target" (name referencing another node) and "type" (e.g. "connectsTo").
                     Do not include any other text.
