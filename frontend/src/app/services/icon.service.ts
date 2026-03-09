@@ -19,6 +19,7 @@ export class IconService {
     'serviceaccount': 'pi pi-id-card',
     'volume': 'pi pi-database',
     'job': 'pi pi-refresh',
+    'cr': 'pi pi-sliders-h',
     'istio': 'assets/images/diagram/istio.svg'
   };
 

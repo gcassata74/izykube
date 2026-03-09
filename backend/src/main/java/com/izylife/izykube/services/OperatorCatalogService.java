@@ -666,6 +666,12 @@ public class OperatorCatalogService {
                 .withPlural("clusterserviceversions")
                 .withNamespaced(true)
                 .build();
+        ResourceDefinitionContext operatorsContext = new ResourceDefinitionContext.Builder()
+                .withGroup("operators.coreos.com")
+                .withVersion("v1")
+                .withPlural("operators")
+                .withNamespaced(true)
+                .build();
 
         List<GenericKubernetesResource> subscriptions = safeList(subscriptionsContext, namespaces);
 
@@ -754,6 +760,49 @@ public class OperatorCatalogService {
                 safeDeleteByName(installPlansContext, metadata.getNamespace(), metadata.getName());
             }
         }
+
+        for (GenericKubernetesResource operator : safeList(operatorsContext, namespaces)) {
+            ObjectMeta metadata = operator.getMetadata();
+            if (metadata == null || !StringUtils.hasText(metadata.getName())) {
+                continue;
+            }
+            if (shouldDeleteOperatorResource(operator, entry, packageNames)) {
+                safeDeleteByName(operatorsContext, metadata.getNamespace(), metadata.getName());
+            }
+        }
+    }
+
+    private boolean shouldDeleteOperatorResource(GenericKubernetesResource operator,
+                                                 OperatorCatalogEntry entry,
+                                                 Set<String> packageNames) {
+        if (operator == null || operator.getMetadata() == null || !StringUtils.hasText(operator.getMetadata().getName())) {
+            return false;
+        }
+        if (isOwnedResource(operator, entry)) {
+            return true;
+        }
+
+        String name = operator.getMetadata().getName().toLowerCase(Locale.ROOT);
+        boolean nameMatches = packageNames.stream()
+                .filter(StringUtils::hasText)
+                .anyMatch(pkg -> name.contains(pkg.toLowerCase(Locale.ROOT)));
+        if (nameMatches) {
+            return true;
+        }
+
+        Map<?, ?> spec = readMap(operator.getAdditionalProperties().get("spec"));
+        String[] candidates = new String[] {
+                readString(spec, "name"),
+                readString(spec, "packageName"),
+                readString(spec, "package")
+        };
+        for (String candidate : candidates) {
+            String normalized = normalizePackageName(candidate);
+            if (StringUtils.hasText(normalized) && packageNames.contains(normalized)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<GenericKubernetesResource> safeList(ResourceDefinitionContext context, Set<String> namespaces) {

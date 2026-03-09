@@ -24,6 +24,7 @@ import { AccessPolicyFormComponent } from '../access-policy-form/access-policy-f
 import { KubeExplorerService } from 'src/app/services/kube-explorer.service';
 import { NotificationService } from 'src/app/services/notification.service';
 import { ClusterStatusEnum } from '../enum/cluster.-status-enum';
+import { CustomResourceFormComponent } from '../custom-resource-form/custom-resource-form.component';
 
 
 @Component({
@@ -75,6 +76,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     'container': ContainerFormComponent,
     'volume': VolumeFormComponent,
     'job': JobFormComponent,
+    'cr': CustomResourceFormComponent,
     'serviceaccount': ServiceAccountFormComponent,
     'accesspolicy': AccessPolicyFormComponent,
     'asset': AssetFormComponent
@@ -204,6 +206,8 @@ export class NodeFormComponent implements OnInit, OnDestroy {
       } else if (componentType === AccessPolicyFormComponent) {
         inputs['clusterNamespace'] = cluster?.nameSpace || 'default';
         inputs['clusterNodes'] = cluster?.nodes || [];
+      } else if (componentType === CustomResourceFormComponent) {
+        inputs['clusterNamespace'] = cluster?.nameSpace || 'default';
       }
 
       this.updateComponentInputs(inputs);

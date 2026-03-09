@@ -10,6 +10,7 @@ import { Job } from '../model/job.class';
 import { Istio } from '../model/istio.class';
 import { ServiceAccount } from '../model/service-account.class';
 import { AccessPolicy } from '../model/access-policy.class';
+import { CustomResource } from '../model/custom-resource.class';
 
 @Injectable({
   providedIn: 'root'
@@ -88,6 +89,11 @@ export class NodeFactoryService {
           id,
           trimmedName,
           { type: 'emptyDir' } as VolumeConfig  // default to emptyDir
+        );
+      case 'cr':
+        return new CustomResource(
+          id,
+          trimmedName
         );
       case 'ingress':
         return new Ingress(

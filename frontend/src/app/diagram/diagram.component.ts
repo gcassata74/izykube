@@ -178,6 +178,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     ingress: 5,
     istio: 5,
     deployment: 4,
+    cr: 3,
     job: 4,
     container: 2,
     volume: 1,
@@ -1333,6 +1334,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       { name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },
       { name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
       { name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
+      { name: 'cr', displayName: 'Custom Resource', baseName: 'custom-resource', type: 'cr', icon: this.iconService.getIconPath('cr') },
       { name: 'configbundle', displayName: 'Config bundle', baseName: 'config-bundle', type: 'configbundle', icon: this.iconService.getIconPath('configmap') },
       { name: 'volume', type: 'volume', icon: this.iconService.getIconPath('volume') },
       { name: 'job', type: 'job', icon: this.iconService.getIconPath('job') }

@@ -29,6 +29,26 @@ public class CrdController {
         }
     }
 
+    @GetMapping("/available")
+    public ResponseEntity<?> listAvailable() {
+        try {
+            return ResponseEntity.ok(crdService.listAvailable());
+        } catch (Exception e) {
+            log.error("Error listing available CRDs: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body("Error listing available CRDs: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/available/{id}")
+    public ResponseEntity<?> getAvailable(@PathVariable String id) {
+        try {
+            return ResponseEntity.ok(crdService.getAvailable(id));
+        } catch (Exception e) {
+            log.error("Error getting available CRD {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest().body("Error getting available CRD: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> get(@PathVariable String id) {
         try {

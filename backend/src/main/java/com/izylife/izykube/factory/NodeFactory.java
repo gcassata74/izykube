@@ -30,6 +30,18 @@ public class NodeFactory {
                 JobDTO job = (JobDTO) node;
                 sanitized = new JobDTO(job.getId(), job.getName(), job.getAssetId(), job.getServiceAccountRef(), job.getServiceAccountName());
                 break;
+            case "cr":
+                CustomResourceDTO customResource = (CustomResourceDTO) node;
+                CustomResourceDTO sanitizedCr = new CustomResourceDTO(customResource.getId(), customResource.getName());
+                sanitizedCr.setCrdId(customResource.getCrdId());
+                sanitizedCr.setCrdGroup(customResource.getCrdGroup());
+                sanitizedCr.setCrdVersion(customResource.getCrdVersion());
+                sanitizedCr.setCrdKind(customResource.getCrdKind());
+                sanitizedCr.setCrdPlural(customResource.getCrdPlural());
+                sanitizedCr.setCrdScope(customResource.getCrdScope());
+                sanitizedCr.setSpec(customResource.getSpec() == null ? new LinkedHashMap<>() : new LinkedHashMap<>(customResource.getSpec()));
+                sanitized = sanitizedCr;
+                break;
             case "pod":
                 PodDTO pod = (PodDTO) node;
                 sanitized = convertPodToDeployment(pod);
@@ -146,6 +158,8 @@ public class NodeFactory {
                 return new ServiceDTO(id, name, "ClusterIP", 80);
             case "job":
                 return new JobDTO(id, name, "", null);
+            case "cr":
+                return new CustomResourceDTO(id, name);
             case "serviceaccount":
                 ServiceAccountDTO serviceAccount = new ServiceAccountDTO(id, name);
                 serviceAccount.setNamespace("default");

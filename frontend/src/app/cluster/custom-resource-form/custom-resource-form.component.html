@@ -1,0 +1,82 @@
+<form class="cr-form" [formGroup]="form">
+  <div class="field">
+    <label for="cr-name">Name</label>
+    <input id="cr-name" type="text" pInputText formControlName="name" />
+  </div>
+
+  <div class="field">
+    <label for="cr-crd">CRD</label>
+    <p-dropdown
+      inputId="cr-crd"
+      formControlName="crdId"
+      [options]="crdOptions"
+      optionLabel="label"
+      optionValue="value"
+      [showClear]="true"
+      [filter]="true"
+      placeholder="Select CRD"
+      appendTo="body"
+    ></p-dropdown>
+    <small class="hint" *ngIf="!loadingCrds && !crdOptions.length">
+      No CRDs found. Create one in the CRDs section first.
+    </small>
+  </div>
+
+  <div class="field" *ngIf="selectedCrd && selectedCrd.scope === 'Namespaced'">
+    <label for="cr-namespace">Namespace</label>
+    <input id="cr-namespace" type="text" pInputText formControlName="namespace" />
+  </div>
+
+  <div class="schema-info" *ngIf="selectedCrd">
+    <span>{{ selectedCrd.group }}/{{ selectedCrd.version }}</span>
+    <span>•</span>
+    <span>{{ selectedCrd.kind }}</span>
+  </div>
+
+  <div class="schema-fields" *ngIf="selectedCrd" [formGroup]="specGroup">
+    <div class="field" *ngFor="let field of schemaFields; trackBy: trackByField">
+      <label [for]="'cr-field-' + field.fieldName">{{ field.fieldName }}</label>
+
+      <p-inputSwitch
+        *ngIf="isBooleanField(field)"
+        [inputId]="'cr-field-' + field.fieldName"
+        [formControlName]="field.fieldName"
+      ></p-inputSwitch>
+
+      <p-inputNumber
+        *ngIf="isNumericField(field)"
+        [inputId]="'cr-field-' + field.fieldName"
+        [formControlName]="field.fieldName"
+        [mode]="'decimal'"
+      ></p-inputNumber>
+
+      <textarea
+        *ngIf="isJsonField(field)"
+        [id]="'cr-field-' + field.fieldName"
+        pInputTextarea
+        [rows]="6"
+        [formControlName]="field.fieldName"
+        placeholder="Insert JSON"
+      ></textarea>
+
+      <input
+        *ngIf="!isBooleanField(field) && !isNumericField(field) && !isJsonField(field)"
+        [id]="'cr-field-' + field.fieldName"
+        type="text"
+        pInputText
+        [formControlName]="field.fieldName"
+      />
+
+      <small class="error" *ngIf="getSpecControl(field.fieldName)?.errors?.['invalidJson']">
+        Invalid JSON
+      </small>
+      <small class="error" *ngIf="getSpecControl(field.fieldName)?.errors?.['invalidJsonType']">
+        JSON type mismatch for {{ field.fieldType }}
+      </small>
+    </div>
+  </div>
+
+  <div class="hint" *ngIf="!selectedCrd && !loadingSchema">
+    Select a CRD to configure spec fields.
+  </div>
+</form>

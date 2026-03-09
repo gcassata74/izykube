@@ -11,8 +11,16 @@ export class CrdService {
     return this.dataService.get<CrdDefinitionSummary[]>('/crds');
   }
 
+  listAvailable(): Observable<CrdDefinitionSummary[]> {
+    return this.dataService.get<CrdDefinitionSummary[]>('/crds/available');
+  }
+
   get(id: string): Observable<CrdDefinition> {
     return this.dataService.get<CrdDefinition>(`/crds/${id}`);
+  }
+
+  getAvailable(id: string): Observable<CrdDefinition> {
+    return this.dataService.get<CrdDefinition>(`/crds/available/${encodeURIComponent(id)}`);
   }
 
   create(payload: Partial<CrdDefinition>): Observable<CrdDefinition> {

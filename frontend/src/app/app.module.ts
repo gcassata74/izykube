@@ -78,6 +78,7 @@ import { CrdListComponent } from './crds/crd-list/crd-list.component';
 import { CrdEditorComponent } from './crds/crd-editor/crd-editor.component';
 import { OperatorCatalogComponent } from './operator-catalog/operator-catalog.component';
 import { PaginatorModule } from 'primeng/paginator';
+import { CustomResourceFormComponent } from './cluster/custom-resource-form/custom-resource-form.component';
 
 @NgModule({
   declarations: [
@@ -117,6 +118,7 @@ import { PaginatorModule } from 'primeng/paginator';
     CrdListComponent,
     CrdEditorComponent,
     OperatorCatalogComponent,
+    CustomResourceFormComponent,
   ],
   imports: [
     SharedModule,

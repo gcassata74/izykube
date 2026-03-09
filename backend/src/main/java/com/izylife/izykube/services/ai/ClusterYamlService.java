@@ -9,6 +9,7 @@ import com.izylife.izykube.dto.cluster.ConfigEntrySensitivity;
 import com.izylife.izykube.dto.cluster.ConfigMapDTO;
 import com.izylife.izykube.dto.cluster.ContainerDTO;
 import com.izylife.izykube.dto.cluster.ContainerRole;
+import com.izylife.izykube.dto.cluster.CustomResourceDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.DeploymentWorkloadType;
 import com.izylife.izykube.dto.cluster.AccessPolicyBindingStrategy;
@@ -69,6 +70,7 @@ public class ClusterYamlService {
             Map.entry("container", "assets/images/diagram/container.svg"),
             Map.entry("volume", "assets/images/diagram/volume.svg"),
             Map.entry("job", "assets/images/diagram/wrench.svg"),
+            Map.entry("cr", "pi pi-sliders-h"),
             Map.entry("istio", "assets/images/diagram/istio.svg")
     );
 
@@ -283,6 +285,7 @@ public class ClusterYamlService {
                 case "deployment" -> updateDeploymentManifest((DeploymentDTO) node, manifestsByName, targetsBySource, sourcesByTarget, statefulServiceNamesByDeployment, links, nodesById);
                 case "service" -> updateServiceManifest((ServiceDTO) node, manifestsByName, statefulServiceSelectors);
                 case "serviceaccount" -> updateServiceAccountManifest((ServiceAccountDTO) node, manifestsByName);
+                case "cr" -> updateCustomResourceManifest((CustomResourceDTO) node, manifestsByName);
                 case "ingress" -> {
                     resolveIngressTargetsFromLinks((IngressDTO) node, targetsBySource);
                     updateIngressLikeManifest((IngressDTO) node, manifestsByName);
@@ -953,6 +956,37 @@ public class ClusterYamlService {
         manifest.put("automountServiceAccountToken", Optional.ofNullable(node.getAutomountServiceAccountToken()).orElse(true));
 
         manifests.put(node.getId(), new ManifestEntry("serviceaccount", name, manifest));
+    }
+
+    private void updateCustomResourceManifest(CustomResourceDTO node, Map<String, ManifestEntry> manifests) {
+        if (node == null) {
+            return;
+        }
+        String group = Optional.ofNullable(node.getCrdGroup()).map(String::trim).orElse("");
+        String version = Optional.ofNullable(node.getCrdVersion()).map(String::trim).orElse("");
+        String kind = Optional.ofNullable(node.getCrdKind()).map(String::trim).orElse("");
+        String name = Optional.ofNullable(trimName(node.getName())).orElse("");
+        if (group.isBlank() || version.isBlank() || kind.isBlank()) {
+            throw new IllegalArgumentException("Custom Resource requires CRD group, version and kind");
+        }
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("Custom Resource name is required");
+        }
+
+        Map<String, Object> manifest = new LinkedHashMap<>();
+        manifest.put("apiVersion", group + "/" + version);
+        manifest.put("kind", kind);
+
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("name", name);
+        boolean namespaced = !"cluster".equalsIgnoreCase(Optional.ofNullable(node.getCrdScope()).orElse("Namespaced"));
+        if (namespaced) {
+            metadata.put("namespace", resolveNamespace(node));
+        }
+        manifest.put("metadata", metadata);
+        manifest.put("spec", node.getSpec() == null ? new LinkedHashMap<>() : new LinkedHashMap<>(node.getSpec()));
+
+        manifests.put(node.getId(), new ManifestEntry("cr", name, manifest));
     }
 
     private void updateRbacManifests(Map<String, ManifestEntry> manifests,

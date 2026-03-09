@@ -13,7 +13,8 @@ public enum TemplatableNodes {
     DAEMON_SET("daemonset"),
     JOB("job"),
     CRON_JOB("cronjob"),
-    SERVICE_ACCOUNT("serviceaccount");
+    SERVICE_ACCOUNT("serviceaccount"),
+    CUSTOM_RESOURCE("cr");
 
     private final String kind;
 
