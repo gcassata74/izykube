@@ -100,6 +100,19 @@ export class DeploymentFormComponent implements OnInit, OnChanges, OnDestroy {
 
   private setupAutoSave() {
     this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.form.valueChanges);
+    const workloadTypeControl = this.form.get('workloadType');
+    if (workloadTypeControl) {
+      this.subscription.add(
+        workloadTypeControl.valueChanges.pipe(
+          map(value => String(value ?? '').toUpperCase()),
+          filter(value => value === 'DEPLOYMENT' || value === 'STATEFULSET' || value === 'DAEMONSET'),
+          distinctUntilChanged()
+        ).subscribe(workloadType => {
+          // Persist workload type even when other required fields (e.g. assetId) are temporarily invalid.
+          this.autoSaveService.flushPendingChanges(this.selectedNode.id, { workloadType });
+        })
+      );
+    }
   }
 
   private setupMeshToggleListener(): void {
@@ -132,6 +145,10 @@ export class DeploymentFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    const workloadType = String(this.form?.get('workloadType')?.value ?? this.selectedNode?.workloadType ?? 'DEPLOYMENT').toUpperCase();
+    if (workloadType === 'DEPLOYMENT' || workloadType === 'STATEFULSET' || workloadType === 'DAEMONSET') {
+      this.autoSaveService.flushPendingChanges(this.selectedNode.id, { workloadType });
+    }
     this.subscription.unsubscribe();
   }
 }
