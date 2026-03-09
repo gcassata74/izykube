@@ -129,6 +129,15 @@
         </span>
       </ng-container>
 
+      <ng-container *ngIf="getAccessPolicyBadge(node) as accessPolicyBadge">
+        <span
+          class="diagram-node__rbac-badge"
+          [ngClass]="accessPolicyBadge.cssClass"
+          [attr.title]="accessPolicyBadge.title">
+          {{ accessPolicyBadge.label }}
+        </span>
+      </ng-container>
+
       <span
         *ngIf="(node.type === 'deployment' || node.type === 'statefulset' || node.type === 'daemonset') && (node.replicas || 0) > 1"
         class="diagram-node__replica-badge"

@@ -662,6 +662,30 @@
   pointer-events: none;
 }
 
+.diagram-node__rbac-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  min-width: 24px;
+  height: 18px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.diagram-node__rbac-badge--cluster-role {
+  background: #f97316;
+}
+
+.diagram-node__rbac-badge--cluster-role-binding {
+  background: #f97316;
+}
+
 .connection-point {
   position: absolute;
   width: 12px;

@@ -283,9 +283,7 @@ export class AccessPolicyFormComponent implements OnInit, OnChanges, OnDestroy {
       namespace,
       rbacNodeType: rbacNodeType === 'ROLEBINDING' ? 'ROLEBINDING' : 'ROLE',
       roleKind: roleKind === 'ClusterRole' ? 'ClusterRole' : 'Role',
-      bindingKind: rbacNodeType === 'ROLEBINDING'
-        ? 'RoleBinding'
-        : (bindingKind === 'ClusterRoleBinding' ? 'ClusterRoleBinding' : 'RoleBinding'),
+      bindingKind: bindingKind === 'ClusterRoleBinding' ? 'ClusterRoleBinding' : 'RoleBinding',
       roleRefName: rbacNodeType === 'ROLEBINDING' ? null : (roleRefName || null),
       roleRefKind: rbacNodeType === 'ROLEBINDING' ? 'Role' : (roleRefKind === 'ClusterRole' ? 'ClusterRole' : 'Role'),
       subjectServiceAccountName: rbacNodeType === 'ROLEBINDING' ? null : (subjectServiceAccountName || null),

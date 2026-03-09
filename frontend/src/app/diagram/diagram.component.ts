@@ -1408,6 +1408,35 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     return null;
   }
 
+  getAccessPolicyBadge(node: DiagramNode): { label: string; title: string; cssClass: string } | null {
+    if (!this.isAccessPolicyNode(node)) {
+      return null;
+    }
+
+    const snapshotNode = this.currentClusterSnapshot?.nodes?.find((n: any) => n.id === node.id) as any;
+    const rbacNodeType = this.getAccessPolicyNodeType(node);
+    const roleKind = String(snapshotNode?.roleKind ?? 'Role');
+    const bindingKind = String(snapshotNode?.bindingKind ?? 'RoleBinding');
+
+    if (rbacNodeType === 'ROLEBINDING' && bindingKind === 'ClusterRoleBinding') {
+      return {
+        label: 'CRB',
+        title: 'ClusterRoleBinding',
+        cssClass: 'diagram-node__rbac-badge--cluster-role-binding'
+      };
+    }
+
+    if (rbacNodeType === 'ROLE' && roleKind === 'ClusterRole') {
+      return {
+        label: 'CR',
+        title: 'ClusterRole',
+        cssClass: 'diagram-node__rbac-badge--cluster-role'
+      };
+    }
+
+    return null;
+  }
+
   shouldShowSecretBadge(node: DiagramNode): boolean {
     const type = node.type?.toLowerCase();
     if (type !== 'configmap' && type !== 'secret' && type !== 'configbundle') {

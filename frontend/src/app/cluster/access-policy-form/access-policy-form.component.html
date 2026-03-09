@@ -23,6 +23,17 @@
     </div>
 
     <div class="p-field" *ngIf="isRoleBindingNode">
+      <label for="apBindingKind">Binding type</label>
+      <p-dropdown
+        id="apBindingKind"
+        formControlName="bindingKind"
+        [options]="bindingKindOptions"
+        optionLabel="label"
+        optionValue="value">
+      </p-dropdown>
+    </div>
+
+    <div class="p-field" *ngIf="isRoleBindingNode">
       <small class="p-text-secondary">
         RoleBinding is zero-config: connect it with arrows to one Role and one ServiceAccount.
       </small>
