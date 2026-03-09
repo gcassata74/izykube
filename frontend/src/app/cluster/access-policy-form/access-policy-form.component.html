@@ -11,7 +11,24 @@
       <input id="apNamespace" pInputText formControlName="namespace" placeholder="default" />
     </div>
 
-    <div class="p-field">
+    <div class="p-field" *ngIf="isRoleNode">
+      <label for="apRoleKind">Role type</label>
+      <p-dropdown
+        id="apRoleKind"
+        formControlName="roleKind"
+        [options]="roleKindOptions"
+        optionLabel="label"
+        optionValue="value">
+      </p-dropdown>
+    </div>
+
+    <div class="p-field" *ngIf="isRoleBindingNode">
+      <small class="p-text-secondary">
+        RoleBinding is zero-config: connect it with arrows to one Role and one ServiceAccount.
+      </small>
+    </div>
+
+    <div class="p-field" *ngIf="isRoleNode">
       <label for="apStrategy">Binding strategy</label>
       <p-dropdown
         id="apStrategy"
@@ -22,12 +39,12 @@
       </p-dropdown>
     </div>
 
-    <div class="p-field" *ngIf="usesExplicitServiceAccount">
+    <div class="p-field" *ngIf="isRoleNode && usesExplicitServiceAccount">
       <label for="apExistingSa">Existing ServiceAccount name</label>
       <input id="apExistingSa" pInputText formControlName="existingServiceAccountName" placeholder="e.g. my-existing-sa" />
     </div>
 
-    <div class="p-field">
+    <div class="p-field" *ngIf="isRoleNode">
       <label>Rules</label>
       <div formArrayName="rules">
         <div class="p-mb-3" *ngFor="let rule of rulesArray.controls; let i = index; trackBy: trackByIndex" [formGroupName]="i">

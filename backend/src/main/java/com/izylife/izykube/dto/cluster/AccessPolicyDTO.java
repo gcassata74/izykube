@@ -16,6 +16,12 @@ public class AccessPolicyDTO extends NodeDTO {
     private List<AccessPolicyRuleDTO> rules = new ArrayList<>();
     private AccessPolicyBindingStrategy targetBindingStrategy = AccessPolicyBindingStrategy.WORKLOAD_SA_PER_WORKLOAD;
     private String existingServiceAccountName;
+    private String roleKind = "Role";
+    private String bindingKind = "RoleBinding";
+    private String rbacNodeType = "ROLE";
+    private String subjectServiceAccountName;
+    private String roleRefName;
+    private String roleRefKind = "Role";
 
     public AccessPolicyDTO(String id, String name) {
         super(id, name, "accesspolicy");
@@ -33,4 +39,3 @@ public class AccessPolicyDTO extends NodeDTO {
         super.setNamespace(namespace);
     }
 }
-

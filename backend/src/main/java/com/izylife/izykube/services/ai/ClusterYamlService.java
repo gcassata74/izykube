@@ -321,6 +321,9 @@ public class ClusterYamlService {
                 .collect(Collectors.groupingBy(LinkDTO::getSource, LinkedHashMap::new, Collectors.toList()));
 
         for (AccessPolicyDTO policy : policies) {
+            if (isAccessPolicyRoleBindingNode(policy)) {
+                continue;
+            }
             String policyNs = resolveNamespace(policy);
             if (!Objects.equals(policyNs, namespace)) {
                 throw new IllegalArgumentException("AccessPolicy '" + trimName(policy.getName()) + "' must be in the cluster namespace '" + namespace + "'");
@@ -1021,17 +1024,56 @@ public class ClusterYamlService {
                 throw new IllegalArgumentException("AccessPolicy '" + policyName + "' must be in the cluster namespace '" + namespace + "'");
             }
 
-            validateAccessPolicyRules(policy);
-
-            String roleName = sanitizeDnsLabel(policyName, 63);
-            String existingPolicyId = seenRoleNames.putIfAbsent(roleName, policy.getId());
-            if (existingPolicyId != null && !existingPolicyId.equals(policy.getId())) {
-                throw new IllegalArgumentException("Duplicate AccessPolicy name '" + policyName + "' in namespace '" + namespace + "'");
+            boolean roleBindingNode = isAccessPolicyRoleBindingNode(policy);
+            if (!roleBindingNode) {
+                validateAccessPolicyRules(policy);
             }
 
-            Map<String, Object> role = createBaseManifest(roleName, "Role", namespace);
+            String bindingKind = resolveAccessPolicyBindingKind(policy);
+            if (roleBindingNode) {
+                String bindingName = sanitizeDnsLabel(policyName, 56) + "-rb";
+                validateDns1123Label(bindingName, bindingKind);
+                RoleBindingRefs refs = resolveAccessPolicyRoleBindingRefs(policy, nodesById, links);
+                if ("ClusterRoleBinding".equals(bindingKind) && !"ClusterRole".equals(refs.roleRefKind())) {
+                    throw new IllegalArgumentException("RoleBinding '" + policyName + "' cannot use ClusterRoleBinding with Role. Select ClusterRole.");
+                }
+
+                Map<String, Object> roleBinding = createBaseManifest(bindingName, bindingKind, namespace);
+                roleBinding.put("apiVersion", "rbac.authorization.k8s.io/v1");
+                roleBinding.put("kind", bindingKind);
+                if ("ClusterRoleBinding".equals(bindingKind)) {
+                    roleBinding.remove("metadata");
+                    roleBinding.put("metadata", Map.of("name", bindingName));
+                }
+                roleBinding.put("subjects", List.of(Map.of(
+                        "kind", "ServiceAccount",
+                        "name", refs.serviceAccountName(),
+                        "namespace", namespace
+                )));
+                roleBinding.put("roleRef", Map.of(
+                        "apiGroup", "rbac.authorization.k8s.io",
+                        "kind", refs.roleRefKind(),
+                        "name", refs.roleRefName()
+                ));
+                manifests.put(policy.getId() + ":rbac:binding", new ManifestEntry("rolebinding", bindingName, roleBinding));
+                continue;
+            }
+
+            String roleKind = resolveAccessPolicyRoleKind(policy);
+            String roleName = sanitizeDnsLabel(policyName, 63);
+            String roleScope = "ClusterRole".equals(roleKind) ? "cluster" : namespace;
+            String existingPolicyId = seenRoleNames.putIfAbsent(roleScope + ":" + roleName, policy.getId());
+            if (existingPolicyId != null && !existingPolicyId.equals(policy.getId())) {
+                throw new IllegalArgumentException("Duplicate AccessPolicy name '" + policyName + "' for " + roleKind);
+            }
+
+            Map<String, Object> role = createBaseManifest(roleName, roleKind, namespace);
             role.put("apiVersion", "rbac.authorization.k8s.io/v1");
-            role.put("kind", "Role");
+            role.put("kind", roleKind);
+            if ("ClusterRole".equals(roleKind)) {
+                role.remove("metadata");
+                role.put("metadata", Map.of("name", roleName));
+            }
             role.put("rules", policy.getRules().stream().filter(Objects::nonNull).map(this::toRoleRule).toList());
             manifests.put(policy.getId() + ":rbac:role", new ManifestEntry("role", roleName, role));
 
@@ -1078,11 +1120,18 @@ public class ClusterYamlService {
                         bindingName = ensureDnsLabelSuffix(bindingName, shortId(targetId), 63);
                     }
                     usedRoleBindingNames.putIfAbsent(bindingName, targetId);
-                    validateDns1123Label(bindingName, "RoleBinding");
+                    validateDns1123Label(bindingName, bindingKind);
+                    if ("ClusterRoleBinding".equals(bindingKind) && !"ClusterRole".equals(roleKind)) {
+                        throw new IllegalArgumentException("AccessPolicy '" + policyName + "' cannot use ClusterRoleBinding with Role. Select ClusterRole.");
+                    }
 
-                    Map<String, Object> roleBinding = createBaseManifest(bindingName, "RoleBinding", namespace);
+                    Map<String, Object> roleBinding = createBaseManifest(bindingName, bindingKind, namespace);
                     roleBinding.put("apiVersion", "rbac.authorization.k8s.io/v1");
-                    roleBinding.put("kind", "RoleBinding");
+                    roleBinding.put("kind", bindingKind);
+                    if ("ClusterRoleBinding".equals(bindingKind)) {
+                        roleBinding.remove("metadata");
+                        roleBinding.put("metadata", Map.of("name", bindingName));
+                    }
                     roleBinding.put("subjects", List.of(Map.of(
                             "kind", "ServiceAccount",
                             "name", saName,
@@ -1090,10 +1139,13 @@ public class ClusterYamlService {
                     )));
                     roleBinding.put("roleRef", Map.of(
                             "apiGroup", "rbac.authorization.k8s.io",
-                            "kind", "Role",
+                            "kind", roleKind,
                             "name", roleName
                     ));
                     manifests.put(policy.getId() + ":rbac:binding:" + targetId, new ManifestEntry("rolebinding", bindingName, roleBinding));
+                } else if (target instanceof AccessPolicyDTO targetPolicy && isAccessPolicyRoleBindingNode(targetPolicy)) {
+                    // Ignore reverse RoleBinding -> Role references while generating Role resources.
+                    continue;
                 } else {
                     throw new IllegalArgumentException("AccessPolicy '" + policyName + "' cannot be linked to target kind '" + target.getKind() + "'");
                 }
@@ -1176,6 +1228,80 @@ public class ClusterYamlService {
         validateDns1123Label(name, "ServiceAccount");
         return name;
     }
+
+    private String resolveAccessPolicyRoleKind(AccessPolicyDTO policy) {
+        String raw = trimName(policy != null ? policy.getRoleKind() : null);
+        return raw != null && raw.equalsIgnoreCase("ClusterRole") ? "ClusterRole" : "Role";
+    }
+
+    private String resolveAccessPolicyBindingKind(AccessPolicyDTO policy) {
+        String raw = trimName(policy != null ? policy.getBindingKind() : null);
+        return raw != null && raw.equalsIgnoreCase("ClusterRoleBinding") ? "ClusterRoleBinding" : "RoleBinding";
+    }
+
+    private RoleBindingRefs resolveAccessPolicyRoleBindingRefs(
+            AccessPolicyDTO bindingPolicy,
+            Map<String, NodeDTO> nodesById,
+            List<LinkDTO> links
+    ) {
+        AccessPolicyDTO linkedRole = null;
+        ServiceAccountDTO linkedServiceAccount = null;
+        String bindingId = trimName(bindingPolicy != null ? bindingPolicy.getId() : null);
+        if (bindingId == null || bindingId.isBlank()) {
+            throw new IllegalArgumentException("RoleBinding node id is required");
+        }
+
+        for (LinkDTO link : Optional.ofNullable(links).orElse(List.of())) {
+            if (link == null || link.getSource() == null || link.getTarget() == null) {
+                continue;
+            }
+            if (!Objects.equals(bindingId, link.getSource()) && !Objects.equals(bindingId, link.getTarget())) {
+                continue;
+            }
+            String otherId = Objects.equals(bindingId, link.getSource()) ? link.getTarget() : link.getSource();
+            NodeDTO other = nodesById.get(otherId);
+            if (other == null) {
+                throw new IllegalArgumentException("RoleBinding '" + trimName(bindingPolicy.getName()) + "' references missing target node: " + otherId);
+            }
+            if (other instanceof ServiceAccountDTO sa) {
+                if (linkedServiceAccount != null && !Objects.equals(linkedServiceAccount.getId(), sa.getId())) {
+                    throw new IllegalArgumentException("RoleBinding '" + trimName(bindingPolicy.getName()) + "' must link to exactly one ServiceAccount");
+                }
+                linkedServiceAccount = sa;
+                continue;
+            }
+            if (other instanceof AccessPolicyDTO roleCandidate && !isAccessPolicyRoleBindingNode(roleCandidate)) {
+                if (linkedRole != null && !Objects.equals(linkedRole.getId(), roleCandidate.getId())) {
+                    throw new IllegalArgumentException("RoleBinding '" + trimName(bindingPolicy.getName()) + "' must link to exactly one Role");
+                }
+                linkedRole = roleCandidate;
+            }
+        }
+
+        if (linkedServiceAccount == null || trimName(linkedServiceAccount.getName()) == null) {
+            throw new IllegalArgumentException("RoleBinding '" + trimName(bindingPolicy.getName()) + "' requires one linked ServiceAccount");
+        }
+        if (linkedRole == null || trimName(linkedRole.getName()) == null) {
+            throw new IllegalArgumentException("RoleBinding '" + trimName(bindingPolicy.getName()) + "' requires one linked Role");
+        }
+
+        String roleRefKind = resolveAccessPolicyRoleKind(linkedRole);
+        String roleRefName = sanitizeDnsLabel(trimName(linkedRole.getName()), 63);
+        String serviceAccountName = sanitizeDnsLabel(trimName(linkedServiceAccount.getName()), 63);
+        return new RoleBindingRefs(roleRefName, roleRefKind, serviceAccountName);
+    }
+
+    private String resolveAccessPolicyRoleRefKind(AccessPolicyDTO policy) {
+        String raw = trimName(policy != null ? policy.getRoleRefKind() : null);
+        return raw != null && raw.equalsIgnoreCase("ClusterRole") ? "ClusterRole" : "Role";
+    }
+
+    private boolean isAccessPolicyRoleBindingNode(AccessPolicyDTO policy) {
+        String raw = trimName(policy != null ? policy.getRbacNodeType() : null);
+        return raw != null && raw.equalsIgnoreCase("ROLEBINDING");
+    }
+
+    private record RoleBindingRefs(String roleRefName, String roleRefKind, String serviceAccountName) {}
 
     private String sanitizeDnsLabel(String raw, int maxLen) {
         String value = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);

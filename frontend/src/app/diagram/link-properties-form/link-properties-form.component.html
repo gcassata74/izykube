@@ -32,7 +32,7 @@
         <div class="link-form__info-text">
           <div>Expose → Service exposes Deployment</div>
           <div>Use → Deployment uses Service (DB, API)</div>
-          <div *ngIf="selectedType === 'appliesTo'">Applies to → Access Policy applies to this Workload</div>
+          <div *ngIf="selectedType === 'appliesTo'">Applies to → RBAC reference (Role->Workload, RoleBinding->Role/ServiceAccount)</div>
           <div *ngIf="selectedType === 'serviceAccountBinding'">ServiceAccount binding (legacy) → Workload runs as this ServiceAccount</div>
         </div>
       </div>

@@ -2,7 +2,14 @@ import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@
 import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { map, skip } from 'rxjs/operators';
-import { AccessPolicy, AccessPolicyBindingStrategy, AccessPolicyRule } from 'src/app/model/access-policy.class';
+import {
+  AccessPolicy,
+  AccessPolicyBindingKind,
+  AccessPolicyBindingStrategy,
+  AccessPolicyNodeType,
+  AccessPolicyRoleKind,
+  AccessPolicyRule
+} from 'src/app/model/access-policy.class';
 import { AutoSaveService } from 'src/app/services/auto-save.service';
 import { Node } from 'src/app/model/node.class';
 
@@ -23,6 +30,18 @@ export class AccessPolicyFormComponent implements OnInit, OnChanges, OnDestroy {
     { label: 'Workload ServiceAccount per workload', value: 'WORKLOAD_SA_PER_WORKLOAD' },
     { label: 'Workload ServiceAccount per policy', value: 'WORKLOAD_SA_PER_POLICY' },
     { label: 'Use existing ServiceAccount name (advanced)', value: 'WORKLOAD_SA_EXPLICIT_REFERENCE' }
+  ];
+  readonly roleKindOptions: { label: string; value: AccessPolicyRoleKind }[] = [
+    { label: 'Role (namespaced)', value: 'Role' },
+    { label: 'ClusterRole (cluster-scoped)', value: 'ClusterRole' }
+  ];
+  readonly bindingKindOptions: { label: string; value: AccessPolicyBindingKind }[] = [
+    { label: 'RoleBinding (namespaced)', value: 'RoleBinding' },
+    { label: 'ClusterRoleBinding (cluster-scoped)', value: 'ClusterRoleBinding' }
+  ];
+  readonly roleRefKindOptions: { label: string; value: AccessPolicyRoleKind }[] = [
+    { label: 'Role', value: 'Role' },
+    { label: 'ClusterRole', value: 'ClusterRole' }
   ];
 
   readonly verbOptions: { label: string; value: string }[] = [
@@ -79,6 +98,27 @@ export class AccessPolicyFormComponent implements OnInit, OnChanges, OnDestroy {
     return unique.map(name => ({ label: name, value: name }));
   }
 
+  get serviceAccountNameOptions(): { label: string; value: string }[] {
+    const names = (this.clusterNodes ?? [])
+      .filter(node => String((node as any)?.kind ?? '').toLowerCase() === 'serviceaccount')
+      .map(node => String((node as any)?.name ?? '').trim())
+      .filter(Boolean);
+    const unique = Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+    return unique.map(name => ({ label: name, value: name }));
+  }
+
+  get roleNameOptions(): { label: string; value: string }[] {
+    const names = (this.clusterNodes ?? [])
+      .filter(node =>
+        String((node as any)?.kind ?? '').toLowerCase() === 'accesspolicy'
+        && String((node as any)?.rbacNodeType ?? 'ROLE').toUpperCase() !== 'ROLEBINDING'
+      )
+      .map(node => String((node as any)?.name ?? '').trim())
+      .filter(Boolean);
+    const unique = Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+    return unique.map(name => ({ label: name, value: name }));
+  }
+
   constructor(
     private fb: FormBuilder,
     private autoSaveService: AutoSaveService
@@ -120,6 +160,14 @@ export class AccessPolicyFormComponent implements OnInit, OnChanges, OnDestroy {
     return this.form?.get('targetBindingStrategy')?.value === 'WORKLOAD_SA_EXPLICIT_REFERENCE';
   }
 
+  get isRoleBindingNode(): boolean {
+    return this.form?.get('rbacNodeType')?.value === 'ROLEBINDING';
+  }
+
+  get isRoleNode(): boolean {
+    return !this.isRoleBindingNode;
+  }
+
   private initForm(): void {
     const node = this.selectedNode as AccessPolicy;
     const defaultNamespace = (node?.namespace || this.clusterNamespace || 'default').trim() || 'default';
@@ -127,6 +175,12 @@ export class AccessPolicyFormComponent implements OnInit, OnChanges, OnDestroy {
     this.form = this.fb.group({
       name: [node?.name ?? '', Validators.required],
       namespace: [defaultNamespace],
+      rbacNodeType: [node?.rbacNodeType ?? 'ROLE'],
+      roleKind: [node?.roleKind ?? 'Role', Validators.required],
+      bindingKind: [node?.bindingKind ?? 'RoleBinding', Validators.required],
+      roleRefName: [node?.roleRefName ?? ''],
+      roleRefKind: [node?.roleRefKind ?? 'Role'],
+      subjectServiceAccountName: [node?.subjectServiceAccountName ?? ''],
       targetBindingStrategy: [node?.targetBindingStrategy ?? 'WORKLOAD_SA_PER_WORKLOAD', Validators.required],
       existingServiceAccountName: [node?.existingServiceAccountName ?? ''],
       rules: this.fb.array((node?.rules ?? []).map(rule => this.createRuleGroup(rule)))
@@ -142,6 +196,12 @@ export class AccessPolicyFormComponent implements OnInit, OnChanges, OnDestroy {
     this.form.patchValue({
       name: node?.name ?? '',
       namespace: defaultNamespace,
+      rbacNodeType: node?.rbacNodeType ?? 'ROLE',
+      roleKind: node?.roleKind ?? 'Role',
+      bindingKind: node?.bindingKind ?? 'RoleBinding',
+      roleRefName: node?.roleRefName ?? '',
+      roleRefKind: node?.roleRefKind ?? 'Role',
+      subjectServiceAccountName: node?.subjectServiceAccountName ?? '',
       targetBindingStrategy: node?.targetBindingStrategy ?? 'WORKLOAD_SA_PER_WORKLOAD',
       existingServiceAccountName: node?.existingServiceAccountName ?? ''
     }, { emitEvent: false });
@@ -194,6 +254,12 @@ export class AccessPolicyFormComponent implements OnInit, OnChanges, OnDestroy {
 
   private buildNodeUpdatePayload(): any {
     const namespace = String(this.form.get('namespace')?.value ?? this.clusterNamespace ?? 'default').trim() || 'default';
+    const rbacNodeType = this.form.get('rbacNodeType')?.value as AccessPolicyNodeType;
+    const roleKind = this.form.get('roleKind')?.value as AccessPolicyRoleKind;
+    const bindingKind = this.form.get('bindingKind')?.value as AccessPolicyBindingKind;
+    const roleRefName = String(this.form.get('roleRefName')?.value ?? '').trim();
+    const roleRefKind = this.form.get('roleRefKind')?.value as AccessPolicyRoleKind;
+    const subjectServiceAccountName = String(this.form.get('subjectServiceAccountName')?.value ?? '').trim();
     const targetBindingStrategy = this.form.get('targetBindingStrategy')?.value as AccessPolicyBindingStrategy;
     const existingServiceAccountName = String(this.form.get('existingServiceAccountName')?.value ?? '').trim();
 
@@ -215,11 +281,19 @@ export class AccessPolicyFormComponent implements OnInit, OnChanges, OnDestroy {
     return {
       name: String(this.form.get('name')?.value ?? '').trim(),
       namespace,
+      rbacNodeType: rbacNodeType === 'ROLEBINDING' ? 'ROLEBINDING' : 'ROLE',
+      roleKind: roleKind === 'ClusterRole' ? 'ClusterRole' : 'Role',
+      bindingKind: rbacNodeType === 'ROLEBINDING'
+        ? 'RoleBinding'
+        : (bindingKind === 'ClusterRoleBinding' ? 'ClusterRoleBinding' : 'RoleBinding'),
+      roleRefName: rbacNodeType === 'ROLEBINDING' ? null : (roleRefName || null),
+      roleRefKind: rbacNodeType === 'ROLEBINDING' ? 'Role' : (roleRefKind === 'ClusterRole' ? 'ClusterRole' : 'Role'),
+      subjectServiceAccountName: rbacNodeType === 'ROLEBINDING' ? null : (subjectServiceAccountName || null),
       targetBindingStrategy,
       ...(targetBindingStrategy === 'WORKLOAD_SA_EXPLICIT_REFERENCE'
         ? { existingServiceAccountName }
         : { existingServiceAccountName: null }),
-      rules
+      rules: rbacNodeType === 'ROLEBINDING' ? [] : rules
     };
   }
 }

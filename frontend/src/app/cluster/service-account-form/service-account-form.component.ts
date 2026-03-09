@@ -145,7 +145,7 @@ export class ServiceAccountFormComponent implements OnInit, OnChanges, OnDestroy
       namespace,
       automountServiceAccountToken: !!this.form.get('automountServiceAccountToken')?.value,
       rbacProfile,
-      labels: this.formArrayToRecord(this.labelsArray),
+      labels: {},
       annotations: this.formArrayToRecord(this.annotationsArray)
     };
   }

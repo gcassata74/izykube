@@ -77,6 +77,8 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     'volume': VolumeFormComponent,
     'job': JobFormComponent,
     'cr': CustomResourceFormComponent,
+    'customresource': CustomResourceFormComponent,
+    'custom-resource': CustomResourceFormComponent,
     'serviceaccount': ServiceAccountFormComponent,
     'accesspolicy': AccessPolicyFormComponent,
     'asset': AssetFormComponent

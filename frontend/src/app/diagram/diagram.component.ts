@@ -50,6 +50,7 @@ interface DiagramNode {
   hasHealthIssue?: boolean;
   healthReason?: string;
   replicas?: number;
+  rbacNodeType?: 'ROLE' | 'ROLEBINDING';
 }
 
 interface ConnectionPoint {
@@ -365,7 +366,16 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   onCanvasDrop(event: DropEvent) {
     const baseName = event.data.baseName || event.data.name;
     const coords = this.relativeToDiagram(event.x, event.y);
-    this.createNode(event.data.type, baseName, event.data.icon, coords.x, coords.y);
+    const isAccessPolicy = (event.data.type || '').toLowerCase() === 'accesspolicy';
+    const isRoleBinding = isAccessPolicy && (baseName || '').toLowerCase().includes('role-binding');
+    this.createNode(event.data.type, baseName, event.data.icon, coords.x, coords.y, {
+      initialNodePatch: isAccessPolicy
+        ? {
+            rbacNodeType: isRoleBinding ? 'ROLEBINDING' : 'ROLE',
+            ...(isRoleBinding ? { bindingKind: 'RoleBinding' } : { roleKind: 'Role' })
+          }
+        : undefined
+    });
   }
 
   private initializePaletteItems() {
@@ -1215,7 +1225,12 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     icon: string,
     x: number,
     y: number,
-    options?: { preferredName?: string; skipUndo?: boolean; deferUpdate?: boolean }
+    options?: {
+      preferredName?: string;
+      skipUndo?: boolean;
+      deferUpdate?: boolean;
+      initialNodePatch?: Record<string, any>;
+    }
   ): DiagramNode {
     if (!options?.skipUndo) {
       this.saveToUndoStack();
@@ -1235,11 +1250,17 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       y: y,
       width: this.nodeContentSize,
       height: this.nodeContentSize,
-      ...(normalizedType === 'deployment' ? { workloadType: 'DEPLOYMENT' as DiagramNode['workloadType'] } : {})
+      ...(normalizedType === 'deployment' ? { workloadType: 'DEPLOYMENT' as DiagramNode['workloadType'] } : {}),
+      ...((normalizedType === 'accesspolicy' && options?.initialNodePatch?.['rbacNodeType'])
+        ? { rbacNodeType: options.initialNodePatch['rbacNodeType'] === 'ROLEBINDING' ? 'ROLEBINDING' : 'ROLE' }
+        : {})
     };
 
     this.nodes.push(node);
     this.diagramService.addClusterNode(type, node.id, resolvedName);
+    if (options?.initialNodePatch) {
+      this.diagramService.updateClusterNodes(node.id, options.initialNodePatch);
+    }
 
     if (!options?.deferUpdate) {
       this.updateDiagramData();
@@ -1290,7 +1311,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private normalizeDiagramNode(rawNode: any, overrides?: Partial<DiagramNode>): DiagramNode {
-    const type = (rawNode?.type || rawNode?.kind || this.fallbackIconType).toLowerCase();
+    const rawType = (rawNode?.type || rawNode?.kind || this.fallbackIconType).toLowerCase();
+    const type = rawType === 'customresource' || rawType === 'custom-resource' ? 'cr' : rawType;
     const normalized: DiagramNode = {
       id: rawNode?.id || uuidv4(),
       name: rawNode?.name || type,
@@ -1304,6 +1326,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       hasHealthIssue: !!rawNode?.hasHealthIssue,
       healthReason: rawNode?.healthReason,
       replicas: typeof rawNode?.replicas === 'number' ? rawNode.replicas : undefined,
+      rbacNodeType: String(rawNode?.rbacNodeType ?? '').toUpperCase() === 'ROLEBINDING' ? 'ROLEBINDING' : undefined,
       ...overrides
     };
 
@@ -1331,6 +1354,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   private createNodes(): DragDropData[] {
     return [
       { name: 'Role', type: 'accesspolicy', baseName: 'role', icon: this.iconService.getIconPath('accesspolicy') },
+      { name: 'RoleBinding', type: 'accesspolicy', baseName: 'role-binding', icon: this.iconService.getIconPath('rolebinding') },
+      { name: 'ServiceAccount', type: 'serviceaccount', baseName: 'service-account', icon: this.iconService.getIconPath('serviceaccount') },
       { name: 'container', type: 'container', icon: this.iconService.getIconPath('container') },
       { name: 'deployment', type: 'deployment', icon: this.iconService.getIconPath('deployment') },
       { name: 'service', type: 'service', icon: this.iconService.getIconPath('service') },
@@ -1944,10 +1969,13 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     if (involvesAccessPolicy) {
       const policyNode = this.isAccessPolicyNode(fromNode) ? fromNode : toNode;
       const targetNode = policyNode.id === fromNode.id ? toNode : fromNode;
-      if (!this.isWorkloadForAccessPolicy(targetNode)) {
+      const roleToWorkload = this.isRolePolicyNode(policyNode) && this.isWorkloadForAccessPolicy(targetNode);
+      const roleBindingToServiceAccount = this.isRoleBindingPolicyNode(policyNode) && this.isServiceAccountNode(targetNode);
+      const roleBindingToRole = this.isRoleBindingPolicyNode(policyNode) && this.isRolePolicyNode(targetNode);
+      if (!roleToWorkload && !roleBindingToServiceAccount && !roleBindingToRole) {
         this.notificationService.warn(
           'Invalid connection',
-          'Roles can only be linked to workloads (Deployment, Job).'
+          'RoleBinding supports only links to Role and ServiceAccount. Role supports only workloads.'
         );
         return;
       }
@@ -1957,11 +1985,14 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     const involvesServiceAccountWorkloadBinding =
       (this.isServiceAccountNode(fromNode) && this.isServiceAccountSupportedWorkloadNode(toNode)) ||
       (this.isServiceAccountNode(toNode) && this.isServiceAccountSupportedWorkloadNode(fromNode));
+    const involvesServiceAccountRoleBinding =
+      (this.isServiceAccountNode(fromNode) && this.isRoleBindingPolicyNode(toNode)) ||
+      (this.isServiceAccountNode(toNode) && this.isRoleBindingPolicyNode(fromNode));
 
-    if (involvesServiceAccount && !involvesServiceAccountWorkloadBinding) {
+    if (involvesServiceAccount && !involvesServiceAccountWorkloadBinding && !involvesServiceAccountRoleBinding) {
       this.notificationService.warn(
         'Invalid connection',
-        'ServiceAccounts can only be linked to workloads (Deployment, StatefulSet, Job).'
+        'ServiceAccounts can only be linked to workloads or RoleBinding.'
       );
       return;
     }
@@ -1971,12 +2002,15 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       (fromNode.type === 'container' && toNode.type === 'deployment');
 
     const involvesAccessPolicyWorkloadBinding =
-      (this.isAccessPolicyNode(fromNode) && this.isWorkloadForAccessPolicy(toNode)) ||
-      (this.isAccessPolicyNode(toNode) && this.isWorkloadForAccessPolicy(fromNode));
+      (this.isRolePolicyNode(fromNode) && this.isWorkloadForAccessPolicy(toNode)) ||
+      (this.isRolePolicyNode(toNode) && this.isWorkloadForAccessPolicy(fromNode));
+    const involvesRoleBindingRefs =
+      (this.isRoleBindingPolicyNode(fromNode) && (this.isRolePolicyNode(toNode) || this.isServiceAccountNode(toNode))) ||
+      (this.isRoleBindingPolicyNode(toNode) && (this.isRolePolicyNode(fromNode) || this.isServiceAccountNode(fromNode)));
 
     const type = involvesDeploymentAndContainer
       ? 'Container'
-      : involvesAccessPolicyWorkloadBinding
+      : (involvesAccessPolicyWorkloadBinding || involvesRoleBindingRefs)
         ? 'appliesTo'
         : involvesServiceAccountWorkloadBinding
           ? 'serviceAccountBinding'
@@ -2210,11 +2244,16 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       if (involvesAccessPolicy) {
         const policyNode = this.isAccessPolicyNode(fromNode) ? fromNode : toNode;
         const otherNode = policyNode.id === fromNode.id ? toNode : fromNode;
-        const forcedType: LinkType | null = this.isWorkloadForAccessPolicy(otherNode) ? 'appliesTo' : null;
+        const forcedType: LinkType | null =
+          (this.isRolePolicyNode(policyNode) && this.isWorkloadForAccessPolicy(otherNode))
+            || (this.isRoleBindingPolicyNode(policyNode) && this.isServiceAccountNode(otherNode))
+            || (this.isRoleBindingPolicyNode(policyNode) && this.isRolePolicyNode(otherNode))
+            ? 'appliesTo'
+            : null;
         if (!forcedType) {
           this.notificationService.warn(
             'Invalid connection',
-            'Roles can only be linked to workloads (Deployment, Job).'
+            'RoleBinding supports only links to Role and ServiceAccount. Role supports only workloads.'
           );
           return;
         }
@@ -2425,6 +2464,26 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     return (node?.type || '').toLowerCase() === 'accesspolicy';
   }
 
+  private getAccessPolicyNodeType(node: DiagramNode): 'ROLE' | 'ROLEBINDING' {
+    if (!this.isAccessPolicyNode(node)) {
+      return 'ROLE';
+    }
+    if (node?.rbacNodeType === 'ROLEBINDING') {
+      return 'ROLEBINDING';
+    }
+    const snapshotNode = this.currentClusterSnapshot?.nodes?.find((n: any) => n.id === node.id);
+    const rawType = String((snapshotNode as any)?.rbacNodeType ?? 'ROLE').toUpperCase();
+    return rawType === 'ROLEBINDING' ? 'ROLEBINDING' : 'ROLE';
+  }
+
+  private isRoleBindingPolicyNode(node: DiagramNode): boolean {
+    return this.isAccessPolicyNode(node) && this.getAccessPolicyNodeType(node) === 'ROLEBINDING';
+  }
+
+  private isRolePolicyNode(node: DiagramNode): boolean {
+    return this.isAccessPolicyNode(node) && this.getAccessPolicyNodeType(node) !== 'ROLEBINDING';
+  }
+
   private isWorkloadForAccessPolicy(node: DiagramNode): boolean {
     const normalized = (node?.type || '').toLowerCase();
     return normalized === 'deployment' || normalized === 'job';
@@ -2542,6 +2601,18 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     if (normalizedType === 'appliesTo') {
+      if (this.isRoleBindingPolicyNode(startNode) && isServiceAccount(endNode)) {
+        return { fromNode: startNode, toNode: endNode, fromPoint: startPoint, toPoint: endPoint };
+      }
+      if (this.isRoleBindingPolicyNode(endNode) && isServiceAccount(startNode)) {
+        return { fromNode: endNode, toNode: startNode, fromPoint: endPoint, toPoint: startPoint };
+      }
+      if (this.isRoleBindingPolicyNode(startNode) && this.isRolePolicyNode(endNode)) {
+        return { fromNode: startNode, toNode: endNode, fromPoint: startPoint, toPoint: endPoint };
+      }
+      if (this.isRoleBindingPolicyNode(endNode) && this.isRolePolicyNode(startNode)) {
+        return { fromNode: endNode, toNode: startNode, fromPoint: endPoint, toPoint: startPoint };
+      }
       if (isAccessPolicy(startNode) && isPolicyWorkload(endNode)) {
         return { fromNode: startNode, toNode: endNode, fromPoint: startPoint, toPoint: endPoint };
       }
@@ -3056,6 +3127,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
         width: n.width ?? this.nodeContentSize,
         height: n.height ?? this.nodeContentSize,
         isAffected: !!n.isAffected,
+        ...(n.type === 'accesspolicy' && n.rbacNodeType ? { rbacNodeType: n.rbacNodeType } : {}),
         ...(n.type === 'container' && n.role ? { role: n.role } : {}),
         ...(n.type === 'deployment' && n.workloadType ? { workloadType: n.workloadType } : {})
       })),

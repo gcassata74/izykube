@@ -88,6 +88,12 @@ public class NodeFactory {
                 sanitizedPolicy.setRules(policy.getRules());
                 sanitizedPolicy.setTargetBindingStrategy(policy.getTargetBindingStrategy());
                 sanitizedPolicy.setExistingServiceAccountName(policy.getExistingServiceAccountName());
+                sanitizedPolicy.setRoleKind(policy.getRoleKind());
+                sanitizedPolicy.setBindingKind(policy.getBindingKind());
+                sanitizedPolicy.setRbacNodeType(policy.getRbacNodeType());
+                sanitizedPolicy.setSubjectServiceAccountName(policy.getSubjectServiceAccountName());
+                sanitizedPolicy.setRoleRefName(policy.getRoleRefName());
+                sanitizedPolicy.setRoleRefKind(policy.getRoleRefKind());
                 sanitized = sanitizedPolicy;
                 break;
             case "service":
@@ -173,6 +179,10 @@ public class NodeFactory {
                 policy.setNamespace("default");
                 policy.setTargetBindingStrategy(AccessPolicyBindingStrategy.WORKLOAD_SA_PER_WORKLOAD);
                 policy.setRules(List.of());
+                policy.setRoleKind("Role");
+                policy.setBindingKind("RoleBinding");
+                policy.setRbacNodeType("ROLE");
+                policy.setRoleRefKind("Role");
                 return policy;
             case "ingress":
                 return new IngressDTO(id, name, "example.com", "/", "default-service", 80, null, new LinkedHashMap<>());

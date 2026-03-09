@@ -83,7 +83,20 @@ export class NodeFactoryService {
       case 'serviceaccount':
         return new ServiceAccount(id, trimmedName, 'default', true, {}, {}, 'NONE');
       case 'accesspolicy':
-        return new AccessPolicy(id, trimmedName, 'default', [], 'WORKLOAD_SA_PER_WORKLOAD', null);
+        return new AccessPolicy(
+          id,
+          trimmedName,
+          'default',
+          [],
+          'WORKLOAD_SA_PER_WORKLOAD',
+          null,
+          'Role',
+          'RoleBinding',
+          'ROLE',
+          null,
+          null,
+          'Role'
+        );
       case 'volume':
         return new Volume(
           id,
@@ -91,6 +104,8 @@ export class NodeFactoryService {
           { type: 'emptyDir' } as VolumeConfig  // default to emptyDir
         );
       case 'cr':
+      case 'customresource':
+      case 'custom-resource':
         return new CustomResource(
           id,
           trimmedName

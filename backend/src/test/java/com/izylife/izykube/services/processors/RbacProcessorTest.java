@@ -5,6 +5,7 @@ import com.izylife.izykube.dto.cluster.AccessPolicyDTO;
 import com.izylife.izykube.dto.cluster.AccessPolicyRuleDTO;
 import com.izylife.izykube.dto.cluster.DeploymentDTO;
 import com.izylife.izykube.dto.cluster.LinkDTO;
+import com.izylife.izykube.dto.cluster.ServiceAccountDTO;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -130,6 +131,71 @@ class RbacProcessorTest {
         assertTrue(docs.containsKey("Role/demo/my-app-reader"));
         assertTrue(docs.containsKey("ServiceAccount/demo/my-app-sa"));
         assertTrue(docs.keySet().stream().allMatch(key -> key.matches("^(ServiceAccount|Role|RoleBinding)/demo/[a-z0-9]([a-z0-9-]*[a-z0-9])?$")));
+    }
+
+    @Test
+    void clusterRoleAndClusterRoleBindingAreGeneratedWhenSelected() {
+        RbacProcessor processor = new RbacProcessor();
+
+        AccessPolicyDTO policy = policy("ap-1", "global-reader", "demo");
+        policy.setRoleKind("ClusterRole");
+        policy.setBindingKind("ClusterRoleBinding");
+        DeploymentDTO deployment = new DeploymentDTO("dep-1", "my-app", 1, "RollingUpdate", "", 80);
+
+        RbacProcessor.Generation generation = processor.generateAndApply("demo", List.of(policy, deployment), List.of(link(policy.getId(), deployment.getId(), "appliesTo")));
+        Map<String, Map<String, Object>> docs = toDocsByKindAndName(generation.yamls());
+
+        assertTrue(docs.containsKey("ClusterRole/null/global-reader"));
+        assertTrue(docs.containsKey("ClusterRoleBinding/null/global-reader-my-app-rb"));
+    }
+
+    @Test
+    void clusterRoleBindingWithRoleThrowsValidationError() {
+        RbacProcessor processor = new RbacProcessor();
+
+        AccessPolicyDTO policy = policy("ap-1", "reader", "demo");
+        policy.setRoleKind("Role");
+        policy.setBindingKind("ClusterRoleBinding");
+        DeploymentDTO deployment = new DeploymentDTO("dep-1", "my-app", 1, "RollingUpdate", "", 80);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                processor.generateAndApply("demo", List.of(policy, deployment), List.of(link(policy.getId(), deployment.getId(), "appliesTo"))));
+        assertTrue(ex.getMessage().contains("ClusterRoleBinding"));
+    }
+
+    @Test
+    void roleBindingNodeDerivesRoleAndServiceAccountFromLinks() {
+        RbacProcessor processor = new RbacProcessor();
+
+        AccessPolicyDTO role = policy("ap-role", "reader", "demo");
+        ServiceAccountDTO serviceAccount = new ServiceAccountDTO("sa-1", "workload-sa");
+        serviceAccount.setNamespace("demo");
+        DeploymentDTO deployment = new DeploymentDTO("dep-1", "my-app", 1, "RollingUpdate", "", 80);
+        AccessPolicyDTO roleBinding = new AccessPolicyDTO("ap-rb", "reader-binding");
+        roleBinding.setNamespace("demo");
+        roleBinding.setRbacNodeType("ROLEBINDING");
+        roleBinding.setRules(List.of());
+
+        RbacProcessor.Generation generation = processor.generateAndApply(
+                "demo",
+                List.of(role, serviceAccount, deployment, roleBinding),
+                List.of(
+                        link(role.getId(), deployment.getId(), "appliesTo"),
+                        link(roleBinding.getId(), role.getId(), "appliesTo"),
+                        link(roleBinding.getId(), serviceAccount.getId(), "appliesTo")
+                )
+        );
+
+        Map<String, Map<String, Object>> docs = toDocsByKindAndName(generation.yamls());
+        assertTrue(docs.containsKey("Role/demo/reader"));
+        assertTrue(docs.containsKey("RoleBinding/demo/reader-binding-rb"));
+
+        Map<String, Object> roleBindingDoc = docs.get("RoleBinding/demo/reader-binding-rb");
+        Map<String, Object> roleRef = castMap(roleBindingDoc.get("roleRef"));
+        assertEquals("Role", roleRef.get("kind"));
+        assertEquals("reader", roleRef.get("name"));
+        List<Map<String, Object>> subjects = castList(roleBindingDoc.get("subjects"));
+        assertEquals("workload-sa", subjects.get(0).get("name"));
     }
 
     private AccessPolicyDTO policy(String id, String name, String namespace) {
