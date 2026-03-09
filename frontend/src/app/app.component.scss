@@ -67,6 +67,7 @@ app-sidebar {
   }
 
   app-sidebar {
-    display: none;
+    flex: 0 0 64px;
+    min-width: 64px;
   }
 }

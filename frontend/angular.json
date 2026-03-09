@@ -43,6 +43,13 @@
             ],
             "scripts": [
               "node_modules/gojs/release/go.js"
+            ],
+            "allowedCommonJsDependencies": [
+              "interactjs",
+              "@xterm/xterm",
+              "@xterm/addon-fit",
+              "ace-builds",
+              "quill-delta"
             ]
           },
           "configurations": {

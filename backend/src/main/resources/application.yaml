@@ -18,7 +18,11 @@ springdoc:
   api-docs.path: /api-docs
 
 mongock:
-  migration-scan-package: com.izylife.izykube.changelogs
+  migration-scan-package:
+    - com.izylife.izykube.changelogs
+  # Keep deprecated key too for compatibility in mixed environments.
+  change-logs-scan-package:
+    - com.izylife.izykube.changelogs
 
 app:
   cors:
@@ -57,3 +61,14 @@ ai:
     connect-timeout-ms: 5000
     read-timeout-ms: 120000
 
+operatorhub:
+  base-url: https://operatorhub.io
+  api:
+    url: https://operatorhub.io/api/operators
+  install:
+    base-url: https://operatorhub.io/install
+  github:
+    api-base-url: https://api.github.com
+    repo: k8s-operatorhub/community-operators
+    path: operators
+    token: ""

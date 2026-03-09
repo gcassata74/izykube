@@ -3,6 +3,8 @@
 # Define default shell to be used
 SHELL := /bin/bash
 LOCALE ?= en
+OLM_VERSION ?= v0.30.0
+OLM_BASE_URL ?= https://github.com/operator-framework/operator-lifecycle-manager/releases/download/$(OLM_VERSION)
 
 # e.g. make run-i18n-build LOCALE=fr
 run-i18n-build:
@@ -103,6 +105,44 @@ install-cert-manager:
 	helm repo update
 	helm install cert-manager jetstack/cert-manager -n cert-manager --create-namespace --set crds.enabled=true
 
+# Install OLM (required for OperatorHub Subscriptions/CSVs)
+install-olm:
+	@echo "Installing OLM $(OLM_VERSION)..."
+	kubectl apply --server-side --force-conflicts -f $(OLM_BASE_URL)/crds.yaml
+	@if ! kubectl get crd clusterserviceversions.operators.coreos.com >/dev/null 2>&1; then \
+		echo "clusterserviceversions CRD missing, applying it explicitly..."; \
+		curl -fsSL $(OLM_BASE_URL)/crds.yaml \
+		| awk 'BEGIN{RS="---"; ORS="---\n"} /name: clusterserviceversions\.operators\.coreos\.com/' \
+		| kubectl apply --server-side --force-conflicts -f -; \
+	fi
+	@echo "Waiting for OLM CRDs..."
+	kubectl wait --for=condition=Established --timeout=120s crd/clusterserviceversions.operators.coreos.com
+	kubectl wait --for=condition=Established --timeout=120s crd/subscriptions.operators.coreos.com
+	kubectl wait --for=condition=Established --timeout=120s crd/installplans.operators.coreos.com
+	kubectl apply --server-side --force-conflicts -f $(OLM_BASE_URL)/olm.yaml
+	@echo "Waiting for OLM deployments..."
+	kubectl -n olm wait --for=condition=Available deployment/olm-operator --timeout=300s
+	kubectl -n olm wait --for=condition=Available deployment/catalog-operator --timeout=300s
+	kubectl -n olm rollout status deployment/olm-operator --timeout=180s
+	kubectl -n olm rollout status deployment/catalog-operator --timeout=180s
+	kubectl -n olm rollout status deployment/packageserver --timeout=180s
+	@echo "Waiting for PackageServer APIService..."
+	kubectl wait --for=condition=Available apiservice/v1.packages.operators.coreos.com --timeout=300s
+	@echo "OLM installation complete."
+
+# Verify OLM status
+check-olm:
+	kubectl get ns olm operators
+	kubectl get crd clusterserviceversions.operators.coreos.com subscriptions.operators.coreos.com installplans.operators.coreos.com
+	kubectl -n olm get deploy,pods
+	kubectl get apiservice v1.packages.operators.coreos.com
+
+# Uninstall OLM
+uninstall-olm:
+	@echo "Uninstalling OLM $(OLM_VERSION)..."
+	kubectl delete -f $(OLM_BASE_URL)/olm.yaml --ignore-not-found=true
+	kubectl delete -f $(OLM_BASE_URL)/crds.yaml --ignore-not-found=true
+
 # Create internal CA and ClusterIssuer for HTTPS routes
 create-internal-ca:
 	@mkdir -p .certs
@@ -128,6 +168,7 @@ install-istio-gateway:
 
 # Install all cluster addons (istio, monitoring)
 install-cluster-addons:
+	$(MAKE) install-olm
 	$(MAKE) install-cert-manager
 	$(MAKE) create-internal-ca
 	$(MAKE) install-istio
@@ -146,3 +187,6 @@ bootstrap-k3d-cluster:
 # Create izykube system namespace
 create-izykube-system:
 	kubectl create namespace izykube-system --dry-run=client -o yaml | kubectl apply -f -
+
+build-backend:
+	mvn -pl backend spring-boot:run -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"

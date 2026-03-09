@@ -1,0 +1,153 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.operatorhub-search {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.operatorhub-search .p-input-icon-left {
+  flex: 1;
+}
+
+.operatorhub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1rem;
+  min-height: 160px;
+}
+
+.operatorhub-grid--loading {
+  opacity: 0.75;
+}
+
+.operatorhub-card {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 14px;
+  padding: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.operatorhub-card__logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.operatorhub-card__logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #ffffff;
+}
+
+.operatorhub-card__title {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+
+.operatorhub-card__subtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.operatorhub-card__actions {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.operatorhub-card__link {
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.operatorhub-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.operatorhub-count {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.row-title {
+  font-weight: 600;
+}
+
+.row-subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  opacity: 0.8;
+  white-space: normal;
+}
+
+.dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field-row--full {
+  grid-column: 1 / -1;
+}
+
+.field-row textarea,
+.field-row input,
+.field-row .p-dropdown {
+  width: 100%;
+}
+
+.action-column {
+  width: 280px;
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+@media (max-width: 980px) {
+  .dialog-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-column {
+    width: auto;
+  }
+
+  .operatorhub-grid {
+    grid-template-columns: 1fr;
+  }
+}

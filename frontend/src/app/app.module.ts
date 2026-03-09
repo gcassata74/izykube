@@ -76,6 +76,8 @@ import { ServiceAccountFormComponent } from './cluster/service-account-form/serv
 import { AccessPolicyFormComponent } from './cluster/access-policy-form/access-policy-form.component';
 import { CrdListComponent } from './crds/crd-list/crd-list.component';
 import { CrdEditorComponent } from './crds/crd-editor/crd-editor.component';
+import { OperatorCatalogComponent } from './operator-catalog/operator-catalog.component';
+import { PaginatorModule } from 'primeng/paginator';
 
 @NgModule({
   declarations: [
@@ -114,6 +116,7 @@ import { CrdEditorComponent } from './crds/crd-editor/crd-editor.component';
     AccessPolicyFormComponent,
     CrdListComponent,
     CrdEditorComponent,
+    OperatorCatalogComponent,
   ],
   imports: [
     SharedModule,
@@ -149,6 +152,7 @@ import { CrdEditorComponent } from './crds/crd-editor/crd-editor.component';
     FormsModule,
     HttpClientModule,
     TooltipModule,
+    PaginatorModule,
     StoreModule.forRoot(reducers),
     EffectsModule.forRoot([ClusterEffect]),
     StoreDevtoolsModule.instrument({ maxAge: 25, logOnly: !isDevMode() }),

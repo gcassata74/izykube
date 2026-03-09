@@ -1,0 +1,208 @@
+<div class="content">
+  <p-card class="izy-card" header="OperatorHub">
+    <div class="card-content">
+      <div class="search-row operatorhub-search">
+        <span class="p-input-icon-left">
+          <i class="pi pi-search"></i>
+          <input
+            pInputText
+            type="text"
+            placeholder="Search operators"
+            [(ngModel)]="hubQuery"
+            (keyup.enter)="onHubSearch()" />
+        </span>
+        <button pButton label="Search" class="p-button-outlined" (click)="onHubSearch()"></button>
+      </div>
+
+      <div class="operatorhub-grid" [class.operatorhub-grid--loading]="hubLoading">
+        <article class="operatorhub-card" *ngFor="let operator of hubOperators">
+          <div class="operatorhub-card__logo" aria-hidden="true">
+            <img
+              *ngIf="operator.iconUrl; else letterFallback"
+              class="operatorhub-card__logo-image"
+              [src]="operator.iconUrl"
+              [alt]="operator.name + ' logo'" />
+            <ng-template #letterFallback>
+              {{ (operator.name || '?').slice(0, 1).toUpperCase() }}
+            </ng-template>
+          </div>
+          <div class="operatorhub-card__content">
+            <h4 class="operatorhub-card__title">{{ operator.name }}</h4>
+            <p class="operatorhub-card__subtitle">Installable from OperatorHub catalog</p>
+          </div>
+          <div class="operatorhub-card__actions">
+            <button
+              pButton
+              class="p-button-sm p-button-outlined"
+              label="Import"
+              icon="pi pi-download"
+              (click)="importFromHub(operator)">
+            </button>
+            <a
+              *ngIf="operator.installYamlUrl"
+              class="operatorhub-card__link"
+              [href]="operator.installYamlUrl"
+              target="_blank"
+              rel="noopener noreferrer">
+              YAML
+            </a>
+          </div>
+        </article>
+      </div>
+
+      <div class="operatorhub-footer" *ngIf="hubTotal > 0">
+        <span class="operatorhub-count">
+          Showing {{ hubOperators.length }} of {{ hubTotal }}
+        </span>
+        <p-paginator
+          [first]="(hubPage - 1) * hubSize"
+          [rows]="hubSize"
+          [totalRecords]="hubTotal"
+          [rowsPerPageOptions]="[12, 24, 48]"
+          (onPageChange)="onHubPageChange($event)">
+        </p-paginator>
+      </div>
+    </div>
+  </p-card>
+
+  <p-card class="izy-card" header="Operator Catalog" i18n-header="@@operatorCatalog.title">
+    <div class="card-content">
+      <div class="izy-button-container">
+        <button
+          pButton
+          label="Add Operator"
+          i18n-label="@@operatorCatalog.add"
+          icon="pi pi-plus"
+          class="p-button-outlined izy-primary-button"
+          (click)="openCreate()">
+        </button>
+      </div>
+
+      <p-table
+        class="izy-table"
+        [value]="entries"
+        [loading]="loading"
+        styleClass="p-datatable-striped p-datatable-rounded">
+        <ng-template pTemplate="header">
+          <tr>
+            <th i18n="@@operatorCatalog.col.name">Name</th>
+            <th i18n="@@operatorCatalog.col.package">Package</th>
+            <th i18n="@@operatorCatalog.col.version">Version</th>
+            <th i18n="@@operatorCatalog.col.status">Status</th>
+            <th i18n="@@operatorCatalog.col.namespace">Namespace</th>
+            <th i18n="@@operatorCatalog.col.policy">Policy</th>
+            <th i18n="@@operatorCatalog.col.lastAction">Last action</th>
+            <th i18n="@@operatorCatalog.col.actions">Actions</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-rowData let-even="even">
+          <tr [ngClass]="{ 'izy-row-even': even, 'izy-row-odd': !even }">
+            <td>
+              <div class="row-title">{{ rowData.name }}</div>
+              <div class="row-subtitle" *ngIf="rowData.lastMessage">{{ rowData.lastMessage }}</div>
+            </td>
+            <td>{{ rowData.packageName }}</td>
+            <td>{{ rowData.installedVersion || '-' }} / {{ rowData.desiredVersion }}</td>
+            <td>{{ rowData.status }}</td>
+            <td>{{ rowData.targetNamespace }}</td>
+            <td>{{ rowData.uninstallPolicy }}</td>
+            <td>{{ formatDate(rowData.lastActionAt || rowData.updatedAt) }}</td>
+            <td class="action-column">
+              <div class="action-buttons">
+                <button pButton class="p-button-text" (click)="openEdit(rowData)" title="Edit" i18n-title="@@operatorCatalog.action.edit" aria-label="Edit" i18n-aria-label="@@operatorCatalog.action.edit">
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button pButton class="p-button-text" (click)="install(rowData)" title="Install" i18n-title="@@operatorCatalog.action.install" aria-label="Install" i18n-aria-label="@@operatorCatalog.action.install">
+                  <i class="pi pi-download"></i>
+                </button>
+                <button pButton class="p-button-text" (click)="upgrade(rowData)" title="Update" i18n-title="@@operatorCatalog.action.update" aria-label="Update" i18n-aria-label="@@operatorCatalog.action.update">
+                  <i class="pi pi-arrow-up"></i>
+                </button>
+                <button pButton class="p-button-text" (click)="uninstall(rowData, false)" title="Uninstall" i18n-title="@@operatorCatalog.action.uninstall" aria-label="Uninstall" i18n-aria-label="@@operatorCatalog.action.uninstall">
+                  <i class="pi pi-trash"></i>
+                </button>
+                <button pButton class="p-button-text" (click)="uninstall(rowData, true)" title="Force uninstall" i18n-title="@@operatorCatalog.action.forceUninstall" aria-label="Force uninstall" i18n-aria-label="@@operatorCatalog.action.forceUninstall">
+                  <i class="pi pi-ban"></i>
+                </button>
+                <button pButton class="p-button-text" (click)="delete(rowData)" title="Delete from catalog" i18n-title="@@operatorCatalog.action.delete" aria-label="Delete from catalog" i18n-aria-label="@@operatorCatalog.action.delete">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </p-card>
+</div>
+
+<p-dialog
+  header="Operator Catalog Entry"
+  i18n-header="@@operatorCatalog.dialog.title"
+  [(visible)]="dialogVisible"
+  [modal]="true"
+  [style]="{ width: '72rem', maxWidth: '95vw' }"
+  [closable]="!saving">
+  <div class="dialog-grid">
+    <div class="field-row">
+      <label for="op-name" i18n="@@operatorCatalog.field.name">Name</label>
+      <input id="op-name" pInputText [(ngModel)]="form.name" />
+    </div>
+
+    <div class="field-row">
+      <label for="op-package" i18n="@@operatorCatalog.field.package">Package</label>
+      <input id="op-package" pInputText [(ngModel)]="form.packageName" />
+    </div>
+
+    <div class="field-row">
+      <label for="op-channel" i18n="@@operatorCatalog.field.channel">Channel</label>
+      <input id="op-channel" pInputText [(ngModel)]="form.channel" />
+    </div>
+
+    <div class="field-row">
+      <label for="op-namespace" i18n="@@operatorCatalog.field.targetNamespace">Target Namespace</label>
+      <input id="op-namespace" pInputText [(ngModel)]="form.targetNamespace" />
+    </div>
+
+    <div class="field-row">
+      <label for="op-version" i18n="@@operatorCatalog.field.desiredVersion">Desired Version</label>
+      <input id="op-version" pInputText [(ngModel)]="form.desiredVersion" />
+    </div>
+
+    <div class="field-row">
+      <label for="op-policy" i18n="@@operatorCatalog.field.uninstallPolicy">Uninstall Policy</label>
+      <p-dropdown
+        id="op-policy"
+        [options]="uninstallPolicies"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="form.uninstallPolicy"
+        appendTo="body">
+      </p-dropdown>
+    </div>
+
+    <div class="field-row field-row--full">
+      <label for="op-managed-crds" i18n="@@operatorCatalog.field.managedCrds">Managed CRDs</label>
+      <small i18n="@@operatorCatalog.field.managedCrdsHelp">Format: group,version,plural,namespaced (one CRD per line)</small>
+      <textarea
+        id="op-managed-crds"
+        pInputTextarea
+        rows="4"
+        [(ngModel)]="form.managedCrdsRaw"
+        placeholder="example.com,v1,widgets,true"
+        i18n-placeholder="@@operatorCatalog.field.managedCrdsPlaceholder">
+      </textarea>
+    </div>
+
+    <div class="field-row field-row--full">
+      <label for="op-manifest" i18n="@@operatorCatalog.field.manifestYaml">Manifest YAML</label>
+      <textarea id="op-manifest" pInputTextarea rows="14" [(ngModel)]="form.manifestYaml"></textarea>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button pButton class="p-button-text" label="Cancel" i18n-label="@@common.cancel" (click)="dialogVisible = false" [disabled]="saving"></button>
+    <button pButton label="Save" i18n-label="@@common.save" (click)="save()" [disabled]="saving"></button>
+  </ng-template>
+</p-dialog>

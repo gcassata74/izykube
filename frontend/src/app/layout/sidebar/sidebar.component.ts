@@ -21,6 +21,7 @@ export class SidebarComponent {
 
   navItems: SidebarNavItem[] = [
     { label: 'Home', icon: 'pi pi-home', route: '/home' },
+    { label: 'Operators', icon: 'pi pi-box', route: '/operators' },
     { label: 'Namespaces', icon: 'pi pi-th-large', route: '/namespaces' },
     { label: 'Assets', icon: 'pi pi-briefcase', route: '/assets' },
     { label: 'CRDs', icon: 'pi pi-table', route: '/crds' },

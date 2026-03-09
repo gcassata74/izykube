@@ -23,6 +23,11 @@ export class DataService {
     return this.http.get<T>(url, { params });
   }
 
+  getText(endpoint: string, params?: HttpParams): Observable<string> {
+    const url = this.buildUrl(endpoint);
+    return this.http.get(url, { params, responseType: 'text' });
+  }
+
   // Generic POST method
   post<T>(endpoint: string, data: any): Observable<T> {
     const url = this.buildUrl(endpoint);
