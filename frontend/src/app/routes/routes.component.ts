@@ -357,7 +357,6 @@ export class RoutesComponent implements OnInit {
       ? $localize`:@@routes.dialog.editTitle:Edit Route`
       : $localize`:@@routes.dialog.createTitle:Create Route`;
   }
-
   get submitButtonLabel(): string {
     return this.editingRoute
       ? $localize`:@@common.save:Save`

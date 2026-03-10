@@ -10,7 +10,9 @@ import { Table } from 'primeng/table';
 import { KubeRowRef } from './kube-row-actions/kube-row-actions.component';
 import { PortForwardResponse, PortForwardService } from '../services/port-forward.service';
 
-type ResourceCollections = Pick<NamespaceSummary, 'pods' | 'deployments' | 'services' | 'routes' | 'configMaps' | 'secrets' | 'jobs' | 'cronJobs' | 'daemonSets' | 'statefulSets'>;
+type ResourceCollections = Pick<NamespaceSummary, 'pods' | 'deployments' | 'services' | 'routes' | 'configMaps' | 'secrets' | 'jobs' | 'cronJobs' | 'daemonSets' | 'statefulSets'> & {
+  portForwards: PortForwardResponse[];
+};
 type ResourceKind = keyof ResourceCollections;
 
 interface ResourceMenuItem {
@@ -45,7 +47,8 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     jobs: { label: $localize`:@@kubeExplorer.resource.jobs:Jobs`, icon: 'pi pi-refresh', description: $localize`:@@kubeExplorer.resource.jobsDesc:One-off workloads` },
     cronJobs: { label: $localize`:@@kubeExplorer.resource.cronJobs:CronJobs`, icon: 'pi pi-calendar', description: $localize`:@@kubeExplorer.resource.cronJobsDesc:Scheduled jobs` },
     daemonSets: { label: $localize`:@@kubeExplorer.resource.daemonSets:DaemonSets`, icon: 'pi pi-server', description: $localize`:@@kubeExplorer.resource.daemonSetsDesc:Node daemons` },
-    statefulSets: { label: $localize`:@@kubeExplorer.resource.statefulSets:StatefulSets`, icon: 'pi pi-database', description: $localize`:@@kubeExplorer.resource.statefulSetsDesc:Stateful workloads` }
+    statefulSets: { label: $localize`:@@kubeExplorer.resource.statefulSets:StatefulSets`, icon: 'pi pi-database', description: $localize`:@@kubeExplorer.resource.statefulSetsDesc:Stateful workloads` },
+    portForwards: { label: $localize`:@@kubeExplorer.resource.portForwards:Port Forwards`, icon: 'pi pi-send', description: $localize`:@@kubeExplorer.resource.portForwardsDesc:Local tunnel sessions` }
   };
   readonly resourceOrder: ResourceKind[] = Object.keys(this.resourceMetadata) as ResourceKind[];
 
@@ -91,6 +94,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   @ViewChild('cronJobsTable') cronJobsTable?: Table;
   @ViewChild('daemonSetsTable') daemonSetsTable?: Table;
   @ViewChild('statefulSetsTable') statefulSetsTable?: Table;
+  @ViewChild('portForwardsTable') portForwardsTable?: Table;
 
   podStatusClass = (pod: any): string => {
     const status = (pod?.status || '').toLowerCase();
@@ -219,9 +223,11 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     ).subscribe({
       next: (forwards) => {
         this.portForwards = forwards || [];
+        this.updateResourceMenu();
       },
       error: () => {
         this.portForwards = [];
+        this.updateResourceMenu();
       }
     });
   }
@@ -274,7 +280,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
 
   onRowSelect(row: any): void {
     this.selectedRow = row;
-    const key = row?.name;
+    const key = this.buildRowKey(this.activeView, row);
     if (key) {
       this.selectedRowKeys[this.activeView] = key;
     }
@@ -327,6 +333,9 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   }
 
   get activeDataset(): any[] {
+    if (this.activeView === 'portForwards') {
+      return this.portForwards || [];
+    }
     if (!this.summary) {
       return [];
     }
@@ -482,6 +491,14 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
           { label: $localize`:@@kubeExplorer.details.updated:Updated`, value: this.selectedRow.updatedReplicas ?? '-' },
           { label: labelAge, value: this.selectedRow.age }
         ].map(entry => ({ label: entry.label, value: String(entry.value ?? '-') }));
+      case 'portForwards':
+        return [
+          { label: 'Namespace', value: this.selectedRow.namespace },
+          { label: 'Service', value: this.selectedRow.serviceName },
+          { label: 'Local Port', value: this.selectedRow.localPort },
+          { label: 'Target Port', value: this.selectedRow.targetPort },
+          { label: 'Status', value: this.selectedRow.active ? 'Active' : 'Inactive' }
+        ].map(entry => ({ label: entry.label, value: String(entry.value ?? '-') }));
       case 'deployments':
         return [
           { label: labelName, value: this.selectedRow.name },
@@ -616,7 +633,9 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   private updateResourceMenu(): void {
     this.resourceMenu = this.resourceOrder.map(kind => {
       const metadata = this.resourceMetadata[kind];
-      const collection = (this.summary?.[kind] ?? []) as ResourceCollections[ResourceKind];
+      const collection = kind === 'portForwards'
+        ? this.portForwards
+        : ((this.summary?.[kind] ?? []) as ResourceCollections[ResourceKind]);
       const count = collection.length;
       return {
         kind,
@@ -635,7 +654,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const nextRow = this.activeDataset.find(item => item?.name === key) || null;
+    const nextRow = this.activeDataset.find(item => this.buildRowKey(this.activeView, item) === key) || null;
     this.selectedRow = nextRow;
   }
 
@@ -673,6 +692,8 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
         return this.daemonSetsTable;
       case 'statefulSets':
         return this.statefulSetsTable;
+      case 'portForwards':
+        return this.portForwardsTable;
       case 'deployments':
         return this.deploymentsTable;
       case 'services':
@@ -681,6 +702,16 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
       default:
         return this.podsTable;
     }
+  }
+
+  private buildRowKey(kind: ResourceKind, row: any): string {
+    if (!row) {
+      return '';
+    }
+    if (kind === 'portForwards') {
+      return `${row.namespace || ''}/${row.serviceName || ''}/${row.localPort || ''}/${row.targetPort || ''}`;
+    }
+    return row.name || '';
   }
 
   private startAutoRefresh(): void {

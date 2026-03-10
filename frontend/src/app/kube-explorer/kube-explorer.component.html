@@ -50,59 +50,6 @@
         </aside>
 
         <section class="resource-panel">
-            <div class="resource-panel__port-forward" *ngIf="portForwards.length || portForwardsLoading">
-                <div class="resource-panel__port-forward-header">
-                    <span i18n="@@kubeExplorer.portForward.active">Active Port Forwards</span>
-                    <button
-                      pButton
-                      type="button"
-                      icon="pi pi-refresh"
-                      class="p-button-text p-button-sm"
-                      [disabled]="portForwardsLoading"
-                      (click)="loadPortForwards()"
-                      pTooltip="Refresh port forwards"
-                      i18n-pTooltip="@@kubeExplorer.portForward.refresh"
-                    ></button>
-                </div>
-                <p-table
-                  class="izy-table"
-                  styleClass="p-datatable-rounded"
-                  [value]="portForwards"
-                  [loading]="portForwardsLoading"
-                  [showLoader]="false"
-                  [rows]="5"
-                  [paginator]="portForwards.length > 5"
-                >
-                  <ng-template pTemplate="header">
-                    <tr>
-                      <th i18n="@@common.namespace">Namespace</th>
-                      <th i18n="@@common.service">Service</th>
-                      <th i18n="@@kubeExplorer.portForward.local">Local</th>
-                      <th i18n="@@kubeExplorer.portForward.target">Target</th>
-                      <th class="text-center" i18n="@@common.action">Action</th>
-                    </tr>
-                  </ng-template>
-                  <ng-template pTemplate="body" let-forward>
-                    <tr>
-                      <td>{{ forward.namespace }}</td>
-                      <td>{{ forward.serviceName }}</td>
-                      <td>{{ forward.localPort }}</td>
-                      <td>{{ forward.targetPort }}</td>
-                      <td class="text-center">
-                        <button
-                          pButton
-                          type="button"
-                          icon="pi pi-times"
-                          class="p-button-text p-button-sm"
-                          (click)="stopPortForward(forward)"
-                          pTooltip="Stop"
-                          i18n-pTooltip="@@common.stop"
-                        ></button>
-                      </td>
-                    </tr>
-                  </ng-template>
-                </p-table>
-            </div>
             <div class="resource-panel__toolbar">
                 <div class="resource-panel__title">
                     <span class="resource-panel__kind">{{ activeLabel }}</span>
@@ -627,6 +574,65 @@
                                 (click)="openYamlEditor('statefulset', stateful)"
                                 [pTooltip]="editYamlTooltip"
                               ></button>
+                            </td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+
+                <p-table *ngSwitchCase="'portForwards'"
+                         class="izy-table"
+                         styleClass="p-datatable-rounded"
+                         #portForwardsTable
+                         [value]="portForwards || []"
+                         [loading]="portForwardsLoading"
+                         dataKey="serviceName"
+                         [paginator]="true"
+                         [rows]="10"
+                         [rowsPerPageOptions]="[10, 15, 25, 50]"
+                         [globalFilterFields]="['namespace', 'serviceName', 'localPort', 'targetPort']"
+                         selectionMode="single"
+                         [(selection)]="selectedRow"
+                         [rowHover]="true"
+                         (onRowSelect)="onRowSelect($event.data)">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th>Namespace</th>
+                            <th>Service</th>
+                            <th>Local</th>
+                            <th>Target</th>
+                            <th>Status</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-forward>
+                        <tr>
+                            <td>{{ forward.namespace }}</td>
+                            <td>{{ forward.serviceName }}</td>
+                            <td>{{ forward.localPort }}</td>
+                            <td>{{ forward.targetPort }}</td>
+                            <td>
+                                <span class="status-chip" [class.status-chip--ok]="forward.active" [class.status-chip--danger]="!forward.active">
+                                  {{ forward.active ? 'Active' : 'Inactive' }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <button
+                                  pButton
+                                  type="button"
+                                  icon="pi pi-stop-circle"
+                                  label="Stop"
+                                  i18n-label="@@portForward.stop"
+                                  class="p-button-text"
+                                  (click)="stopPortForward(forward); $event.stopPropagation()"
+                                  [disabled]="!forward.active"
+                                ></button>
+                            </td>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="emptymessage">
+                        <tr>
+                            <td colspan="6">
+                                <div class="izy-empty-message text-center" i18n="@@portForward.emptyMessage">No port forwards found.</div>
                             </td>
                         </tr>
                     </ng-template>

@@ -11,8 +11,6 @@ import { RoutesComponent } from './routes/routes.component';
 import { SettingsComponent } from './settings/settings.component';
 import { PortForwardListComponent } from './port-forward/port-forward-list.component';
 import { FormWorkbenchComponent } from './dev/form-workbench/form-workbench.component';
-import { CrdListComponent } from './crds/crd-list/crd-list.component';
-import { CrdEditorComponent } from './crds/crd-editor/crd-editor.component';
 import { OperatorCatalogComponent } from './operator-catalog/operator-catalog.component';
 
 const routes: Routes = [
@@ -31,9 +29,6 @@ const routes: Routes = [
   { path: 'routes', component: RoutesComponent },
   { path: 'settings', component: SettingsComponent },
   { path: 'port-forwards', component: PortForwardListComponent },
-  { path: 'crds', component: CrdListComponent },
-  { path: 'crds/new', component: CrdEditorComponent },
-  { path: 'crds/:id/edit', component: CrdEditorComponent },
   { path: 'operators', redirectTo: 'operator-catalog', pathMatch: 'full' },
   { path: 'operator-catalog', component: OperatorCatalogComponent }
 ];

@@ -74,8 +74,6 @@ import { LinkPropertiesFormComponent } from './diagram/link-properties-form/link
 import { FormWorkbenchComponent } from './dev/form-workbench/form-workbench.component';
 import { ServiceAccountFormComponent } from './cluster/service-account-form/service-account-form.component';
 import { AccessPolicyFormComponent } from './cluster/access-policy-form/access-policy-form.component';
-import { CrdListComponent } from './crds/crd-list/crd-list.component';
-import { CrdEditorComponent } from './crds/crd-editor/crd-editor.component';
 import { OperatorCatalogComponent } from './operator-catalog/operator-catalog.component';
 import { PaginatorModule } from 'primeng/paginator';
 import { CustomResourceFormComponent } from './cluster/custom-resource-form/custom-resource-form.component';
@@ -115,8 +113,6 @@ import { CustomResourceFormComponent } from './cluster/custom-resource-form/cust
     FormWorkbenchComponent,
     ServiceAccountFormComponent,
     AccessPolicyFormComponent,
-    CrdListComponent,
-    CrdEditorComponent,
     OperatorCatalogComponent,
     CustomResourceFormComponent,
   ],

@@ -24,10 +24,8 @@ export class SidebarComponent {
     { label: $localize`:@@sidebar.operators:Operators`, icon: 'pi pi-box', route: '/operators' },
     { label: $localize`:@@sidebar.namespaces:Namespaces`, icon: 'pi pi-th-large', route: '/namespaces' },
     { label: $localize`:@@sidebar.assets:Assets`, icon: 'pi pi-briefcase', route: '/assets' },
-    { label: $localize`:@@sidebar.crds:CRDs`, icon: 'pi pi-table', route: '/crds' },
     { label: $localize`:@@sidebar.kubeExplorer:Kube Explorer`, icon: 'pi pi-compass', route: '/kube-explorer' },
     { label: $localize`:@@sidebar.routes:Routes`, icon: 'pi pi-globe', route: '/routes' },
-    { label: $localize`:@@sidebar.portForwards:Port Forwards`, icon: 'pi pi-share-alt', route: '/port-forwards' },
   ];
 
   readonly settingsLabel = $localize`:@@common.settings:Settings`;

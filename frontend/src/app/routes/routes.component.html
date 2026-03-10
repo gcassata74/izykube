@@ -58,8 +58,8 @@
         type="button"
         icon="pi pi-plus"
         label="Create Route"
-        i18n-label="@@routes.create"
-        class="p-button-sm"
+        i18n-label="@@routes.createRoute"
+        class="p-button-sm izy-primary-button"
         (click)="openCreateDialog()"
       ></button>
     </div>
@@ -137,8 +137,8 @@
       </ng-template>
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="8" class="routes-page__empty">
-            <div class="routes-page__empty-content" i18n="@@routes.empty">No routes found for this namespace.</div>
+          <td colspan="8" class="routes-page__empty izy-empty-message">
+            <div class="routes-page__empty-content izy-empty-message" i18n="@@routes.emptyMessage">No routes found for this namespace.</div>
           </td>
         </tr>
       </ng-template>
