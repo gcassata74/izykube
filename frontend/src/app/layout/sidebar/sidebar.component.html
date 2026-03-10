@@ -19,38 +19,38 @@
     <button
       type="button"
       class="sidebar-item sidebar-item--muted"
-      title="Settings"
-      aria-label="Settings"
+      [title]="settingsLabel"
+      [attr.aria-label]="settingsLabel"
       (click)="onNavigate('/settings')"
-      [pTooltip]="collapsed ? 'Settings' : undefined"
+      [pTooltip]="collapsed ? settingsLabel : undefined"
       tooltipPosition="right"
       [class.sidebar-item--active]="isActive('/settings')">
       <i class="pi pi-cog sidebar-item__icon" aria-hidden="true"></i>
-      <span class="sidebar-item__label">Settings</span>
+      <span class="sidebar-item__label">{{ settingsLabel }}</span>
     </button>
     <button
       type="button"
       class="sidebar-item sidebar-item--muted"
-      title="Help"
-      aria-label="Help"
-      [pTooltip]="collapsed ? 'Help & Docs' : undefined"
+      [title]="helpLabel"
+      [attr.aria-label]="helpLabel"
+      [pTooltip]="collapsed ? helpDocsLabel : undefined"
       tooltipPosition="right">
       <i class="pi pi-question-circle sidebar-item__icon" aria-hidden="true"></i>
-      <span class="sidebar-item__label">Help</span>
+      <span class="sidebar-item__label">{{ helpLabel }}</span>
     </button>
     <button
       type="button"
       class="sidebar-item sidebar-item--muted sidebar-item--collapse"
       (click)="toggleCollapse()"
-      [title]="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-      [pTooltip]="collapsed ? 'Expand sidebar' : undefined"
+      [title]="collapsed ? expandSidebarLabel : collapseSidebarLabel"
+      [pTooltip]="collapsed ? expandSidebarLabel : undefined"
       tooltipPosition="right">
       <i
         class="sidebar-item__icon"
         [ngClass]="collapsed ? 'pi pi-angle-double-right' : 'pi pi-angle-double-left'"
         aria-hidden="true">
       </i>
-      <span class="sidebar-item__label">{{ collapsed ? 'Expand' : 'Collapse' }}</span>
+      <span class="sidebar-item__label">{{ collapsed ? expandLabel : collapseLabel }}</span>
     </button>
   </div>
 </aside>

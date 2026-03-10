@@ -135,7 +135,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   chatLoading = false;
   lastAssistantMessage: ChatMessage | null = null;
   importingFromChat = false;
-  connectionHelpText = 'Trascina per collegare questo blocco con la sua dipendenza UML';
+  connectionHelpText = $localize`:@@diagram.connectionHelpText:Drag to connect this block to its UML dependency`;
   clusterYamlDialogVisible = false;
   clusterYamlMode: 'import' | 'export' = 'import';
   clusterYamlText = '';
@@ -144,13 +144,13 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   clusterYamlFileName = '';
   clusterYamlImportMode: 'replace' | 'append' = 'replace';
   clusterYamlImportModeOptions = [
-    { label: 'Overwrite diagram', value: 'replace' as const },
-    { label: 'Add to diagram', value: 'append' as const }
+    { label: $localize`:@@diagram.overwriteDiagram:Overwrite diagram`, value: 'replace' as const },
+    { label: $localize`:@@diagram.addToDiagramOption:Add to diagram`, value: 'append' as const }
   ];
   clusterExportMode: ClusterExportMode = 'FLAT_YAML';
   clusterExportModeOptions = [
-    { label: 'Flat YAML', value: 'FLAT_YAML' as ClusterExportMode },
-    { label: 'Helm Chart (.zip)', value: 'HELM_CHART' as ClusterExportMode }
+    { label: $localize`:@@diagram.flatYaml:Flat YAML`, value: 'FLAT_YAML' as ClusterExportMode },
+    { label: $localize`:@@diagram.helmChartZip:Helm Chart (.zip)`, value: 'HELM_CHART' as ClusterExportMode }
   ];
   helmChartBlob: Blob | null = null;
   @ViewChild('yamlFileInput') yamlFileInput?: ElementRef<HTMLInputElement>;
@@ -197,6 +197,12 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   activeShellTarget: { namespace: string; podName: string; containerName?: string } | null = null;
   private workloadHealthMap = new Map<string, WorkloadHealth>();
   private testHarnessRegistered = false;
+
+  get minimapToggleLabel(): string {
+    return this.minimapVisible
+      ? $localize`:@@diagram.hideMap:Hide map`
+      : $localize`:@@diagram.showMap:Show map`;
+  }
 
   constructor(
     private iconService: IconService,
@@ -521,7 +527,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
   submitAiPrompt(): void {
     if (!this.aiPrompt || !this.aiPrompt.trim()) {
-      this.notificationService.warn('Add an instruction', 'Describe the blocks you want the assistant to create.');
+      this.notificationService.warn(
+        $localize`:@@diagram.addInstructionTitle:Add an instruction`,
+        $localize`:@@diagram.addInstructionDetail:Describe the blocks you want the assistant to create.`
+      );
       return;
     }
 
@@ -540,9 +549,9 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
         this.aiLoading = false;
       },
       error: error => {
-        const detail = error?.error || error?.message || 'Local AI request failed.';
-        this.aiError = typeof detail === 'string' ? detail : 'Local AI request failed.';
-        this.notificationService.error('AI request failed', this.aiError || undefined);
+        const detail = error?.error || error?.message || $localize`:@@diagram.localAiRequestFailed:Local AI request failed.`;
+        this.aiError = typeof detail === 'string' ? detail : $localize`:@@diagram.localAiRequestFailed:Local AI request failed.`;
+        this.notificationService.error($localize`:@@diagram.aiRequestFailedTitle:AI request failed`, this.aiError || undefined);
         this.aiLoading = false;
       }
     });
@@ -550,7 +559,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
   applyAiSuggestions(): void {
     if (!this.aiSuggestions.length) {
-      this.notificationService.warn('Nothing to add', 'Ask the assistant to produce blocks before applying.');
+      this.notificationService.warn(
+        $localize`:@@diagram.nothingToAddTitle:Nothing to add`,
+        $localize`:@@diagram.nothingToAddDetail:Ask the assistant to produce blocks before applying.`
+      );
       return;
     }
 
@@ -566,7 +578,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       const normalizedType = suggestion.type?.toLowerCase?.() || suggestion.type;
       const icon = this.iconService.getIconPath(normalizedType);
       if (!icon) {
-        this.notificationService.warn('Unsupported block type', `Skipping ${suggestion.name} (${normalizedType}).`);
+        this.notificationService.warn(
+          $localize`:@@diagram.unsupportedBlockTypeTitle:Unsupported block type`,
+          $localize`:@@diagram.skippingUnsupportedBlock:Skipping ${suggestion.name} (${normalizedType}).`
+        );
         return;
       }
 
@@ -624,7 +639,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     });
 
     this.updateDiagramData();
-    this.notificationService.success('Diagram updated', 'AI generated blocks were added to the canvas.');
+    this.notificationService.success(
+      $localize`:@@diagram.updatedTitle:Diagram updated`,
+      $localize`:@@diagram.updatedByAiDetail:AI generated blocks were added to the canvas.`
+    );
     this.aiDialogVisible = false;
     this.aiSuggestions = [];
     this.aiPrompt = '';
@@ -632,7 +650,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
   openClusterYamlDialog(mode: 'import' | 'export'): void {
     if (mode === 'export' && !this.isExportAllowed()) {
-      this.notificationService.warn('Template required', 'Generate the template before exporting YAML.');
+      this.notificationService.warn(
+        $localize`:@@diagram.templateRequiredTitle:Template required`,
+        $localize`:@@diagram.templateRequiredDetail:Generate the template before exporting YAML.`
+      );
       this.clusterYamlDialogVisible = false;
       return;
     }
@@ -664,7 +685,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this.store.select(getCurrentCluster).pipe(take(1)).subscribe(cluster => {
       if (!cluster) {
-        this.notificationService.warn('No diagram to export', 'Create or load a diagram before exporting YAML.');
+        this.notificationService.warn(
+          $localize`:@@diagram.noDiagramToExportTitle:No diagram to export`,
+          $localize`:@@diagram.noDiagramToExportDetail:Create or load a diagram before exporting YAML.`
+        );
         this.clusterYamlDialogVisible = false;
         this.clusterYamlLoading = false;
         return;
@@ -706,8 +730,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private handleClusterExportError(error: any): void {
-    const detail = error?.error || error?.message || 'Diagram export failed.';
-    this.notificationService.error('Export failed', typeof detail === 'string' ? detail : undefined);
+    const detail = error?.error || error?.message || $localize`:@@diagram.exportFailedDetail:Diagram export failed.`;
+    this.notificationService.error($localize`:@@diagram.exportFailedTitle:Export failed`, typeof detail === 'string' ? detail : undefined);
     this.clusterYamlDialogVisible = false;
   }
 
@@ -726,7 +750,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   importClusterYaml(): void {
     const yaml = this.clusterYamlText?.trim();
     if (!yaml) {
-      this.notificationService.warn('Add YAML', 'Paste diagram YAML before importing.');
+      this.notificationService.warn(
+        $localize`:@@diagram.addYamlTitle:Add YAML`,
+        $localize`:@@diagram.addYamlDetail:Paste diagram YAML before importing.`
+      );
       return;
     }
 
@@ -740,14 +767,14 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       next: (response: AiImportYamlResponse) => {
         this.applyImportedCluster(response, this.clusterYamlImportMode);
         const message = this.clusterYamlImportMode === 'append'
-          ? 'Diagram updated with the imported YAML.'
-          : 'Diagram updated from YAML.';
-        this.notificationService.success('Diagram imported', message);
+          ? $localize`:@@diagram.importedAppendDetail:Diagram updated with the imported YAML.`
+          : $localize`:@@diagram.importedReplaceDetail:Diagram updated from YAML.`;
+        this.notificationService.success($localize`:@@diagram.importedTitle:Diagram imported`, message);
         this.clusterYamlDialogVisible = false;
       },
       error: (error) => {
-        const detail = error?.error || error?.message || 'Diagram import failed.';
-        this.clusterYamlError = typeof detail === 'string' ? detail : 'Diagram import failed.';
+        const detail = error?.error || error?.message || $localize`:@@diagram.importFailedDetail:Diagram import failed.`;
+        this.clusterYamlError = typeof detail === 'string' ? detail : $localize`:@@diagram.importFailedDetail:Diagram import failed.`;
       }
     });
   }
@@ -758,11 +785,20 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }
     if (navigator && navigator.clipboard) {
       navigator.clipboard.writeText(this.clusterYamlText).then(
-        () => this.notificationService.success('Copied', 'Namespace YAML copied to clipboard.'),
-        () => this.notificationService.error('Copy failed', 'Unable to copy YAML to clipboard.')
+        () => this.notificationService.success(
+          $localize`:@@common.copied:Copied`,
+          $localize`:@@diagram.yamlCopiedDetail:Namespace YAML copied to clipboard.`
+        ),
+        () => this.notificationService.error(
+          $localize`:@@diagram.copyFailedTitle:Copy failed`,
+          $localize`:@@diagram.copyFailedDetail:Unable to copy YAML to clipboard.`
+        )
       );
     } else {
-      this.notificationService.warn('Clipboard unavailable', 'Copy not supported in this environment.');
+      this.notificationService.warn(
+        $localize`:@@diagram.clipboardUnavailableTitle:Clipboard unavailable`,
+        $localize`:@@diagram.clipboardUnavailableDetail:Copy not supported in this environment.`
+      );
     }
   }
 
@@ -796,7 +832,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!this.chatMessages.length) {
       this.chatMessages.push({
         role: 'system',
-        content: 'How can I help with your Kubernetes architecture today?',
+        content: $localize`:@@diagram.chatGreeting:How can I help with your Kubernetes architecture today?`,
         timestamp: new Date()
       });
     }
@@ -853,7 +889,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
         if (!response.messages?.length) {
           this.chatMessages.push({
             role: 'assistant',
-            content: 'I could not generate a reply. Please try again.',
+            content: $localize`:@@diagram.chatNoReply:I could not generate a reply. Please try again.`,
             timestamp: new Date(),
             error: true
           });
@@ -861,14 +897,14 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
         this.chatLoading = false;
       },
       error: error => {
-        const detail = error?.error || error?.message || 'Local AI chat request failed.';
+        const detail = error?.error || error?.message || $localize`:@@diagram.chatRequestFailedDetail:Local AI chat request failed.`;
         this.chatMessages.push({
           role: 'assistant',
-          content: typeof detail === 'string' ? detail : 'Local AI chat request failed.',
+          content: typeof detail === 'string' ? detail : $localize`:@@diagram.chatRequestFailedDetail:Local AI chat request failed.`,
           timestamp: new Date(),
           error: true
         });
-        this.notificationService.error('Chat failed', typeof detail === 'string' ? detail : undefined);
+        this.notificationService.error($localize`:@@diagram.chatFailedTitle:Chat failed`, typeof detail === 'string' ? detail : undefined);
         this.chatLoading = false;
       }
     });
@@ -912,7 +948,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }
     const yaml = this.extractYamlFromMessage(this.lastAssistantMessage.content);
     if (!yaml) {
-      this.notificationService.warn('No YAML found', 'Ask the assistant to provide YAML before importing.');
+      this.notificationService.warn(
+        $localize`:@@diagram.noYamlFoundTitle:No YAML found`,
+        $localize`:@@diagram.noYamlFoundDetail:Ask the assistant to provide YAML before importing.`
+      );
       return;
     }
 
@@ -921,14 +960,14 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       next: (response) => {
         this.applyImportedCluster(response, this.clusterYamlImportMode);
         const message = this.clusterYamlImportMode === 'append'
-          ? 'Diagram updated with the imported YAML.'
-          : 'Diagram updated from YAML.';
-        this.notificationService.success('Diagram imported', message);
+          ? $localize`:@@diagram.importedAppendDetail:Diagram updated with the imported YAML.`
+          : $localize`:@@diagram.importedReplaceDetail:Diagram updated from YAML.`;
+        this.notificationService.success($localize`:@@diagram.importedTitle:Diagram imported`, message);
         this.importingFromChat = false;
       },
       error: (error) => {
-        const detail = error?.error || error?.message || 'YAML import failed.';
-        this.notificationService.error('Import failed', typeof detail === 'string' ? detail : undefined);
+        const detail = error?.error || error?.message || $localize`:@@diagram.yamlImportFailedDetail:YAML import failed.`;
+        this.notificationService.error($localize`:@@diagram.importFailedTitle:Import failed`, typeof detail === 'string' ? detail : undefined);
         this.importingFromChat = false;
       }
     });
@@ -1158,7 +1197,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
         const result = reader.result;
         resolve(typeof result === 'string' ? result : new TextDecoder().decode(result as ArrayBuffer));
       };
-      reader.onerror = () => reject(new Error('Unable to read the selected YAML file.'));
+      reader.onerror = () => reject(new Error($localize`:@@diagram.yamlFileReadFailed:Unable to read the selected YAML file.`));
       reader.readAsText(file);
     });
 
@@ -1171,7 +1210,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
         this.clusterYamlText = joined;
       })
       .catch(() => {
-        this.notificationService.error('File read failed', 'Unable to read the selected YAML file.');
+        this.notificationService.error(
+          $localize`:@@diagram.fileReadFailedTitle:File read failed`,
+          $localize`:@@diagram.yamlFileReadFailed:Unable to read the selected YAML file.`
+        );
       })
       .finally(() => {
         input.value = '';
@@ -1189,7 +1231,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     try {
       const parsed = JSON.parse(content);
       if (!parsed || !Array.isArray(parsed.nodes)) {
-        throw new Error('Response does not include a nodes array.');
+        throw new Error($localize`:@@diagram.aiResponseNodesMissing:Response does not include a nodes array.`);
       }
 
       const suggestions: AiSuggestedNode[] = parsed.nodes
@@ -1206,7 +1248,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
       if (!suggestions.length) {
         this.aiSuggestions = [];
-        this.aiError = 'The assistant did not return any valid nodes.';
+        this.aiError = $localize`:@@diagram.aiNoValidNodes:The assistant did not return any valid nodes.`;
         return;
       }
 
@@ -1214,8 +1256,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       this.aiError = null;
     } catch (error: any) {
       this.aiSuggestions = [];
-      this.aiError = 'Failed to parse AI response. Ensure the local model returns valid JSON.';
-      this.notificationService.error('Invalid AI response', this.aiError);
+      this.aiError = $localize`:@@diagram.aiParseFailed:Failed to parse AI response. Ensure the local model returns valid JSON.`;
+      this.notificationService.error($localize`:@@diagram.invalidAiResponseTitle:Invalid AI response`, this.aiError);
     }
   }
 
@@ -1400,10 +1442,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }
     const workload = (node.workloadType || 'DEPLOYMENT').toUpperCase();
     if (workload === 'STATEFULSET') {
-      return { label: 'SS', title: 'StatefulSet workload' };
+      return { label: 'SS', title: $localize`:@@diagram.statefulSetWorkloadBadge:StatefulSet workload` };
     }
     if (workload === 'DAEMONSET') {
-      return { label: 'DS', title: 'DaemonSet workload' };
+      return { label: 'DS', title: $localize`:@@diagram.daemonSetWorkloadBadge:DaemonSet workload` };
     }
     return null;
   }
@@ -1421,7 +1463,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     if (rbacNodeType === 'ROLEBINDING' && bindingKind === 'ClusterRoleBinding') {
       return {
         label: 'CRB',
-        title: 'ClusterRoleBinding',
+        title: $localize`:@@diagram.clusterRoleBindingBadge:ClusterRoleBinding`,
         cssClass: 'diagram-node__rbac-badge--cluster-role-binding'
       };
     }
@@ -1429,7 +1471,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     if (rbacNodeType === 'ROLE' && roleKind === 'ClusterRole') {
       return {
         label: 'CR',
-        title: 'ClusterRole',
+        title: $localize`:@@diagram.clusterRoleBadge:ClusterRole`,
         cssClass: 'diagram-node__rbac-badge--cluster-role'
       };
     }
@@ -1450,12 +1492,12 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       return '';
     }
     if (node.bundleMeta.hasSecretEntries && node.bundleMeta.hasPlainEntries) {
-      return 'Contains plain and secret entries';
+      return $localize`:@@diagram.configBundleMixedTitle:Contains plain and secret entries`;
     }
     if (node.bundleMeta.hasSecretEntries) {
-      return 'Contains secret entries';
+      return $localize`:@@diagram.configBundleSecretTitle:Contains secret entries`;
     }
-    return 'Contains plain entries';
+    return $localize`:@@diagram.configBundlePlainTitle:Contains plain entries`;
   }
 
   getConfigBundleBadgeClass(node: DiagramNode): string {
@@ -1484,7 +1526,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
     const namespace = this.currentClusterSnapshot?.nameSpace;
     if (!namespace) {
-      this.notificationService.warn('Namespace required', 'Assign a namespace before opening a pod shell.');
+      this.notificationService.warn(
+        $localize`:@@diagram.namespaceRequiredTitle:Namespace required`,
+        $localize`:@@diagram.namespaceRequiredDetail:Assign a namespace before opening a pod shell.`
+      );
       return;
     }
 
@@ -1501,7 +1546,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
         this.showPodShellOverlay(event);
       },
       error: () => {
-        this.podMenuError = 'Unable to load pods for this deployment.';
+        this.podMenuError = $localize`:@@diagram.unableToLoadPods:Unable to load pods for this deployment.`;
         this.showPodShellOverlay(event);
       }
     });
@@ -1988,8 +2033,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
     if (!this.isContainerLinkAllowed(fromNode, toNode)) {
       this.notificationService.warn(
-        'Invalid connection',
-        'Containers can only be linked to Deployments or Config Bundles.'
+        $localize`:@@diagram.invalidConnectionTitle:Invalid connection`,
+        $localize`:@@diagram.invalidContainerConnection:Containers can only be linked to Deployments or Config Bundles.`
       );
       return;
     }
@@ -2003,8 +2048,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       const roleBindingToRole = this.isRoleBindingPolicyNode(policyNode) && this.isRolePolicyNode(targetNode);
       if (!roleToWorkload && !roleBindingToServiceAccount && !roleBindingToRole) {
         this.notificationService.warn(
-          'Invalid connection',
-          'RoleBinding supports only links to Role and ServiceAccount. Role supports only workloads.'
+          $localize`:@@diagram.invalidConnectionTitle:Invalid connection`,
+          $localize`:@@diagram.invalidRoleBindingConnection:RoleBinding supports only links to Role and ServiceAccount. Role supports only workloads.`
         );
         return;
       }
@@ -2020,8 +2065,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
     if (involvesServiceAccount && !involvesServiceAccountWorkloadBinding && !involvesServiceAccountRoleBinding) {
       this.notificationService.warn(
-        'Invalid connection',
-        'ServiceAccounts can only be linked to workloads or RoleBinding.'
+        $localize`:@@diagram.invalidConnectionTitle:Invalid connection`,
+        $localize`:@@diagram.invalidServiceAccountConnection:ServiceAccounts can only be linked to workloads or RoleBinding.`
       );
       return;
     }
@@ -2057,8 +2102,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
         .find(link => this.resolveLinkType(link.type) === 'serviceAccountBinding' && link.to === workloadId);
       if (existingBinding && existingBinding.from !== sourceId) {
         this.notificationService.warn(
-          'ServiceAccount already selected',
-          'Each workload may reference at most one ServiceAccount.'
+          $localize`:@@diagram.serviceAccountAlreadySelectedTitle:ServiceAccount already selected`,
+          $localize`:@@diagram.onlyOneServiceAccountPerWorkload:Each workload may reference at most one ServiceAccount.`
         );
         return;
       }
@@ -2281,16 +2326,16 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
             : null;
         if (!forcedType) {
           this.notificationService.warn(
-            'Invalid connection',
-            'RoleBinding supports only links to Role and ServiceAccount. Role supports only workloads.'
+            $localize`:@@diagram.invalidConnectionTitle:Invalid connection`,
+            $localize`:@@diagram.invalidRoleBindingConnection:RoleBinding supports only links to Role and ServiceAccount. Role supports only workloads.`
           );
           return;
         }
         changes = { ...changes, type: forcedType };
       } else if (changes.type === 'appliesTo') {
         this.notificationService.warn(
-          'Invalid link type',
-          'Only Role links can use Applies to.'
+          $localize`:@@diagram.invalidLinkTypeTitle:Invalid link type`,
+          $localize`:@@diagram.onlyRoleLinksAppliesTo:Only Role links can use Applies to.`
         );
         changes = { ...changes, type: current.type ?? 'Expose' };
       }

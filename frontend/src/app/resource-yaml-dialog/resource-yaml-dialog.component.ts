@@ -69,7 +69,10 @@ export class ResourceYamlDialogComponent implements OnChanges, OnDestroy {
     }
     const yaml = this.yamlControl.value?.trim();
     if (!yaml) {
-      this.notificationService.warn('YAML required', 'Paste YAML before saving.');
+      this.notificationService.warn(
+        $localize`:@@resourceYamlDialog.yamlRequiredTitle:YAML required`,
+        $localize`:@@resourceYamlDialog.yamlRequiredDetail:Paste YAML before saving.`
+      );
       return;
     }
     this.saving = true;
@@ -78,13 +81,16 @@ export class ResourceYamlDialogComponent implements OnChanges, OnDestroy {
       .subscribe({
         next: (updatedYaml) => {
           this.yamlControl.setValue(updatedYaml || yaml);
-          this.notificationService.success('Resource updated', `${this.kind} ${this.name} patched.`);
+          this.notificationService.success(
+            $localize`:@@resourceYamlDialog.updatedTitle:Resource updated`,
+            $localize`:@@resourceYamlDialog.updatedDetail:${this.kind}:kind: ${this.name}:name: patched.`
+          );
           this.saving = false;
           this.cdr.markForCheck();
         },
         error: (error) => {
-          const detail = error?.error || error?.message || 'Unable to update resource.';
-          this.errorMessage = typeof detail === 'string' ? detail : 'Unable to update resource.';
+          const detail = error?.error || error?.message || $localize`:@@resourceYamlDialog.updateFailed:Unable to update resource.`;
+          this.errorMessage = typeof detail === 'string' ? detail : $localize`:@@resourceYamlDialog.updateFailed:Unable to update resource.`;
           this.saving = false;
           this.cdr.markForCheck();
         }
@@ -105,12 +111,16 @@ export class ResourceYamlDialogComponent implements OnChanges, OnDestroy {
           this.cdr.markForCheck();
         },
         error: (error) => {
-          const detail = error?.error || error?.message || 'Unable to load YAML.';
-          this.errorMessage = typeof detail === 'string' ? detail : 'Unable to load YAML.';
+          const detail = error?.error || error?.message || $localize`:@@resourceYamlDialog.loadFailed:Unable to load YAML.`;
+          this.errorMessage = typeof detail === 'string' ? detail : $localize`:@@resourceYamlDialog.loadFailed:Unable to load YAML.`;
           this.loading = false;
           this.cdr.markForCheck();
         }
       });
+  }
+
+  get dialogHeader(): string {
+    return $localize`:@@resourceYamlDialog.title:Edit YAML`;
   }
 
   private updateAnnotations(): void {
@@ -119,7 +129,7 @@ export class ResourceYamlDialogComponent implements OnChanges, OnDestroy {
       this.yamlAnnotations = [{
         row: yamlError.line,
         column: yamlError.column,
-        text: yamlError.reason || 'Invalid YAML',
+        text: yamlError.reason || $localize`:@@resourceYamlDialog.invalidYaml:Invalid YAML`,
         type: 'error'
       }];
     } else if (yamlError?.message) {

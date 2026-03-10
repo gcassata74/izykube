@@ -1,7 +1,7 @@
 <div class="kube-explorer" [class.kube-explorer--loading]="loading">
     <header class="kube-explorer__status-bar">
         <div class="status-item">
-            <span class="status-item__label">Namespace</span>
+            <span class="status-item__label" i18n="@@common.namespace">Namespace</span>
       <p-dropdown
         inputId="namespaceSelect"
         [options]="namespaces"
@@ -9,6 +9,7 @@
         (onChange)="onNamespaceChange($event.value)"
         [style.width.px]="220"
         placeholder="Select namespace"
+        i18n-placeholder="@@kubeExplorer.selectNamespace"
         optionLabel="name"
         optionValue="name"
       ></p-dropdown>
@@ -18,18 +19,19 @@
       <div class="auto-refresh-toggle">
         <span class="status-item__badge" [class.status-item__badge--active]="autoRefreshEnabled">
           <span class="status-indicator"></span>
-          Auto refresh
+          <span i18n="@@kubeExplorer.autoRefresh">Auto refresh</span>
         </span>
         <p-inputSwitch [ngModel]="autoRefreshEnabled" (ngModelChange)="setAutoRefresh($event)"></p-inputSwitch>
       </div>
       <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded p-button-text"
               [disabled]="loading" (click)="manualRefresh()"
-              pTooltip="Refresh now"></button>
+              pTooltip="Refresh now"
+              i18n-pTooltip="@@kubeExplorer.refreshNow"></button>
     </div>
     </header>
 
     <main class="kube-explorer__layout">
-        <aside class="resource-menu" aria-label="Resource switcher">
+        <aside class="resource-menu" aria-label="Resource switcher" i18n-aria-label="@@kubeExplorer.resourceSwitcher">
             <button
                     type="button"
                     class="resource-menu__item"
@@ -50,7 +52,7 @@
         <section class="resource-panel">
             <div class="resource-panel__port-forward" *ngIf="portForwards.length || portForwardsLoading">
                 <div class="resource-panel__port-forward-header">
-                    <span>Active Port Forwards</span>
+                    <span i18n="@@kubeExplorer.portForward.active">Active Port Forwards</span>
                     <button
                       pButton
                       type="button"
@@ -59,6 +61,7 @@
                       [disabled]="portForwardsLoading"
                       (click)="loadPortForwards()"
                       pTooltip="Refresh port forwards"
+                      i18n-pTooltip="@@kubeExplorer.portForward.refresh"
                     ></button>
                 </div>
                 <p-table
@@ -72,11 +75,11 @@
                 >
                   <ng-template pTemplate="header">
                     <tr>
-                      <th>Namespace</th>
-                      <th>Service</th>
-                      <th>Local</th>
-                      <th>Target</th>
-                      <th class="text-center">Action</th>
+                      <th i18n="@@common.namespace">Namespace</th>
+                      <th i18n="@@common.service">Service</th>
+                      <th i18n="@@kubeExplorer.portForward.local">Local</th>
+                      <th i18n="@@kubeExplorer.portForward.target">Target</th>
+                      <th class="text-center" i18n="@@common.action">Action</th>
                     </tr>
                   </ng-template>
                   <ng-template pTemplate="body" let-forward>
@@ -93,6 +96,7 @@
                           class="p-button-text p-button-sm"
                           (click)="stopPortForward(forward)"
                           pTooltip="Stop"
+                          i18n-pTooltip="@@common.stop"
                         ></button>
                       </td>
                     </tr>
@@ -102,7 +106,7 @@
             <div class="resource-panel__toolbar">
                 <div class="resource-panel__title">
                     <span class="resource-panel__kind">{{ activeLabel }}</span>
-                    <span class="resource-panel__meta">{{ activeDataset.length }} items</span>
+                    <span class="resource-panel__meta">{{ activeItemsLabel }}</span>
                 </div>
                 <div class="resource-panel__actions">
                     <input
@@ -110,7 +114,7 @@
                             type="text"
                             [value]="activeFilterValue"
                             (input)="onGlobalFilterChange($any($event.target).value)"
-                            [placeholder]="'Filter ' + activeLabel.toLowerCase()"
+                            [placeholder]="activeFilterPlaceholder"
                     />
                     <button
                             pButton
@@ -120,6 +124,7 @@
                             (click)="clearRowSelection()"
                             [disabled]="!selectedRow"
                             pTooltip="Clear selection"
+                            i18n-pTooltip="@@kubeExplorer.clearSelection"
                     ></button>
                 </div>
             </div>
@@ -145,15 +150,15 @@
                 >
                     <ng-template pTemplate="header">
                         <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Status</th>
-                            <th>Readiness</th>
-                            <th>Restarts</th>
-                            <th>Node</th>
-                            <th>Age</th>
-                            <th class="text-center">Logs</th>
-                            <th class="text-center">YAML</th>
+                            <th i18n>Name</th>
+                            <th i18n>Namespace</th>
+                            <th i18n>Status</th>
+                            <th i18n>Readiness</th>
+                            <th i18n>Restarts</th>
+                            <th i18n>Node</th>
+                            <th i18n>Age</th>
+                            <th class="text-center" i18n>Logs</th>
+                            <th class="text-center" i18n>YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-pod>
@@ -187,7 +192,7 @@
                                 icon="pi pi-file-edit"
                                 class="p-button-text"
                                 (click)="openYamlEditor('pod', pod)"
-                                pTooltip="Edit YAML"
+                                [pTooltip]="editYamlTooltip"
                               ></button>
                             </td>
                         </tr>
@@ -214,15 +219,15 @@
                 >
                     <ng-template pTemplate="header">
                         <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Progress</th>
-                            <th>Desired</th>
-                            <th>Updated</th>
-                            <th>Available</th>
-                            <th>Age</th>
-                            <th class="text-center">Logs</th>
-                            <th class="text-center">YAML</th>
+                            <th i18n>Name</th>
+                            <th i18n>Namespace</th>
+                            <th i18n>Progress</th>
+                            <th i18n>Desired</th>
+                            <th i18n>Updated</th>
+                            <th i18n>Available</th>
+                            <th i18n>Age</th>
+                            <th class="text-center" i18n>Logs</th>
+                            <th class="text-center" i18n>YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-deployment>
@@ -247,7 +252,7 @@
                                 icon="pi pi-file-edit"
                                 class="p-button-text"
                                 (click)="openYamlEditor('deployment', deployment)"
-                                pTooltip="Edit YAML"
+                                [pTooltip]="editYamlTooltip"
                               ></button>
                             </td>
                         </tr>
@@ -274,14 +279,14 @@
                 >
                     <ng-template pTemplate="header">
                         <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Type</th>
-                            <th>Cluster IP</th>
-                            <th>External IP</th>
-                            <th>Ports</th>
-                            <th>Age</th>
-                            <th class="text-center">YAML</th>
+                            <th i18n>Name</th>
+                            <th i18n>Namespace</th>
+                            <th i18n>Type</th>
+                            <th i18n>Cluster IP</th>
+                            <th i18n>External IP</th>
+                            <th i18n>Ports</th>
+                            <th i18n>Age</th>
+                            <th class="text-center" i18n>YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-service>
@@ -302,7 +307,7 @@
                                 icon="pi pi-file-edit"
                                 class="p-button-text"
                                 (click)="openYamlEditor('service', service)"
-                                pTooltip="Edit YAML"
+                                [pTooltip]="editYamlTooltip"
                               ></button>
                             </td>
                         </tr>
@@ -322,13 +327,13 @@
                          (onRowSelect)="onRowSelect($event.data)">
                     <ng-template pTemplate="header">
                         <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Hosts</th>
-                            <th>Services</th>
-                            <th>TLS</th>
-                            <th>Age</th>
-                            <th class="text-center">YAML</th>
+                            <th i18n>Name</th>
+                            <th i18n>Namespace</th>
+                            <th i18n>Hosts</th>
+                            <th i18n>Services</th>
+                            <th i18n>TLS</th>
+                            <th i18n>Age</th>
+                            <th class="text-center" i18n>YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-route>
@@ -346,7 +351,7 @@
                                 icon="pi pi-file-edit"
                                 class="p-button-text"
                                 (click)="openYamlEditor('virtualservice', route)"
-                                pTooltip="Edit YAML"
+                                [pTooltip]="editYamlTooltip"
                               ></button>
                             </td>
                         </tr>
@@ -366,11 +371,11 @@
                          (onRowSelect)="onRowSelect($event.data)">
                     <ng-template pTemplate="header">
                         <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Entries</th>
-                            <th>Age</th>
-                            <th class="text-center">YAML</th>
+                            <th i18n>Name</th>
+                            <th i18n>Namespace</th>
+                            <th i18n>Entries</th>
+                            <th i18n>Age</th>
+                            <th class="text-center" i18n>YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-configMap>
@@ -386,7 +391,7 @@
                                 icon="pi pi-file-edit"
                                 class="p-button-text"
                                 (click)="openYamlEditor('configmap', configMap)"
-                                pTooltip="Edit YAML"
+                                [pTooltip]="editYamlTooltip"
                               ></button>
                             </td>
                         </tr>
@@ -406,12 +411,12 @@
                          (onRowSelect)="onRowSelect($event.data)">
                     <ng-template pTemplate="header">
                         <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Type</th>
-                            <th>Entries</th>
-                            <th>Age</th>
-                            <th class="text-center">YAML</th>
+                            <th i18n>Name</th>
+                            <th i18n>Namespace</th>
+                            <th i18n>Type</th>
+                            <th i18n>Entries</th>
+                            <th i18n>Age</th>
+                            <th class="text-center" i18n>YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-secret>
@@ -428,7 +433,7 @@
                                 icon="pi pi-file-edit"
                                 class="p-button-text"
                                 (click)="openYamlEditor('secret', secret)"
-                                pTooltip="Edit YAML"
+                                [pTooltip]="editYamlTooltip"
                               ></button>
                             </td>
                         </tr>
@@ -448,15 +453,15 @@
                          (onRowSelect)="onRowSelect($event.data)">
                     <ng-template pTemplate="header">
                         <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Progress</th>
-                            <th>Completions</th>
-                            <th>Succeeded</th>
-                            <th>Failed</th>
-                            <th>Active</th>
-                            <th>Age</th>
-                            <th class="text-center">YAML</th>
+                            <th i18n>Name</th>
+                            <th i18n>Namespace</th>
+                            <th i18n>Progress</th>
+                            <th i18n>Completions</th>
+                            <th i18n>Succeeded</th>
+                            <th i18n>Failed</th>
+                            <th i18n>Active</th>
+                            <th i18n>Age</th>
+                            <th class="text-center" i18n>YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-job>
@@ -478,7 +483,7 @@
                                 icon="pi pi-file-edit"
                                 class="p-button-text"
                                 (click)="openYamlEditor('job', job)"
-                                pTooltip="Edit YAML"
+                                [pTooltip]="editYamlTooltip"
                               ></button>
                             </td>
                         </tr>
@@ -498,14 +503,14 @@
                          (onRowSelect)="onRowSelect($event.data)">
                     <ng-template pTemplate="header">
                         <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Schedule</th>
-                            <th>Suspended</th>
-                            <th>Last Schedule</th>
-                            <th>Active Jobs</th>
-                            <th>Age</th>
-                            <th class="text-center">YAML</th>
+                            <th i18n>Name</th>
+                            <th i18n>Namespace</th>
+                            <th i18n>Schedule</th>
+                            <th i18n>Suspended</th>
+                            <th i18n>Last Schedule</th>
+                            <th i18n>Active Jobs</th>
+                            <th i18n>Age</th>
+                            <th class="text-center" i18n>YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-cron>
@@ -513,7 +518,7 @@
                             <td>{{ cron.name }}</td>
                             <td>{{ cron.namespace }}</td>
                             <td>{{ cron.schedule }}</td>
-                            <td>{{ cron.suspended ? 'Yes' : 'No' }}</td>
+                            <td>{{ booleanLabel(!!cron.suspended) }}</td>
                             <td>{{ cron.lastScheduleTime }}</td>
                             <td>{{ cron.activeJobs }}</td>
                             <td>{{ cron.age }}</td>
@@ -524,7 +529,7 @@
                                 icon="pi pi-file-edit"
                                 class="p-button-text"
                                 (click)="openYamlEditor('cronjob', cron)"
-                                pTooltip="Edit YAML"
+                                [pTooltip]="editYamlTooltip"
                               ></button>
                             </td>
                         </tr>
@@ -544,15 +549,15 @@
                          (onRowSelect)="onRowSelect($event.data)">
                     <ng-template pTemplate="header">
                         <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Desired</th>
-                            <th>Current</th>
-                            <th>Ready</th>
-                            <th>Available</th>
-                            <th>Updated</th>
-                            <th>Age</th>
-                            <th class="text-center">YAML</th>
+                            <th i18n>Name</th>
+                            <th i18n>Namespace</th>
+                            <th i18n>Desired</th>
+                            <th i18n>Current</th>
+                            <th i18n>Ready</th>
+                            <th i18n>Available</th>
+                            <th i18n>Updated</th>
+                            <th i18n>Age</th>
+                            <th class="text-center" i18n>YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-daemon>
@@ -574,7 +579,7 @@
                                 icon="pi pi-file-edit"
                                 class="p-button-text"
                                 (click)="openYamlEditor('daemonset', daemon)"
-                                pTooltip="Edit YAML"
+                                [pTooltip]="editYamlTooltip"
                               ></button>
                             </td>
                         </tr>
@@ -594,13 +599,13 @@
                          (onRowSelect)="onRowSelect($event.data)">
                     <ng-template pTemplate="header">
                         <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Ready</th>
-                            <th>Replicas</th>
-                            <th>Updated</th>
-                            <th>Age</th>
-                            <th class="text-center">YAML</th>
+                            <th i18n>Name</th>
+                            <th i18n>Namespace</th>
+                            <th i18n>Ready</th>
+                            <th i18n>Replicas</th>
+                            <th i18n>Updated</th>
+                            <th i18n>Age</th>
+                            <th class="text-center" i18n>YAML</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-stateful>
@@ -620,7 +625,7 @@
                                 icon="pi pi-file-edit"
                                 class="p-button-text"
                                 (click)="openYamlEditor('statefulset', stateful)"
-                                pTooltip="Edit YAML"
+                                [pTooltip]="editYamlTooltip"
                               ></button>
                             </td>
                         </tr>
@@ -628,16 +633,17 @@
                 </p-table>
 
                 <div class="resource-panel__empty" *ngSwitchDefault>
-                    <p>No resource data available.</p>
+                    <p i18n="@@kubeExplorer.noResourceData">No resource data available.</p>
                 </div>
             </div>
         </section>
 
         <aside class="detail-panel" *ngIf="selectedRow">
             <div class="detail-panel__header">
-                <h3>{{ activeLabel }} details</h3>
+                <h3>{{ activeDetailsTitle }}</h3>
         <span class="detail-panel__header-actions">
           <button pButton type="button" icon="pi pi-bars" label="View logs"
+                  i18n-label="@@kubeExplorer.viewLogs"
                   *ngIf="canViewLogs"
                   class="p-button-text"
                   (click)="viewLogs()"></button>
@@ -674,15 +680,15 @@
   <div class="logs-panel">
     <div *ngIf="currentLogTarget?.type === 'pod'" class="logs-panel__meta">
       <div class="logs-panel__meta-row">
-        <span class="logs-panel__meta-label">Namespace</span>
+        <span class="logs-panel__meta-label" i18n="@@common.namespace">Namespace</span>
         <span class="logs-panel__meta-value">{{ currentLogTarget?.namespace }}</span>
       </div>
       <div class="logs-panel__meta-row">
-        <span class="logs-panel__meta-label">Pod</span>
+        <span class="logs-panel__meta-label" i18n="@@kubeExplorer.pod">Pod</span>
         <span class="logs-panel__meta-value">{{ currentLogTarget?.name }}</span>
       </div>
       <div class="logs-panel__meta-row" *ngIf="logsPodContainers.length > 1">
-        <span class="logs-panel__meta-label">Container</span>
+        <span class="logs-panel__meta-label" i18n="@@kubeExplorer.container">Container</span>
         <p-dropdown
           inputId="podContainerSelect"
           [options]="logsPodContainers"
@@ -692,68 +698,69 @@
           optionLabel="label"
           optionValue="value"
           placeholder="Select container"
+          i18n-placeholder="@@kubeExplorer.selectContainer"
         ></p-dropdown>
       </div>
       <div class="logs-panel__meta-row" *ngIf="logsPodContainers.length <= 1 && logsSelectedContainer">
-        <span class="logs-panel__meta-label">Container</span>
+        <span class="logs-panel__meta-label" i18n="@@kubeExplorer.container">Container</span>
         <span class="logs-panel__meta-value">{{ logsSelectedContainer }}</span>
       </div>
     </div>
-    <p *ngIf="logsLoading">Loading logs...</p>
+    <p *ngIf="logsLoading" i18n="@@kubeExplorer.logs.loading">Loading logs...</p>
     <p *ngIf="logsError && !logsLoading" class="text-danger">{{ logsError }}</p>
     <pre *ngIf="!logsLoading" class="logs-panel__content">{{ logsContent }}</pre>
   </div>
   <ng-template pTemplate="footer">
-    <button pButton type="button" icon="pi pi-copy" label="Copy" (click)="copyLogs()" [disabled]="!logsContent"></button>
-    <button pButton type="button" icon="pi pi-refresh" label="Refresh" (click)="refreshLogs()" [disabled]="logsLoading || !currentLogTarget"></button>
-    <button pButton type="button" icon="pi pi-times" label="Close" class="p-button-text" (click)="logsDialogVisible = false"></button>
+    <button pButton type="button" icon="pi pi-copy" label="Copy" i18n-label="@@common.copy" (click)="copyLogs()" [disabled]="!logsContent"></button>
+    <button pButton type="button" icon="pi pi-refresh" label="Refresh" i18n-label="@@common.refresh" (click)="refreshLogs()" [disabled]="logsLoading || !currentLogTarget"></button>
+    <button pButton type="button" icon="pi pi-times" label="Close" i18n-label="@@common.close" class="p-button-text" (click)="logsDialogVisible = false"></button>
   </ng-template>
 </p-dialog>
 
 <p-dialog
-  [header]="'Inspect Pod • ' + (inspectedPod?.metadata?.name || '')"
+  [header]="inspectDialogTitle"
   [(visible)]="inspectDialogVisible"
   [modal]="true"
   [dismissableMask]="true"
   [style]="{ width: '780px' }"
   (onHide)="inspectDialogVisible = false">
   <div class="inspect-panel">
-    <p *ngIf="inspectLoading">Loading pod details...</p>
+    <p *ngIf="inspectLoading" i18n="@@kubeExplorer.inspect.loading">Loading pod details...</p>
     <p *ngIf="inspectError && !inspectLoading" class="text-danger">{{ inspectError }}</p>
 
     <ng-container *ngIf="!inspectLoading && !inspectError">
       <div class="inspect-panel__meta">
-        <div><strong>Namespace:</strong> {{ inspectedPod?.metadata?.namespace || '-' }}</div>
-        <div><strong>Pod:</strong> {{ inspectedPod?.metadata?.name || '-' }}</div>
-        <div><strong>Phase:</strong> {{ inspectedPod?.status?.phase || '-' }}</div>
+        <div><strong i18n="@@common.namespaceWithColon">Namespace:</strong> {{ inspectedPod?.metadata?.namespace || '-' }}</div>
+        <div><strong i18n="@@kubeExplorer.podWithColon">Pod:</strong> {{ inspectedPod?.metadata?.name || '-' }}</div>
+        <div><strong i18n="@@kubeExplorer.phaseWithColon">Phase:</strong> {{ inspectedPod?.status?.phase || '-' }}</div>
       </div>
 
       <section class="inspect-panel__section">
-        <h4>Containers</h4>
+        <h4 i18n="@@kubeExplorer.containers">Containers</h4>
         <ng-container *ngIf="inspectedContainerStatuses.length; else noContainerStatus">
           <div class="inspect-container" *ngFor="let cs of inspectedContainerStatuses">
             <div class="inspect-container__header">
               <span class="inspect-container__name">{{ cs.name }}</span>
-              <span class="inspect-container__restarts">restarts: {{ cs.restartCount ?? 0 }}</span>
+              <span class="inspect-container__restarts" i18n="@@kubeExplorer.restartsLabel">restarts: {{ cs.restartCount ?? 0 }}</span>
             </div>
             <div class="inspect-container__state">{{ containerStateLabel(cs) }}</div>
             <div class="inspect-container__last" *ngIf="cs.lastState?.terminated as term">
-              <div><strong>Last termination:</strong> {{ term.reason || '-' }} (exit {{ term.exitCode ?? '-' }})</div>
+              <div><strong i18n="@@kubeExplorer.lastTermination">Last termination:</strong> {{ term.reason || '-' }} (exit {{ term.exitCode ?? '-' }})</div>
               <div *ngIf="term.startedAt || term.finishedAt">
-                <strong>Time:</strong>
+                <strong i18n="@@common.timeWithColon">Time:</strong>
                 {{ term.startedAt || '-' }} → {{ term.finishedAt || '-' }}
               </div>
-              <div *ngIf="term.message"><strong>Message:</strong> {{ term.message }}</div>
+              <div *ngIf="term.message"><strong i18n="@@common.messageWithColon">Message:</strong> {{ term.message }}</div>
             </div>
           </div>
         </ng-container>
         <ng-template #noContainerStatus>
-          <p>No container status available.</p>
+          <p i18n="@@kubeExplorer.noContainerStatus">No container status available.</p>
         </ng-template>
       </section>
 
       <section class="inspect-panel__section">
-        <h4>Events</h4>
+        <h4 i18n="@@common.events">Events</h4>
         <ng-container *ngIf="inspectedEvents.length; else noEvents">
           <div class="inspect-event" *ngFor="let ev of inspectedEvents">
             <div class="inspect-event__header">
@@ -766,12 +773,12 @@
           </div>
         </ng-container>
         <ng-template #noEvents>
-          <p>No events found for this Pod.</p>
+          <p i18n="@@kubeExplorer.noEventsForPod">No events found for this Pod.</p>
         </ng-template>
       </section>
     </ng-container>
   </div>
   <ng-template pTemplate="footer">
-    <button pButton type="button" icon="pi pi-times" label="Close" class="p-button-text" (click)="inspectDialogVisible = false"></button>
+    <button pButton type="button" icon="pi pi-times" label="Close" i18n-label="@@common.close" class="p-button-text" (click)="inspectDialogVisible = false"></button>
   </ng-template>
 </p-dialog>

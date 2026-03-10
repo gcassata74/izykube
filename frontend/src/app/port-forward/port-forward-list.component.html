@@ -1,11 +1,11 @@
 <section class="port-forward-list">
   <header class="port-forward-list__header">
     <div>
-      <p class="eyebrow">Cluster</p>
-      <h1>Port Forwards</h1>
-      <p class="subtitle">Port forwards created by IzyKube.</p>
+      <p class="eyebrow" i18n="@@settings.eyebrow.cluster">Cluster</p>
+      <h1 i18n="@@portForward.title">Port Forwards</h1>
+      <p class="subtitle" i18n="@@portForward.subtitle">Port forwards created by IzyKube.</p>
     </div>
-    <button pButton type="button" icon="pi pi-refresh" class="p-button-text" (click)="loadForwards()" [disabled]="loading"></button>
+    <button pButton type="button" icon="pi pi-refresh" class="p-button-text" (click)="loadForwards()" [disabled]="loading" pTooltip="Refresh" i18n-pTooltip="@@common.refresh"></button>
   </header>
 
   <p-table
@@ -19,13 +19,13 @@
   >
     <ng-template pTemplate="header">
       <tr>
-        <th>Namespace</th>
-        <th>Service</th>
-        <th>Local</th>
-        <th>Target</th>
-        <th>Status</th>
-        <th class="text-center">Active</th>
-        <th class="text-center">Delete</th>
+        <th i18n="@@common.namespace">Namespace</th>
+        <th i18n="@@common.service">Service</th>
+        <th i18n="@@portForward.local">Local</th>
+        <th i18n="@@portForward.target">Target</th>
+        <th i18n="@@common.status">Status</th>
+        <th class="text-center" i18n="@@portForward.active">Active</th>
+        <th class="text-center" i18n="@@common.delete">Delete</th>
       </tr>
     </ng-template>
     <ng-template pTemplate="body" let-forward>
@@ -36,7 +36,7 @@
         <td>{{ forward.targetPort }}</td>
         <td>
           <span class="status-chip" [class.status-chip--ok]="forward.active" [class.status-chip--warn]="!forward.active">
-            {{ forward.active ? 'Active' : 'Stopped' }}
+            {{ statusLabel(!!forward.active) }}
           </span>
         </td>
         <td class="text-center">
@@ -52,7 +52,7 @@
             icon="pi pi-trash"
             class="p-button-text p-button-sm"
             (click)="deleteForward(forward)"
-            pTooltip="Delete"
+            [pTooltip]="deleteTooltip"
           ></button>
         </td>
       </tr>

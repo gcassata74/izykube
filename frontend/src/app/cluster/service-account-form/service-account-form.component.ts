@@ -16,6 +16,12 @@ export class ServiceAccountFormComponent implements OnInit, OnChanges, OnDestroy
 
   form!: FormGroup;
   private autoSaveNodeId: string | null = null;
+  readonly rbacProfiles = [
+    { label: $localize`:@@common.none:None`, value: 'NONE' },
+    { label: $localize`:@@serviceAccount.rbac.view:View (read-only)`, value: 'VIEW' },
+    { label: $localize`:@@serviceAccount.rbac.edit:Edit (read/write)`, value: 'EDIT' },
+    { label: $localize`:@@serviceAccount.rbac.admin:Admin`, value: 'ADMIN' }
+  ];
 
   constructor(
     private fb: FormBuilder,
@@ -64,6 +70,11 @@ export class ServiceAccountFormComponent implements OnInit, OnChanges, OnDestroy
 
   trackByIndex(index: number): number {
     return index;
+  }
+
+  get namespaceDisplayText(): string {
+    const ns = this.clusterNamespace || 'default';
+    return $localize`:@@serviceAccount.namespaceDisplay:Namespace: ${ns}:namespace:`;
   }
 
   private initForm(): void {

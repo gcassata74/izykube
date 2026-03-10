@@ -16,8 +16,8 @@ export class LinkPropertiesFormComponent implements OnInit, OnChanges, OnDestroy
   form!: FormGroup;
   private autosaveSub?: Subscription;
   readonly containerRoleOptions = [
-    { label: 'Init container', value: 'INIT' as ContainerRole },
-    { label: 'Sidecar', value: 'SIDECAR' as ContainerRole }
+    { label: $localize`:@@linkProperties.containerRole.init:Init container`, value: 'INIT' as ContainerRole },
+    { label: $localize`:@@linkProperties.containerRole.sidecar:Sidecar`, value: 'SIDECAR' as ContainerRole }
   ];
 
   constructor(
@@ -39,6 +39,14 @@ export class LinkPropertiesFormComponent implements OnInit, OnChanges, OnDestroy
 
   get selectedType(): LinkType {
     return this.form?.get('linkType')?.value ?? 'Expose';
+  }
+
+  get sourceLabel(): string {
+    return this.link?.source || $localize`:@@linkProperties.sourceFallback:Source`;
+  }
+
+  get targetLabel(): string {
+    return this.link?.target || $localize`:@@linkProperties.targetFallback:Target`;
   }
 
   private initForm(): void {

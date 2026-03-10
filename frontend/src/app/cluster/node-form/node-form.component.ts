@@ -58,9 +58,10 @@ export class NodeFormComponent implements OnInit, OnDestroy {
   logsPrevious = false;
   logsReason: string | null = null;
   logsFilter = '';
+  readonly noLogsAvailableLabel = $localize`:@@nodeForm.logs.noLogsAvailable:No logs available.`;
   readonly logsOptions = [
-    { label: 'Current logs', value: false },
-    { label: 'Previous logs', value: true }
+    { label: $localize`:@@nodeForm.logs.current:Current logs`, value: false },
+    { label: $localize`:@@nodeForm.logs.previous:Previous logs`, value: true }
   ];
   activeTabIndex = 0;
   private readonly logsRefreshMs = 15000;
@@ -286,8 +287,8 @@ export class NodeFormComponent implements OnInit, OnDestroy {
           this.yamlLoading = false;
           return;
         }
-        const detail = error?.error || error?.message || 'Unable to load YAML.';
-        this.yamlError = typeof detail === 'string' ? detail : 'Unable to load YAML.';
+        const detail = error?.error || error?.message || $localize`:@@nodeForm.yaml.loadFailed:Unable to load YAML.`;
+        this.yamlError = typeof detail === 'string' ? detail : $localize`:@@nodeForm.yaml.loadFailed:Unable to load YAML.`;
         this.yamlLoading = false;
       }
     });
@@ -306,7 +307,10 @@ export class NodeFormComponent implements OnInit, OnDestroy {
     }
     const yaml = this.yamlControl.value?.trim();
     if (!yaml) {
-      this.notificationService.warn('YAML required', 'Paste YAML before saving.');
+      this.notificationService.warn(
+        $localize`:@@nodeForm.yaml.requiredTitle:YAML required`,
+        $localize`:@@nodeForm.yaml.requiredDetail:Paste YAML before saving.`
+      );
       return;
     }
     this.yamlSaving = true;
@@ -315,11 +319,14 @@ export class NodeFormComponent implements OnInit, OnDestroy {
       next: (updated) => {
         this.yamlControl.setValue(updated || yaml);
         this.yamlSaving = false;
-        this.notificationService.success('Resource updated', `${this.yamlKind} ${this.yamlName} patched.`);
+        this.notificationService.success(
+          $localize`:@@nodeForm.yaml.updatedTitle:Resource updated`,
+          $localize`:@@nodeForm.yaml.updatedDetail:${this.yamlKind}:kind: ${this.yamlName}:name: patched.`
+        );
       },
       error: (error) => {
-        const detail = error?.error || error?.message || 'Unable to update resource.';
-        this.yamlError = typeof detail === 'string' ? detail : 'Unable to update resource.';
+        const detail = error?.error || error?.message || $localize`:@@nodeForm.yaml.updateFailed:Unable to update resource.`;
+        this.yamlError = typeof detail === 'string' ? detail : $localize`:@@nodeForm.yaml.updateFailed:Unable to update resource.`;
         this.yamlSaving = false;
       }
     });
@@ -349,8 +356,8 @@ export class NodeFormComponent implements OnInit, OnDestroy {
         this.logsLoading = false;
       },
       error: (error) => {
-        const detail = error?.error || error?.message || 'Unable to load logs.';
-        this.logsError = typeof detail === 'string' ? detail : 'Unable to load logs.';
+        const detail = error?.error || error?.message || $localize`:@@nodeForm.logs.loadFailed:Unable to load logs.`;
+        this.logsError = typeof detail === 'string' ? detail : $localize`:@@nodeForm.logs.loadFailed:Unable to load logs.`;
         this.logsLoading = false;
       }
     });
@@ -507,7 +514,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
       this.yamlAnnotations = [{
         row: yamlError.line,
         column: yamlError.column,
-        text: yamlError.reason || 'Invalid YAML',
+        text: yamlError.reason || $localize`:@@common.invalidYaml:Invalid YAML`,
         type: 'error'
       }];
     } else if (yamlError?.message) {

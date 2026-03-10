@@ -32,10 +32,10 @@ import { NotificationService } from 'src/app/services/notification.service';
       this.getAllAssets();
 
       this.cols = [
-        { field: 'name', header: 'Name' },
-        { field: 'type', header: 'Type' },
-        { field: 'version', header: 'Version' },
-        { field: 'port', header: 'Port' }
+        { field: 'name', header: $localize`:@@common.name:Name` },
+        { field: 'type', header: $localize`:@@common.type:Type` },
+        { field: 'version', header: $localize`:@@common.version:Version` },
+        { field: 'port', header: $localize`:@@common.port:Port` }
       ];
     }
 
@@ -52,8 +52,8 @@ import { NotificationService } from 'src/app/services/notification.service';
     updateContextMenuItems($event: MouseEvent, id: string) {
       this.selectedId = id;
       this.items = [
-        { label: 'Edit', icon: 'pi pi-pencil', command: () => this.editAsset(id) },
-        { label: 'Delete', icon: 'pi pi-times', command: () => this.deleteAsset(id) }
+        { label: $localize`:@@common.edit:Edit`, icon: 'pi pi-pencil', command: () => this.editAsset(id) },
+        { label: $localize`:@@common.delete:Delete`, icon: 'pi pi-times', command: () => this.deleteAsset(id) }
       ];
       setTimeout(() => { this.contextMenu.show($event); }, 100);
     }
@@ -70,11 +70,17 @@ import { NotificationService } from 'src/app/services/notification.service';
       this.subscriptions.add(
         this.assetService.deleteAsset(id).pipe(
           tap(() => {
-            this.notificationService.success('Asset Deleted', 'The asset was successfully deleted');
+            this.notificationService.success(
+              $localize`:@@asset.deletedTitle:Asset Deleted`,
+              $localize`:@@asset.deletedDetail:The asset was successfully deleted`
+            );
             this.getAllAssets();
           }),
           catchError(error => {
-            this.notificationService.error('Asset Deletion Failed', 'The asset could not be deleted');
+            this.notificationService.error(
+              $localize`:@@asset.deleteFailedTitle:Asset Deletion Failed`,
+              $localize`:@@asset.deleteFailedDetail:The asset could not be deleted`
+            );
             throw error;
           })
         ).subscribe()

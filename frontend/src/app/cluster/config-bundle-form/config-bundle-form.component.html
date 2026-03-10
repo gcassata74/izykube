@@ -1,63 +1,65 @@
 <form [formGroup]="form" class="config-bundle-form">
   <section class="config-bundle-form__header">
     <div class="config-bundle-form__field">
-      <label for="bundle-name">Bundle name</label>
+      <label for="bundle-name" i18n="@@configBundle.bundleName">Bundle name</label>
       <input
         id="bundle-name"
         pInputText
         formControlName="name"
         [readonly]="!canEditName"
         autocomplete="off"
-        placeholder="app-config" />
-      <small class="field-hint" *ngIf="!canEditName">
+        placeholder="app-config"
+        i18n-placeholder="@@configBundle.namePlaceholder" />
+      <small class="field-hint" *ngIf="!canEditName" i18n="@@configBundle.nameLockedHint">
         Rename is disabled while this bundle is linked to other blocks.
       </small>
       <div class="field-error" *ngIf="form.get('name')?.touched && form.get('name')?.invalid">
-        <span *ngIf="form.get('name')?.errors?.['required']">Name is required.</span>
+        <span *ngIf="form.get('name')?.errors?.['required']" i18n="@@configBundle.error.nameRequired">Name is required.</span>
         <span *ngIf="form.get('name')?.errors?.['dnsLabel']">
-          Must be DNS-1123 compliant (lowercase letters, numbers, and dashes only).
+          <span i18n="@@configBundle.error.nameDnsLabel">Must be DNS-1123 compliant (lowercase letters, numbers, and dashes only).</span>
         </span>
       </div>
     </div>
 
     <div class="config-bundle-form__field">
-      <label for="bundle-namespace">Namespace</label>
+      <label for="bundle-namespace" i18n="@@common.namespace">Namespace</label>
       <input
         id="bundle-namespace"
         pInputText
         formControlName="namespace"
         autocomplete="off"
-        placeholder="default" />
+        placeholder="default"
+        i18n-placeholder="@@configBundle.namespacePlaceholder" />
       <div class="field-error" *ngIf="form.get('namespace')?.touched && form.get('namespace')?.invalid">
-        <span *ngIf="form.get('namespace')?.errors?.['required']">Namespace is required.</span>
+        <span *ngIf="form.get('namespace')?.errors?.['required']" i18n="@@configBundle.error.namespaceRequired">Namespace is required.</span>
         <span *ngIf="form.get('namespace')?.errors?.['dnsLabel']">
-          Must be DNS-1123 compliant.
+          <span i18n="@@configBundle.error.namespaceDnsLabel">Must be DNS-1123 compliant.</span>
         </span>
       </div>
     </div>
 
     <div class="config-bundle-form__toggle">
       <p-inputSwitch formControlName="showSecretsAsPlain"></p-inputSwitch>
-      <label>Show secret values</label>
+      <label i18n="@@configBundle.showSecretValues">Show secret values</label>
     </div>
   </section>
 
   <section class="config-bundle-form__meta">
     <div class="kv-editor">
       <div class="kv-editor__header">
-        <h4>Annotations</h4>
-        <button type="button" pButton icon="pi pi-plus" class="p-button-text" (click)="addAnnotation()">Add</button>
+        <h4 i18n="@@common.annotations">Annotations</h4>
+        <button type="button" pButton icon="pi pi-plus" class="p-button-text" (click)="addAnnotation()" i18n>Add</button>
       </div>
       <div class="kv-editor__hint" *ngIf="!annotationsArray.length">
-        No annotations defined.
+        <span i18n="@@configBundle.noAnnotations">No annotations defined.</span>
       </div>
       <div class="kv-editor__rows" formArrayName="annotations">
         <div class="kv-editor__row" *ngFor="let annotationGroup of annotationsArray.controls; let i = index" [formGroupName]="i">
-          <input pInputText formControlName="key" placeholder="key" />
-          <input pInputText formControlName="value" placeholder="value" />
+          <input pInputText formControlName="key" placeholder="key" i18n-placeholder="@@configBundle.annotation.keyPlaceholder" />
+          <input pInputText formControlName="value" placeholder="value" i18n-placeholder="@@configBundle.annotation.valuePlaceholder" />
           <button type="button" pButton icon="pi pi-times" class="p-button-text p-button-danger" (click)="removeAnnotation(i)"></button>
           <div class="field-error" *ngIf="annotationGroup.get('key')?.touched && annotationGroup.get('key')?.invalid">
-            Key is required.
+            <span i18n="@@common.keyRequired">Key is required.</span>
           </div>
         </div>
       </div>
@@ -65,27 +67,28 @@
   </section>
 
   <p-tabView>
-    <p-tabPanel header="Data">
+    <p-tabPanel header="Data" i18n-header="@@common.data">
       <div class="entries-container" formArrayName="entries">
         <div
           class="entry-card"
           *ngFor="let entryGroup of entryControls; let i = index; trackBy: trackByEntryIndex"
           [formGroupName]="i"
           [ngClass]="{ 'entry-card--error': entryGroup.invalid && (entryGroup.dirty || entryGroup.touched) }">
-          <label class="entry-label" [for]="'entry-key-' + i">Key</label>
+          <label class="entry-label" [for]="'entry-key-' + i" i18n="@@common.key">Key</label>
           <input
             [id]="'entry-key-' + i"
             pInputText
             formControlName="key"
             placeholder="DB_HOST"
+            i18n-placeholder="@@configBundle.entryKeyPlaceholder"
             autocomplete="off"
             [ngClass]="{ 'entry-input--invalid': entryGroup.get('key')?.invalid && entryGroup.get('key')?.touched }" />
           <div class="field-error" *ngIf="entryGroup.get('key')?.touched && entryGroup.get('key')?.invalid">
-            <span *ngIf="entryGroup.get('key')?.errors?.['required']">Key is required.</span>
-            <span *ngIf="entryGroup.get('key')?.errors?.['duplicateKey']">Duplicate key.</span>
+            <span *ngIf="entryGroup.get('key')?.errors?.['required']" i18n="@@common.keyRequired">Key is required.</span>
+            <span *ngIf="entryGroup.get('key')?.errors?.['duplicateKey']" i18n="@@configBundle.error.duplicateKey">Duplicate key.</span>
           </div>
 
-          <label class="entry-label" [for]="'entry-value-' + i">Value</label>
+          <label class="entry-label" [for]="'entry-value-' + i" i18n="@@common.value">Value</label>
           <div class="entry-value-wrapper" [class.entry-value-wrapper--masked]="shouldMaskEntry(entryGroup)">
             <input
               [id]="'entry-value-' + i"
@@ -93,16 +96,16 @@
               formControlName="value"
               [type]="shouldMaskEntry(entryGroup) ? 'password' : 'text'"
               autocomplete="off"
-              [attr.placeholder]="shouldMaskEntry(entryGroup) ? 'Secret value hidden' : 'Value'" />
+              [attr.placeholder]="entryValuePlaceholder(shouldMaskEntry(entryGroup))" />
             <div class="entry-mask-hint" *ngIf="shouldMaskEntry(entryGroup)">
               <i class="pi pi-eye-slash"></i>
-              <span>Hidden (enable “Show secret values” to view)</span>
+              <span i18n="@@configBundle.secretHiddenHint">Hidden (enable “Show secret values” to view)</span>
             </div>
           </div>
 
           <div class="entry-footer">
             <div class="sensitivity">
-              <label [for]="'entry-sensitivity-' + i">Sensitivity</label>
+              <label [for]="'entry-sensitivity-' + i" i18n="@@configBundle.sensitivity">Sensitivity</label>
               <p-dropdown
                 [id]="'entry-sensitivity-' + i"
                 formControlName="sensitivity"
@@ -118,6 +121,7 @@
                 class="p-button-text"
                 icon="pi pi-copy"
                 label="Duplicate"
+                i18n-label="@@common.duplicate"
                 (click)="duplicateEntry(i)">
               </button>
               <button
@@ -126,6 +130,7 @@
                 class="p-button-text p-button-danger"
                 icon="pi pi-trash"
                 label="Delete"
+                i18n-label="@@common.delete"
                 (click)="removeEntry(i)">
               </button>
             </div>
@@ -133,15 +138,15 @@
         </div>
       </div>
       <div class="field-error" *ngIf="entriesArray.errors?.['noKeyEntry']">
-        Add at least one entry with a key.
+        <span i18n="@@configBundle.error.atLeastOneEntry">Add at least one entry with a key.</span>
       </div>
       <div class="entry-actions entry-actions--global">
-        <button type="button" pButton icon="pi pi-plus" label="Add entry" (click)="addEntry()"></button>
+        <button type="button" pButton icon="pi pi-plus" label="Add entry" i18n-label="@@configBundle.addEntry" (click)="addEntry()"></button>
       </div>
     </p-tabPanel>
 
-    <p-tabPanel header="YAML Preview">
-      <p class="yaml-preview__hint">
+    <p-tabPanel header="YAML Preview" i18n-header="@@configBundle.yamlPreview">
+      <p class="yaml-preview__hint" i18n="@@configBundle.yamlPreviewHint">
         Preview only. Apply changes from the form above; this output is not editable.
       </p>
       <p class="yaml-preview__error" *ngIf="yamlError">
@@ -154,12 +159,13 @@
 
 <p-dialog
   header="Paste key=value list"
+  i18n-header="@@configBundle.pasteDialogTitle"
   [(visible)]="pasteDialogVisible"
   [modal]="true"
   [style]="{ width: '480px' }"
   (onHide)="cancelPaste()">
   <div class="paste-dialog">
-    <p class="paste-dialog__hint">
+    <p class="paste-dialog__hint" i18n="@@configBundle.pasteDialogHint">
       Paste entries like <code>KEY=value</code>, one per line. Choose the default sensitivity for values below.
     </p>
     <textarea
@@ -168,10 +174,11 @@
       [ngModelOptions]="{ standalone: true }"
       [autoResize]="true"
       rows="6"
-      placeholder="USER=demo&#10;PASSWORD=secret">
+      placeholder="USER=demo&#10;PASSWORD=secret"
+      i18n-placeholder="@@configBundle.pasteDialogPlaceholder">
     </textarea>
     <div class="paste-dialog__controls">
-      <label>Default sensitivity:</label>
+      <label i18n="@@configBundle.defaultSensitivity">Default sensitivity:</label>
       <p-dropdown
         [options]="sensitivityOptions"
         optionLabel="label"
@@ -182,7 +189,7 @@
     </div>
   </div>
   <ng-template pTemplate="footer">
-    <button type="button" pButton label="Cancel" class="p-button-text" (click)="cancelPaste()"></button>
-    <button type="button" pButton label="Add entries" icon="pi pi-check" (click)="applyPasteBuffer()"></button>
+    <button type="button" pButton label="Cancel" i18n-label="@@common.cancel" class="p-button-text" (click)="cancelPaste()"></button>
+    <button type="button" pButton label="Add entries" i18n-label="@@configBundle.addEntries" icon="pi pi-check" (click)="applyPasteBuffer()"></button>
   </ng-template>
 </p-dialog>

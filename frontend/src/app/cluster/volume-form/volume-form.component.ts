@@ -20,11 +20,11 @@ export class VolumeFormComponent implements OnInit, OnChanges, OnDestroy {
   loadingPersistentVolumes = false;
 
   volumeTypes: { label: string; value: VolumeType }[] = [
-    { label: 'Empty Dir', value: 'emptyDir' },
-    { label: 'Host Path', value: 'hostPath' },
-    { label: 'Persistent Volume Claim', value: 'persistentVolumeClaim' },
-    { label: 'Config Map', value: 'configMap' },
-    { label: 'Secret', value: 'secret' }
+    { label: $localize`:@@volumeForm.type.emptyDir:Empty Dir`, value: 'emptyDir' },
+    { label: $localize`:@@volumeForm.type.hostPath:Host Path`, value: 'hostPath' },
+    { label: $localize`:@@volumeForm.type.persistentVolumeClaim:Persistent Volume Claim`, value: 'persistentVolumeClaim' },
+    { label: $localize`:@@volumeForm.type.configMap:Config Map`, value: 'configMap' },
+    { label: $localize`:@@common.secret:Secret`, value: 'secret' }
   ];
   readonly itemSupportedTypes: VolumeType[] = ['configMap', 'secret'];
 

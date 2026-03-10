@@ -42,7 +42,7 @@
         <div class="mt-4 ml-4 mr-4"
              *ngIf="assetForm.get('type')?.value === 'playbook' || assetForm.get('type')?.value === 'script'">
           <label for="yaml" i18n="@@scriptTypeLabel">
-            {{assetForm.get('type')?.value === 'playbook' ? 'Playbook YAML' : 'Script'}}
+            {{ scriptEditorLabel }}
           </label>
           <div appYaml
                *ngIf="assetForm.get('type')?.value === 'playbook'"
@@ -89,10 +89,11 @@
                    pInputText
                    formControlName="image"
                    class="p-inputtext-lg w-full"
-                   placeholder="registry/repository:tag">
-            <label for="imageRef">Image Reference</label>
+                   placeholder="registry/repository:tag"
+                   i18n-placeholder="@@asset.imageRefPlaceholder">
+            <label for="imageRef" i18n="@@asset.imageReference">Image Reference</label>
           </span>
-          <small class="text-muted">
+          <small class="text-muted" i18n="@@asset.imageReferenceHelp">
             Provide the full image string (e.g. registry.example.com/app:1.0.0). Kubernetes will pull it directly from the registry.
           </small>
           <small *ngIf="assetForm.get('image')?.invalid && assetForm.get('image')?.touched"

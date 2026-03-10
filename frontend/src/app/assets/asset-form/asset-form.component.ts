@@ -27,10 +27,10 @@ export class AssetFormComponent implements OnInit, OnDestroy {
   readonly assetType = AssetType;
 
   assetTypes = [
-    { label: 'Playbook', value: AssetType.PLAYBOOK },
-    { label: 'Image', value: AssetType.IMAGE },
-    { label: 'Script', value: AssetType.SCRIPT },
-    { label: 'CRD Controller', value: AssetType.CONTROLLER }
+    { label: $localize`:@@asset.type.playbook:Playbook`, value: AssetType.PLAYBOOK },
+    { label: $localize`:@@asset.type.image:Image`, value: AssetType.IMAGE },
+    { label: $localize`:@@asset.type.script:Script`, value: AssetType.SCRIPT },
+    { label: $localize`:@@asset.type.crdController:CRD Controller`, value: AssetType.CONTROLLER }
   ];
 
   constructor(
@@ -214,7 +214,10 @@ export class AssetFormComponent implements OnInit, OnDestroy {
 
         }),
         catchError(error => {
-          this.notify.error('Error', 'Failed to load asset');
+          this.notify.error(
+            $localize`:@@common.error:Error`,
+            $localize`:@@asset.error.load:Failed to load asset`
+          );
           console.error('Error loading asset:', error);
           return EMPTY;
         })
@@ -251,11 +254,21 @@ export class AssetFormComponent implements OnInit, OnDestroy {
       this.subscription.add(
         this.assetService.saveAsset(asset).pipe(
           tap(() => {
-            this.notify.success('Success', `Asset ${this.isEditMode ? 'updated' : 'created'} successfully`);
+            this.notify.success(
+              $localize`:@@common.success:Success`,
+              this.isEditMode
+                ? $localize`:@@asset.updated:Asset updated successfully`
+                : $localize`:@@asset.created:Asset created successfully`
+            );
             this.router.navigate(['/assets']);
           }),
           catchError(error => {
-            this.notify.error('Error', `Failed to ${this.isEditMode ? 'update' : 'create'} asset`);
+            this.notify.error(
+              $localize`:@@common.error:Error`,
+              this.isEditMode
+                ? $localize`:@@asset.error.update:Failed to update asset`
+                : $localize`:@@asset.error.create:Failed to create asset`
+            );
             console.error('Error saving asset:', error);
             return EMPTY;
           })
@@ -270,6 +283,12 @@ export class AssetFormComponent implements OnInit, OnDestroy {
         }
       });
     }
+  }
+
+  get scriptEditorLabel(): string {
+    return this.assetForm.get('type')?.value === 'playbook'
+      ? $localize`:@@asset.playbookYaml:Playbook YAML`
+      : $localize`:@@asset.script:Script`;
   }
 
   cancel(): void {

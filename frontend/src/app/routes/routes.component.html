@@ -2,12 +2,12 @@
   <p-confirmDialog></p-confirmDialog>
   <header class="routes-page__toolbar">
     <div class="routes-page__title">
-      <h1>Routes</h1>
-      <p>Istio gateway routes per namespace.</p>
+      <h1 i18n="@@routes.title">Routes</h1>
+      <p i18n="@@routes.subtitle">Istio gateway routes per namespace.</p>
     </div>
     <div class="routes-page__actions">
       <div class="routes-page__field">
-        <span>Namespace</span>
+        <span i18n="@@common.namespace">Namespace</span>
         <p-dropdown
           inputId="routesNamespaceSelect"
           [options]="namespaces"
@@ -15,12 +15,13 @@
           (onChange)="onNamespaceChange($event.value)"
           [style.width.px]="220"
           placeholder="Select namespace"
+          i18n-placeholder="@@routes.selectNamespace"
           optionLabel="name"
           optionValue="name"
         ></p-dropdown>
       </div>
       <div class="routes-page__field routes-page__field--filter">
-        <span>Filter</span>
+        <span i18n="@@common.filter">Filter</span>
         <div class="routes-page__filter">
           <input
             pInputText
@@ -28,6 +29,7 @@
             [value]="filterValue"
             (input)="onFilterChange($any($event.target).value)"
             placeholder="Search routes"
+            i18n-placeholder="@@routes.searchPlaceholder"
           />
           <button
             pButton
@@ -37,6 +39,7 @@
             (click)="clearFilter()"
             [disabled]="!filterValue"
             pTooltip="Clear"
+            i18n-pTooltip="@@common.clear"
           ></button>
         </div>
       </div>
@@ -48,12 +51,14 @@
         [disabled]="loading"
         (click)="refreshRoutes()"
         pTooltip="Refresh"
+        i18n-pTooltip="@@common.refresh"
       ></button>
       <button
         pButton
         type="button"
         icon="pi pi-plus"
         label="Create Route"
+        i18n-label="@@routes.create"
         class="p-button-sm"
         (click)="openCreateDialog()"
       ></button>
@@ -77,14 +82,14 @@
     >
       <ng-template pTemplate="header">
         <tr>
-          <th>Name</th>
-          <th>Namespace</th>
-          <th>Host</th>
-          <th>Service</th>
-          <th>Gateway</th>
-          <th>TLS</th>
-          <th>Age</th>
-          <th class="text-center">Actions</th>
+          <th i18n="@@common.name">Name</th>
+          <th i18n="@@common.namespace">Namespace</th>
+          <th i18n="@@common.host">Host</th>
+          <th i18n="@@common.service">Service</th>
+          <th i18n="@@routes.gateway">Gateway</th>
+          <th i18n="@@routes.tls">TLS</th>
+          <th i18n="@@common.age">Age</th>
+          <th class="text-center" i18n="@@common.actions">Actions</th>
         </tr>
       </ng-template>
       <ng-template pTemplate="body" let-route>
@@ -104,6 +109,7 @@
               class="p-button-rounded p-button-text"
               (click)="editRoute(route)"
               pTooltip="Edit route"
+              i18n-pTooltip="@@routes.editRoute"
             ></button>
             <a
               pButton
@@ -115,6 +121,7 @@
               [class.p-disabled]="!getRouteUrl(route)"
               (click)="onTestRouteClick($event, route)"
               pTooltip="Test route"
+              i18n-pTooltip="@@routes.testRoute"
             ></a>
             <button
               pButton
@@ -123,6 +130,7 @@
               class="p-button-rounded p-button-text p-button-danger"
               (click)="deleteRoute(route)"
               pTooltip="Delete route"
+              i18n-pTooltip="@@routes.deleteRoute"
             ></button>
           </td>
         </tr>
@@ -130,7 +138,7 @@
       <ng-template pTemplate="emptymessage">
         <tr>
           <td colspan="8" class="routes-page__empty">
-            <div class="routes-page__empty-content">No routes found for this namespace.</div>
+            <div class="routes-page__empty-content" i18n="@@routes.empty">No routes found for this namespace.</div>
           </td>
         </tr>
       </ng-template>
@@ -139,7 +147,7 @@
 </div>
 
 <p-dialog
-  header="{{ editingRoute ? 'Edit Route' : 'Create Route' }}"
+  [header]="dialogHeader"
   [(visible)]="createDialogVisible"
   [modal]="true"
   [dismissableMask]="true"
@@ -148,28 +156,28 @@
 >
   <form [formGroup]="createForm" class="routes-form">
     <div class="routes-form__row">
-      <label for="routeName">Name</label>
-      <input id="routeName" pInputText formControlName="name" placeholder="route-name" />
+      <label for="routeName" i18n="@@common.name">Name</label>
+      <input id="routeName" pInputText formControlName="name" placeholder="route-name" i18n-placeholder="@@routes.form.namePlaceholder" />
       <small *ngIf="createForm.get('name')?.invalid && createForm.get('name')?.touched" class="routes-form__error">
-        Name is required.
+        <span i18n="@@common.nameRequired">Name is required.</span>
       </small>
     </div>
 
     <div class="routes-form__row">
-      <label for="routeHost">Host (optional)</label>
-      <input id="routeHost" pInputText formControlName="host" placeholder="example.com" />
+      <label for="routeHost" i18n="@@routes.form.hostOptional">Host (optional)</label>
+      <input id="routeHost" pInputText formControlName="host" placeholder="example.com" i18n-placeholder="@@routes.form.hostPlaceholder" />
     </div>
 
     <div class="routes-form__row">
-      <label for="routePath">Path</label>
-      <input id="routePath" pInputText formControlName="path" placeholder="/" />
+      <label for="routePath" i18n="@@common.path">Path</label>
+      <input id="routePath" pInputText formControlName="path" placeholder="/" i18n-placeholder="@@routes.form.pathPlaceholder" />
       <small *ngIf="createForm.get('path')?.invalid && createForm.get('path')?.touched" class="routes-form__error">
-        Path must start with '/' (example: / or /api).
+        <span i18n="@@routes.form.pathError">Path must start with '/' (example: / or /api).</span>
       </small>
     </div>
 
     <div class="routes-form__row">
-      <label for="routeService">Service</label>
+      <label for="routeService" i18n="@@common.service">Service</label>
       <p-dropdown
         inputId="routeService"
         [options]="services"
@@ -177,42 +185,44 @@
         optionValue="name"
         formControlName="serviceName"
         placeholder="Select service"
+        i18n-placeholder="@@routes.form.selectService"
         (onChange)="onServiceChange($event.value)"
       ></p-dropdown>
       <small *ngIf="createForm.get('serviceName')?.invalid && createForm.get('serviceName')?.touched" class="routes-form__error">
-        Service is required.
+        <span i18n="@@routes.form.serviceRequired">Service is required.</span>
       </small>
     </div>
 
     <div class="routes-form__row">
-      <label for="routePort">Service Port</label>
+      <label for="routePort" i18n="@@common.servicePort">Service Port</label>
       <p-dropdown
         inputId="routePort"
         [options]="servicePortOptions"
         formControlName="servicePort"
         placeholder="Select port"
+        i18n-placeholder="@@routes.form.selectPort"
       ></p-dropdown>
       <small *ngIf="createForm.get('servicePort')?.invalid && createForm.get('servicePort')?.touched" class="routes-form__error">
-        Service port is required.
+        <span i18n="@@common.servicePortRequired">Service Port is required.</span>
       </small>
     </div>
 
     <div class="routes-form__row">
-      <label for="routeHttps">HTTPS</label>
+      <label for="routeHttps" i18n="@@routes.form.https">HTTPS</label>
       <div class="routes-form__inline">
         <p-checkbox inputId="routeHttps" [binary]="true" formControlName="httpsEnabled"></p-checkbox>
-        <span>Generate TLS certificate via internal CA</span>
+        <span i18n="@@routes.form.generateTls">Generate TLS certificate via internal CA</span>
       </div>
-      <small class="routes-form__help">HTTPS requires a concrete host (no '*').</small>
+      <small class="routes-form__help" i18n="@@routes.form.httpsHint">HTTPS requires a concrete host (no '*').</small>
     </div>
   </form>
 
   <ng-template pTemplate="footer">
-    <button pButton type="button" label="Cancel" class="p-button-text" (click)="closeCreateDialog()"></button>
+    <button pButton type="button" label="Cancel" i18n-label="@@common.cancel" class="p-button-text" (click)="closeCreateDialog()"></button>
     <button
       pButton
       type="button"
-      label="{{ editingRoute ? 'Save' : 'Create' }}"
+      [label]="submitButtonLabel"
       [disabled]="createSubmitting || createForm.invalid"
       (click)="submitCreate()"
     ></button>

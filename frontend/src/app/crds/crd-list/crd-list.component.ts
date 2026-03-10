@@ -29,13 +29,13 @@ export class CrdListComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.cols = [
-      { field: 'metadataName', header: 'Name' },
-      { field: 'group', header: 'Group' },
-      { field: 'version', header: 'Version' },
-      { field: 'scope', header: 'Scope' },
-      { field: 'kind', header: 'Kind' },
-      { field: 'plural', header: 'Plural' },
-      { field: 'updatedAt', header: 'Updated' },
+      { field: 'metadataName', header: $localize`:@@common.name:Name` },
+      { field: 'group', header: $localize`:@@common.group:Group` },
+      { field: 'version', header: $localize`:@@common.version:Version` },
+      { field: 'scope', header: $localize`:@@common.scope:Scope` },
+      { field: 'kind', header: $localize`:@@common.kind:Kind` },
+      { field: 'plural', header: $localize`:@@crd.plural:Plural` },
+      { field: 'updatedAt', header: $localize`:@@common.updated:Updated` },
     ];
 
     this.load();
@@ -52,7 +52,10 @@ export class CrdListComponent implements OnInit, OnDestroy {
         tap(crds => this.crds = crds || []),
         catchError(err => {
           console.error('Error loading CRDs:', err);
-          this.notificationService.error('Error', 'Failed to load CRDs');
+          this.notificationService.error(
+            $localize`:@@common.error:Error`,
+            $localize`:@@crd.error.loadList:Failed to load CRDs`
+          );
           return of([]);
         })
       ).subscribe()
@@ -71,12 +74,18 @@ export class CrdListComponent implements OnInit, OnDestroy {
     this.subscriptions.add(
       this.crdService.delete(id).pipe(
         tap(() => {
-          this.notificationService.success('Deleted', 'CRD deleted successfully');
+          this.notificationService.success(
+            $localize`:@@common.deleted:Deleted`,
+            $localize`:@@crd.deleted:CRD deleted successfully`
+          );
           this.load();
         }),
         catchError(err => {
           console.error('Error deleting CRD:', err);
-          this.notificationService.error('Error', 'Failed to delete CRD');
+          this.notificationService.error(
+            $localize`:@@common.error:Error`,
+            $localize`:@@crd.error.delete:Failed to delete CRD`
+          );
           throw err;
         })
       ).subscribe()
@@ -86,8 +95,8 @@ export class CrdListComponent implements OnInit, OnDestroy {
   updateContextMenuItems(event: MouseEvent, id: string): void {
     this.selectedId = id;
     this.items = [
-      { label: 'Edit', icon: 'pi pi-pencil', command: () => this.editCrd(id) },
-      { label: 'Delete', icon: 'pi pi-times', command: () => this.deleteCrd(id) },
+      { label: $localize`:@@common.edit:Edit`, icon: 'pi pi-pencil', command: () => this.editCrd(id) },
+      { label: $localize`:@@common.delete:Delete`, icon: 'pi pi-times', command: () => this.deleteCrd(id) },
     ];
     setTimeout(() => this.contextMenu.show(event), 100);
   }

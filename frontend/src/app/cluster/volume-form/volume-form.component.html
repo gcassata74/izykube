@@ -1,47 +1,47 @@
 <form [formGroup]="form" class="p-fluid">
   <div class="p-field">
-    <label for="name">Volume Name</label>
+    <label for="name" i18n="@@volumeForm.volumeName">Volume Name</label>
     <input id="name" type="text" pInputText formControlName="name"/>
   </div>
 
   <div formGroupName="config">
     <div class="p-field">
-      <label for="type">Volume Type</label>
+      <label for="type" i18n="@@volumeForm.volumeType">Volume Type</label>
       <p-dropdown id="type" [options]="volumeTypes" formControlName="type" optionLabel="label"
                   optionValue="value"></p-dropdown>
     </div>
 
     <div class="p-field">
-      <label for="mountPath">Mount Path</label>
+      <label for="mountPath" i18n="@@volumeForm.mountPath">Mount Path</label>
       <input id="mountPath" type="text" pInputText formControlName="mountPath"/>
     </div>
 
     <ng-container [ngSwitch]="form.get('config.type')?.value">
       <ng-container *ngSwitchCase="'emptyDir'">
         <div class="p-field">
-          <label for="medium">Medium</label>
+          <label for="medium" i18n="@@volumeForm.medium">Medium</label>
           <input id="medium" type="text" pInputText formControlName="medium"/>
         </div>
         <div class="p-field">
-          <label for="sizeLimit">Size Limit</label>
+          <label for="sizeLimit" i18n="@@volumeForm.sizeLimit">Size Limit</label>
           <input id="sizeLimit" type="text" pInputText formControlName="sizeLimit"/>
         </div>
       </ng-container>
 
       <ng-container *ngSwitchCase="'hostPath'">
         <div class="p-field">
-          <label for="path">Host Path</label>
+          <label for="path" i18n="@@volumeForm.hostPath">Host Path</label>
           <input id="path" type="text" pInputText formControlName="path"/>
         </div>
         <div class="p-field">
-          <label for="hostPathType">Host Path Type</label>
+          <label for="hostPathType" i18n="@@volumeForm.hostPathType">Host Path Type</label>
           <input id="hostPathType" type="text" pInputText formControlName="hostPathType"/>
         </div>
       </ng-container>
 
       <ng-container *ngSwitchCase="'persistentVolumeClaim'">
         <div class="p-field">
-          <label for="claimName">Claim Name</label>
+          <label for="claimName" i18n="@@volumeForm.claimName">Claim Name</label>
           <p-dropdown
             id="claimName"
             formControlName="claimName"
@@ -53,35 +53,36 @@
             styleClass="volume-claim-dropdown"
             panelStyleClass="volume-claim-dropdown-panel"
             placeholder="Select a claim name"
+            i18n-placeholder="@@volumeForm.claimNamePlaceholder"
             appendTo="body">
           </p-dropdown>
-          <small class="volume-hint">Select from cluster persistent volumes.</small>
+          <small class="volume-hint" i18n="@@volumeForm.claimHint">Select from cluster persistent volumes.</small>
         </div>
         <div class="p-field-checkbox">
           <p-checkbox id="readOnly" [binary]="true" formControlName="readOnly"></p-checkbox>
-          <label for="readOnly">Read Only</label>
+          <label for="readOnly" i18n="@@common.readOnly">Read Only</label>
         </div>
       </ng-container>
 
       <ng-container *ngSwitchCase="'configMap'">
         <div class="p-field">
-          <label for="configMapName">ConfigMap Name</label>
+          <label for="configMapName" i18n="@@volumeForm.configMapName">ConfigMap Name</label>
           <input id="configMapName" type="text" pInputText formControlName="name"/>
         </div>
         <div class="p-field-checkbox volume-optional">
           <p-checkbox inputId="configMapOptional" [binary]="true" formControlName="optional"></p-checkbox>
-          <label for="configMapOptional">Optional</label>
+          <label for="configMapOptional" i18n="@@common.optional">Optional</label>
         </div>
       </ng-container>
 
       <ng-container *ngSwitchCase="'secret'">
         <div class="p-field">
-          <label for="secretName">Secret Name</label>
+          <label for="secretName" i18n="@@volumeForm.secretName">Secret Name</label>
           <input id="secretName" type="text" pInputText formControlName="secretName"/>
         </div>
         <div class="p-field-checkbox volume-optional">
           <p-checkbox inputId="secretOptional" [binary]="true" formControlName="optional"></p-checkbox>
-          <label for="secretOptional">Optional</label>
+          <label for="secretOptional" i18n="@@common.optional">Optional</label>
         </div>
       </ng-container>
     </ng-container>
@@ -89,14 +90,14 @@
     <ng-container *ngIf="supportsItemEditor()">
       <div class="volume-items-editor" formArrayName="items">
         <div class="volume-items-header">
-          <h4>Items</h4>
+          <h4 i18n="@@common.items">Items</h4>
         </div>
         <div class="volume-items-container">
           <div
             class="volume-item-card"
             *ngFor="let itemGroup of itemControls; let i = index"
             [formGroupName]="i">
-            <label [for]="'item-key-' + i">Key</label>
+            <label [for]="'item-key-' + i" i18n="@@common.key">Key</label>
             <input
               [id]="'item-key-' + i"
               type="text"
@@ -104,29 +105,30 @@
               formControlName="key"
               (input)="handleItemKeyInput(itemGroup)"/>
 
-            <label [for]="'item-path-' + i">Path</label>
+            <label [for]="'item-path-' + i" i18n="@@common.path">Path</label>
             <input
               [id]="'item-path-' + i"
               type="text"
               pInputText
               formControlName="path"/>
 
-            <label [for]="'item-mode-' + i">Mode (optional)</label>
+            <label [for]="'item-mode-' + i" i18n="@@volumeForm.modeOptional">Mode (optional)</label>
             <input
               [id]="'item-mode-' + i"
               type="text"
               pInputText
               placeholder="0440"
+              i18n-placeholder="@@volumeForm.modePlaceholder"
               formControlName="mode"/>
 
             <div class="item-actions">
-              <button type="button" pButton class="p-button-text" icon="pi pi-copy" label="Duplicate" (click)="duplicateItem(i)"></button>
-              <button type="button" pButton class="p-button-text p-button-danger" icon="pi pi-trash" label="Delete" (click)="removeItem(i)"></button>
+              <button type="button" pButton class="p-button-text" icon="pi pi-copy" label="Duplicate" i18n-label="@@common.duplicate" (click)="duplicateItem(i)"></button>
+              <button type="button" pButton class="p-button-text p-button-danger" icon="pi pi-trash" label="Delete" i18n-label="@@common.delete" (click)="removeItem(i)"></button>
             </div>
           </div>
         </div>
         <div class="item-actions item-actions--global">
-          <button type="button" pButton icon="pi pi-plus" label="Add item" (click)="addItem()"></button>
+          <button type="button" pButton icon="pi pi-plus" label="Add item" i18n-label="@@volumeForm.addItem" (click)="addItem()"></button>
         </div>
       </div>
     </ng-container>

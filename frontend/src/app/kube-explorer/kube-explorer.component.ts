@@ -36,16 +36,16 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   autoRefreshEnabled = false;
   readonly refreshIntervalMs = 15000;
   readonly resourceMetadata: Record<ResourceKind, { label: string; icon: string; description: string }> = {
-    pods: { label: 'Pods', icon: 'pi pi-box', description: 'Workload containers' },
-    deployments: { label: 'Deployments', icon: 'pi pi-sitemap', description: 'Replica management' },
-    services: { label: 'Services', icon: 'pi pi-share-alt', description: 'Network endpoints' },
-    routes: { label: 'Routes', icon: 'pi pi-globe', description: 'Istio gateway routes' },
-    configMaps: { label: 'ConfigMaps', icon: 'pi pi-clone', description: 'Configuration data' },
-    secrets: { label: 'Secrets', icon: 'pi pi-lock', description: 'Sensitive data' },
-    jobs: { label: 'Jobs', icon: 'pi pi-refresh', description: 'One-off workloads' },
-    cronJobs: { label: 'CronJobs', icon: 'pi pi-calendar', description: 'Scheduled jobs' },
-    daemonSets: { label: 'DaemonSets', icon: 'pi pi-server', description: 'Node daemons' },
-    statefulSets: { label: 'StatefulSets', icon: 'pi pi-database', description: 'Stateful workloads' }
+    pods: { label: $localize`:@@kubeExplorer.resource.pods:Pods`, icon: 'pi pi-box', description: $localize`:@@kubeExplorer.resource.podsDesc:Workload containers` },
+    deployments: { label: $localize`:@@kubeExplorer.resource.deployments:Deployments`, icon: 'pi pi-sitemap', description: $localize`:@@kubeExplorer.resource.deploymentsDesc:Replica management` },
+    services: { label: $localize`:@@kubeExplorer.resource.services:Services`, icon: 'pi pi-share-alt', description: $localize`:@@kubeExplorer.resource.servicesDesc:Network endpoints` },
+    routes: { label: $localize`:@@kubeExplorer.resource.routes:Routes`, icon: 'pi pi-globe', description: $localize`:@@kubeExplorer.resource.routesDesc:Istio gateway routes` },
+    configMaps: { label: $localize`:@@kubeExplorer.resource.configMaps:ConfigMaps`, icon: 'pi pi-clone', description: $localize`:@@kubeExplorer.resource.configMapsDesc:Configuration data` },
+    secrets: { label: $localize`:@@kubeExplorer.resource.secrets:Secrets`, icon: 'pi pi-lock', description: $localize`:@@kubeExplorer.resource.secretsDesc:Sensitive data` },
+    jobs: { label: $localize`:@@kubeExplorer.resource.jobs:Jobs`, icon: 'pi pi-refresh', description: $localize`:@@kubeExplorer.resource.jobsDesc:One-off workloads` },
+    cronJobs: { label: $localize`:@@kubeExplorer.resource.cronJobs:CronJobs`, icon: 'pi pi-calendar', description: $localize`:@@kubeExplorer.resource.cronJobsDesc:Scheduled jobs` },
+    daemonSets: { label: $localize`:@@kubeExplorer.resource.daemonSets:DaemonSets`, icon: 'pi pi-server', description: $localize`:@@kubeExplorer.resource.daemonSetsDesc:Node daemons` },
+    statefulSets: { label: $localize`:@@kubeExplorer.resource.statefulSets:StatefulSets`, icon: 'pi pi-database', description: $localize`:@@kubeExplorer.resource.statefulSetsDesc:Stateful workloads` }
   };
   readonly resourceOrder: ResourceKind[] = Object.keys(this.resourceMetadata) as ResourceKind[];
 
@@ -79,6 +79,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   inspectedEvents: KubePodEvent[] = [];
   portForwards: PortForwardResponse[] = [];
   portForwardsLoading = false;
+  readonly editYamlTooltip = $localize`:@@kubeExplorer.tooltip.editYaml:Edit YAML`;
 
   @ViewChild('podsTable') podsTable?: Table;
   @ViewChild('deploymentsTable') deploymentsTable?: Table;
@@ -176,7 +177,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       },
       error: () => {
-        this.notificationService.error('Failed to load namespaces');
+        this.notificationService.error($localize`:@@kubeExplorer.error.loadNamespaces:Failed to load namespaces`);
         this.cdr.markForCheck();
       }
     });
@@ -202,7 +203,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       },
       error: () => {
-        this.notificationService.error('Failed to load cluster resources');
+        this.notificationService.error($localize`:@@kubeExplorer.error.loadResources:Failed to load cluster resources`);
         this.cdr.markForCheck();
         }
       });
@@ -236,12 +237,15 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
       targetPort: row.targetPort
     }).subscribe({
       next: () => {
-        this.notificationService.success('Port forward stopped', `${row.serviceName} (${row.namespace})`);
+        this.notificationService.success(
+          $localize`:@@kubeExplorer.portForward.stoppedTitle:Port forward stopped`,
+          $localize`:@@kubeExplorer.portForward.stoppedDetail:${row.serviceName}:serviceName: (${row.namespace}:namespace:)`
+        );
         this.loadPortForwards();
       },
       error: (error) => {
-        const detail = error?.error || error?.message || 'Unable to stop port forward.';
-        this.notificationService.error('Stop failed', typeof detail === 'string' ? detail : undefined);
+        const detail = error?.error || error?.message || $localize`:@@kubeExplorer.portForward.stopFailedDetail:Unable to stop port forward.`;
+        this.notificationService.error($localize`:@@kubeExplorer.portForward.stopFailedTitle:Stop failed`, typeof detail === 'string' ? detail : undefined);
       }
     });
   }
@@ -360,6 +364,23 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     return this.globalFilters[this.activeView];
   }
 
+  get activeItemsLabel(): string {
+    return $localize`:@@kubeExplorer.activeItems:${this.activeDataset.length}:count: items`;
+  }
+
+  get activeFilterPlaceholder(): string {
+    return $localize`:@@kubeExplorer.filter.placeholder:Filter ${this.activeLabel.toLowerCase()}:resourceType:`;
+  }
+
+  get activeDetailsTitle(): string {
+    return $localize`:@@kubeExplorer.details.title:${this.activeLabel}:resourceType: details`;
+  }
+
+  get inspectDialogTitle(): string {
+    const name = this.inspectedPod?.metadata?.name || '';
+    return $localize`:@@kubeExplorer.inspect.title:Inspect Pod • ${name}:podName:`;
+  }
+
   onQuickLogClick(event: MouseEvent, kind: 'pod' | 'deployment', row: any): void {
     event.stopPropagation();
     if (!row) {
@@ -390,102 +411,107 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     if (!this.selectedRow) {
       return [];
     }
+    const labelName = $localize`:@@common.name:Name`;
+    const labelNamespace = $localize`:@@common.namespace:Namespace`;
+    const labelAge = $localize`:@@common.age:Age`;
+    const yesLabel = $localize`:@@common.yes:Yes`;
+    const noLabel = $localize`:@@common.no:No`;
 
     switch (this.activeView) {
       case 'routes':
         return [
-          { label: 'Name', value: this.selectedRow.name },
-          { label: 'Namespace', value: this.selectedRow.namespace },
-          { label: 'Hosts', value: this.selectedRow.hosts || '-' },
-          { label: 'Services', value: this.selectedRow.serviceTargets || '-' },
-          { label: 'TLS', value: this.selectedRow.tls || '-' },
-          { label: 'Age', value: this.selectedRow.age }
+          { label: labelName, value: this.selectedRow.name },
+          { label: labelNamespace, value: this.selectedRow.namespace },
+          { label: $localize`:@@kubeExplorer.details.hosts:Hosts`, value: this.selectedRow.hosts || '-' },
+          { label: $localize`:@@common.services:Services`, value: this.selectedRow.serviceTargets || '-' },
+          { label: $localize`:@@kubeExplorer.details.tls:TLS`, value: this.selectedRow.tls || '-' },
+          { label: labelAge, value: this.selectedRow.age }
         ];
       case 'configMaps':
         return [
-          { label: 'Name', value: this.selectedRow.name },
-          { label: 'Namespace', value: this.selectedRow.namespace },
-          { label: 'Entries', value: String(this.selectedRow.dataEntries ?? 0) },
-          { label: 'Age', value: this.selectedRow.age }
+          { label: labelName, value: this.selectedRow.name },
+          { label: labelNamespace, value: this.selectedRow.namespace },
+          { label: $localize`:@@kubeExplorer.details.entries:Entries`, value: String(this.selectedRow.dataEntries ?? 0) },
+          { label: labelAge, value: this.selectedRow.age }
         ];
       case 'secrets':
         return [
-          { label: 'Name', value: this.selectedRow.name },
-          { label: 'Namespace', value: this.selectedRow.namespace },
-          { label: 'Type', value: this.selectedRow.type },
-          { label: 'Entries', value: String(this.selectedRow.dataEntries ?? 0) },
-          { label: 'Age', value: this.selectedRow.age }
+          { label: labelName, value: this.selectedRow.name },
+          { label: labelNamespace, value: this.selectedRow.namespace },
+          { label: $localize`:@@common.type:Type`, value: this.selectedRow.type },
+          { label: $localize`:@@kubeExplorer.details.entries:Entries`, value: String(this.selectedRow.dataEntries ?? 0) },
+          { label: labelAge, value: this.selectedRow.age }
         ];
       case 'jobs':
         return [
-          { label: 'Name', value: this.selectedRow.name },
-          { label: 'Namespace', value: this.selectedRow.namespace },
-          { label: 'Completions', value: this.selectedRow.completions ?? '-' },
-          { label: 'Succeeded', value: this.selectedRow.succeeded ?? '-' },
-          { label: 'Failed', value: this.selectedRow.failed ?? '-' },
-          { label: 'Active', value: this.selectedRow.active ?? '-' },
-          { label: 'Age', value: this.selectedRow.age }
+          { label: labelName, value: this.selectedRow.name },
+          { label: labelNamespace, value: this.selectedRow.namespace },
+          { label: $localize`:@@kubeExplorer.details.completions:Completions`, value: this.selectedRow.completions ?? '-' },
+          { label: $localize`:@@kubeExplorer.details.succeeded:Succeeded`, value: this.selectedRow.succeeded ?? '-' },
+          { label: $localize`:@@kubeExplorer.details.failed:Failed`, value: this.selectedRow.failed ?? '-' },
+          { label: $localize`:@@kubeExplorer.details.active:Active`, value: this.selectedRow.active ?? '-' },
+          { label: labelAge, value: this.selectedRow.age }
         ].map(entry => ({ label: entry.label, value: String(entry.value ?? '-') }));
       case 'cronJobs':
         return [
-          { label: 'Name', value: this.selectedRow.name },
-          { label: 'Namespace', value: this.selectedRow.namespace },
-          { label: 'Schedule', value: this.selectedRow.schedule },
-          { label: 'Suspended', value: this.selectedRow.suspended ? 'Yes' : 'No' },
-          { label: 'Last Schedule', value: this.selectedRow.lastScheduleTime || '-' },
-          { label: 'Active Jobs', value: String(this.selectedRow.activeJobs ?? 0) },
-          { label: 'Age', value: this.selectedRow.age }
+          { label: labelName, value: this.selectedRow.name },
+          { label: labelNamespace, value: this.selectedRow.namespace },
+          { label: $localize`:@@kubeExplorer.details.schedule:Schedule`, value: this.selectedRow.schedule },
+          { label: $localize`:@@kubeExplorer.details.suspended:Suspended`, value: this.selectedRow.suspended ? yesLabel : noLabel },
+          { label: $localize`:@@kubeExplorer.details.lastSchedule:Last Schedule`, value: this.selectedRow.lastScheduleTime || '-' },
+          { label: $localize`:@@kubeExplorer.details.activeJobs:Active Jobs`, value: String(this.selectedRow.activeJobs ?? 0) },
+          { label: labelAge, value: this.selectedRow.age }
         ];
       case 'daemonSets':
         return [
-          { label: 'Name', value: this.selectedRow.name },
-          { label: 'Namespace', value: this.selectedRow.namespace },
-          { label: 'Desired', value: this.selectedRow.desired ?? '-' },
-          { label: 'Current', value: this.selectedRow.current ?? '-' },
-          { label: 'Ready', value: this.selectedRow.ready ?? '-' },
-          { label: 'Available', value: this.selectedRow.available ?? '-' },
-          { label: 'Updated', value: this.selectedRow.updated ?? '-' },
-          { label: 'Age', value: this.selectedRow.age }
+          { label: labelName, value: this.selectedRow.name },
+          { label: labelNamespace, value: this.selectedRow.namespace },
+          { label: $localize`:@@kubeExplorer.details.desired:Desired`, value: this.selectedRow.desired ?? '-' },
+          { label: $localize`:@@kubeExplorer.details.current:Current`, value: this.selectedRow.current ?? '-' },
+          { label: $localize`:@@kubeExplorer.details.ready:Ready`, value: this.selectedRow.ready ?? '-' },
+          { label: $localize`:@@kubeExplorer.details.available:Available`, value: this.selectedRow.available ?? '-' },
+          { label: $localize`:@@kubeExplorer.details.updated:Updated`, value: this.selectedRow.updated ?? '-' },
+          { label: labelAge, value: this.selectedRow.age }
         ].map(entry => ({ label: entry.label, value: String(entry.value ?? '-') }));
       case 'statefulSets':
         return [
-          { label: 'Name', value: this.selectedRow.name },
-          { label: 'Namespace', value: this.selectedRow.namespace },
-          { label: 'Ready', value: this.selectedRow.readyReplicas ?? '-' },
-          { label: 'Replicas', value: this.selectedRow.replicas ?? '-' },
-          { label: 'Updated', value: this.selectedRow.updatedReplicas ?? '-' },
-          { label: 'Age', value: this.selectedRow.age }
+          { label: labelName, value: this.selectedRow.name },
+          { label: labelNamespace, value: this.selectedRow.namespace },
+          { label: $localize`:@@kubeExplorer.details.ready:Ready`, value: this.selectedRow.readyReplicas ?? '-' },
+          { label: $localize`:@@kubeExplorer.details.replicas:Replicas`, value: this.selectedRow.replicas ?? '-' },
+          { label: $localize`:@@kubeExplorer.details.updated:Updated`, value: this.selectedRow.updatedReplicas ?? '-' },
+          { label: labelAge, value: this.selectedRow.age }
         ].map(entry => ({ label: entry.label, value: String(entry.value ?? '-') }));
       case 'deployments':
         return [
-          { label: 'Name', value: this.selectedRow.name },
-          { label: 'Namespace', value: this.selectedRow.namespace },
-          { label: 'Ready', value: String(this.selectedRow.readyReplicas) },
-          { label: 'Desired', value: String(this.selectedRow.replicas) },
-          { label: 'Updated', value: String(this.selectedRow.updatedReplicas) },
-          { label: 'Available', value: String(this.selectedRow.availableReplicas) },
-          { label: 'Age', value: this.selectedRow.age }
+          { label: labelName, value: this.selectedRow.name },
+          { label: labelNamespace, value: this.selectedRow.namespace },
+          { label: $localize`:@@kubeExplorer.details.ready:Ready`, value: String(this.selectedRow.readyReplicas) },
+          { label: $localize`:@@kubeExplorer.details.desired:Desired`, value: String(this.selectedRow.replicas) },
+          { label: $localize`:@@kubeExplorer.details.updated:Updated`, value: String(this.selectedRow.updatedReplicas) },
+          { label: $localize`:@@kubeExplorer.details.available:Available`, value: String(this.selectedRow.availableReplicas) },
+          { label: labelAge, value: this.selectedRow.age }
         ];
       case 'services':
         return [
-          { label: 'Name', value: this.selectedRow.name },
-          { label: 'Namespace', value: this.selectedRow.namespace },
-          { label: 'Type', value: this.selectedRow.type },
-          { label: 'Cluster IP', value: this.selectedRow.clusterIp || '-' },
-          { label: 'External IP', value: this.selectedRow.externalIp || '-' },
-          { label: 'Ports', value: this.selectedRow.ports || '-' },
-          { label: 'Age', value: this.selectedRow.age }
+          { label: labelName, value: this.selectedRow.name },
+          { label: labelNamespace, value: this.selectedRow.namespace },
+          { label: $localize`:@@common.type:Type`, value: this.selectedRow.type },
+          { label: $localize`:@@kubeExplorer.details.clusterIp:Cluster IP`, value: this.selectedRow.clusterIp || '-' },
+          { label: $localize`:@@kubeExplorer.details.externalIp:External IP`, value: this.selectedRow.externalIp || '-' },
+          { label: $localize`:@@kubeExplorer.details.ports:Ports`, value: this.selectedRow.ports || '-' },
+          { label: labelAge, value: this.selectedRow.age }
         ];
       case 'pods':
       default:
         return [
-          { label: 'Name', value: this.selectedRow.name },
-          { label: 'Namespace', value: this.selectedRow.namespace },
-          { label: 'Status', value: this.selectedRow.status },
-          { label: 'Ready', value: String(this.selectedRow.ready) },
-          { label: 'Restarts', value: String(this.selectedRow.restarts) },
-          { label: 'Node', value: this.selectedRow.node || '-' },
-          { label: 'Age', value: this.selectedRow.age }
+          { label: labelName, value: this.selectedRow.name },
+          { label: labelNamespace, value: this.selectedRow.namespace },
+          { label: $localize`:@@common.status:Status`, value: this.selectedRow.status },
+          { label: $localize`:@@kubeExplorer.details.ready:Ready`, value: String(this.selectedRow.ready) },
+          { label: $localize`:@@kubeExplorer.details.restarts:Restarts`, value: String(this.selectedRow.restarts) },
+          { label: $localize`:@@kubeExplorer.details.node:Node`, value: this.selectedRow.node || '-' },
+          { label: labelAge, value: this.selectedRow.age }
         ];
     }
   }
@@ -522,9 +548,15 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     }
     if (navigator?.clipboard) {
       navigator.clipboard.writeText(this.logsContent).then(() => {
-        this.notificationService.success('Logs copied', 'Log output copied to clipboard.');
+        this.notificationService.success(
+          $localize`:@@kubeExplorer.logs.copySuccessTitle:Logs copied`,
+          $localize`:@@kubeExplorer.logs.copySuccessDetail:Log output copied to clipboard.`
+        );
       }, () => {
-        this.notificationService.warn('Copy failed', 'Unable to copy logs to clipboard.');
+        this.notificationService.warn(
+          $localize`:@@kubeExplorer.logs.copyFailedTitle:Copy failed`,
+          $localize`:@@kubeExplorer.logs.copyFailedDetail:Unable to copy logs to clipboard.`
+        );
       });
     }
   }
@@ -567,6 +599,10 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
       return this.toPercent(succeeded, total);
     }
     return succeeded > 0 ? 100 : 0;
+  }
+
+  booleanLabel(value: boolean): string {
+    return value ? $localize`:@@common.yes:Yes` : $localize`:@@common.no:No`;
   }
 
   private teardownAutoRefresh(): void {
@@ -676,7 +712,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     }
     this.currentLogTarget = { type: 'pod', namespace, name: podName };
     if (showDialog) {
-      this.prepareLogsDialog(`Pod logs • ${podName}`);
+      this.prepareLogsDialog($localize`:@@kubeExplorer.logs.podTitle:Pod logs • ${podName}:podName:`);
     }
     this.logsLoading = true;
     this.logsError = null;
@@ -720,15 +756,15 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     ).subscribe({
       next: (content) => {
         const normalized = content ?? '';
-        this.logsContent = normalized ? normalized : '[No log output]';
+        this.logsContent = normalized ? normalized : $localize`:@@kubeExplorer.logs.noOutput:[No log output]`;
         this.logsDialogVisible = true;
       },
       error: (err) => {
         const status = err?.status;
         if (status === 404 || status === 410) {
-          this.logsError = 'No logs found for this Pod.';
+          this.logsError = $localize`:@@kubeExplorer.logs.noLogsForPod:No logs found for this Pod.`;
         } else {
-          this.logsError = 'Unable to fetch pod logs.';
+          this.logsError = $localize`:@@kubeExplorer.logs.fetchPodFailed:Unable to fetch pod logs.`;
         }
         this.logsDialogVisible = true;
       }
@@ -755,7 +791,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
       this.inspectedPod = pod;
       this.inspectedEvents = events || [];
       if (!pod) {
-        this.inspectError = 'Unable to fetch Pod details.';
+        this.inspectError = $localize`:@@kubeExplorer.inspect.fetchFailed:Unable to fetch Pod details.`;
       }
     });
   }
@@ -767,15 +803,15 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
   containerStateLabel(status: KubeContainerStatus): string {
     const state = status?.state;
     if (state?.running) {
-      return `Running${state.running.startedAt ? ' • ' + state.running.startedAt : ''}`;
+      return $localize`:@@kubeExplorer.containerState.running:Running${state.running.startedAt ? ' • ' + state.running.startedAt : ''}:runningInfo:`;
     }
     if (state?.waiting) {
-      return `Waiting${state.waiting.reason ? ' • ' + state.waiting.reason : ''}`;
+      return $localize`:@@kubeExplorer.containerState.waiting:Waiting${state.waiting.reason ? ' • ' + state.waiting.reason : ''}:waitingInfo:`;
     }
     if (state?.terminated) {
-      return `Terminated${state.terminated.reason ? ' • ' + state.terminated.reason : ''}`;
+      return $localize`:@@kubeExplorer.containerState.terminated:Terminated${state.terminated.reason ? ' • ' + state.terminated.reason : ''}:terminatedInfo:`;
     }
-    return 'Unknown';
+    return $localize`:@@kubeExplorer.containerState.unknown:Unknown`;
   }
 
   private buildContainerOptions(pod: KubePod | null): { label: string; value: string }[] {
@@ -814,7 +850,7 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     }
     this.currentLogTarget = { type: 'deployment', namespace, name: deploymentName };
     if (showDialog) {
-      this.prepareLogsDialog(`Deployment logs • ${deploymentName}`);
+      this.prepareLogsDialog($localize`:@@kubeExplorer.logs.deploymentTitle:Deployment logs • ${deploymentName}:deploymentName:`);
     }
     this.logsLoading = true;
     this.logsError = null;
@@ -827,17 +863,17 @@ export class KubeExplorerComponent implements OnInit, OnDestroy {
     ).subscribe({
       next: (response) => {
         if (!response?.pods?.length) {
-          this.logsContent = 'No pods found for this deployment.';
+          this.logsContent = $localize`:@@kubeExplorer.logs.noPodsForDeployment:No pods found for this deployment.`;
         } else {
           this.logsContent = response.pods.map(pod => {
-            const log = pod.logs || '[No log output]';
+            const log = pod.logs || $localize`:@@kubeExplorer.logs.noOutput:[No log output]`;
             return `=== Pod ${pod.name} ===\n${log}`;
           }).join('\n\n');
         }
         this.logsDialogVisible = true;
       },
       error: () => {
-        this.logsError = 'Unable to fetch deployment logs.';
+        this.logsError = $localize`:@@kubeExplorer.logs.fetchDeploymentFailed:Unable to fetch deployment logs.`;
       }
     });
     this.cdr.markForCheck();

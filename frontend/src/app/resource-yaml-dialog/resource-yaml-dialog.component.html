@@ -1,5 +1,5 @@
 <p-dialog
-  header="Edit YAML"
+  [header]="dialogHeader"
   [(visible)]="visible"
   [modal]="true"
   [dismissableMask]="!saving"
@@ -30,11 +30,12 @@
   </div>
 
   <ng-template pTemplate="footer">
-    <button pButton type="button" class="p-button-text" label="Close" (click)="close()" [disabled]="saving"></button>
+    <button pButton type="button" class="p-button-text" label="Close" i18n-label="@@common.close" (click)="close()" [disabled]="saving"></button>
     <button
       pButton
       type="button"
       label="Save"
+      i18n-label="@@common.save"
       [disabled]="saving || loading || yamlControl.invalid"
       (click)="save()"
     ></button>

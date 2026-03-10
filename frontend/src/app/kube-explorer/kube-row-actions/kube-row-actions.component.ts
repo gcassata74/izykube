@@ -24,14 +24,14 @@ export class KubeRowActionsComponent {
   get items(): MenuItem[] {
     return [
       {
-        label: 'View logs',
+        label: $localize`:@@kubeExplorer.rowActions.viewLogs:View logs`,
         command: () => {
           this.menu?.hide();
           this.viewLogs.emit(this.row);
         },
       },
       {
-        label: 'Inspect pod',
+        label: $localize`:@@kubeExplorer.rowActions.inspectPod:Inspect pod`,
         command: () => {
           this.menu?.hide();
           this.inspectPod.emit(this.row);

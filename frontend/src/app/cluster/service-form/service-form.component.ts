@@ -272,18 +272,27 @@ export class ServiceFormComponent implements OnInit, OnChanges {
       return;
     }
     if (!this.form.get('forwardEnabled')?.value) {
-      this.notificationService.warn('Enable forwarding', 'Turn on the forward toggle before activating.');
+      this.notificationService.warn(
+        $localize`:@@serviceForm.warn.enableForwardTitle:Enable forwarding`,
+        $localize`:@@serviceForm.warn.enableForwardDetail:Turn on the forward toggle before activating.`
+      );
       return;
     }
     const forwardPort = this.form.get('forwardPort')?.value;
     const targetPort = this.form.get('forwardTargetPort')?.value;
     if (!forwardPort || !targetPort) {
-      this.notificationService.warn('Ports required', 'Provide both local and target ports.');
+      this.notificationService.warn(
+        $localize`:@@serviceForm.warn.portsRequiredTitle:Ports required`,
+        $localize`:@@serviceForm.warn.portsRequiredDetail:Provide both local and target ports.`
+      );
       return;
     }
     const serviceName = (this.selectedNode as Service)?.name;
     if (!serviceName) {
-      this.notificationService.warn('Service name required', 'Set a service name before forwarding.');
+      this.notificationService.warn(
+        $localize`:@@serviceForm.warn.serviceNameRequiredTitle:Service name required`,
+        $localize`:@@serviceForm.warn.serviceNameRequiredDetail:Set a service name before forwarding.`
+      );
       return;
     }
     const namespace = this.cluster?.nameSpace || 'default';
@@ -292,7 +301,10 @@ export class ServiceFormComponent implements OnInit, OnChanges {
       next: (check) => {
         if (!check?.available) {
           this.forwardBusy = false;
-          this.notificationService.error('Port unavailable', check?.message || `Port ${forwardPort} is not available.`);
+          this.notificationService.error(
+            $localize`:@@serviceForm.error.portUnavailableTitle:Port unavailable`,
+            check?.message || $localize`:@@serviceForm.error.portUnavailableDetail:Port ${forwardPort}:port: is not available.`
+          );
           return;
         }
         this.portForwardService.startForward({
@@ -311,17 +323,20 @@ export class ServiceFormComponent implements OnInit, OnChanges {
             }
             this.form.get('forwardActive')?.setValue(true);
             const activePort = response?.localPort ?? forwardPort;
-            this.notificationService.success('Port forward active', `Forwarding localhost:${activePort} → ${targetPort}`);
+            this.notificationService.success(
+              $localize`:@@serviceForm.success.forwardActiveTitle:Port forward active`,
+              $localize`:@@serviceForm.success.forwardActiveDetail:Forwarding localhost:${activePort}:localPort: -> ${targetPort}:targetPort:`
+            );
           },
           error: (error) => {
-            const detail = error?.error || error?.message || 'Unable to start port forward.';
-            this.notificationService.error('Port forward failed', typeof detail === 'string' ? detail : undefined);
+            const detail = error?.error || error?.message || $localize`:@@serviceForm.error.startForwardDetail:Unable to start port forward.`;
+            this.notificationService.error($localize`:@@serviceForm.error.startForwardTitle:Port forward failed`, typeof detail === 'string' ? detail : undefined);
           }
         });
       },
       error: (error) => {
-        const detail = error?.error || error?.message || 'Unable to check port availability.';
-        this.notificationService.error('Port check failed', typeof detail === 'string' ? detail : undefined);
+        const detail = error?.error || error?.message || $localize`:@@serviceForm.error.portCheckDetail:Unable to check port availability.`;
+        this.notificationService.error($localize`:@@serviceForm.error.portCheckTitle:Port check failed`, typeof detail === 'string' ? detail : undefined);
         this.forwardBusy = false;
       }
     });
@@ -353,11 +368,14 @@ export class ServiceFormComponent implements OnInit, OnChanges {
     ).subscribe({
       next: () => {
         this.form.get('forwardActive')?.setValue(false);
-        this.notificationService.success('Port forward stopped', `Stopped forwarding localhost:${forwardPort}`);
+        this.notificationService.success(
+          $localize`:@@serviceForm.success.forwardStoppedTitle:Port forward stopped`,
+          $localize`:@@serviceForm.success.forwardStoppedDetail:Stopped forwarding localhost:${forwardPort}:localPort:`
+        );
       },
       error: (error) => {
-        const detail = error?.error || error?.message || 'Unable to stop port forward.';
-        this.notificationService.error('Stop failed', typeof detail === 'string' ? detail : undefined);
+        const detail = error?.error || error?.message || $localize`:@@serviceForm.error.stopForwardDetail:Unable to stop port forward.`;
+        this.notificationService.error($localize`:@@serviceForm.error.stopForwardTitle:Stop failed`, typeof detail === 'string' ? detail : undefined);
       },
     });
   }

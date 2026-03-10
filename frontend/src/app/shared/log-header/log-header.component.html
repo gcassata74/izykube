@@ -1,5 +1,5 @@
 <div class="log-header">
-  <label class="log-header__label" for="previousLogsSelect">Previous logs</label>
+  <label class="log-header__label" for="previousLogsSelect" i18n="@@nodeForm.logs.previous">Previous logs</label>
   <div class="log-header__controls">
     <p-dropdown
       inputId="previousLogsSelect"
@@ -10,6 +10,7 @@
       optionValue="value"
       [disabled]="disabled || loading"
       placeholder="Select logs"
+      i18n-placeholder="@@nodeForm.logs.select"
     ></p-dropdown>
     <button
       pButton
@@ -17,6 +18,7 @@
       icon="pi pi-refresh"
       class="p-button-rounded p-button-text"
       aria-label="Reload logs"
+      i18n-aria-label="@@common.reloadLogs"
       [disabled]="disabled || loading"
       [loading]="loading"
       (click)="onReload()"

@@ -5,7 +5,7 @@
         src="../../../assets/images/logo/izylife_logo.png"
       />-->
       <span class="app-header__title-main">IZYKUBE</span>
-      <span class="app-header__title-sub">workspace</span>
+      <span class="app-header__title-sub">{{ workspaceLabel }}</span>
     </div>
   </div>
 
@@ -13,7 +13,7 @@
     class="app-header__context"
     [attr.title]="context?.showContext ? buildContextTitle(context) : null">
     <ng-container *ngIf="context?.showContext">
-      <span class="app-header__context-label">Namespace:</span>
+      <span class="app-header__context-label">{{ namespaceLabel }}</span>
       <span class="app-header__context-value">{{ context?.namespace || '—' }}</span>
     </ng-container>
   </div>
@@ -22,8 +22,8 @@
     <button
       type="button"
       class="header-icon-btn"
-      aria-label="Search"
-      title="Search (coming soon)">
+      [attr.aria-label]="searchAriaLabel"
+      [title]="searchComingSoonLabel">
       <i class="pi pi-search"></i>
     </button>
 
@@ -42,7 +42,7 @@
       </button>
     </ng-container>
 
-    <div class="app-header__avatar" aria-label="User menu" title="Profile">
+    <div class="app-header__avatar" [attr.aria-label]="userMenuLabel" [title]="profileLabel">
       <span>IK</span>
     </div>
   </div>

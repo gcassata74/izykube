@@ -1,14 +1,14 @@
 <div class="content">
-  <p-card class="izy-card" header="CRDs">
+  <p-card class="izy-card" header="CRDs" i18n-header="@@crd.listTitle">
     <div class="card-content">
       <div class="izy-button-container">
-        <button pButton label="Add CRD" icon="pi pi-plus" class="p-button-outlined izy-primary-button" (click)="addCrd()"></button>
+        <button pButton label="Add CRD" i18n-label="@@crd.add" icon="pi pi-plus" class="p-button-outlined izy-primary-button" (click)="addCrd()"></button>
       </div>
 
       <div class="search-row">
         <span class="p-input-icon-left">
           <i class="pi pi-search"></i>
-          <input pInputText type="text" placeholder="Search by name / group / kind" (input)="applyGlobalFilter(dt, $event)" />
+          <input pInputText type="text" placeholder="Search by name / group / kind" i18n-placeholder="@@crd.searchPlaceholder" (input)="applyGlobalFilter(dt, $event)" />
         </span>
       </div>
 
@@ -23,7 +23,7 @@
         <ng-template pTemplate="header" let-columns>
           <tr>
             <th *ngFor="let col of columns">{{ col.header }}</th>
-            <th>Actions</th>
+            <th i18n="@@common.actions">Actions</th>
           </tr>
         </ng-template>
 

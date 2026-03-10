@@ -373,4 +373,8 @@ export class OperatorCatalogComponent implements OnInit, OnDestroy {
   onHubSearch(): void {
     this.loadHubOperators(true);
   }
+
+  operatorLogoAlt(name: string): string {
+    return $localize`:@@operatorHub.logoAlt:${name}:operatorName: logo`;
+  }
 }

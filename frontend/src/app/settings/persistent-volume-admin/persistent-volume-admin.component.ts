@@ -26,13 +26,13 @@ export class PersistentVolumeAdminComponent implements OnInit, OnDestroy {
   private subscriptions = new Subscription();
 
   reclaimPolicies: SelectItem[] = [
-    { label: 'Retain', value: 'Retain' },
-    { label: 'Delete', value: 'Delete' },
-    { label: 'Recycle', value: 'Recycle' }
+    { label: $localize`:@@persistentVolume.policy.retain:Retain`, value: 'Retain' },
+    { label: $localize`:@@persistentVolume.policy.delete:Delete`, value: 'Delete' },
+    { label: $localize`:@@persistentVolume.policy.recycle:Recycle`, value: 'Recycle' }
   ];
   volumeModes: SelectItem[] = [
-    { label: 'Filesystem', value: 'Filesystem' },
-    { label: 'Block', value: 'Block' }
+    { label: $localize`:@@persistentVolume.mode.filesystem:Filesystem`, value: 'Filesystem' },
+    { label: $localize`:@@persistentVolume.mode.block:Block`, value: 'Block' }
   ];
 
   constructor(
@@ -57,7 +57,10 @@ export class PersistentVolumeAdminComponent implements OnInit, OnDestroy {
         .pipe(finalize(() => (this.loading = false)))
         .subscribe({
           next: volumes => this.volumes = volumes,
-          error: () => this.notificationService.error('Could not load persistent volumes', 'Verify cluster connectivity')
+          error: () => this.notificationService.error(
+            $localize`:@@persistentVolume.error.loadTitle:Could not load persistent volumes`,
+            $localize`:@@persistentVolume.error.loadDetail:Verify cluster connectivity`
+          )
         })
     );
   }
@@ -114,13 +117,20 @@ export class PersistentVolumeAdminComponent implements OnInit, OnDestroy {
         .subscribe({
           next: () => {
             this.notificationService.success(
-              this.editing ? 'Persistent volume updated' : 'Persistent volume created',
-              this.editing ? 'The volume configuration was saved' : 'The volume is now available cluster-wide'
+              this.editing
+                ? $localize`:@@persistentVolume.success.updatedTitle:Persistent volume updated`
+                : $localize`:@@persistentVolume.success.createdTitle:Persistent volume created`,
+              this.editing
+                ? $localize`:@@persistentVolume.success.updatedDetail:The volume configuration was saved`
+                : $localize`:@@persistentVolume.success.createdDetail:The volume is now available cluster-wide`
             );
             this.dialogVisible = false;
             this.loadVolumes();
           },
-          error: () => this.notificationService.error('Unable to save persistent volume', 'Check the values and try again')
+          error: () => this.notificationService.error(
+            $localize`:@@persistentVolume.error.saveTitle:Unable to save persistent volume`,
+            $localize`:@@persistentVolume.error.saveDetail:Check the values and try again`
+          )
         })
     );
   }
@@ -132,12 +142,28 @@ export class PersistentVolumeAdminComponent implements OnInit, OnDestroy {
         .pipe(finalize(() => (this.loading = false)))
         .subscribe({
           next: () => {
-            this.notificationService.success('Persistent volume deleted', `${volume.name} was removed`);
+            this.notificationService.success(
+              $localize`:@@persistentVolume.success.deletedTitle:Persistent volume deleted`,
+              $localize`:@@persistentVolume.success.deletedDetail:${volume.name}:volumeName: was removed`
+            );
             this.loadVolumes();
           },
-          error: () => this.notificationService.error('Deletion failed', 'Could not delete the persistent volume')
+          error: () => this.notificationService.error(
+            $localize`:@@persistentVolume.error.deleteTitle:Deletion failed`,
+            $localize`:@@persistentVolume.error.deleteDetail:Could not delete the persistent volume`
+          )
         })
     );
+  }
+
+  get dialogTitle(): string {
+    return this.editing
+      ? $localize`:@@persistentVolume.dialog.edit:Edit Persistent Volume`
+      : $localize`:@@persistentVolume.dialog.create:Create Persistent Volume`;
+  }
+
+  get filesystemLabel(): string {
+    return $localize`:@@persistentVolume.mode.filesystem:Filesystem`;
   }
 
   hideDialog(): void {

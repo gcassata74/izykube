@@ -67,10 +67,10 @@ export class ClusterListComponent implements OnInit, OnDestroy {
     this.getAllClusters();
 
     this.cols = [
-      { field: 'name', header: 'Diagram' },
-      { field: 'nameSpace', header: 'Namespace' },
-      { field: 'status', header: 'Status' },
-      { field: 'grafana', header: 'Grafana' }
+      { field: 'name', header: $localize`:@@clusterList.column.diagram:Diagram` },
+      { field: 'nameSpace', header: $localize`:@@clusterList.column.namespace:Namespace` },
+      { field: 'status', header: $localize`:@@clusterList.column.status:Status` },
+      { field: 'grafana', header: $localize`:@@clusterList.column.grafana:Grafana` }
     ];
   }
 
@@ -115,46 +115,46 @@ export class ClusterListComponent implements OnInit, OnDestroy {
       || cluster.status === ClusterStatusEnum.DEPLOYED;
 
     return [
-      { label: 'Edit', icon: 'pi pi-pencil', command: () => cluster.id !== null && this.editCluster(cluster.id) },
-      { label: 'Delete Namespace', icon: 'pi pi-times', command: () => cluster.id !== null && this.deleteCluster(cluster.id) },
+      { label: $localize`:@@common.edit:Edit`, icon: 'pi pi-pencil', command: () => cluster.id !== null && this.editCluster(cluster.id) },
+      { label: $localize`:@@clusterList.action.deleteNamespace:Delete Namespace`, icon: 'pi pi-times', command: () => cluster.id !== null && this.deleteCluster(cluster.id) },
       {
-        label: 'Create Template',
+        label: $localize`:@@clusterList.action.createTemplate:Create Template`,
         icon: 'pi pi-th-large',
         command: () => cluster.id !== null && this.createTemplate(cluster.id),
         visible: cluster.status === ClusterStatusEnum.CREATED
       },
       {
-        label: 'Delete Template',
+        label: $localize`:@@clusterList.action.deleteTemplate:Delete Template`,
         icon: 'pi pi-eraser',
         command: () => cluster.id !== null && this.deleteTemplate(cluster.id),
         visible: cluster.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT
       },
       {
-        label: 'Deploy',
+        label: $localize`:@@clusterList.action.deploy:Deploy`,
         icon: 'pi pi-play',
         disabled: isBusy,
         command: () => cluster.id !== null && this.deploy(cluster.id),
         visible: cluster.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT
       },
       {
-        label: 'Undeploy',
+        label: $localize`:@@clusterList.action.undeploy:Undeploy`,
         icon: 'pi pi-stop',
         disabled: isBusy,
         command: () => cluster.id !== null && this.undeploy(cluster.id),
         visible: cluster.status === ClusterStatusEnum.DEPLOYED
       },
       {
-        label: 'Export',
+        label: $localize`:@@clusterList.action.export:Export`,
         icon: 'pi pi-download',
         visible: canExport,
         items: [
           {
-            label: 'YAML manifest',
+            label: $localize`:@@clusterList.export.yaml:YAML manifest`,
             icon: 'pi pi-file',
             command: () => this.exportCluster(cluster, 'FLAT_YAML')
           },
           {
-            label: 'Helm chart (.zip)',
+            label: $localize`:@@clusterList.export.helm:Helm chart (.zip)`,
             icon: 'pi pi-box',
             command: () => this.exportCluster(cluster, 'HELM_CHART')
           }
@@ -189,6 +189,12 @@ export class ClusterListComponent implements OnInit, OnDestroy {
     window.open(this.grafanaUrlFor(cluster), '_blank');
   }
 
+  grafanaTooltipFor(cluster: Cluster): string {
+    return this.hasMeshedResources(cluster)
+      ? $localize`:@@clusterList.grafana.open:Open Grafana`
+      : $localize`:@@clusterList.grafana.disabled:No meshed resources`;
+  }
+
   undeploy(selectedId: string): void {
     this.executeClusterOperation('undeploy', selectedId);
   }
@@ -201,11 +207,11 @@ export class ClusterListComponent implements OnInit, OnDestroy {
     this.subscriptions.add(
       this.templateService.createTemplate(selectedId).pipe(
         tap((message: any) => {
-          this.notificationService.success('Template Created', message.message as string);
+          this.notificationService.success($localize`:@@clusterList.template.createdTitle:Template Created`, message.message as string);
           this.getAllClusters();
         }),
         catchError((error: any) => {
-          this.notificationService.error('Template Creation Failed', error.error.error);
+          this.notificationService.error($localize`:@@clusterList.template.createFailedTitle:Template Creation Failed`, error.error.error);
           return EMPTY;
         })
       ).subscribe()
@@ -216,12 +222,18 @@ export class ClusterListComponent implements OnInit, OnDestroy {
     this.subscriptions.add(
       this.templateService.deleteTemplate(selectedId).pipe(
         tap(() => {
-          this.notificationService.success('Template deleted', 'Successfully deleted template');
+          this.notificationService.success(
+            $localize`:@@clusterList.template.deletedTitle:Template deleted`,
+            $localize`:@@clusterList.template.deletedDetail:Successfully deleted template`
+          );
           this.getAllClusters();
         }
       ),
         catchError(error => {
-          this.notificationService.error('Template Deletion Failed', 'The template could not be deleted');
+          this.notificationService.error(
+            $localize`:@@clusterList.template.deleteFailedTitle:Template Deletion Failed`,
+            $localize`:@@clusterList.template.deleteFailedDetail:The template could not be deleted`
+          );
           return EMPTY;
         })
       ).subscribe()
@@ -240,11 +252,17 @@ export class ClusterListComponent implements OnInit, OnDestroy {
     this.subscriptions.add(
       this.clusterService.deleteCluster(id).pipe(
         tap(() => {
-          this.notificationService.success('Namespace Deleted', 'The namespace was successfully deleted');
+          this.notificationService.success(
+            $localize`:@@clusterList.namespace.deletedTitle:Namespace Deleted`,
+            $localize`:@@clusterList.namespace.deletedDetail:The namespace was successfully deleted`
+          );
           this.getAllClusters();
         }),
         catchError(error => {
-          this.notificationService.error('Namespace Deletion Failed', 'The namespace could not be deleted');
+          this.notificationService.error(
+            $localize`:@@clusterList.namespace.deleteFailedTitle:Namespace Deletion Failed`,
+            $localize`:@@clusterList.namespace.deleteFailedDetail:The namespace could not be deleted`
+          );
           return EMPTY;
         })
       ).subscribe()
@@ -338,8 +356,8 @@ export class ClusterListComponent implements OnInit, OnDestroy {
   private pollClusterStatus(clusterId: string, action: ClusterOperationType): Observable<OperationStatusUpdate> {
     const targetStatus = action === 'deploy' ? ClusterStatusEnum.DEPLOYED : ClusterStatusEnum.READY_FOR_DEPLOYMENT;
     const interimMessage = action === 'deploy'
-      ? 'Deploying resources...'
-      : 'Cleaning up resources...';
+      ? $localize`:@@clusterList.operation.deployingResources:Deploying resources...`
+      : $localize`:@@clusterList.operation.cleaningResources:Cleaning up resources...`;
     const statusUpdate = (phase: OperationPhase, message: string): OperationStatusUpdate => ({ phase, message });
 
     return defer(() => {
@@ -349,17 +367,17 @@ export class ClusterListComponent implements OnInit, OnDestroy {
       return timer(0, this.POLL_INTERVAL_MS).pipe(
         switchMap(() => {
           if (Date.now() - startedAt >= this.OPERATION_TIMEOUT_MS) {
-            return of(statusUpdate('TIMEOUT', 'Timed out while waiting for the cluster response.'));
+            return of(statusUpdate('TIMEOUT', $localize`:@@clusterList.operation.timeoutWaiting:Timed out while waiting for the cluster response.`));
           }
           return this.clusterService.getCluster(clusterId).pipe(
             tap(() => consecutiveErrors = 0),
             map(cluster => {
               if (!cluster) {
-                return statusUpdate('FAILED', 'Cluster could not be found anymore.');
+                return statusUpdate('FAILED', $localize`:@@clusterList.operation.clusterMissing:Cluster could not be found anymore.`);
               }
 
               if (cluster.status === targetStatus) {
-                return statusUpdate('SUCCEEDED', 'Operation completed successfully.');
+                return statusUpdate('SUCCEEDED', $localize`:@@clusterList.operation.completed:Operation completed successfully.`);
               }
 
               return statusUpdate('RUNNING', interimMessage);
@@ -367,10 +385,10 @@ export class ClusterListComponent implements OnInit, OnDestroy {
             catchError(() => {
               consecutiveErrors += 1;
               if (consecutiveErrors >= this.MAX_NETWORK_ERRORS) {
-                return of(statusUpdate('FAILED', 'Unable to reach the backend after multiple attempts.'));
+                return of(statusUpdate('FAILED', $localize`:@@clusterList.operation.backendUnreachable:Unable to reach the backend after multiple attempts.`));
               }
 
-              return of(statusUpdate('PENDING', 'Waiting for cluster response...'));
+              return of(statusUpdate('PENDING', $localize`:@@clusterList.operation.waitingResponse:Waiting for cluster response...`));
             })
           );
         }),
@@ -447,28 +465,28 @@ export class ClusterListComponent implements OnInit, OnDestroy {
   private getOperationCopy(action: ClusterOperationType) {
     if (action === 'deploy') {
       return {
-        starting: 'Submitting deployment...',
-        running: 'Deploying to cluster...',
-        success: 'Deployed successfully',
-        successTitle: 'Deployment Complete',
-        successToast: 'Namespace deployment was successful',
-        failed: 'Deployment failed',
-        failureTitle: 'Deployment Failed',
-        failureToast: 'The namespace could not be deployed',
-        timeout: 'Deployment timed out'
+        starting: $localize`:@@clusterList.deploy.starting:Submitting deployment...`,
+        running: $localize`:@@clusterList.deploy.running:Deploying to cluster...`,
+        success: $localize`:@@clusterList.deploy.success:Deployed successfully`,
+        successTitle: $localize`:@@clusterList.deploy.successTitle:Deployment Complete`,
+        successToast: $localize`:@@clusterList.deploy.successToast:Namespace deployment was successful`,
+        failed: $localize`:@@clusterList.deploy.failed:Deployment failed`,
+        failureTitle: $localize`:@@clusterList.deploy.failureTitle:Deployment Failed`,
+        failureToast: $localize`:@@clusterList.deploy.failureToast:The namespace could not be deployed`,
+        timeout: $localize`:@@clusterList.deploy.timeout:Deployment timed out`
       };
     }
 
     return {
-      starting: 'Submitting undeployment...',
-      running: 'Undeploying from cluster...',
-      success: 'Undeployed successfully',
-      successTitle: 'Undeployment Completed',
-      successToast: 'Namespace undeployed successfully',
-      failed: 'Undeployment failed',
-      failureTitle: 'Undeployment Failed',
-      failureToast: 'The namespace could not be undeployed',
-      timeout: 'Undeployment timed out'
+      starting: $localize`:@@clusterList.undeploy.starting:Submitting undeployment...`,
+      running: $localize`:@@clusterList.undeploy.running:Undeploying from cluster...`,
+      success: $localize`:@@clusterList.undeploy.success:Undeployed successfully`,
+      successTitle: $localize`:@@clusterList.undeploy.successTitle:Undeployment Completed`,
+      successToast: $localize`:@@clusterList.undeploy.successToast:Namespace undeployed successfully`,
+      failed: $localize`:@@clusterList.undeploy.failed:Undeployment failed`,
+      failureTitle: $localize`:@@clusterList.undeploy.failureTitle:Undeployment Failed`,
+      failureToast: $localize`:@@clusterList.undeploy.failureToast:The namespace could not be undeployed`,
+      timeout: $localize`:@@clusterList.undeploy.timeout:Undeployment timed out`
     };
   }
 
@@ -477,7 +495,10 @@ export class ClusterListComponent implements OnInit, OnDestroy {
       return;
     }
     if (this.exportingClusterId) {
-      this.notificationService.warn('Export in progress', 'Wait for the current export to finish.');
+      this.notificationService.warn(
+        $localize`:@@clusterList.export.inProgressTitle:Export in progress`,
+        $localize`:@@clusterList.export.inProgressDetail:Wait for the current export to finish.`
+      );
       return;
     }
 
@@ -504,8 +525,8 @@ export class ClusterListComponent implements OnInit, OnDestroy {
           }
         },
         error: (error: any) => {
-          const detail = error?.error || error?.message || 'Namespace export failed.';
-          this.notificationService.error('Export failed', typeof detail === 'string' ? detail : undefined);
+          const detail = error?.error || error?.message || $localize`:@@clusterList.export.failedDetail:Namespace export failed.`;
+          this.notificationService.error($localize`:@@clusterList.export.failedTitle:Export failed`, typeof detail === 'string' ? detail : undefined);
         }
       })
     );
@@ -513,23 +534,35 @@ export class ClusterListComponent implements OnInit, OnDestroy {
 
   private handleYamlExport(cluster: Cluster, response: AiExportYamlResponse): void {
     if (!response?.yaml) {
-      this.notificationService.warn('No YAML returned', 'The export response was empty.');
+      this.notificationService.warn(
+        $localize`:@@clusterList.export.noYamlTitle:No YAML returned`,
+        $localize`:@@clusterList.export.noYamlDetail:The export response was empty.`
+      );
       return;
     }
     const fileName = `${this.sanitizeFileName(cluster?.name || 'izykube-namespace')}.yaml`;
     this.downloadBlob(new Blob([response.yaml], { type: 'text/yaml;charset=utf-8' }), fileName);
-    this.notificationService.success('YAML ready', `${fileName} downloaded.`);
+    this.notificationService.success(
+      $localize`:@@clusterList.export.yamlReadyTitle:YAML ready`,
+      $localize`:@@clusterList.export.downloaded:${fileName}:fileName: downloaded.`
+    );
   }
 
   private handleHelmExport(cluster: Cluster, response: AiHelmChartExportResponse): void {
     if (!response?.blob) {
-      this.notificationService.warn('No chart returned', 'The Helm export response was empty.');
+      this.notificationService.warn(
+        $localize`:@@clusterList.export.noChartTitle:No chart returned`,
+        $localize`:@@clusterList.export.noChartDetail:The Helm export response was empty.`
+      );
       return;
     }
     const fallbackName = `${this.sanitizeFileName(cluster?.name || 'izykube-namespace')}-chart.zip`;
     const fileName = response.fileName || fallbackName;
     this.downloadBlob(response.blob, fileName);
-    this.notificationService.success('Helm chart ready', `${fileName} downloaded.`);
+    this.notificationService.success(
+      $localize`:@@clusterList.export.helmReadyTitle:Helm chart ready`,
+      $localize`:@@clusterList.export.downloaded:${fileName}:fileName: downloaded.`
+    );
   }
 
   private downloadBlob(blob: Blob, fileName: string): void {

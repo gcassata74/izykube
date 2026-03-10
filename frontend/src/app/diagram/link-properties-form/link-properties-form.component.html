@@ -4,9 +4,9 @@
       <i class="pi pi-link"></i>
     </div>
     <div class="link-form__titles">
-      <div class="link-form__title">Link Properties</div>
+      <div class="link-form__title" i18n="@@linkProperties.title">Link Properties</div>
       <div class="link-form__subtitle">
-        {{ link.source || 'Source' }} → {{ link.target || 'Target' }}
+        {{ sourceLabel }} → {{ targetLabel }}
       </div>
     </div>
   </div>
@@ -14,31 +14,31 @@
   <div class="link-form__body">
     <form [formGroup]="form" class="link-form__fields">
       <div class="p-field">
-        <label for="linkType">Link Type</label>
+        <label for="linkType" i18n="@@linkProperties.linkType">Link Type</label>
         <select
           id="linkType"
           formControlName="linkType"
           class="link-form__select">
-          <option value="Expose">Expose</option>
-          <option value="Use">Use</option>
-          <option value="Container">Container</option>
-          <option value="appliesTo">Applies to</option>
-          <option value="serviceAccountBinding">ServiceAccount binding (legacy)</option>
+          <option value="Expose" i18n="@@linkProperties.type.expose">Expose</option>
+          <option value="Use" i18n="@@linkProperties.type.use">Use</option>
+          <option value="Container" i18n="@@linkProperties.type.container">Container</option>
+          <option value="appliesTo" i18n="@@linkProperties.type.appliesTo">Applies to</option>
+          <option value="serviceAccountBinding" i18n="@@linkProperties.type.serviceAccountBindingLegacy">ServiceAccount binding (legacy)</option>
         </select>
       </div>
 
       <div class="link-form__info">
-        <div class="link-form__pill">Interpretation</div>
+        <div class="link-form__pill" i18n="@@linkProperties.interpretation">Interpretation</div>
         <div class="link-form__info-text">
-          <div>Expose → Service exposes Deployment</div>
-          <div>Use → Deployment uses Service (DB, API)</div>
-          <div *ngIf="selectedType === 'appliesTo'">Applies to → RBAC reference (Role->Workload, RoleBinding->Role/ServiceAccount)</div>
-          <div *ngIf="selectedType === 'serviceAccountBinding'">ServiceAccount binding (legacy) → Workload runs as this ServiceAccount</div>
+          <div i18n="@@linkProperties.explain.expose">Expose → Service exposes Deployment</div>
+          <div i18n="@@linkProperties.explain.use">Use → Deployment uses Service (DB, API)</div>
+          <div *ngIf="selectedType === 'appliesTo'" i18n="@@linkProperties.explain.appliesTo">Applies to → RBAC reference (Role->Workload, RoleBinding->Role/ServiceAccount)</div>
+          <div *ngIf="selectedType === 'serviceAccountBinding'" i18n="@@linkProperties.explain.serviceAccountBindingLegacy">ServiceAccount binding (legacy) → Workload runs as this ServiceAccount</div>
         </div>
       </div>
 
       <div class="link-form__preview">
-        <div class="link-form__preview-label">Preview</div>
+        <div class="link-form__preview-label" i18n="@@linkProperties.preview">Preview</div>
         <div class="link-form__preview-canvas" [class.link-form__preview-canvas--use]="selectedType === 'Use'">
           <span class="link-form__dot"></span>
           <span
@@ -49,18 +49,19 @@
       </div>
 
       <div class="p-field">
-        <label for="note">Notes</label>
+        <label for="note" i18n="@@common.notes">Notes</label>
         <textarea
           id="note"
           pInputTextarea
           formControlName="note"
           [autoResize]="true"
           rows="3"
-          placeholder="Optional notes about this link"></textarea>
+          placeholder="Optional notes about this link"
+          i18n-placeholder="@@linkProperties.notePlaceholder"></textarea>
       </div>
 
       <div class="p-field" *ngIf="selectedType === 'Container'">
-        <label for="containerRole">Container Role</label>
+        <label for="containerRole" i18n="@@linkProperties.containerRole">Container Role</label>
         <p-dropdown
           id="containerRole"
           formControlName="containerRole"
@@ -68,7 +69,8 @@
           optionLabel="label"
           optionValue="value"
           [showClear]="true"
-          placeholder="Use container block role">
+          placeholder="Use container block role"
+          i18n-placeholder="@@linkProperties.containerRolePlaceholder">
         </p-dropdown>
       </div>
     </form>

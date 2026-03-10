@@ -22,16 +22,16 @@ export class CrdEditorComponent implements OnInit, OnDestroy {
   yamlError: string | null = null;
 
   readonly scopeOptions = [
-    { label: 'Namespaced', value: 'Namespaced' as CrdScope },
-    { label: 'Cluster', value: 'Cluster' as CrdScope },
+    { label: $localize`:@@crd.scope.namespaced:Namespaced`, value: 'Namespaced' as CrdScope },
+    { label: $localize`:@@crd.scope.cluster:Cluster`, value: 'Cluster' as CrdScope },
   ];
 
   readonly fieldTypeOptions = [
-    { label: 'string', value: 'string' as CrdFieldType },
-    { label: 'number', value: 'number' as CrdFieldType },
-    { label: 'boolean', value: 'boolean' as CrdFieldType },
-    { label: 'object', value: 'object' as CrdFieldType },
-    { label: 'array', value: 'array' as CrdFieldType },
+    { label: $localize`:@@crd.fieldType.string:string`, value: 'string' as CrdFieldType },
+    { label: $localize`:@@crd.fieldType.number:number`, value: 'number' as CrdFieldType },
+    { label: $localize`:@@crd.fieldType.boolean:boolean`, value: 'boolean' as CrdFieldType },
+    { label: $localize`:@@crd.fieldType.object:object`, value: 'object' as CrdFieldType },
+    { label: $localize`:@@crd.fieldType.array:array`, value: 'array' as CrdFieldType },
   ];
 
   private subscriptions = new Subscription();
@@ -126,13 +126,19 @@ export class CrdEditorComponent implements OnInit, OnDestroy {
     this.showYamlPreview = !this.showYamlPreview;
   }
 
+  get yamlPreviewToggleLabel(): string {
+    return this.showYamlPreview
+      ? $localize`:@@crd.hideYamlPreview:Hide YAML preview`
+      : $localize`:@@crd.showYamlPreview:Show YAML preview`;
+  }
+
   private refreshYamlPreview(): void {
     if (!this.showYamlPreview) {
       return;
     }
     if (this.form.invalid) {
       this.yamlPreview = '';
-      this.yamlError = 'Resolve validation errors to preview YAML.';
+      this.yamlError = $localize`:@@crd.yaml.resolveValidation:Resolve validation errors to preview YAML.`;
       return;
     }
     try {
@@ -140,7 +146,7 @@ export class CrdEditorComponent implements OnInit, OnDestroy {
       this.yamlError = null;
     } catch (e: any) {
       this.yamlPreview = '';
-      this.yamlError = e?.message || 'Unable to generate preview.';
+      this.yamlError = e?.message || $localize`:@@crd.yaml.generateFailed:Unable to generate preview.`;
     }
   }
 
@@ -150,7 +156,10 @@ export class CrdEditorComponent implements OnInit, OnDestroy {
         tap(crd => this.applyCrd(crd)),
         catchError(err => {
           console.error('Error loading CRD:', err);
-          this.notificationService.error('Error', 'Failed to load CRD');
+          this.notificationService.error(
+            $localize`:@@common.error:Error`,
+            $localize`:@@crd.error.load:Failed to load CRD`
+          );
           this.router.navigate(['/crds']);
           return of(null);
         })
@@ -183,7 +192,10 @@ export class CrdEditorComponent implements OnInit, OnDestroy {
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.notificationService.warn('Invalid', 'Fix form errors before saving.');
+      this.notificationService.warn(
+        $localize`:@@common.invalid:Invalid`,
+        $localize`:@@crd.error.fixBeforeSave:Fix form errors before saving.`
+      );
       return;
     }
 
@@ -195,12 +207,18 @@ export class CrdEditorComponent implements OnInit, OnDestroy {
     this.subscriptions.add(
       request$.pipe(
         tap(saved => {
-          this.notificationService.success('Saved', 'CRD saved successfully');
+          this.notificationService.success(
+            $localize`:@@common.saved:Saved`,
+            $localize`:@@crd.saved:CRD saved successfully`
+          );
           this.router.navigate(['/crds']);
         }),
         catchError(err => {
           console.error('Error saving CRD:', err);
-          this.notificationService.error('Save failed', err?.error || 'Failed to save CRD');
+          this.notificationService.error(
+            $localize`:@@common.saveFailed:Save failed`,
+            err?.error || $localize`:@@crd.error.save:Failed to save CRD`
+          );
           return of(null);
         })
       ).subscribe()

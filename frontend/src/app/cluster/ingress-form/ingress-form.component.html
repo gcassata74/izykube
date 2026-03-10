@@ -1,33 +1,33 @@
 <form [formGroup]="ingressForm" class="p-fluid ingress-form">
   <div class="p-field">
-    <label for="name">Name</label>
+    <label for="name" i18n="@@common.name">Name</label>
     <input id="name" type="text" pInputText formControlName="name">
     <small class="p-error"
            *ngIf="ingressForm.get('name')?.invalid && (ingressForm.get('name')?.dirty || ingressForm.get('name')?.touched)">
-      Name is required.
+      <span i18n="@@common.nameRequired">Name is required.</span>
     </small>
   </div>
 
   <div class="p-field">
-    <label for="host">Host</label>
+    <label for="host" i18n="@@common.host">Host</label>
     <input id="host" type="text" pInputText formControlName="host">
     <small class="p-error"
            *ngIf="ingressForm.get('host')?.invalid && (ingressForm.get('host')?.dirty || ingressForm.get('host')?.touched)">
-      Host is required.
+      <span i18n="@@common.hostRequired">Host is required.</span>
     </small>
   </div>
 
   <div class="p-field">
-    <label for="path">Path</label>
+    <label for="path" i18n="@@common.path">Path</label>
     <input id="path" type="text" pInputText formControlName="path">
     <small class="p-error"
            *ngIf="ingressForm.get('path')?.invalid && (ingressForm.get('path')?.dirty || ingressForm.get('path')?.touched)">
-      Path is required.
+      <span i18n="@@common.pathRequired">Path is required.</span>
     </small>
   </div>
 
   <div class="p-field" *ngIf="services.length; else serviceHint">
-    <label for="serviceName">Service</label>
+    <label for="serviceName" i18n="@@common.service">Service</label>
     <p-dropdown id="serviceName"
                 [options]="serviceOptions"
                 formControlName="serviceName"
@@ -37,42 +37,42 @@
     </p-dropdown>
     <small class="p-error"
            *ngIf="ingressForm.get('serviceName')?.invalid && (ingressForm.get('serviceName')?.dirty || ingressForm.get('serviceName')?.touched)">
-      A service connection is required.
+      <span i18n="@@ingressForm.serviceConnectionRequired">A service connection is required.</span>
     </small>
   </div>
 
   <ng-template #serviceHint>
     <p class="ingress-form__hint">
-      Link this ingress to a service in the diagram to select it here.
+      <span i18n="@@ingressForm.serviceHint">Link this ingress to a service in the diagram to select it here.</span>
     </p>
   </ng-template>
 
   <div class="p-field">
-    <label for="servicePort">Service Port</label>
+    <label for="servicePort" i18n="@@common.servicePort">Service Port</label>
     <p-inputNumber id="servicePort" formControlName="servicePort" [useGrouping]="false" [min]="1" [step]="1"
                    mode="decimal" [minFractionDigits]="0" [maxFractionDigits]="0">
     </p-inputNumber>
     <small class="p-error"
            *ngIf="ingressForm.get('servicePort')?.invalid && (ingressForm.get('servicePort')?.dirty || ingressForm.get('servicePort')?.touched)">
-      Service Port is required.
+      <span i18n="@@common.servicePortRequired">Service Port is required.</span>
     </small>
   </div>
 
   <div class="p-field">
-    <label for="tls">TLS Secret</label>
-    <input id="tls" type="text" pInputText formControlName="tls" placeholder="Optional secret name">
+    <label for="tls" i18n="@@ingressForm.tlsSecret">TLS Secret</label>
+    <input id="tls" type="text" pInputText formControlName="tls" placeholder="Optional secret name" i18n-placeholder="@@ingressForm.tlsSecretPlaceholder">
   </div>
 
   <div class="p-field">
-    <label>Annotations</label>
+    <label i18n="@@common.annotations">Annotations</label>
     <div formArrayName="annotations" class="annotation-list">
       <div class="annotation-row" *ngFor="let control of annotationsArray.controls; let i = index; trackBy: trackByIndex" [formGroupName]="i">
-        <input type="text" pInputText placeholder="key" formControlName="key">
-        <input type="text" pInputText placeholder="value" formControlName="value">
+        <input type="text" pInputText placeholder="key" i18n-placeholder="@@ingressForm.annotation.keyPlaceholder" formControlName="key">
+        <input type="text" pInputText placeholder="value" i18n-placeholder="@@ingressForm.annotation.valuePlaceholder" formControlName="value">
         <button type="button" pButton icon="pi pi-times" class="p-button-text p-button-danger"
                 (click)="removeAnnotation(i)" [disabled]="annotationsArray.length === 1"></button>
       </div>
     </div>
-    <button type="button" pButton label="Add annotation" class="p-button-text" (click)="addAnnotation()"></button>
+    <button type="button" pButton label="Add annotation" i18n-label="@@ingressForm.addAnnotation" class="p-button-text" (click)="addAnnotation()"></button>
   </div>
 </form>

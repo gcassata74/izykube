@@ -122,6 +122,7 @@
         class="p-button-sm p-button-rounded p-button-warning"
         icon="pi pi-bolt"
         label="Activate"
+        i18n-label="@@common.activate"
         [disabled]="forwardBusy || form.get('forwardActive')?.value || form.get('forwardPort')?.invalid || form.get('forwardTargetPort')?.invalid"
         (click)="activateForward()">
       </button>
@@ -129,13 +130,15 @@
 
     <div *ngIf="form.get('forwardActive')?.value" class="service-form__forward-active">
       <span>
-        Forward active: localhost:{{ form.get('forwardPort')?.value }} → {{ form.get('forwardTargetPort')?.value }}
+        <ng-container i18n="@@serviceForm.forwardActiveMessage">Forward active: localhost:{{ form.get('forwardPort')?.value }} → {{ form.get('forwardTargetPort')?.value }}</ng-container>
       </span>
       <button
         pButton
         type="button"
         class="p-button-text p-button-sm"
         icon="pi pi-times"
+        pTooltip="Deactivate"
+        i18n-pTooltip="@@serviceForm.deactivateForward"
         [disabled]="forwardBusy"
         (click)="deactivateForward()">
       </button>

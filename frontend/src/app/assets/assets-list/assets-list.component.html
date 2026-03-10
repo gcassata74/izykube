@@ -2,19 +2,19 @@
   <p-card class="izy-card">
     <ng-template pTemplate="header">
       <div class="card-header">
-        <h2>Assets</h2>
+        <h2 i18n="@@assets.title">Assets</h2>
       </div>
     </ng-template>
     <div class="card-content">
       <div class="button-container">
-        <button pButton type="button" label="Add" icon="pi pi-plus" class="p-button-outlined izy-primary-button"
+        <button pButton type="button" label="Add" i18n-label="@@common.add" icon="pi pi-plus" class="p-button-outlined izy-primary-button"
                 (click)="addAsset()"></button>
       </div>
       <p-table class="izy-table" [value]="(assets$ | async) || []" [paginator]="true" [rows]="10" styleClass="p-datatable-rounded">
         <ng-template pTemplate="header">
           <tr>
             <th *ngFor="let col of cols">{{col.header}}</th>
-            <th>Actions</th>
+            <th i18n="@@common.actions">Actions</th>
           </tr>
         </ng-template>
         <ng-template pTemplate="body" let-asset>
@@ -23,8 +23,12 @@
             <td>
               <div class="action-buttons">
                 <button pButton type="button" icon="pi pi-pencil" class="p-button-rounded p-button-text"
+                        aria-label="Edit"
+                        i18n-aria-label="@@common.edit"
                         (click)="editAsset(asset.id)"></button>
                 <button pButton type="button" icon="pi pi-ellipsis-v" class="p-button-rounded p-button-text"
+                        aria-label="Open actions"
+                        i18n-aria-label="@@common.openActions"
                         (click)="updateContextMenuItems($event, asset.id)" #rowContextMenu></button>
                 <p-contextMenu #cm [model]="items" [target]="rowContextMenu" appendTo="body"></p-contextMenu>
               </div>

@@ -11,6 +11,7 @@ import { PortForwardResponse, PortForwardService } from '../services/port-forwar
 export class PortForwardListComponent implements OnInit, OnDestroy {
   forwards: PortForwardResponse[] = [];
   loading = false;
+  readonly deleteTooltip = $localize`:@@common.delete:Delete`;
   private subscriptions = new Subscription();
 
   constructor(
@@ -39,7 +40,7 @@ export class PortForwardListComponent implements OnInit, OnDestroy {
         },
         error: () => {
           this.forwards = [];
-          this.notificationService.error('Unable to load port forwards');
+          this.notificationService.error($localize`:@@portForward.error.load:Unable to load port forwards`);
         }
       })
     );
@@ -57,12 +58,15 @@ export class PortForwardListComponent implements OnInit, OnDestroy {
         targetPort: row.targetPort
       }).subscribe({
         next: () => {
-          this.notificationService.success('Port forward active', `${row.serviceName} (${row.namespace})`);
+          this.notificationService.success(
+            $localize`:@@portForward.activeTitle:Port forward active`,
+            $localize`:@@portForward.rowDetail:${row.serviceName}:serviceName: (${row.namespace}:namespace:)`
+          );
           this.loadForwards();
         },
         error: (error) => {
-          const detail = error?.error || error?.message || 'Unable to start port forward.';
-          this.notificationService.error('Start failed', typeof detail === 'string' ? detail : undefined);
+          const detail = error?.error || error?.message || $localize`:@@portForward.error.startDetail:Unable to start port forward.`;
+          this.notificationService.error($localize`:@@portForward.error.startTitle:Start failed`, typeof detail === 'string' ? detail : undefined);
           this.loadForwards();
         }
       });
@@ -75,12 +79,15 @@ export class PortForwardListComponent implements OnInit, OnDestroy {
       targetPort: row.targetPort
     }).subscribe({
       next: () => {
-        this.notificationService.success('Port forward stopped', `${row.serviceName} (${row.namespace})`);
+        this.notificationService.success(
+          $localize`:@@portForward.stoppedTitle:Port forward stopped`,
+          $localize`:@@portForward.rowDetail:${row.serviceName}:serviceName: (${row.namespace}:namespace:)`
+        );
         this.loadForwards();
       },
       error: (error) => {
-        const detail = error?.error || error?.message || 'Unable to stop port forward.';
-        this.notificationService.error('Stop failed', typeof detail === 'string' ? detail : undefined);
+        const detail = error?.error || error?.message || $localize`:@@portForward.error.stopDetail:Unable to stop port forward.`;
+        this.notificationService.error($localize`:@@portForward.error.stopTitle:Stop failed`, typeof detail === 'string' ? detail : undefined);
         this.loadForwards();
       }
     });
@@ -97,13 +104,22 @@ export class PortForwardListComponent implements OnInit, OnDestroy {
       targetPort: row.targetPort
     }).subscribe({
       next: () => {
-        this.notificationService.success('Port forward removed', `${row.serviceName} (${row.namespace})`);
+        this.notificationService.success(
+          $localize`:@@portForward.removedTitle:Port forward removed`,
+          $localize`:@@portForward.rowDetail:${row.serviceName}:serviceName: (${row.namespace}:namespace:)`
+        );
         this.loadForwards();
       },
       error: (error) => {
-        const detail = error?.error || error?.message || 'Unable to delete port forward.';
-        this.notificationService.error('Delete failed', typeof detail === 'string' ? detail : undefined);
+        const detail = error?.error || error?.message || $localize`:@@portForward.error.deleteDetail:Unable to delete port forward.`;
+        this.notificationService.error($localize`:@@portForward.error.deleteTitle:Delete failed`, typeof detail === 'string' ? detail : undefined);
       }
     });
+  }
+
+  statusLabel(active: boolean): string {
+    return active
+      ? $localize`:@@portForward.status.active:Active`
+      : $localize`:@@portForward.status.stopped:Stopped`;
   }
 }

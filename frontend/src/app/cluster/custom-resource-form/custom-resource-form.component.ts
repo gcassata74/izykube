@@ -125,7 +125,10 @@ export class CustomResourceFormComponent implements OnInit, OnChanges, OnDestroy
       tap(() => this.loadSchemaIfNeeded()),
       catchError(() => {
         this.crdOptions = [];
-        this.notificationService.error('CRD load failed', 'Unable to load CRD list.');
+        this.notificationService.error(
+          $localize`:@@customResource.crdLoadFailedTitle:CRD load failed`,
+          $localize`:@@customResource.crdListLoadFailedDetail:Unable to load CRD list.`
+        );
         return of([]);
       })
     ).subscribe(() => {
@@ -154,7 +157,10 @@ export class CustomResourceFormComponent implements OnInit, OnChanges, OnDestroy
         this.selectedCrd = null;
         this.schemaFields = [];
         this.form.setControl('spec', this.fb.group({}));
-        this.notificationService.error('CRD load failed', 'Unable to load selected CRD schema.');
+        this.notificationService.error(
+          $localize`:@@customResource.crdLoadFailedTitle:CRD load failed`,
+          $localize`:@@customResource.crdSchemaLoadFailedDetail:Unable to load selected CRD schema.`
+        );
         return of(null);
       })
     ).subscribe(() => {

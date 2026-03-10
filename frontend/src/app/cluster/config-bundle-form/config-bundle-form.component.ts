@@ -34,8 +34,8 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
   pasteBuffer = '';
   pasteDefaultSensitivity: ConfigEntrySensitivity = 'PLAIN';
   readonly sensitivityOptions = [
-    { label: 'Plain', value: 'PLAIN' as ConfigEntrySensitivity },
-    { label: 'Secret', value: 'SECRET' as ConfigEntrySensitivity }
+    { label: $localize`:@@configBundle.sensitivity.plain:Plain`, value: 'PLAIN' as ConfigEntrySensitivity },
+    { label: $localize`:@@configBundle.sensitivity.secret:Secret`, value: 'SECRET' as ConfigEntrySensitivity }
   ];
   canEditName = true;
 
@@ -142,7 +142,10 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
       .filter(line => !!line);
 
     if (!lines.length) {
-      this.notificationService.warn('Nothing to import', 'Provide one or more key=value lines.');
+      this.notificationService.warn(
+        $localize`:@@configBundle.paste.emptyTitle:Nothing to import`,
+        $localize`:@@configBundle.paste.emptyDetail:Provide one or more key=value lines.`
+      );
       return;
     }
 
@@ -181,6 +184,12 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
 
   trackByEntryIndex(index: number): number {
     return index;
+  }
+
+  entryValuePlaceholder(masked: boolean): string {
+    return masked
+      ? $localize`:@@configBundle.entry.secretValueHidden:Secret value hidden`
+      : $localize`:@@common.value:Value`;
   }
 
   private buildFormFromNode(): void {
@@ -491,7 +500,7 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
       return;
     }
     if (this.form.invalid) {
-      this.yamlError = 'Resolve validation errors to preview YAML.';
+      this.yamlError = $localize`:@@configBundle.yaml.resolveValidationErrors:Resolve validation errors to preview YAML.`;
       this.yamlPreview = '';
       return;
     }
@@ -499,7 +508,7 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
     try {
       const manifests = generateManifestsFromBundle(this.extractBundleFromForm());
       if (!manifests.length) {
-        this.yamlPreview = '# Bundle has no entries.';
+        this.yamlPreview = $localize`:@@configBundle.yaml.noEntries:# Bundle has no entries.`;
         this.yamlError = null;
         return;
       }
@@ -509,7 +518,7 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
       this.yamlError = null;
     } catch (error: any) {
       this.yamlPreview = '';
-      this.yamlError = error?.message || 'Unable to generate preview.';
+      this.yamlError = error?.message || $localize`:@@configBundle.yaml.unableToGenerate:Unable to generate preview.`;
     }
   }
 

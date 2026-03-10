@@ -44,7 +44,7 @@
                       class="p-button-text p-button-sm"
                       icon="pi pi-chart-line"
                       [disabled]="!hasMeshedResources(rowData)"
-                      [pTooltip]="hasMeshedResources(rowData) ? 'Open Grafana' : 'No meshed resources'"
+                      [pTooltip]="grafanaTooltipFor(rowData)"
                       tooltipPosition="top"
                       (click)="openGrafana(rowData)"
                     ></button>
@@ -56,10 +56,12 @@
               </td>
               <td class="action-column">
                 <div class="action-buttons">
-                  <button pButton (click)="editDiagram(rowData.id)">
+                  <button pButton (click)="editDiagram(rowData.id)" aria-label="Edit diagram" i18n-aria-label="@@clusterList.action.editDiagram">
                     <i class="pi pi-pencil"></i>
                   </button>
                   <button pButton class="context-menu-trigger" #rowContextMenu
+                          aria-label="Open actions"
+                          i18n-aria-label="@@clusterList.action.openActions"
                           (click)="updateContextMenuItems($event,rowData.id)">
                     <i class="pi pi-ellipsis-v"></i>
                   </button>

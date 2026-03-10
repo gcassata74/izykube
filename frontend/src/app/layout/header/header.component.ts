@@ -20,6 +20,12 @@ export class HeaderComponent {
 
   @Output() buttonAction = new EventEmitter<string | ButtonAction[]>();
   @Output() menuTrigger = new EventEmitter<{ event: MouseEvent; items?: ButtonMenuItem[] }>();
+  readonly workspaceLabel = $localize`:@@header.workspace:workspace`;
+  readonly namespaceLabel = $localize`:@@common.namespaceWithColon:Namespace:`;
+  readonly searchAriaLabel = $localize`:@@common.search:Search`;
+  readonly searchComingSoonLabel = $localize`:@@header.searchComingSoon:Search (coming soon)`;
+  readonly userMenuLabel = $localize`:@@header.userMenu:User menu`;
+  readonly profileLabel = $localize`:@@header.profile:Profile`;
 
   handleButtonClick(button: Button): void {
     this.buttonAction.emit(button.actions);
@@ -51,6 +57,6 @@ export class HeaderComponent {
     if (!context || !context.showContext) {
       return '';
     }
-    return `Namespace: ${context.namespace || '—'}`;
+    return $localize`:@@header.contextTitle:${this.namespaceLabel}:namespaceLabel: ${context.namespace || '—'}:namespaceValue:`;
   }
 }

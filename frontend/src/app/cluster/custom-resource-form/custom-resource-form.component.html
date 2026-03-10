@@ -1,11 +1,11 @@
 <form class="cr-form" [formGroup]="form">
   <div class="field">
-    <label for="cr-name">Name</label>
+    <label for="cr-name" i18n="@@common.name">Name</label>
     <input id="cr-name" type="text" pInputText formControlName="name" />
   </div>
 
   <div class="field">
-    <label for="cr-crd">CRD</label>
+    <label for="cr-crd" i18n="@@customResource.crd">CRD</label>
     <p-dropdown
       inputId="cr-crd"
       formControlName="crdId"
@@ -15,15 +15,16 @@
       [showClear]="true"
       [filter]="true"
       placeholder="Select CRD"
+      i18n-placeholder="@@customResource.selectCrd"
       appendTo="body"
     ></p-dropdown>
     <small class="hint" *ngIf="!loadingCrds && !crdOptions.length">
-      No CRDs found. Create one in the CRDs section first.
+      <span i18n="@@customResource.noCrdsFound">No CRDs found. Create one in the CRDs section first.</span>
     </small>
   </div>
 
   <div class="field" *ngIf="selectedCrd && selectedCrd.scope === 'Namespaced'">
-    <label for="cr-namespace">Namespace</label>
+    <label for="cr-namespace" i18n="@@common.namespace">Namespace</label>
     <input id="cr-namespace" type="text" pInputText formControlName="namespace" />
   </div>
 
@@ -57,6 +58,7 @@
         [rows]="6"
         [formControlName]="field.fieldName"
         placeholder="Insert JSON"
+        i18n-placeholder="@@customResource.insertJson"
       ></textarea>
 
       <input
@@ -68,15 +70,15 @@
       />
 
       <small class="error" *ngIf="getSpecControl(field.fieldName)?.errors?.['invalidJson']">
-        Invalid JSON
+        <span i18n="@@common.invalidJson">Invalid JSON</span>
       </small>
       <small class="error" *ngIf="getSpecControl(field.fieldName)?.errors?.['invalidJsonType']">
-        JSON type mismatch for {{ field.fieldType }}
+        <span i18n="@@customResource.jsonTypeMismatch">JSON type mismatch for {{ field.fieldType }}</span>
       </small>
     </div>
   </div>
 
   <div class="hint" *ngIf="!selectedCrd && !loadingSchema">
-    Select a CRD to configure spec fields.
+    <span i18n="@@customResource.selectCrdHint">Select a CRD to configure spec fields.</span>
   </div>
 </form>

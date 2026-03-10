@@ -1,5 +1,5 @@
 <div class="content">
-  <p-card class="izy-card" header="OperatorHub">
+  <p-card class="izy-card" header="OperatorHub" i18n-header="@@operatorHub.title">
     <div class="card-content">
       <div class="search-row operatorhub-search">
         <span class="p-input-icon-left">
@@ -8,10 +8,11 @@
             pInputText
             type="text"
             placeholder="Search operators"
+            i18n-placeholder="@@operatorHub.search.placeholder"
             [(ngModel)]="hubQuery"
             (keyup.enter)="onHubSearch()" />
         </span>
-        <button pButton label="Search" class="p-button-outlined" (click)="onHubSearch()"></button>
+        <button pButton label="Search" i18n-label="@@common.search" class="p-button-outlined" (click)="onHubSearch()"></button>
       </div>
 
       <div class="operatorhub-grid" [class.operatorhub-grid--loading]="hubLoading">
@@ -21,20 +22,21 @@
               *ngIf="operator.iconUrl; else letterFallback"
               class="operatorhub-card__logo-image"
               [src]="operator.iconUrl"
-              [alt]="operator.name + ' logo'" />
+              [alt]="operatorLogoAlt(operator.name)" />
             <ng-template #letterFallback>
               {{ (operator.name || '?').slice(0, 1).toUpperCase() }}
             </ng-template>
           </div>
           <div class="operatorhub-card__content">
             <h4 class="operatorhub-card__title">{{ operator.name }}</h4>
-            <p class="operatorhub-card__subtitle">Installable from OperatorHub catalog</p>
+            <p class="operatorhub-card__subtitle" i18n="@@operatorHub.card.subtitle">Installable from OperatorHub catalog</p>
           </div>
           <div class="operatorhub-card__actions">
             <button
               pButton
               class="p-button-sm p-button-outlined"
               label="Import"
+              i18n-label="@@operatorHub.action.import"
               icon="pi pi-download"
               (click)="importFromHub(operator)">
             </button>
@@ -44,14 +46,14 @@
               [href]="operator.installYamlUrl"
               target="_blank"
               rel="noopener noreferrer">
-              YAML
+              <span i18n="@@operatorHub.action.yaml">YAML</span>
             </a>
           </div>
         </article>
       </div>
 
       <div class="operatorhub-footer" *ngIf="hubTotal > 0">
-        <span class="operatorhub-count">
+        <span class="operatorhub-count" i18n="@@operatorHub.showingCount">
           Showing {{ hubOperators.length }} of {{ hubTotal }}
         </span>
         <p-paginator

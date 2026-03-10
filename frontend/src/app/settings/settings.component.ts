@@ -39,8 +39,8 @@ export class SettingsComponent {
           window.URL.revokeObjectURL(url);
         },
         error: (error) => {
-          const detail = error?.error || error?.message || 'Unable to download CA certificate.';
-          this.notificationService.error('Download failed', typeof detail === 'string' ? detail : undefined);
+          const detail = error?.error || error?.message || $localize`:@@settings.ca.download.errorDetail:Unable to download CA certificate.`;
+          this.notificationService.error($localize`:@@settings.ca.download.errorTitle:Download failed`, typeof detail === 'string' ? detail : undefined);
         }
       });
   }

@@ -56,7 +56,7 @@ export class RoutesComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: () => {
-        this.notificationService.error('Failed to load namespaces');
+        this.notificationService.error($localize`:@@routes.error.loadNamespaces:Failed to load namespaces`);
       }
     });
   }
@@ -81,8 +81,8 @@ export class RoutesComponent implements OnInit {
           this.applyFilter(this.filterValue);
         },
         error: (error) => {
-          const detail = error?.error || error?.message || 'Unable to load routes.';
-          this.notificationService.error('Routes load failed', typeof detail === 'string' ? detail : undefined);
+          const detail = error?.error || error?.message || $localize`:@@routes.error.loadRoutesDetail:Unable to load routes.`;
+          this.notificationService.error($localize`:@@routes.error.loadRoutes:Routes load failed`, typeof detail === 'string' ? detail : undefined);
         }
       });
   }
@@ -112,7 +112,10 @@ export class RoutesComponent implements OnInit {
 
   openCreateDialog(): void {
     if (this.selectedNamespace === 'all') {
-      this.notificationService.warn('Select a namespace', 'Choose a namespace before creating a route.');
+      this.notificationService.warn(
+        $localize`:@@routes.warn.selectNamespaceTitle:Select a namespace`,
+        $localize`:@@routes.warn.selectNamespaceDetail:Choose a namespace before creating a route.`
+      );
       return;
     }
     this.editingRoute = null;
@@ -178,12 +181,18 @@ export class RoutesComponent implements OnInit {
     }
     const formValue = this.createForm.value;
     if (!formValue.serviceName) {
-      this.notificationService.warn('Service required', 'Select a service before saving the route.');
+      this.notificationService.warn(
+        $localize`:@@routes.warn.serviceRequiredTitle:Service required`,
+        $localize`:@@routes.warn.serviceRequiredDetail:Select a service before saving the route.`
+      );
       this.createForm.get('serviceName')?.markAsTouched();
       return;
     }
     if (!formValue.servicePort) {
-      this.notificationService.warn('Service port required', 'Select a service port before saving the route.');
+      this.notificationService.warn(
+        $localize`:@@routes.warn.servicePortRequiredTitle:Service port required`,
+        $localize`:@@routes.warn.servicePortRequiredDetail:Select a service port before saving the route.`
+      );
       this.createForm.get('servicePort')?.markAsTouched();
       return;
     }
@@ -220,8 +229,10 @@ export class RoutesComponent implements OnInit {
       })
     ).subscribe({
       next: () => {
-        const message = this.editingRoute ? 'Route updated successfully.' : 'Route created successfully.';
-        this.notificationService.success('Route saved', message);
+        const message = this.editingRoute
+          ? $localize`:@@routes.success.updatedDetail:Route updated successfully.`
+          : $localize`:@@routes.success.createdDetail:Route created successfully.`;
+        this.notificationService.success($localize`:@@routes.success.savedTitle:Route saved`, message);
         this.createDialogVisible = false;
         const key = this.routeKey(payload.namespace, payload.name);
         this.httpsOverrides.set(key, {
@@ -232,8 +243,8 @@ export class RoutesComponent implements OnInit {
         this.refreshRoutes();
       },
       error: (error: any) => {
-        const detail = error?.error || error?.message || 'Unable to save route.';
-        this.notificationService.error('Save failed', typeof detail === 'string' ? detail : undefined);
+        const detail = error?.error || error?.message || $localize`:@@routes.error.saveDetail:Unable to save route.`;
+        this.notificationService.error($localize`:@@routes.error.save:Save failed`, typeof detail === 'string' ? detail : undefined);
       }
     });
   }
@@ -243,11 +254,11 @@ export class RoutesComponent implements OnInit {
       return;
     }
     this.confirmationService.confirm({
-      header: 'Delete route',
-      message: `Delete route "${route.name}" in namespace "${route.namespace}"?`,
+      header: $localize`:@@routes.confirm.deleteTitle:Delete route`,
+      message: $localize`:@@routes.confirm.deleteMessage:Delete route "${route.name}:routeName:" in namespace "${route.namespace}:namespace:"?`,
       icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Delete',
-      rejectLabel: 'Cancel',
+      acceptLabel: $localize`:@@common.delete:Delete`,
+      rejectLabel: $localize`:@@common.cancel:Cancel`,
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.createSubmitting = true;
@@ -258,12 +269,15 @@ export class RoutesComponent implements OnInit {
           }))
           .subscribe({
             next: () => {
-              this.notificationService.success('Route deleted', `Deleted route ${route.name}.`);
+              this.notificationService.success(
+                $localize`:@@routes.success.deletedTitle:Route deleted`,
+                $localize`:@@routes.success.deletedDetail:Deleted route ${route.name}:routeName:.`
+              );
               this.refreshRoutes();
             },
             error: (error: any) => {
-              const detail = error?.error || error?.message || 'Unable to delete route.';
-              this.notificationService.error('Delete failed', typeof detail === 'string' ? detail : undefined);
+              const detail = error?.error || error?.message || $localize`:@@routes.error.deleteDetail:Unable to delete route.`;
+              this.notificationService.error($localize`:@@routes.error.delete:Delete failed`, typeof detail === 'string' ? detail : undefined);
             }
           });
       }
@@ -273,7 +287,10 @@ export class RoutesComponent implements OnInit {
   openRoute(route: RouteSummary, useTls: boolean): void {
     const url = this.buildRouteUrl(route, useTls);
     if (!url) {
-      this.notificationService.warn('Route unavailable', 'Gateway endpoint not available yet.');
+      this.notificationService.warn(
+        $localize`:@@routes.warn.unavailableTitle:Route unavailable`,
+        $localize`:@@routes.warn.unavailableDetail:Gateway endpoint not available yet.`
+      );
       return;
     }
     window.open(url, '_blank', 'noopener');
@@ -328,8 +345,23 @@ export class RoutesComponent implements OnInit {
     const url = this.getRouteUrl(route);
     if (!url) {
       event.preventDefault();
-      this.notificationService.warn('Route unavailable', 'Gateway endpoint not available yet.');
+      this.notificationService.warn(
+        $localize`:@@routes.warn.unavailableTitle:Route unavailable`,
+        $localize`:@@routes.warn.unavailableDetail:Gateway endpoint not available yet.`
+      );
     }
+  }
+
+  get dialogHeader(): string {
+    return this.editingRoute
+      ? $localize`:@@routes.dialog.editTitle:Edit Route`
+      : $localize`:@@routes.dialog.createTitle:Create Route`;
+  }
+
+  get submitButtonLabel(): string {
+    return this.editingRoute
+      ? $localize`:@@common.save:Save`
+      : $localize`:@@common.create:Create`;
   }
 
   private buildForm(): void {
