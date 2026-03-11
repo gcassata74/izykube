@@ -41,7 +41,7 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: |
-          npm ci
+          npm ci --legacy-peer-deps
           npm run build -- --configuration production
 
       - name: Prepare release artifacts
