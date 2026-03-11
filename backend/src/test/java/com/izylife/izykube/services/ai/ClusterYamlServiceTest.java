@@ -535,6 +535,46 @@ class ClusterYamlServiceTest {
     }
 
     @Test
+    void importClusterKeepsVirtualServiceManifestWithoutCreatingVirtualServiceNode() {
+        String yaml = """
+                apiVersion: v1
+                kind: Service
+                metadata:
+                  name: api
+                spec:
+                  selector:
+                    app: api
+                  ports:
+                    - port: 8080
+                      targetPort: 8080
+                ---
+                apiVersion: networking.istio.io/v1beta1
+                kind: VirtualService
+                metadata:
+                  name: api-vs
+                spec:
+                  hosts:
+                    - api.example.com
+                  gateways:
+                    - public-gateway
+                  http:
+                    - route:
+                        - destination:
+                            host: api
+                            port:
+                              number: 8080
+                """;
+
+        ClusterDTO cluster = service.importCluster(yaml, null);
+
+        assertTrue(cluster.getNodes().stream().noneMatch(node ->
+                        node instanceof VirtualServiceDTO || "istio".equalsIgnoreCase(node.getKind()) || "virtualservice".equalsIgnoreCase(node.getKind())),
+                "VirtualService should not be materialized as a diagram node");
+        assertTrue(cluster.getDiagram().contains("\"kind\":\"virtualservice\""),
+                "VirtualService must still be preserved in raw manifests");
+    }
+
+    @Test
     void exportClusterResolvesIngressServiceFromLinks() {
         ClusterDTO cluster = ClusterDTO.builder()
                 .diagram("""

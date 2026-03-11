@@ -76,7 +76,7 @@
       [paginator]="true"
       [rows]="12"
       [rowsPerPageOptions]="[10, 12, 25, 50]"
-      [globalFilterFields]="['name', 'namespace', 'hosts', 'serviceTargets', 'gatewayName', 'tls']"
+      [globalFilterFields]="['name', 'namespace', 'hosts', 'serviceTargets', 'gatewayName', 'tls', 'status']"
       dataKey="name"
       [rowHover]="true"
     >
@@ -88,18 +88,24 @@
           <th i18n="@@common.service">Service</th>
           <th i18n="@@routes.gateway">Gateway</th>
           <th i18n="@@routes.tls">TLS</th>
+          <th i18n="@@namespaceVersions.col.status">Status</th>
           <th i18n="@@common.age">Age</th>
           <th class="text-center" i18n="@@common.actions">Actions</th>
         </tr>
       </ng-template>
       <ng-template pTemplate="body" let-route>
-        <tr>
+        <tr [class.routes-row--tls]="isTlsConfigured(route)">
           <td>{{ route.name }}</td>
           <td>{{ route.namespace }}</td>
           <td>{{ route.hosts || '-' }}</td>
           <td>{{ route.serviceTargets || '-' }}</td>
           <td>{{ route.gatewayName || '-' }}</td>
-          <td>{{ route.tls || '-' }}</td>
+          <td>
+            <span class="routes-tls-chip" [class.routes-tls-chip--on]="isTlsConfigured(route)">
+              {{ route.tls || (isTlsConfigured(route) ? 'ENABLED' : '-') }}
+            </span>
+          </td>
+          <td>{{ route.status || '-' }}</td>
           <td>{{ route.age }}</td>
           <td class="text-center">
             <button
@@ -137,7 +143,7 @@
       </ng-template>
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="8" class="routes-page__empty izy-empty-message">
+          <td colspan="9" class="routes-page__empty izy-empty-message">
             <div class="routes-page__empty-content izy-empty-message" i18n="@@routes.emptyMessage">No routes found for this namespace.</div>
           </td>
         </tr>
@@ -205,6 +211,9 @@
       <small *ngIf="createForm.get('servicePort')?.invalid && createForm.get('servicePort')?.touched" class="routes-form__error">
         <span i18n="@@common.servicePortRequired">Service Port is required.</span>
       </small>
+      <small *ngIf="!isSelectedServicePortWeb()" class="routes-form__error">
+        <span i18n="@@routes.form.nonHttpPortError">HTTP/HTTPS routes support only web service ports. Use manual TCP configuration for DB/message-broker ports.</span>
+      </small>
     </div>
 
     <div class="routes-form__row">
@@ -223,7 +232,7 @@
       pButton
       type="button"
       [label]="submitButtonLabel"
-      [disabled]="createSubmitting || createForm.invalid"
+      [disabled]="createSubmitting || createForm.invalid || !isSelectedServicePortWeb()"
       (click)="submitCreate()"
     ></button>
   </ng-template>

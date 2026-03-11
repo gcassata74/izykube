@@ -1,9 +1,16 @@
 package com.izylife.izykube.services;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.izylife.izykube.dto.kube.RouteSummaryDTO;
+import com.izylife.izykube.model.Cluster;
+import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.web.request.RouteCreateRequest;
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.base.ResourceDefinitionContext;
@@ -12,12 +19,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +49,10 @@ public class RouteService {
     private static final String CERTIFICATE_KIND = "Certificate";
     private static final String CERTIFICATE_ISSUER_NAME = "izykube-ca-issuer";
     private static final String CERTIFICATE_ISSUER_KIND = "ClusterIssuer";
+    private static final Set<Integer> DEFAULT_HTTP_PORTS = new HashSet<>(Set.of(
+            80, 81, 443, 8080, 8081, 8443, 3000, 4200, 5000, 5173, 8000, 8888, 9000
+    ));
+    private static final String KIND_VIRTUALSERVICE = "virtualservice";
 
     private static final ResourceDefinitionContext GATEWAY_CONTEXT = new ResourceDefinitionContext.Builder()
             .withGroup("networking.istio.io")
@@ -82,6 +95,8 @@ public class RouteService {
             .build();
 
     private final KubernetesClient kubernetesClient;
+    private final ClusterRepository clusterRepository;
+    private final ObjectMapper objectMapper;
 
     public RouteSummaryDTO create(RouteCreateRequest request) {
         validate(request);
@@ -134,6 +149,7 @@ public class RouteService {
 
         deleteCertificateResources(trimmedNamespace, trimmedName);
         removeSharedGatewayTls(trimmedNamespace, trimmedName);
+        deletePersistedRoute(trimmedNamespace, trimmedName);
     }
 
     public RouteSummaryDTO update(String namespace, String name, RouteCreateRequest request) {
@@ -483,14 +499,31 @@ public class RouteService {
         if (service == null) {
             throw new IllegalArgumentException("Service not found: " + serviceName);
         }
-        boolean portMatch = Optional.ofNullable(service.getSpec())
+        ServicePort matchedPort = Optional.ofNullable(service.getSpec())
                 .map(spec -> spec.getPorts())
                 .orElse(List.of())
                 .stream()
-                .anyMatch(port -> port != null && port.getPort() == servicePort);
-        if (!portMatch) {
+                .filter(Objects::nonNull)
+                .filter(port -> port.getPort() == servicePort)
+                .findFirst()
+                .orElse(null);
+        if (matchedPort == null) {
             throw new IllegalArgumentException("Service port " + servicePort + " not found on service " + serviceName);
         }
+        if (!isHttpLikePort(matchedPort)) {
+            throw new IllegalArgumentException("HTTP/HTTPS routes are allowed only for web service ports. Selected port: " + servicePort);
+        }
+    }
+
+    private boolean isHttpLikePort(ServicePort port) {
+        if (port == null) {
+            return false;
+        }
+        String name = Optional.ofNullable(port.getName()).map(value -> value.toLowerCase(Locale.ROOT)).orElse("");
+        if (name.startsWith("http") || name.startsWith("web")) {
+            return true;
+        }
+        return DEFAULT_HTTP_PORTS.contains(port.getPort());
     }
 
     private RouteSummaryDTO mapVirtualService(GenericKubernetesResource virtualService) {
@@ -531,7 +564,7 @@ public class RouteService {
         String tls = resolveRouteTls(namespace, name);
         String age = "just now";
 
-        return new RouteSummaryDTO(name, namespace, hostsValue, serviceTarget, gatewayName, path, tls, age);
+        return new RouteSummaryDTO(name, namespace, hostsValue, serviceTarget, gatewayName, path, tls, age, "DEPLOYED");
     }
 
     private String resolveRouteTls(String namespace, String routeName) {
@@ -688,5 +721,85 @@ public class RouteService {
 
     private boolean isNotFound(KubernetesClientException ex) {
         return ex != null && ex.getCode() == 404;
+    }
+
+    private void deletePersistedRoute(String namespace, String routeName) {
+        List<Cluster> clusters = clusterRepository.findAll();
+        if (clusters.isEmpty()) {
+            return;
+        }
+        for (Cluster cluster : clusters) {
+            if (cluster == null || !StringUtils.hasText(cluster.getDiagram())) {
+                continue;
+            }
+            try {
+                JsonNode root = objectMapper.readTree(cluster.getDiagram());
+                if (!(root instanceof ObjectNode objectNode)) {
+                    continue;
+                }
+                JsonNode raw = objectNode.path("rawManifests");
+                if (!(raw instanceof ArrayNode rawManifests)) {
+                    continue;
+                }
+
+                ArrayNode filtered = objectMapper.createArrayNode();
+                boolean removed = false;
+                for (JsonNode entry : rawManifests) {
+                    if (isMatchingPersistedVirtualService(entry, namespace, routeName, cluster.getNameSpace())) {
+                        removed = true;
+                        continue;
+                    }
+                    filtered.add(entry);
+                }
+                if (!removed) {
+                    continue;
+                }
+                objectNode.set("rawManifests", filtered);
+                cluster.setDiagram(objectMapper.writeValueAsString(objectNode));
+                clusterRepository.save(cluster);
+            } catch (Exception ex) {
+                // Route deletion should not fail because one persisted snapshot could not be updated.
+            }
+        }
+    }
+
+    private boolean isMatchingPersistedVirtualService(JsonNode entry,
+                                                      String namespace,
+                                                      String routeName,
+                                                      String fallbackNamespace) {
+        if (entry == null || entry.isNull()) {
+            return false;
+        }
+        JsonNode manifestNode = entry.path("manifest");
+
+        String kind = textOrEmpty(entry.path("kind"));
+        if (!StringUtils.hasText(kind)) {
+            kind = textOrEmpty(manifestNode.path("kind"));
+        }
+        if (!KIND_VIRTUALSERVICE.equalsIgnoreCase(kind)) {
+            return false;
+        }
+
+        String name = textOrEmpty(entry.path("name"));
+        if (!StringUtils.hasText(name)) {
+            name = textOrEmpty(manifestNode.path("metadata").path("name"));
+        }
+        if (!routeName.equalsIgnoreCase(name)) {
+            return false;
+        }
+
+        String manifestNamespace = textOrEmpty(manifestNode.path("metadata").path("namespace"));
+        if (!StringUtils.hasText(manifestNamespace)) {
+            manifestNamespace = fallbackNamespace;
+        }
+        return StringUtils.hasText(manifestNamespace) && namespace.equalsIgnoreCase(manifestNamespace);
+    }
+
+    private String textOrEmpty(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return "";
+        }
+        String value = node.asText("");
+        return value == null ? "" : value.trim();
     }
 }

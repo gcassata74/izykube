@@ -24,6 +24,7 @@ import { StoreDevtoolsModule } from '@ngrx/store-devtools';
 import { StoreRouterConnectingModule } from '@ngrx/router-store';
 import {reducers} from './store/reducers';
 import { ClusterListComponent } from './cluster/cluster-list/cluster-list.component';
+import { NamespaceVersionsComponent } from './cluster/namespace-versions/namespace-versions.component';
 import { FormsModule } from '@angular/forms';
 import { ToolbarService } from './services/toolbar.service';
 import { HttpClientModule } from '@angular/common/http';
@@ -84,6 +85,7 @@ import { CustomResourceFormComponent } from './cluster/custom-resource-form/cust
     HomeComponent,
     DiagramComponent,
     ClusterListComponent,
+    NamespaceVersionsComponent,
     AssetListComponent,
     ClusterEditorComponent,
     NodeFormComponent,

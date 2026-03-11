@@ -21,6 +21,7 @@ import { ConfigurationChangeService } from '../services/configuration-change.ser
 import { ResourceSyncService } from '../services/resource-sync.service';
 import { ConfigBundleMeta } from '../model/config-bundle.model';
 import { LinkUpdateService } from '../services/link-update.service';
+import { ClusterService } from '../services/cluster.service';
 import interact from 'interactjs';
 
   /* Manual verification checklist:
@@ -188,6 +189,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     secret: 1
   };
   private readonly fallbackIconType = 'container';
+  private readonly manifestKindsWithoutNodes = new Set(['virtualservice', 'gateway', 'istio']);
+  private readonly hiddenNodeTypes = new Set(['istio', 'virtualservice', 'gateway']);
   private readonly connectionCaptureRadius = 28;
   podMenuPods: PodSummary[] = [];
   podMenuLoading = false;
@@ -215,6 +218,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     private kubeExplorerService: KubeExplorerService,
     private configurationChangeService: ConfigurationChangeService,
     public resourceSyncService: ResourceSyncService,
+    private clusterService: ClusterService,
     private zone: NgZone
   ) { }
 
@@ -676,7 +680,8 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private isExportAllowed(): boolean {
-    return this.currentClusterSnapshot?.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT;
+    return this.currentClusterSnapshot?.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT
+      || this.currentClusterSnapshot?.status === ClusterStatusEnum.DEPLOYED;
   }
 
   private fetchClusterExport(): void {
@@ -766,6 +771,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     ).subscribe({
       next: (response: AiImportYamlResponse) => {
         this.applyImportedCluster(response, this.clusterYamlImportMode);
+        this.persistImportedCluster();
         const message = this.clusterYamlImportMode === 'append'
           ? $localize`:@@diagram.importedAppendDetail:Diagram updated with the imported YAML.`
           : $localize`:@@diagram.importedReplaceDetail:Diagram updated from YAML.`;
@@ -959,6 +965,7 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     this.aiAssistantService.importYaml({ yaml, name: 'AI Generated Diagram' }).subscribe({
       next: (response) => {
         this.applyImportedCluster(response, this.clusterYamlImportMode);
+        this.persistImportedCluster();
         const message = this.clusterYamlImportMode === 'append'
           ? $localize`:@@diagram.importedAppendDetail:Diagram updated with the imported YAML.`
           : $localize`:@@diagram.importedReplaceDetail:Diagram updated from YAML.`;
@@ -986,6 +993,13 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private applyImportedCluster(imported: AiImportYamlResponse, mode: 'replace' | 'append' = 'replace'): void {
     const cluster = Cluster.fromJSON(imported);
+    const current = this.currentClusterSnapshot;
+    if (!cluster.id && current?.id) {
+      cluster.id = current.id;
+      cluster.name = current.name || cluster.name;
+      cluster.nameSpace = current.nameSpace || cluster.nameSpace;
+      cluster.status = current.status || cluster.status;
+    }
 
     if (mode === 'append' && this.nodes.length) {
       this.appendImportedCluster(cluster);
@@ -1095,7 +1109,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       const data = JSON.parse(diagramData);
       const parsedNodes = Array.isArray(data.nodes) ? data.nodes : [];
       const nodes: DiagramNode[] = parsedNodes
-        .filter((node: any) => ((node?.type || node?.kind || '') as string).toLowerCase() !== 'pod')
+        .filter((node: any) => {
+          const type = ((node?.type || node?.kind || '') as string).toLowerCase();
+          return type !== 'pod' && !this.hiddenNodeTypes.has(type);
+        })
         .map((node: any) => this.normalizeDiagramNode(node));
 
       const parsedLinks = Array.isArray(data.links) ? data.links : [];
@@ -1355,11 +1372,12 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
   private normalizeDiagramNode(rawNode: any, overrides?: Partial<DiagramNode>): DiagramNode {
     const rawType = (rawNode?.type || rawNode?.kind || this.fallbackIconType).toLowerCase();
     const type = rawType === 'customresource' || rawType === 'custom-resource' ? 'cr' : rawType;
+    const normalizedIcon = this.resolveNodeIcon(type, rawNode?.icon);
     const normalized: DiagramNode = {
       id: rawNode?.id || uuidv4(),
       name: rawNode?.name || type,
       type,
-      icon: rawNode?.icon || this.resolveIconPath(type),
+      icon: normalizedIcon,
       x: typeof rawNode?.x === 'number' ? rawNode.x : 0,
       y: typeof rawNode?.y === 'number' ? rawNode.y : 0,
       width: typeof rawNode?.width === 'number' ? rawNode.width : this.nodeContentSize,
@@ -1984,9 +2002,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       const data = JSON.parse(diagramData);
       const parsedNodes = Array.isArray(data.nodes) ? data.nodes : [];
       this.nodes = parsedNodes
-        .filter((node: any) =>
-        ((node?.type || node?.kind || '') as string).toLowerCase() !== 'pod'
-      )
+        .filter((node: any) => {
+          const type = ((node?.type || node?.kind || '') as string).toLowerCase();
+          return type !== 'pod' && !this.hiddenNodeTypes.has(type);
+        })
         .map((node: any) => this.normalizeDiagramNode(node));
 
       const parsedLinks = Array.isArray(data.links) ? data.links : [];
@@ -2765,6 +2784,21 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.iconService.getIconPath(normalized) || this.iconService.getIconPath(this.fallbackIconType) || '';
   }
 
+  private resolveNodeIcon(type: string, rawIcon?: string): string {
+    const normalizedType = (type || '').toLowerCase();
+    // Keep config resource icons deterministic to avoid stale/mismatched legacy icons (e.g. CR icon on ConfigMap).
+    if (normalizedType === 'configmap' || normalizedType === 'configbundle') {
+      return this.resolveIconPath('configmap');
+    }
+    if (normalizedType === 'secret') {
+      return this.resolveIconPath('secret');
+    }
+    if (normalizedType === 'cr') {
+      return this.resolveIconPath('cr');
+    }
+    return rawIcon || this.resolveIconPath(normalizedType);
+  }
+
   isPrimeIcon(icon?: string): boolean {
     return !!icon && icon.trim().startsWith('pi ');
   }
@@ -2790,7 +2824,12 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     const startY = 160;
     const columns = 4;
 
-    const baseNodes: any[] = Array.isArray(cluster.nodes) ? cluster.nodes : [];
+    const baseNodes: any[] = Array.isArray(cluster.nodes)
+      ? cluster.nodes.filter((node: any) => {
+        const type = String(node?.type ?? node?.kind ?? '').toLowerCase();
+        return !this.hiddenNodeTypes.has(type);
+      })
+      : [];
     const diagramNodes: DiagramNode[] = baseNodes.map((node, index) => {
       const hasX = typeof node.x === 'number';
       const hasY = typeof node.y === 'number';
@@ -3160,6 +3199,10 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       if (!entry || typeof entry !== 'object') {
         return false;
       }
+      const kind = typeof entry.kind === 'string' ? entry.kind.toLowerCase() : '';
+      if (this.manifestKindsWithoutNodes.has(kind)) {
+        return true;
+      }
       const name = typeof entry.name === 'string' ? entry.name : undefined;
       return !!name && validNames.has(name);
     });
@@ -3211,6 +3254,28 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this.store.dispatch(actions.updateDiagram({ diagramData, links: clusterLinks }));
     this.updateSurfaceSize();
+  }
+
+  private persistImportedCluster(): void {
+    this.store.select(getCurrentCluster).pipe(take(1)).subscribe(cluster => {
+      if (!cluster?.id) {
+        return;
+      }
+      this.clusterService.saveCluster(cluster).pipe(take(1)).subscribe({
+        next: (savedCluster) => {
+          if (savedCluster) {
+            this.store.dispatch(actions.loadCluster({ cluster: savedCluster }));
+          }
+        },
+        error: (error) => {
+          const detail = error?.error || error?.message || $localize`:@@diagram.importPersistFailedDetail:Diagram imported but not saved.`;
+          this.notificationService.warn(
+            $localize`:@@diagram.importPersistFailedTitle:Import not persisted`,
+            typeof detail === 'string' ? detail : undefined
+          );
+        }
+      });
+    });
   }
 
   ngOnDestroy(): void {

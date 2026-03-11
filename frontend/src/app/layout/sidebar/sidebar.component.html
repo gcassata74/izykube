@@ -13,6 +13,22 @@
       <span class="sidebar-item__label">{{ item.label }}</span>
       <span class="sidebar-item__accent" aria-hidden="true"></span>
     </button>
+
+    <div class="sidebar-submenu" *ngIf="selectedNamespace">
+      <div class="sidebar-submenu__title" [pTooltip]="collapsed ? selectedNamespace : undefined" tooltipPosition="right">
+        {{ selectedNamespace }}
+      </div>
+      <button
+        type="button"
+        class="sidebar-item sidebar-item--submenu"
+        (click)="onNavigate(namespaceVersionsRoute)"
+        [class.sidebar-item--active]="isActive(namespaceVersionsRoute)"
+        [pTooltip]="collapsed ? versionsLabel : undefined"
+        tooltipPosition="right">
+        <i class="pi pi-list sidebar-item__icon" aria-hidden="true"></i>
+        <span class="sidebar-item__label">{{ versionsLabel }}</span>
+      </button>
+    </div>
   </div>
 
   <div class="app-sidebar__footer">

@@ -37,6 +37,7 @@ export interface RouteSummary {
   path: string;
   tls: string;
   age: string;
+  status: string;
 }
 
 export interface IstioGatewayInfo {

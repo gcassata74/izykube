@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface ClusterTemplateRepository extends MongoRepository<ClusterTemplate, String> {
 
     Optional<ClusterTemplate> findByClusterId(String clusterId);
+
+    void deleteByClusterId(String clusterId);
 }

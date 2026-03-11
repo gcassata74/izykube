@@ -1,6 +1,7 @@
 import { NotificationService } from 'src/app/services/notification.service';
 import { Observable, catchError, switchMap, throwError } from 'rxjs';
 import { Cluster } from '../model/cluster.class';
+import { ClusterVersion } from '../model/cluster-version.model';
 import { DataService } from './data.service';
 import { Injectable } from '@angular/core';
 import { updateCluster } from '../store/actions/actions';
@@ -47,5 +48,17 @@ export class ClusterService {
 
   undeploy(clusterId: string): Observable<any> {
     return this.dataService.delete('/cluster/' + clusterId + '/undeploy');
+  }
+
+  getNamespaceVersions(namespace: string): Observable<ClusterVersion[]> {
+    return this.dataService.get<ClusterVersion[]>(`/cluster/namespace/${encodeURIComponent(namespace)}/versions`);
+  }
+
+  getNamespaceVersion(namespace: string, versionNumber: number): Observable<ClusterVersion> {
+    return this.dataService.get<ClusterVersion>(`/cluster/namespace/${encodeURIComponent(namespace)}/versions/${versionNumber}`);
+  }
+
+  getLatestNamespaceVersion(namespace: string): Observable<ClusterVersion> {
+    return this.dataService.get<ClusterVersion>(`/cluster/namespace/${encodeURIComponent(namespace)}/versions/latest`);
   }
 }

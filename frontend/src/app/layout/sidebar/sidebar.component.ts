@@ -15,6 +15,7 @@ interface SidebarNavItem {
 export class SidebarComponent {
   @Input() collapsed = false;
   @Input() activeRoute: string | null = null;
+  @Input() selectedNamespace: string | null = null;
 
   @Output() navigate = new EventEmitter<string>();
   @Output() collapseChange = new EventEmitter<boolean>();
@@ -35,6 +36,7 @@ export class SidebarComponent {
   readonly collapseSidebarLabel = $localize`:@@sidebar.collapseSidebar:Collapse sidebar`;
   readonly expandLabel = $localize`:@@common.expand:Expand`;
   readonly collapseLabel = $localize`:@@common.collapse:Collapse`;
+  readonly versionsLabel = $localize`:@@sidebar.versionsList:Versions list`;
 
   onNavigate(route: string): void {
     this.navigate.emit(route);
@@ -53,4 +55,12 @@ export class SidebarComponent {
     }
     return this.activeRoute.startsWith(route);
   }
+
+  get namespaceVersionsRoute(): string {
+    if (!this.selectedNamespace) {
+      return '/namespaces';
+    }
+    return `/namespaces/${this.selectedNamespace}/versions`;
+  }
+
 }

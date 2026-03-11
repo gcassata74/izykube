@@ -1,33 +1,38 @@
 <section class="settings">
   <header class="settings__header">
     <div>
-      <p class="eyebrow" i18n="@@settings.eyebrow.cluster">Cluster</p>
       <h1 i18n="@@settings.title">Settings</h1>
-      <p class="subtitle" i18n="@@settings.subtitle">Administer cluster-wide resources available to every namespace.</p>
     </div>
   </header>
 
   <div class="settings__content">
-    <section class="settings-card">
-      <div>
-        <p class="eyebrow" i18n="@@settings.certificates.eyebrow">Certificates</p>
-        <h2 class="settings-card__title" i18n="@@settings.ca.title">Internal CA</h2>
-        <p class="settings-card__subtitle" i18n="@@settings.ca.subtitle">
-          Download the internal CA certificate to trust HTTPS routes issued by cert-manager.
-        </p>
-      </div>
-      <button
-        pButton
-        type="button"
-        class="p-button-outlined"
-        icon="pi pi-download"
-        label="Download CA"
-        i18n-label="@@settings.ca.download"
-        [loading]="downloadingCa"
-        [disabled]="downloadingCa"
-        (click)="downloadCaCertificate()"
-      ></button>
-    </section>
-    <app-persistent-volume-admin></app-persistent-volume-admin>
+    <p-tabView>
+      <p-tabPanel header="Certificates" i18n-header="@@settings.tab.certificates">
+        <section class="settings-card">
+          <div>
+            <p class="eyebrow" i18n="@@settings.certificates.eyebrow">Certificates</p>
+            <h2 class="settings-card__title" i18n="@@settings.ca.title">Internal CA</h2>
+            <p class="settings-card__subtitle" i18n="@@settings.ca.subtitle">
+              Download the internal CA certificate to trust HTTPS routes issued by cert-manager.
+            </p>
+          </div>
+          <button
+            pButton
+            type="button"
+            class="p-button-outlined"
+            icon="pi pi-download"
+            label="Download CA"
+            i18n-label="@@settings.ca.download"
+            [loading]="downloadingCa"
+            [disabled]="downloadingCa"
+            (click)="downloadCaCertificate()"
+          ></button>
+        </section>
+      </p-tabPanel>
+
+      <p-tabPanel header="Storage" i18n-header="@@settings.tab.storage">
+        <app-persistent-volume-admin></app-persistent-volume-admin>
+      </p-tabPanel>
+    </p-tabView>
   </div>
 </section>

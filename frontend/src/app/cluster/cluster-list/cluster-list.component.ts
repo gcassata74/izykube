@@ -1,6 +1,6 @@
 import { TemplateService } from './../../services/template.service';
 import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { MenuItem } from 'primeng/api';
+import { ConfirmationService, MenuItem } from 'primeng/api';
 import { ClusterService } from '../../services/cluster.service';
 import { Cluster, ClusterExportMode } from '../../model/cluster.class';
 import { AiAssistantService, AiExportYamlResponse, AiHelmChartExportResponse } from '../../services/ai-assistant.service';
@@ -59,6 +59,7 @@ export class ClusterListComponent implements OnInit, OnDestroy {
     private templateService: TemplateService,
     private notificationService: NotificationService,
     private aiAssistantService: AiAssistantService,
+    private confirmationService: ConfirmationService,
     private router: Router,
     private store: Store
   ) {}
@@ -116,7 +117,11 @@ export class ClusterListComponent implements OnInit, OnDestroy {
 
     return [
       { label: $localize`:@@common.edit:Edit`, icon: 'pi pi-pencil', command: () => cluster.id !== null && this.editCluster(cluster.id) },
-      { label: $localize`:@@clusterList.action.deleteNamespace:Delete Namespace`, icon: 'pi pi-times', command: () => cluster.id !== null && this.deleteCluster(cluster.id) },
+      {
+        label: $localize`:@@clusterList.action.deleteNamespace:Delete Namespace`,
+        icon: 'pi pi-times',
+        command: () => cluster.id !== null && this.confirmDeleteCluster(cluster)
+      },
       {
         label: $localize`:@@clusterList.action.createTemplate:Create Template`,
         icon: 'pi pi-th-large',
@@ -159,6 +164,11 @@ export class ClusterListComponent implements OnInit, OnDestroy {
             command: () => this.exportCluster(cluster, 'HELM_CHART')
           }
         ]
+      },
+      {
+        label: $localize`:@@clusterList.action.versions:Versions`,
+        icon: 'pi pi-history',
+        command: () => this.openNamespaceVersions(cluster.nameSpace)
       }
     ];
   }
@@ -248,6 +258,13 @@ export class ClusterListComponent implements OnInit, OnDestroy {
     this.router.navigate([`cluster-form/${id}`]);
   }
 
+  openNamespaceVersions(namespace: string): void {
+    if (!namespace) {
+      return;
+    }
+    this.router.navigate(['/namespaces', namespace, 'versions']);
+  }
+
   deleteCluster(id: string): void {
     this.subscriptions.add(
       this.clusterService.deleteCluster(id).pipe(
@@ -267,6 +284,23 @@ export class ClusterListComponent implements OnInit, OnDestroy {
         })
       ).subscribe()
     );
+  }
+
+  confirmDeleteCluster(cluster: Cluster): void {
+    const id = cluster?.id;
+    if (!id) {
+      return;
+    }
+    const namespace = cluster?.nameSpace || 'default';
+    this.confirmationService.confirm({
+      header: $localize`:@@clusterList.namespace.deleteConfirmTitle:Delete namespace`,
+      message: $localize`:@@clusterList.namespace.deleteConfirmMessage:Delete namespace "${namespace}:namespace:"? This action cannot be undone.`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: $localize`:@@common.delete:Delete`,
+      rejectLabel: $localize`:@@common.cancel:Cancel`,
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => this.deleteCluster(id)
+    });
   }
 
   editDiagram(id: string) {

@@ -8,7 +8,6 @@ import com.izylife.izykube.dto.ai.AiGenerateResponse;
 import com.izylife.izykube.dto.ai.AiImportRequest;
 import com.izylife.izykube.dto.ai.AiExportResponse;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
-import com.izylife.izykube.dto.cluster.ExportMode;
 import com.izylife.izykube.services.ai.LocalAiService;
 import com.izylife.izykube.services.ai.LocalAiService.LocalAiServiceException;
 import com.izylife.izykube.services.ai.ClusterYamlService;
@@ -64,8 +63,8 @@ public class AiController {
 
     @PostMapping("/export-yaml")
     public ResponseEntity<?> exportYaml(@RequestBody ClusterDTO cluster) {
-        ExportMode exportMode = Optional.ofNullable(cluster.getExportMode()).orElse(ExportMode.FLAT_YAML);
-        if (exportMode == ExportMode.HELM_CHART) {
+        String exportMode = Optional.ofNullable(cluster.getExportMode()).orElse("FLAT_YAML");
+        if ("HELM_CHART".equalsIgnoreCase(exportMode)) {
             HelmChartArchive archive = clusterYamlService.exportHelmChart(cluster);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + archive.fileName() + "\"")

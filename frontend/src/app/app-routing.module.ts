@@ -5,6 +5,7 @@ import { ClusterListComponent } from './cluster/cluster-list/cluster-list.compon
 import { AssetListComponent } from './assets/assets-list/assets-list.component';
 import { ClusterEditorComponent } from './cluster/cluster-editor/cluster-editor.component';
 import { ClusterFormComponent } from './cluster/cluster-form/cluster-form.component';
+import { NamespaceVersionsComponent } from './cluster/namespace-versions/namespace-versions.component';
 import { AssetFormComponent } from './assets/asset-form/asset-form.component';
 import { KubeExplorerComponent } from './kube-explorer/kube-explorer.component';
 import { RoutesComponent } from './routes/routes.component';
@@ -19,6 +20,7 @@ const routes: Routes = [
   { path: 'cluster-editor/:id', component: ClusterEditorComponent },
   { path: 'home', component: HomeComponent },
   { path: 'namespaces', component: ClusterListComponent },
+  { path: 'namespaces/:namespace/versions', component: NamespaceVersionsComponent },
   { path: 'clusters', redirectTo: 'namespaces', pathMatch: 'full' },
   { path: 'assets', component: AssetListComponent },
   { path: 'cluster-form', component: ClusterFormComponent },

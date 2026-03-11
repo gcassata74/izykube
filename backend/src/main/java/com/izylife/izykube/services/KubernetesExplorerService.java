@@ -1,5 +1,7 @@
 package com.izylife.izykube.services;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.izylife.izykube.collections.ClusterStatusEnum;
 import com.izylife.izykube.dto.kube.ConfigMapSummaryDTO;
 import com.izylife.izykube.dto.kube.CronJobSummaryDTO;
@@ -20,6 +22,7 @@ import com.izylife.izykube.dto.kube.SecretSummaryDTO;
 import com.izylife.izykube.dto.kube.ServiceSummaryDTO;
 import com.izylife.izykube.dto.kube.StatefulSetSummaryDTO;
 import com.izylife.izykube.repositories.ClusterRepository;
+import com.izylife.izykube.model.Cluster;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Event;
 import io.fabric8.kubernetes.api.model.EventList;
@@ -76,6 +79,7 @@ public class KubernetesExplorerService {
     private static final String ISTIO_INGRESS_SERVICE = "istio-ingressgateway";
     private static final String CERT_MANAGER_NAMESPACE = "cert-manager";
     private static final String INTERNAL_CA_SECRET = "izykube-ca";
+    private static final String ROUTE_STATUS_OUT_OF_SYNC = "OUT_OF_SYNC";
 
     private static final ResourceDefinitionContext VIRTUALSERVICE_CONTEXT = new ResourceDefinitionContext.Builder()
             .withGroup("networking.istio.io")
@@ -107,6 +111,7 @@ public class KubernetesExplorerService {
 
     private final KubernetesClient kubernetesClient;
     private final ClusterRepository clusterRepository;
+    private final ObjectMapper objectMapper;
 
     public List<NamespaceDTO> listNamespaces() {
         return kubernetesClient.namespaces()
@@ -148,14 +153,16 @@ public class KubernetesExplorerService {
                 .sorted(Comparator.comparing(ServiceSummaryDTO::namespace).thenComparing(ServiceSummaryDTO::name))
                 .toList();
 
-        ResourceDefinitionContext virtualServiceContext = resolveVirtualServiceContext(includeAll ? null : namespace);
-        List<RouteSummaryDTO> routes = (includeAll ? kubernetesClient.genericKubernetesResources(virtualServiceContext).inAnyNamespace() : kubernetesClient.genericKubernetesResources(virtualServiceContext).inNamespace(namespace))
-                .list()
-                .getItems()
-                .stream()
-                .map(this::mapVirtualService)
-                .sorted(Comparator.comparing(RouteSummaryDTO::namespace).thenComparing(RouteSummaryDTO::name))
-                .toList();
+        List<RouteSummaryDTO> persistedRoutes = collectPersistedRoutes(includeAll ? null : namespace);
+        boolean hasDeployedPersistedRoutes = persistedRoutes.stream()
+                .anyMatch(route -> ClusterStatusEnum.DEPLOYED.getValue().equalsIgnoreCase(route.status()));
+        boolean fetchLiveRoutes = includeAll
+                || hasDeployedPersistedRoutes
+                || (!includeAll && isNamespaceDeployed(namespace));
+        List<RouteSummaryDTO> liveRoutes = fetchLiveRoutes
+                ? fetchLiveRoutes(includeAll ? null : namespace, includeAll)
+                : List.of();
+        List<RouteSummaryDTO> mergedRoutes = reconcileRoutes(persistedRoutes, liveRoutes);
 
         List<ConfigMapSummaryDTO> configMaps = (includeAll ? kubernetesClient.configMaps().inAnyNamespace() : kubernetesClient.configMaps().inNamespace(namespace))
                 .list()
@@ -210,7 +217,7 @@ public class KubernetesExplorerService {
                 pods,
                 deployments,
                 services,
-                routes,
+                mergedRoutes,
                 configMaps,
                 secrets,
                 jobs,
@@ -218,6 +225,283 @@ public class KubernetesExplorerService {
                 daemonSets,
                 statefulSets
         );
+    }
+
+    private List<RouteSummaryDTO> fetchLiveRoutes(String namespace, boolean includeAll) {
+        ResourceDefinitionContext virtualServiceContext = resolveVirtualServiceContext(includeAll ? null : namespace);
+        return (includeAll
+                ? kubernetesClient.genericKubernetesResources(virtualServiceContext).inAnyNamespace()
+                : kubernetesClient.genericKubernetesResources(virtualServiceContext).inNamespace(namespace))
+                .list()
+                .getItems()
+                .stream()
+                .map(this::mapVirtualService)
+                .toList();
+    }
+
+    private List<RouteSummaryDTO> reconcileRoutes(List<RouteSummaryDTO> persistedRoutes, List<RouteSummaryDTO> liveRoutes) {
+        List<RouteSummaryDTO> canonicalPersisted = Optional.ofNullable(persistedRoutes).orElse(List.of()).stream()
+                .filter(route -> route != null && StringUtils.hasText(route.namespace()) && StringUtils.hasText(route.name()))
+                .toList();
+
+        Map<String, List<RouteSummaryDTO>> liveByIdentity = indexLiveRoutes(liveRoutes);
+        List<RouteSummaryDTO> reconciled = new ArrayList<>();
+
+        for (RouteSummaryDTO persisted : canonicalPersisted) {
+            boolean namespaceDeployed = ClusterStatusEnum.DEPLOYED.getValue().equalsIgnoreCase(persisted.status());
+            if (!namespaceDeployed) {
+                reconciled.add(persisted);
+                continue;
+            }
+
+            RouteSummaryDTO liveMatch = consumeLiveMatch(liveByIdentity, persisted);
+            if (liveMatch == null) {
+                reconciled.add(withStatus(persisted, ROUTE_STATUS_OUT_OF_SYNC));
+                continue;
+            }
+            reconciled.add(enrichFromLive(persisted, liveMatch));
+        }
+
+        Map<String, RouteSummaryDTO> existingByKey = reconciled.stream()
+                .collect(Collectors.toMap(route -> routeKey(route.namespace(), route.name()), route -> route, (a, b) -> a, LinkedHashMap::new));
+        for (RouteSummaryDTO live : Optional.ofNullable(liveRoutes).orElse(List.of())) {
+            if (live == null || !StringUtils.hasText(live.namespace()) || !StringUtils.hasText(live.name())) {
+                continue;
+            }
+            String key = routeKey(live.namespace(), live.name());
+            if (existingByKey.containsKey(key)) {
+                continue;
+            }
+            existingByKey.put(key, live);
+        }
+
+        return existingByKey.values().stream()
+                .sorted(Comparator.comparing(RouteSummaryDTO::namespace).thenComparing(RouteSummaryDTO::name))
+                .toList();
+    }
+
+    private Map<String, List<RouteSummaryDTO>> indexLiveRoutes(List<RouteSummaryDTO> liveRoutes) {
+        Map<String, List<RouteSummaryDTO>> indexed = new LinkedHashMap<>();
+        for (RouteSummaryDTO live : Optional.ofNullable(liveRoutes).orElse(List.of())) {
+            if (live == null || !StringUtils.hasText(live.namespace()) || !StringUtils.hasText(live.name())) {
+                continue;
+            }
+            for (String key : routeMatchKeys(live)) {
+                indexed.computeIfAbsent(key, ignored -> new ArrayList<>()).add(live);
+            }
+        }
+        return indexed;
+    }
+
+    private RouteSummaryDTO consumeLiveMatch(Map<String, List<RouteSummaryDTO>> liveByIdentity, RouteSummaryDTO persisted) {
+        for (String key : routeMatchKeys(persisted)) {
+            List<RouteSummaryDTO> candidates = liveByIdentity.get(key);
+            if (candidates == null || candidates.isEmpty()) {
+                continue;
+            }
+            RouteSummaryDTO match = candidates.remove(0);
+            removeRouteFromAllIdentityKeys(liveByIdentity, match);
+            return match;
+        }
+        return null;
+    }
+
+    private void removeRouteFromAllIdentityKeys(Map<String, List<RouteSummaryDTO>> liveByIdentity, RouteSummaryDTO route) {
+        for (String key : routeMatchKeys(route)) {
+            List<RouteSummaryDTO> candidates = liveByIdentity.get(key);
+            if (candidates == null) {
+                continue;
+            }
+            candidates.removeIf(candidate -> Objects.equals(candidate.namespace(), route.namespace())
+                    && Objects.equals(candidate.name(), route.name()));
+            if (candidates.isEmpty()) {
+                liveByIdentity.remove(key);
+            }
+        }
+    }
+
+    private List<String> routeMatchKeys(RouteSummaryDTO route) {
+        String namespace = normalizeMatchValue(route.namespace());
+        String name = normalizeMatchValue(route.name());
+        String hosts = normalizeMatchValue(route.hosts());
+        String serviceTarget = normalizeMatchValue(route.serviceTargets());
+
+        List<String> keys = new ArrayList<>();
+        keys.add(namespace + "|" + name);
+        keys.add(namespace + "|" + name + "|" + hosts + "|" + serviceTarget);
+        keys.add(namespace + "|" + hosts + "|" + serviceTarget);
+        return keys;
+    }
+
+    private String normalizeMatchValue(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private RouteSummaryDTO enrichFromLive(RouteSummaryDTO persisted, RouteSummaryDTO live) {
+        return new RouteSummaryDTO(
+                persisted.name(),
+                persisted.namespace(),
+                StringUtils.hasText(live.hosts()) ? live.hosts() : persisted.hosts(),
+                StringUtils.hasText(live.serviceTargets()) ? live.serviceTargets() : persisted.serviceTargets(),
+                StringUtils.hasText(live.gatewayName()) ? live.gatewayName() : persisted.gatewayName(),
+                StringUtils.hasText(live.path()) ? live.path() : persisted.path(),
+                StringUtils.hasText(live.tls()) ? live.tls() : persisted.tls(),
+                StringUtils.hasText(live.age()) ? live.age() : persisted.age(),
+                StringUtils.hasText(live.status()) ? live.status() : persisted.status()
+        );
+    }
+
+    private String routeKey(String namespace, String name) {
+        return namespace.toLowerCase(Locale.ROOT) + "/" + name.toLowerCase(Locale.ROOT);
+    }
+
+    private List<RouteSummaryDTO> collectPersistedRoutes(String namespaceFilter) {
+        List<Cluster> clusters = clusterRepository.findAll();
+        if (clusters.isEmpty()) {
+            return List.of();
+        }
+        List<RouteSummaryDTO> routes = new ArrayList<>();
+        for (Cluster cluster : clusters) {
+            if (cluster == null || !StringUtils.hasText(cluster.getDiagram())) {
+                continue;
+            }
+            try {
+                JsonNode root = objectMapper.readTree(cluster.getDiagram());
+                JsonNode rawManifests = root.path("rawManifests");
+                if (!rawManifests.isArray()) {
+                    continue;
+                }
+                for (JsonNode entry : rawManifests) {
+                    JsonNode manifestNode = entry.path("manifest");
+                    if (!manifestNode.isObject()) {
+                        continue;
+                    }
+                    String kind = textOrEmpty(entry, "kind");
+                    if (!StringUtils.hasText(kind)) {
+                        kind = textOrEmpty(manifestNode, "kind");
+                    }
+                    if (!"virtualservice".equalsIgnoreCase(kind)) {
+                        continue;
+                    }
+                    RouteSummaryDTO route = mapVirtualServiceManifest(manifestNode, cluster.getNameSpace(), cluster.getStatus());
+                    if (route == null) {
+                        continue;
+                    }
+                    if (StringUtils.hasText(namespaceFilter)
+                            && !namespaceFilter.equalsIgnoreCase(route.namespace())) {
+                        continue;
+                    }
+                    routes.add(route);
+                }
+            } catch (Exception ex) {
+                log.debug("Unable to parse persisted diagram for cluster {}: {}", cluster.getId(), ex.getMessage());
+            }
+        }
+
+        Map<String, RouteSummaryDTO> unique = new LinkedHashMap<>();
+        for (RouteSummaryDTO route : routes) {
+            if (route == null || !StringUtils.hasText(route.namespace()) || !StringUtils.hasText(route.name())) {
+                continue;
+            }
+            unique.putIfAbsent(routeKey(route.namespace(), route.name()), route);
+        }
+        return new ArrayList<>(unique.values());
+    }
+
+    private RouteSummaryDTO mapVirtualServiceManifest(JsonNode manifestNode,
+                                                      String fallbackNamespace,
+                                                      ClusterStatusEnum clusterStatus) {
+        if (manifestNode == null || !manifestNode.isObject()) {
+            return null;
+        }
+        JsonNode metadata = manifestNode.path("metadata");
+        JsonNode spec = manifestNode.path("spec");
+
+        String name = textOrEmpty(metadata, "name");
+        String namespace = textOrEmpty(metadata, "namespace");
+        if (!StringUtils.hasText(namespace)) {
+            namespace = StringUtils.hasText(fallbackNamespace) ? fallbackNamespace : "default";
+        }
+        if (!StringUtils.hasText(name)) {
+            return null;
+        }
+
+        List<String> hosts = readStringList(spec.path("hosts"));
+        String hostsValue = normalizeHosts(hosts);
+
+        String gatewayName = readStringList(spec.path("gateways")).stream().findFirst().orElse("");
+
+        String path = "/";
+        JsonNode http = spec.path("http");
+        if (http.isArray() && !http.isEmpty()) {
+            JsonNode firstHttp = http.get(0);
+            JsonNode matches = firstHttp.path("match");
+            if (matches.isArray() && !matches.isEmpty()) {
+                String prefix = textOrEmpty(matches.get(0).path("uri"), "prefix");
+                if (StringUtils.hasText(prefix)) {
+                    path = prefix;
+                }
+            }
+        }
+
+        String serviceName = "";
+        Integer servicePort = null;
+        if (http.isArray() && !http.isEmpty()) {
+            JsonNode routes = http.get(0).path("route");
+            if (routes.isArray() && !routes.isEmpty()) {
+                JsonNode destination = routes.get(0).path("destination");
+                serviceName = textOrEmpty(destination, "host");
+                String portValue = textOrEmpty(destination.path("port"), "number");
+                if (StringUtils.hasText(portValue)) {
+                    try {
+                        servicePort = Integer.parseInt(portValue);
+                    } catch (NumberFormatException ignored) {
+                        servicePort = null;
+                    }
+                }
+            }
+        }
+        String serviceTarget = StringUtils.hasText(serviceName)
+                ? serviceName + (servicePort != null ? ":" + servicePort : "")
+                : "";
+
+        String age = "saved";
+        String creationTimestamp = textOrEmpty(metadata, "creationTimestamp");
+        if (StringUtils.hasText(creationTimestamp)) {
+            age = formatAge(creationTimestamp);
+        }
+
+        String status = resolveRouteStatus(namespace, clusterStatus, false);
+        return new RouteSummaryDTO(name, namespace, hostsValue, serviceTarget, gatewayName, path, "", age, status);
+    }
+
+    private String textOrEmpty(JsonNode node, String field) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return "";
+        }
+        JsonNode value = node.path(field);
+        if (value.isMissingNode() || value.isNull()) {
+            return "";
+        }
+        String text = value.asText("");
+        return text == null ? "" : text.trim();
+    }
+
+    private List<String> readStringList(JsonNode node) {
+        if (node == null || !node.isArray()) {
+            return List.of();
+        }
+        List<String> values = new ArrayList<>();
+        for (JsonNode item : node) {
+            String value = item == null ? "" : item.asText("").trim();
+            if (StringUtils.hasText(value)) {
+                values.add(value);
+            }
+        }
+        return values;
     }
 
     public IstioGatewayInfoDTO getIstioGatewayInfo() {
@@ -666,8 +950,38 @@ public class KubernetesExplorerService {
 
         String tls = resolveGatewayTls(namespace, gatewayName);
         String age = formatAge(virtualService);
+        String status = resolveRouteStatus(namespace, null, true);
 
-        return new RouteSummaryDTO(name, namespace, hostsValue, serviceTarget, gatewayName, path, tls, age);
+        return new RouteSummaryDTO(name, namespace, hostsValue, serviceTarget, gatewayName, path, tls, age, status);
+    }
+
+    private RouteSummaryDTO withStatus(RouteSummaryDTO route, String status) {
+        return new RouteSummaryDTO(
+                route.name(),
+                route.namespace(),
+                route.hosts(),
+                route.serviceTargets(),
+                route.gatewayName(),
+                route.path(),
+                route.tls(),
+                route.age(),
+                status
+        );
+    }
+
+    private String resolveRouteStatus(String namespace, ClusterStatusEnum clusterStatus, boolean liveRoute) {
+        if (clusterStatus != null) {
+            return clusterStatus.getValue();
+        }
+        if (StringUtils.hasText(namespace)) {
+            ClusterStatusEnum resolved = clusterRepository.findByNameSpaceIgnoreCase(namespace)
+                    .map(Cluster::getStatus)
+                    .orElse(null);
+            if (resolved != null) {
+                return resolved.getValue();
+            }
+        }
+        return liveRoute ? ClusterStatusEnum.DEPLOYED.getValue() : ClusterStatusEnum.INITIALIZED.getValue();
     }
 
     private String resolveGatewayTls(String namespace, String gatewayName) {
@@ -1000,6 +1314,10 @@ public class KubernetesExplorerService {
 
     private String formatAge(HasMetadata resource) {
         String timestamp = Optional.ofNullable(resource.getMetadata()).map(meta -> meta.getCreationTimestamp()).orElse(null);
+        return formatAge(timestamp);
+    }
+
+    private String formatAge(String timestamp) {
         if (!StringUtils.hasText(timestamp)) {
             return "-";
         }

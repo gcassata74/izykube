@@ -4,6 +4,7 @@ package com.izylife.izykube.web;
 import com.izylife.izykube.dto.GenericResponseDTO;
 import com.izylife.izykube.dto.cluster.ClusterDTO;
 import com.izylife.izykube.model.Cluster;
+import com.izylife.izykube.model.ClusterVersion;
 import com.izylife.izykube.services.ClusterService;
 import com.izylife.izykube.utils.ClusterUtil;
 import lombok.AllArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -111,6 +113,40 @@ public class ClusterController {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Error deleting cluster: " + e.getMessage());
             return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @GetMapping("/namespace/{namespace}/versions")
+    public ResponseEntity<?> getNamespaceVersions(@PathVariable String namespace) {
+        try {
+            List<ClusterVersion> versions = clusterService.getNamespaceVersions(namespace);
+            return ResponseEntity.ok(versions);
+        } catch (Exception e) {
+            log.error("Error getting versions for namespace {}: {}", namespace, e.getMessage());
+            return ResponseEntity.badRequest().body("Error getting versions for namespace: " + namespace);
+        }
+    }
+
+    @GetMapping("/namespace/{namespace}/versions/latest")
+    public ResponseEntity<?> getLatestNamespaceVersion(@PathVariable String namespace) {
+        try {
+            return ResponseEntity.ok(clusterService.getLatestNamespaceVersion(namespace));
+        } catch (Exception e) {
+            log.error("Error getting latest version for namespace {}: {}", namespace, e.getMessage());
+            return ResponseEntity.badRequest().body("Error getting latest version for namespace: " + namespace);
+        }
+    }
+
+    @GetMapping("/namespace/{namespace}/versions/{versionNumber}")
+    public ResponseEntity<?> getNamespaceVersion(
+            @PathVariable String namespace,
+            @PathVariable int versionNumber
+    ) {
+        try {
+            return ResponseEntity.ok(clusterService.getNamespaceVersion(namespace, versionNumber));
+        } catch (Exception e) {
+            log.error("Error getting version {} for namespace {}: {}", versionNumber, namespace, e.getMessage());
+            return ResponseEntity.badRequest().body("Error getting version for namespace: " + namespace);
         }
     }
 

@@ -1,4 +1,5 @@
 <div class="content">
+  <p-confirmDialog></p-confirmDialog>
   <p-card class="izy-card" header="Namespaces" i18n-header="@@namespaces">
     <div class="card-content">
       <div class="izy-button-container">
@@ -50,7 +51,18 @@
                     ></button>
                   </ng-container>
                   <ng-container *ngSwitchDefault>
-                    {{ rowData[col.field] }}
+                    <ng-container *ngIf="col.field === 'nameSpace'; else defaultCell">
+                      <button
+                        pButton
+                        type="button"
+                        class="p-button-link namespace-link"
+                        (click)="openNamespaceVersions(rowData[col.field]); $event.stopPropagation()">
+                        {{ rowData[col.field] }}
+                      </button>
+                    </ng-container>
+                    <ng-template #defaultCell>
+                      {{ rowData[col.field] }}
+                    </ng-template>
                   </ng-container>
                 </ng-container>
               </td>

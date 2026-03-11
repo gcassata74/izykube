@@ -24,6 +24,6 @@ public class ClusterDTO {
     private String diagram;
     private ClusterStatusEnum status;
     @Builder.Default
-    private ExportMode exportMode = ExportMode.FLAT_YAML;
+    private String exportMode = "FLAT_YAML";
 
 }

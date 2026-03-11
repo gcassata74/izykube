@@ -44,6 +44,15 @@ public class NamespaceService {
                 });
     }
 
+    public void deleteNamespaceRecord(String name) {
+        String normalized = normalizeName(name);
+        if ("default".equalsIgnoreCase(normalized)) {
+            return;
+        }
+        namespaceRepository.findByNameIgnoreCase(normalized)
+                .ifPresent(namespaceRepository::delete);
+    }
+
     private String normalizeName(String name) {
         if (!StringUtils.hasText(name)) {
             return "default";

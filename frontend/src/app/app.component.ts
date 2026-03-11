@@ -23,6 +23,7 @@ export class AppComponent implements OnInit, OnDestroy {
   buttons$!: Observable<Button[]>;
   clusterContext$!: Observable<HeaderContext>;
   currentRoute = '/';
+  selectedNamespace: string | null = null;
   sidebarCollapsed = false;
   @ViewChild('toolbarMenu') toolbarMenu?: Menu;
   menuItems: MenuItem[] = [];
@@ -61,12 +62,13 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.routeSub = this.route$.subscribe(route => {
       this.currentRoute = route;
+      this.selectedNamespace = this.extractNamespaceFromRoute(route);
     });
   }
 
 
   navigate(route: string) {
-    this.router.navigate([route]);
+    this.router.navigateByUrl(route);
   }
 
   performAction(action: string | ButtonAction[]): void {
@@ -102,6 +104,19 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.routeSub?.unsubscribe();
+  }
+
+  private extractNamespaceFromRoute(route: string): string | null {
+    const [pathOnly] = route.split('?');
+    const match = pathOnly.match(/^\/namespaces\/([^/]+)\/versions/);
+    if (!match?.[1]) {
+      return null;
+    }
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return match[1];
+    }
   }
 
 }

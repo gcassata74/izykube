@@ -14,6 +14,7 @@ import { ClusterStatusEnum } from '../enum/cluster.-status-enum';
 import { TemplateService } from 'src/app/services/template.service';
 import { DiagramService } from 'src/app/services/diagram.service';
 import { Link } from 'src/app/model/link.class';
+import { ClusterVersion } from 'src/app/model/cluster-version.model';
 
 @Component({
   selector: 'app-cluster-editor',
@@ -65,32 +66,56 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
 
   private loadCluster(): void {
     this.subscription.add(
-      this.activatedRoute.params.pipe(
-        tap(params => {
+      combineLatest([this.activatedRoute.params, this.activatedRoute.queryParamMap]).pipe(
+        switchMap(([params, queryParams]) => {
           const id = params['id'];
-          if (id) {
-            this.clusterId = id;
-            this.clusterService.getCluster(id).pipe(
-              tap(cluster => {
-                this.handleButtonsCreation(cluster);
-                this.store.dispatch(actions.loadCluster({ cluster }))
-              }
-              ),
-              catchError(error => {
-                this.notificationService.error('Failed to load diagram');
-                console.error('Error loading cluster:', error);
-                return of(null);
-              })
-            ).subscribe();
+          if (!id) {
+            return of(null);
           }
+          this.clusterId = id;
+
+          const namespace = queryParams.get('namespace');
+          const version = Number(queryParams.get('version'));
+          const shouldLoadVersion = !!namespace && Number.isFinite(version) && version > 0;
+          if (shouldLoadVersion) {
+            return this.clusterService.getNamespaceVersion(namespace!, version).pipe(
+              map(snapshot => this.mapVersionToCluster(snapshot))
+            );
+          }
+          return this.clusterService.getCluster(id);
+        }),
+        tap(cluster => {
+          if (!cluster) {
+            return;
+          }
+          this.handleButtonsCreation(cluster);
+          this.store.dispatch(actions.loadCluster({ cluster }));
+        }),
+        catchError(error => {
+          this.notificationService.error('Failed to load diagram');
+          console.error('Error loading cluster:', error);
+          return of(null);
         })
       ).subscribe()
     );
   }
 
+  private mapVersionToCluster(snapshot: ClusterVersion): Cluster {
+    return new Cluster(
+      snapshot.clusterId || this.clusterId || null,
+      snapshot.clusterName || '',
+      snapshot.nodes || [],
+      snapshot.links || [],
+      snapshot.diagram || '',
+      snapshot.namespace || 'default',
+      ClusterStatusEnum[snapshot.status as keyof typeof ClusterStatusEnum] || ClusterStatusEnum.CREATED
+    );
+  }
+
 
   handleButtonsCreation(cluster: Cluster) {
-    this.exportActionsEnabled = cluster.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT;
+    this.exportActionsEnabled = cluster.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT
+      || cluster.status === ClusterStatusEnum.DEPLOYED;
     if (cluster.status === ClusterStatusEnum.READY_FOR_DEPLOYMENT) {
       this.createButtons("update-template");
     } else if (cluster.status === ClusterStatusEnum.DEPLOYED) {

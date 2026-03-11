@@ -12,8 +12,10 @@ import com.izylife.izykube.factory.NodeFactory;
 import com.izylife.izykube.factory.TemplateFactory;
 import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.model.ClusterTemplate;
+import com.izylife.izykube.model.ClusterVersion;
 import com.izylife.izykube.repositories.ClusterTemplateRepository;
 import com.izylife.izykube.repositories.ClusterRepository;
+import com.izylife.izykube.repositories.ClusterVersionRepository;
 import com.izylife.izykube.services.ai.ClusterYamlService;
 import com.izylife.izykube.utils.ClusterUtil;
 import io.fabric8.istio.api.networking.v1beta1.Gateway;
@@ -70,6 +72,7 @@ public class ClusterService {
     private final ClientFactory clientFactory;
     private final ClusterRepository clusterRepository;
     private final ClusterTemplateRepository clusterTemplateRepository;
+    private final ClusterVersionRepository clusterVersionRepository;
     private final TemplateFactory templateFactory;
     private final TemplateService templateService;
     private final ClusterYamlService clusterYamlService;
@@ -95,6 +98,7 @@ public class ClusterService {
             cluster.setStatus(ClusterStatusEnum.INITIALIZED);
             Cluster savedCluster = clusterRepository.save(cluster);
             namespaceService.ensureNamespaceExists(namespace);
+            saveClusterVersionSnapshot(savedCluster);
 
             return ClusterDTO.builder()
                     .id(savedCluster.getId())
@@ -121,7 +125,7 @@ public class ClusterService {
             Cluster cluster = clusterRepository.findById(clusterDTO.getId()).orElseThrow(() -> new ObjectNotFoundException("Cluster not found"));
             cluster.setId(clusterDTO.getId());
             cluster.setName(clusterDTO.getName());
-            String namespace = generateUniqueNamespace(clusterDTO.getName(), clusterDTO.getId());
+            String namespace = resolveNamespaceForUpdate(cluster, clusterDTO);
             clusterDTO.setNameSpace(namespace);
             cluster.setNameSpace(namespace);
             cluster.setNodes(sanitized.nodes());
@@ -130,6 +134,7 @@ public class ClusterService {
             cluster.setStatus(ClusterStatusEnum.CREATED);
             Cluster updatedCluster = clusterRepository.save(cluster);
             namespaceService.ensureNamespaceExists(namespace);
+            saveClusterVersionSnapshot(updatedCluster);
 
             return ClusterDTO.builder()
                     .id(updatedCluster.getId())
@@ -157,7 +162,27 @@ public class ClusterService {
 
     public void deleteCluster(String id) {
         try {
+            Cluster cluster = clusterRepository.findById(id).orElse(null);
+            if (cluster == null) {
+                return;
+            }
+
+            String namespace = cluster.getNameSpace();
+            boolean namespaceUsedByAnotherCluster = namespace != null
+                    && !namespace.isBlank()
+                    && clusterRepository.isNamespaceInUse(namespace, id);
+
+            clusterTemplateRepository.deleteByClusterId(id);
+            clusterVersionRepository.deleteByClusterId(id);
             clusterRepository.deleteById(id);
+
+            if (!namespaceUsedByAnotherCluster) {
+                boolean namespaceDeleted = deleteNamespace(namespace);
+                if (!namespaceDeleted) {
+                    log.warn("Namespace {} was not fully deleted from cluster during cluster removal", namespace);
+                }
+                namespaceService.deleteNamespaceRecord(namespace);
+            }
         } catch (Exception e) {
             log.error("Error deleting cluster: " + e.getMessage());
         }
@@ -312,7 +337,7 @@ public class ClusterService {
             Cluster existingCluster = clusterRepository.findById(id)
                     .orElseThrow(() -> new ObjectNotFoundException("Cluster not found with id: " + id));
 
-            String namespace = generateUniqueNamespace(clusterDTO.getName(), id);
+            String namespace = resolveNamespaceForUpdate(existingCluster, clusterDTO);
             clusterDTO.setNameSpace(namespace);
 
             // Generate and save the template
@@ -340,6 +365,7 @@ public class ClusterService {
             // Save the updated cluster
             Cluster updatedCluster = clusterRepository.save(existingCluster);
             namespaceService.ensureNamespaceExists(namespace);
+            saveClusterVersionSnapshot(updatedCluster);
             return updatedCluster;
 
 
@@ -664,6 +690,67 @@ public class ClusterService {
             resource.setMetadata(metadata);
         }
         metadata.setNamespace(namespace);
+    }
+
+    private String resolveNamespaceForUpdate(Cluster existingCluster, ClusterDTO incomingCluster) {
+        if (existingCluster != null && existingCluster.getNameSpace() != null && !existingCluster.getNameSpace().isBlank()) {
+            return existingCluster.getNameSpace();
+        }
+        String dtoNamespace = incomingCluster != null ? incomingCluster.getNameSpace() : null;
+        if (dtoNamespace != null && !dtoNamespace.isBlank()) {
+            return sanitizeNamespace(dtoNamespace);
+        }
+        String dtoName = incomingCluster != null ? incomingCluster.getName() : null;
+        String fallbackName = (dtoName == null || dtoName.isBlank())
+                ? (existingCluster != null ? existingCluster.getName() : null)
+                : dtoName;
+        String currentClusterId = existingCluster != null ? existingCluster.getId() : null;
+        return generateUniqueNamespace(fallbackName, currentClusterId);
+    }
+
+    private void saveClusterVersionSnapshot(Cluster cluster) {
+        if (cluster == null || cluster.getId() == null) {
+            return;
+        }
+
+        String namespace = cluster.getNameSpace();
+        if (namespace == null || namespace.isBlank()) {
+            namespace = sanitizeNamespace(cluster.getName());
+        }
+
+        int nextVersion = clusterVersionRepository
+                .findFirstByNamespaceIgnoreCaseOrderByVersionNumberDesc(namespace)
+                .map(version -> version.getVersionNumber() + 1)
+                .orElse(1);
+
+        ClusterVersion version = new ClusterVersion();
+        version.setClusterId(cluster.getId());
+        version.setClusterName(cluster.getName());
+        version.setNamespace(namespace);
+        version.setVersionNumber(nextVersion);
+        version.setDiagram(cluster.getDiagram());
+        version.setNodes(cluster.getNodes());
+        version.setLinks(cluster.getLinks());
+        version.setStatus(cluster.getStatus());
+        version.setCreatedAt(Instant.now());
+        clusterVersionRepository.save(version);
+    }
+
+    public List<ClusterVersion> getNamespaceVersions(String namespace) {
+        if (namespace == null || namespace.isBlank()) {
+            return List.of();
+        }
+        return clusterVersionRepository.findByNamespaceIgnoreCaseOrderByVersionNumberDesc(namespace);
+    }
+
+    public ClusterVersion getNamespaceVersion(String namespace, int versionNumber) throws ObjectNotFoundException {
+        return clusterVersionRepository.findByNamespaceIgnoreCaseAndVersionNumber(namespace, versionNumber)
+                .orElseThrow(() -> new ObjectNotFoundException("Version not found"));
+    }
+
+    public ClusterVersion getLatestNamespaceVersion(String namespace) throws ObjectNotFoundException {
+        return clusterVersionRepository.findFirstByNamespaceIgnoreCaseOrderByVersionNumberDesc(namespace)
+                .orElseThrow(() -> new ObjectNotFoundException("Version not found"));
     }
 
     private boolean isClusterScopedKind(String kind) {

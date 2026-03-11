@@ -118,7 +118,6 @@ public class ClusterYamlService {
         Map<String, DeploymentInfo> deploymentInfoMap = new HashMap<>();
         Map<String, ServiceInfo> serviceInfoMap = new HashMap<>();
         List<IngressInfo> ingressInfoList = new ArrayList<>();
-        List<VirtualServiceInfo> virtualServiceInfoList = new ArrayList<>();
 
         String namespace = "default";
 
@@ -139,6 +138,11 @@ public class ClusterYamlService {
                 String name = getString(metadata, "name", kind + "-" + randomSuffix());
                 metadata.put("name", name);
                 namespace = Optional.ofNullable(getString(metadata, "namespace", null)).orElse(namespace);
+
+                if ("virtualservice".equals(kind) || "gateway".equals(kind) || "istio".equals(kind)) {
+                    log.info("Skipping {} '{}' during import: routes must be configured manually", kind, name);
+                    continue;
+                }
 
                 ManifestEntry manifestEntry = new ManifestEntry(kind, name, manifest);
                 manifests.add(manifestEntry);
@@ -170,11 +174,6 @@ public class ClusterYamlService {
                         nodes.add(artifacts.node);
                         ingressInfoList.add(artifacts.info);
                     }
-                    case "virtualservice" -> {
-                        VirtualServiceArtifacts artifacts = buildVirtualServiceNode(name, manifest);
-                        nodes.add(artifacts.node);
-                        virtualServiceInfoList.add(artifacts.info);
-                    }
                     default -> log.info("Skipping unsupported manifest kind: {}", kind);
                 }
             }
@@ -185,7 +184,6 @@ public class ClusterYamlService {
         linkConfigAndSecretResources(links, manifests, deploymentInfoMap);
         linkServicesToWorkloads(links, serviceInfoMap, deploymentInfoMap);
         linkIngressTargets(links, ingressInfoList, serviceInfoMap);
-        linkVirtualServiceTargets(links, virtualServiceInfoList, serviceInfoMap);
 
         List<LinkDTO> mergedLinks = mergeDuplicates(links);
         List<Map<String, Object>> manifestSnapshots = manifests.stream()
@@ -946,7 +944,8 @@ public class ClusterYamlService {
         manifest.put("apiVersion", "v1");
         manifest.put("kind", "ServiceAccount");
 
-        Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
+        Map<String, Object> metadata = new LinkedHashMap<>(Optional.ofNullable(getMap(manifest, "metadata"))
+                .orElseGet(LinkedHashMap::new));
         metadata.put("name", name);
         metadata.put("namespace", namespace);
         if (node.getLabels() != null && !node.getLabels().isEmpty()) {
@@ -1362,7 +1361,8 @@ public class ClusterYamlService {
         manifest.put("apiVersion", manifest.getOrDefault("apiVersion", "v1"));
         manifest.put("kind", secret ? "Secret" : "ConfigMap");
 
-        Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
+        Map<String, Object> metadata = new LinkedHashMap<>(Optional.ofNullable(getMap(manifest, "metadata"))
+                .orElseGet(LinkedHashMap::new));
         metadata.putIfAbsent("name", resourceName);
         metadata.putIfAbsent("namespace", namespace);
         manifest.put("metadata", metadata);
@@ -1659,7 +1659,8 @@ public class ClusterYamlService {
         metadata.putIfAbsent("namespace", resolveNamespace(node));
         manifest.put("metadata", metadata);
 
-        Map<String, Object> spec = Optional.ofNullable(getMap(manifest, "spec")).orElseGet(LinkedHashMap::new);
+        Map<String, Object> spec = new LinkedHashMap<>(Optional.ofNullable(getMap(manifest, "spec"))
+                .orElseGet(LinkedHashMap::new));
         if (workloadType == DeploymentWorkloadType.DAEMONSET) {
             spec.remove("replicas");
         } else {
@@ -1667,20 +1668,26 @@ public class ClusterYamlService {
         }
         if (workloadType == DeploymentWorkloadType.STATEFULSET) {
             spec.remove("strategy");
-            Map<String, Object> updateStrategy = Optional.ofNullable(getMap(spec, "updateStrategy")).orElseGet(LinkedHashMap::new);
+            Map<String, Object> updateStrategy = new LinkedHashMap<>(Optional.ofNullable(getMap(spec, "updateStrategy"))
+                    .orElseGet(LinkedHashMap::new));
             updateStrategy.put("type", node.getStrategyType());
             spec.put("updateStrategy", updateStrategy);
         } else {
-            Map<String, Object> strategy = Optional.ofNullable(getMap(spec, "strategy")).orElseGet(LinkedHashMap::new);
+            Map<String, Object> strategy = new LinkedHashMap<>(Optional.ofNullable(getMap(spec, "strategy"))
+                    .orElseGet(LinkedHashMap::new));
             strategy.put("type", node.getStrategyType());
             spec.put("strategy", strategy);
             spec.remove("updateStrategy");
         }
-        Map<String, Object> template = Optional.ofNullable(getMap(spec, "template")).orElseGet(LinkedHashMap::new);
-        Map<String, Object> templateMetadata = Optional.ofNullable(getMap(template, "metadata")).orElseGet(LinkedHashMap::new);
-        Map<String, Object> podAnnotations = Optional.ofNullable(getMap(templateMetadata, "annotations")).orElseGet(LinkedHashMap::new);
+        Map<String, Object> template = new LinkedHashMap<>(Optional.ofNullable(getMap(spec, "template"))
+                .orElseGet(LinkedHashMap::new));
+        Map<String, Object> templateMetadata = new LinkedHashMap<>(Optional.ofNullable(getMap(template, "metadata"))
+                .orElseGet(LinkedHashMap::new));
+        Map<String, Object> podAnnotations = new LinkedHashMap<>(Optional.ofNullable(getMap(templateMetadata, "annotations"))
+                .orElseGet(LinkedHashMap::new));
         podAnnotations.put("sidecar.istio.io/inject", node.isAddToMesh() ? "true" : "false");
-        Map<String, Object> podLabels = Optional.ofNullable(getMap(templateMetadata, "labels")).orElseGet(LinkedHashMap::new);
+        Map<String, Object> podLabels = new LinkedHashMap<>(Optional.ofNullable(getMap(templateMetadata, "labels"))
+                .orElseGet(LinkedHashMap::new));
         if (node.isAddToMesh()) {
             podLabels.put("sidecar.istio.io/inject", "true");
         } else {
@@ -1695,7 +1702,8 @@ public class ClusterYamlService {
             templateMetadata.put("labels", podLabels);
         }
         template.put("metadata", templateMetadata);
-        Map<String, Object> templateSpec = Optional.ofNullable(getMap(template, "spec")).orElseGet(LinkedHashMap::new);
+        Map<String, Object> templateSpec = new LinkedHashMap<>(Optional.ofNullable(getMap(template, "spec"))
+                .orElseGet(LinkedHashMap::new));
         applyPrimaryContainerSpec(node, templateSpec);
         applyAttachedContainerSpecs(node, templateSpec, targetsBySource, sourcesByTarget, links);
         applyLinkedConfigReferences(node, templateSpec, targetsBySource, sourcesByTarget);

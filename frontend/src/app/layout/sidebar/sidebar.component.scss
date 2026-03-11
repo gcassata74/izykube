@@ -14,7 +14,6 @@
   gap: 1rem;
   border-right: 1px solid rgba(15, 23, 42, 0.5);
   min-height: 0;
-  overflow: hidden;
 }
 
 .app-sidebar--collapsed {
@@ -39,7 +38,6 @@
 .app-sidebar__nav {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
 }
 
 .sidebar-item {
@@ -113,6 +111,27 @@
   border-top: 1px solid rgba(148, 163, 184, 0.2);
   margin-top: 0.5rem;
   padding-top: 1rem;
+}
+
+.sidebar-submenu {
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.sidebar-submenu__title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.8);
+  padding: 0.35rem 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-item--submenu {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
 }
 
 @media (max-height: 700px) {

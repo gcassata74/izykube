@@ -630,6 +630,17 @@ body {
   }
 }
 
+// Unified empty state for PrimeNG table empty-message rows
+.izy-table-empty-message {
+  width: 100%;
+  text-align: center;
+  color: var(--izy-text-muted, #64748b);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 0.5rem 0;
+}
+
 /* Service and Ingress form helpers */
 .service-form__connections {
   margin: 0;

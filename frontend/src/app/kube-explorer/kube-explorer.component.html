@@ -279,6 +279,7 @@
                             <th i18n>Hosts</th>
                             <th i18n>Services</th>
                             <th i18n>TLS</th>
+                            <th i18n>Status</th>
                             <th i18n>Age</th>
                             <th class="text-center" i18n>YAML</th>
                         </tr>
@@ -290,6 +291,7 @@
                             <td>{{ route.hosts || '-' }}</td>
                             <td>{{ route.serviceTargets || '-' }}</td>
                             <td>{{ route.tls || '-' }}</td>
+                            <td>{{ route.status || '-' }}</td>
                             <td>{{ route.age }}</td>
                             <td class="text-center">
                               <button

@@ -8,6 +8,7 @@ public record RouteSummaryDTO(
         String gatewayName,
         String path,
         String tls,
-        String age
+        String age,
+        String status
 ) {
 }

@@ -16,6 +16,7 @@ import { ConfirmationService } from 'primeng/api';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RoutesComponent implements OnInit {
+  private readonly webPorts = new Set<number>([80, 81, 443, 8080, 8081, 8443, 3000, 4200, 5000, 5173, 8000, 8888, 9000]);
   namespaces: NamespaceOption[] = [];
   selectedNamespace = 'all';
   routes: RouteSummary[] = [];
@@ -149,14 +150,13 @@ export class RoutesComponent implements OnInit {
     }
     const serviceName = this.extractPrimaryServiceName(route.serviceTargets);
     const servicePort = this.extractPrimaryServicePort(route.serviceTargets);
-    const override = this.getHttpsOverride(route.namespace, route.name);
     this.createForm.reset({
       name: route.name,
       host: route.hosts?.includes('<all hosts>') ? '' : route.hosts,
       path: route.path || '/',
       serviceName,
       servicePort,
-      httpsEnabled: override ?? !!route.tls
+      httpsEnabled: this.isTlsConfigured(route)
     });
     this.onServiceChange(serviceName);
     this.createDialogVisible = true;
@@ -192,6 +192,14 @@ export class RoutesComponent implements OnInit {
       this.notificationService.warn(
         $localize`:@@routes.warn.servicePortRequiredTitle:Service port required`,
         $localize`:@@routes.warn.servicePortRequiredDetail:Select a service port before saving the route.`
+      );
+      this.createForm.get('servicePort')?.markAsTouched();
+      return;
+    }
+    if (!this.isWebPort(Number(formValue.servicePort))) {
+      this.notificationService.warn(
+        $localize`:@@routes.warn.nonHttpPortTitle:Unsupported route type`,
+        $localize`:@@routes.warn.nonHttpPortDetail:HTTP/HTTPS routes are allowed only for web service ports. Configure TCP routes manually for database/message-broker ports.`
       );
       this.createForm.get('servicePort')?.markAsTouched();
       return;
@@ -337,8 +345,16 @@ export class RoutesComponent implements OnInit {
   }
 
   getRouteUrl(route: RouteSummary): string | null {
+    const routePort = this.extractPrimaryServicePort(route.serviceTargets);
+    if (!this.isWebPort(routePort)) {
+      return null;
+    }
     const useTls = this.prefersTls(route);
     return this.buildRouteUrl(route, useTls);
+  }
+
+  isTlsConfigured(route: RouteSummary): boolean {
+    return this.prefersTls(route);
   }
 
   onTestRouteClick(event: Event, route: RouteSummary): void {
@@ -415,6 +431,10 @@ export class RoutesComponent implements OnInit {
   }
 
   canOpenRoute(route: RouteSummary, useTls: boolean): boolean {
+    const routePort = this.extractPrimaryServicePort(route.serviceTargets);
+    if (!this.isWebPort(routePort)) {
+      return false;
+    }
     const host = this.selectRouteHost(route);
     if (!host) {
       return false;
@@ -451,5 +471,17 @@ export class RoutesComponent implements OnInit {
       return this.gatewayInfo?.host || '';
     }
     return trimmedHosts.split(',')[0]?.trim() || this.gatewayInfo?.host || '';
+  }
+
+  isSelectedServicePortWeb(): boolean {
+    const servicePort = Number(this.createForm?.get('servicePort')?.value);
+    if (Number.isNaN(servicePort) || servicePort < 1) {
+      return true;
+    }
+    return this.isWebPort(servicePort);
+  }
+
+  private isWebPort(port: number | null): boolean {
+    return typeof port === 'number' && this.webPorts.has(port);
   }
 }

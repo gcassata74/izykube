@@ -67,6 +67,27 @@
   padding: 24px 12px;
   text-align: center;
 }
+
+:host ::ng-deep .routes-row--tls > td {
+  background: linear-gradient(90deg, rgba(22, 163, 74, 0.08) 0%, rgba(22, 163, 74, 0.03) 55%, rgba(255, 255, 255, 1) 100%);
+}
+
+.routes-tls-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f3f4f6;
+}
+
+.routes-tls-chip--on {
+  color: #166534;
+  background: #dcfce7;
+}
+
 .routes-form {
   display: flex;
   flex-direction: column;

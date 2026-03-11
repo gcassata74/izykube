@@ -1,0 +1,220 @@
+# IzyKube full import demo
+# Supported by current importer: ConfigMap, Secret, Deployment, StatefulSet, DaemonSet, Service, VirtualService
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-config
+  namespace: izykube-demo
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  FEATURE_FLAG: "true"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: web-secret
+  namespace: izykube-demo
+type: Opaque
+data:
+  DB_USER: ZGVtbw==
+  DB_PASSWORD: c3VwZXJzZWNyZXQ=
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: izykube-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.27
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: web-config
+            - secretRef:
+                name: web-secret
+          env:
+            - name: APP_NAME
+              value: izykube-demo
+            - name: DB_USER_FROM_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: web-secret
+                  key: DB_USER
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app
+  namespace: izykube-demo
+spec:
+  selector:
+    app: web-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: public-gateway
+  namespace: izykube-demo
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - web.demo.local
+        - db.demo.local
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: web-app-vs
+  namespace: izykube-demo
+spec:
+  hosts:
+    - web.demo.local
+  gateways:
+    - public-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: web-app
+            port:
+              number: 80
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: postgres-vs
+  namespace: izykube-demo
+spec:
+  hosts:
+    - db.demo.local
+  gateways:
+    - public-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: postgres-headless
+            port:
+              number: 5432
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-config
+  namespace: izykube-demo
+data:
+  POSTGRES_DB: appdb
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+  namespace: izykube-demo
+type: Opaque
+data:
+  POSTGRES_USER: YXBwdXNlcg==
+  POSTGRES_PASSWORD: YXBwcGFzcw==
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: izykube-demo
+spec:
+  serviceName: postgres-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: db-config
+            - secretRef:
+                name: db-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+  namespace: izykube-demo
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - name: tcp-postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: izykube-demo
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+    spec:
+      containers:
+        - name: exporter
+          image: prom/node-exporter:v1.8.2
+          ports:
+            - containerPort: 9100
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-exporter
+  namespace: izykube-demo
+spec:
+  selector:
+    app: node-exporter
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: 9100

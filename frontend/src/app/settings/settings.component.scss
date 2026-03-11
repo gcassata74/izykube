@@ -29,6 +29,39 @@
   gap: 1rem;
 }
 
+.settings__content ::ng-deep .p-tabview {
+  background: transparent;
+}
+
+.settings__content ::ng-deep .p-tabview-nav {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  gap: 0.35rem;
+}
+
+.settings__content ::ng-deep .p-tabview-nav li .p-tabview-nav-link {
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #64748b;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.settings__content ::ng-deep .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+  border-color: #334155;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.settings__content ::ng-deep .p-tabview-panels {
+  background: transparent;
+  border: none;
+  padding: 1rem 0 0;
+}
+
 .settings-card {
   display: flex;
   align-items: center;
@@ -48,4 +81,11 @@
 .settings-card__subtitle {
   margin: 0.35rem 0 0;
   color: var(--text-color-secondary);
+}
+
+@media (max-width: 900px) {
+  .settings-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
