@@ -248,7 +248,6 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
           this.syncDiagramNodeNames();
           this.syncContainerRolesFromCluster();
           this.syncWorkloadTypesFromCluster();
-          this.syncAffectedStateFromCluster();
           this.syncConfigBundleMetaFromCluster();
           this.syncLinkMetadataFromCluster();
           this.refreshWorkloadHealth();
@@ -2447,46 +2446,6 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
       }
       this.updateDiagramData();
     }
-  }
-
-  private syncAffectedStateFromCluster(): void {
-    if (!this.currentClusterSnapshot?.nodes?.length || !this.nodes?.length) {
-      return;
-    }
-
-    const affectedMap = new Map<string, boolean>();
-    this.currentClusterSnapshot.nodes.forEach((node: any) => {
-      if (node?.id) {
-        affectedMap.set(node.id, !!node?.isAffected);
-      }
-    });
-
-    if (!affectedMap.size) {
-      const hasExistingFlags = this.nodes.some(node => node.isAffected);
-      if (!hasExistingFlags) {
-        return;
-      }
-    }
-
-    let hasChanges = false;
-    const updatedNodes = this.nodes.map(node => {
-      const shouldBlink = affectedMap.get(node.id) ?? false;
-      if (!!node.isAffected === shouldBlink) {
-        return node;
-      }
-      hasChanges = true;
-      return { ...node, isAffected: shouldBlink };
-    });
-
-    if (!hasChanges) {
-      return;
-    }
-
-    this.nodes = updatedNodes;
-    if (this.selectedNode) {
-      this.selectedNode = this.nodes.find(n => n.id === this.selectedNode!.id) ?? null;
-    }
-    this.updateDiagramData();
   }
 
   private syncConfigBundleMetaFromCluster(): void {

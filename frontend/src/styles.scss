@@ -48,6 +48,9 @@
   --izy-ink: #0b1224;
   --izy-table-glow: rgba(37, 99, 235, 0.08);
   --izy-table-border: #e2e8f0;
+  --izy-button-radius: 8px;
+  --izy-button-height: 2.25rem;
+  --izy-dialog-footer-gap: 10px;
 }
 
 // Color Palette
@@ -112,6 +115,45 @@ $sidebar-width: 200px;
 //-----------------------------------------------------------------------------
 
 body {
+  .p-button {
+    border-radius: var(--izy-button-radius);
+    min-height: var(--izy-button-height);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition: box-shadow 0.2s ease, transform 0.15s ease, background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .p-button.p-button-icon-only {
+    width: var(--izy-button-height);
+    min-width: var(--izy-button-height);
+    padding: 0;
+  }
+
+  .p-button:enabled:focus {
+    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.2);
+  }
+
+  .p-dialog .p-dialog-footer {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: var(--izy-dialog-footer-gap);
+  }
+
+  .p-dialog .p-dialog-footer .p-button {
+    margin: 0;
+  }
+
+  .p-datatable .p-datatable-tbody > tr > td .p-button,
+  p-table .p-datatable-tbody > tr > td .p-button {
+    min-height: auto;
+    font-weight: 400;
+    letter-spacing: normal;
+    box-shadow: none;
+    transition: none;
+  }
+
   // Float Label Base
   .p-float-label {
     position: relative;

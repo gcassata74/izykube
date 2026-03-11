@@ -52,7 +52,7 @@ describe('generateManifestsFromBundle', () => {
     const manifest = manifests[0];
     expect(manifest.kind).toBe('Secret');
     expect(manifest.metadata.name).toBe('secrets-only');
-    expect(manifest.stringData).toEqual({ DB_PASSWORD: 's3cret' });
+    expect(manifest.data).toEqual({ DB_PASSWORD: 'czNjcmV0' });
     expect(manifest.type).toBe('Opaque');
   });
 
@@ -83,8 +83,8 @@ describe('generateManifestsFromBundle', () => {
 
     expect(secret.metadata.name).toBe('mixed');
     expect(secret.metadata.annotations).toEqual({ 'izylife.io/managed': 'true' });
-    expect(secret.stringData).toEqual({
-      DB_PASSWORD: 's3cret'
+    expect(secret.data).toEqual({
+      DB_PASSWORD: 'czNjcmV0'
     });
   });
 });

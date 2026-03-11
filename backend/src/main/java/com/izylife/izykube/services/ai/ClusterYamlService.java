@@ -298,7 +298,9 @@ public class ClusterYamlService {
 
         updateRbacManifests(manifestsByName, nodesById, links, namespace);
 
-        return new ArrayList<>(manifestsByName.values());
+        List<ManifestEntry> normalizedEntries = new ArrayList<>(manifestsByName.values());
+        normalizeSecretManifests(normalizedEntries);
+        return normalizedEntries;
     }
 
     private void applyAccessPoliciesToWorkloads(Map<String, NodeDTO> nodesById, List<LinkDTO> links, String namespace) {
@@ -952,6 +954,41 @@ public class ClusterYamlService {
         String resourceName = resolveResourceName(node);
         Map<String, Object> manifest = buildKeyValueManifest(node, resourceName, true);
         manifests.put(node.getId(), new ManifestEntry("secret", resourceName, manifest));
+    }
+
+    private void normalizeSecretManifests(List<ManifestEntry> manifestEntries) {
+        if (manifestEntries == null || manifestEntries.isEmpty()) {
+            return;
+        }
+        for (ManifestEntry entry : manifestEntries) {
+            if (entry == null || entry.getManifest() == null) {
+                continue;
+            }
+            Map<String, Object> manifest = entry.getManifest();
+            String kind = getString(manifest, "kind", "");
+            if (!"secret".equalsIgnoreCase(kind)) {
+                continue;
+            }
+
+            Map<String, Object> normalizedData = new LinkedHashMap<>();
+            Map<String, Object> data = getMap(manifest, "data");
+            if (data != null) {
+                data.forEach((key, value) -> {
+                    String normalized = normalizeScalar(value);
+                    normalizedData.put(String.valueOf(key), encodeSecretValue(decodeSecretValue(normalized)));
+                });
+            }
+            Map<String, Object> stringData = getMap(manifest, "stringData");
+            if (stringData != null) {
+                stringData.forEach((key, value) -> {
+                    String normalized = normalizeScalar(value);
+                    normalizedData.put(String.valueOf(key), encodeSecretValue(normalized));
+                });
+                manifest.remove("stringData");
+            }
+            manifest.put("type", getString(manifest, "type", "Opaque"));
+            manifest.put("data", normalizedData);
+        }
     }
 
     private void updateServiceAccountManifest(ServiceAccountDTO node, Map<String, ManifestEntry> manifests) {

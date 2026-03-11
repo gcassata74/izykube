@@ -147,7 +147,10 @@ export class ClusterEditorComponent implements OnInit, OnDestroy {
               break;
             case 'export-cluster-yaml':
               if (!this.exportActionsEnabled) {
-                this.notificationService.warn('Template required', 'Generate the template before exporting YAML.');
+                this.notificationService.warn(
+                  $localize`:@@clusterEditor.warn.templateRequiredTitle:Template required`,
+                  $localize`:@@clusterEditor.warn.templateRequiredDetail:Generate the template before exporting YAML.`
+                );
                 handler$ = of(null);
                 break;
               }

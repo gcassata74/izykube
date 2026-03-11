@@ -156,7 +156,10 @@ export class DeploymentFormComponent implements OnInit, OnChanges, OnDestroy {
         const namespace = this.clusterNamespace || 'default';
         const name = this.form.get('name')?.value;
         if (!name) {
-          this.notificationService.warn('Deployment name required', 'Set a deployment name before updating mesh.');
+          this.notificationService.warn(
+            $localize`:@@deploymentForm.warn.nameRequiredTitle:Deployment name required`,
+            $localize`:@@deploymentForm.warn.nameRequiredDetail:Set a deployment name before updating mesh.`
+          );
           return;
         }
         this.kubeExplorerService.setDeploymentMesh(namespace, name, !!enabled).subscribe({

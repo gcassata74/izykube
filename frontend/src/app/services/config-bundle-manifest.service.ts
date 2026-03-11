@@ -9,7 +9,6 @@ export interface GeneratedManifest {
     annotations?: Record<string, string>;
   };
   data?: Record<string, string>;
-  stringData?: Record<string, string>;
   type?: string;
 }
 
@@ -75,9 +74,22 @@ function createSecretManifest(
       ...(metadataExtras.annotations ? { annotations: metadataExtras.annotations } : {})
     },
     type: 'Opaque',
-    stringData: entries.reduce<Record<string, string>>((acc, entry) => {
-      acc[entry.key] = entry.value ?? '';
+    data: entries.reduce<Record<string, string>>((acc, entry) => {
+      acc[entry.key] = encodeBase64(entry.value ?? '');
       return acc;
     }, {})
   };
+}
+
+function encodeBase64(value: string): string {
+  const input = value ?? '';
+  if (typeof btoa === 'function') {
+    const bytes = new TextEncoder().encode(input);
+    let binary = '';
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte);
+    });
+    return btoa(binary);
+  }
+  return input;
 }

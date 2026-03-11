@@ -89,7 +89,10 @@ export class ResourceSyncService implements OnDestroy {
     if (response?.synced) {
       this.store.dispatch(updateNode({ nodeId: resourceId, formValues: { isAffected: false } }));
     } else if (response?.message) {
-      this.notificationService.warn('Restart result', response.message);
+      this.notificationService.warn(
+        $localize`:@@resourceSync.warn.restartResultTitle:Restart result`,
+        response.message
+      );
     }
   }
 
