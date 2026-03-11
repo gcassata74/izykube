@@ -1,233 +1,168 @@
 # IzyKube
 
-<p align="center">
-  <img src="./assets/izykube-logo.png" alt="IzyKube Logo" width="300"/>
-</p>
+IzyKube is a web application for modeling Kubernetes namespaces, generating manifests, and applying them to a target cluster.
+The UI is diagram-based and uses `interact.js` + SVG for node/link editing.
 
-<p align="center">
-  A visual Kubernetes resource editor and deployment tool
-</p>
+## Scope
 
-## Overview
+IzyKube supports:
 
-IzyKube is an open-source visual editor for Kubernetes resources. It allows users to create, configure, and deploy
-Kubernetes components using an intuitive drag-and-drop interface. The application simplifies Kubernetes deployments
-through visual representation of resources and their relationships.
+- namespace modeling with version snapshots
+- visual editing of workloads and related resources
+- template generation and deployment/undeployment
+- runtime inspection from Kubernetes
+- optional YAML import/export and Helm export
 
-### Key Features
+## Technology Stack
 
-- 🔄 **Interactive Diagram Editor** - Visually build your Kubernetes resources with drag-and-drop functionality
-- 🔌 **Resource Linking** - Create connections between resources like Services, Deployments, ConfigMaps, etc.
-- 🚀 **One-Click Deployment** - Deploy your resources to Kubernetes with a single click
-- 📝 **Form-Based Configuration** - Configure resources using intuitive forms
-- 🔍 **Template Preview** - See the generated YAML before deployment
-- 📊 **Status Monitoring** - Keep track of deployed resources
+- Frontend: Angular
+- Backend: Spring Boot
+- Persistence: MongoDB
+- Cluster API: Kubernetes (Fabric8 client)
+- Diagram interactions: interact.js
 
-### Diagram Connection Guidelines
+## Repository Layout
 
-When linking nodes in the diagram, follow these UML-style dependency rules:
+- `frontend/`: Angular client
+- `backend/`: Spring Boot API and orchestration logic
+- `yaml/`: Kubernetes manifests used by setup flows
+- `docs/`: project documentation
+- `Makefile`: local development and cluster bootstrap commands
 
-- `Ingress → Service → Deployment` handles incoming traffic.
-- `Service → Deployment` routes cluster-internal traffic to workloads.
-- `ConfigMap` / `Secret` / `Volume → Deployment` provide configuration and mounts.
-- `Job → Deployment` (or Container) models episodic workflows triggered by existing workloads.
-- Connections should always point from the dependent to the dependency (arrow points toward what is required).
+## Prerequisites
 
-## Getting Started
-
-### Prerequisites
-
-- Java 17 or higher
-- Node.js 18 or higher
-- Angular CLI 16 or higher
+- Java 21
+- Node.js 18+ (20 recommended)
+- npm
 - Docker
-- A Kubernetes environment (k3d, minikube, or access to a cluster)
+- Kubernetes cluster access (k3d/minikube/remote)
 
-### Installation
+## Local Development
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/izykube.git
-   cd izykube
-   ```
-
-2. Set up the backend (Spring Boot):
-   ```bash
-   cd backend
-   ./mvnw clean install
-   ```
-
-3. Set up the frontend (Angular):
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-### Running the Application
-
-You can use our Makefile to simplify running the application:
+### Start backend
 
 ```bash
-# Start the Spring Boot backend
 make run-spring-boot-server
+```
 
-# In another terminal, start the Angular frontend
+### Start frontend
+
+```bash
 make run-angular-client
+```
 
-# For debugging, open Chrome with special flags
+### Optional: open a dev browser profile
+
+```bash
 make run-chrome-dev
 ```
 
-Alternatively, run the applications directly:
+## Build Commands
+
+### Backend
 
 ```bash
-# Backend
-cd backend
-./mvnw spring-boot:run
-# This command automatically builds the Angular UI (via the Maven frontend plugin)
-# and serves the compiled assets directly from the Spring Boot backend. Set
-# -Dskip.frontend.build=true to skip the UI build when not needed.
-
-# Frontend
-cd frontend
-ng serve
+./mvnw -pl backend -am -DskipTests clean package
 ```
 
-### Setting Up a Local Kubernetes Environment
-
-IzyKube includes Makefile commands to easily set up a local Kubernetes environment using k3d:
+### Frontend
 
 ```bash
-# Create a k3d registry
+npm -C frontend install --legacy-peer-deps
+npm -C frontend run build -- --configuration production
+```
+
+## Kubernetes Bootstrap (k3d)
+
+```bash
 make create-k3d-registry
-
-# Create a k3d cluster with the registry
 make create-k3d-cluster
+```
 
-# Or do both in one command
+or:
+
+```bash
 make start-k3d-cluster
+```
 
-# Set up a cluster with Istio installed
+with Istio:
+
+```bash
 make start-k3d-cluster-with-istio
+```
 
-# Delete the cluster
+cleanup:
+
+```bash
 make delete-k3d-cluster
-
-# Delete the registry
 make delete-k3d-registry
-
-# Restart the cluster (delete and recreate)
-make restart-k3d-cluster
 ```
 
-### Internationalization
+## Optional Services
 
-IzyKube supports multiple languages. Use the following Makefile commands for i18n:
-
-```bash
-# Extract i18n messages
-make run-i18n-extract
-
-# Build with specific locale (e.g., French)
-make run-i18n-build LOCALE=fr
-
-# Serve with specific locale
-make run-i18n-serve LOCALE=fr
-```
-
-### Local AI Assist (Ollama)
-
-The ConfigMap editor and diagram builder can leverage a local large language model through Ollama. We ship a helper
-Compose file that runs the official Ollama image and exposes the API expected by IzyKube.
+### Ollama (local AI integration)
 
 ```bash
-# Start Ollama in the background (downloads the image on first run)
 docker compose -f docker-compose.ollama.yaml up -d
-
-# Verify the container is healthy
 docker compose -f docker-compose.ollama.yaml ps
 ```
 
-Once the container is running you can pull models, for example:
+Default backend settings are in:
+
+- `backend/src/main/resources/application.yaml`
+
+### Grafana port-forward from Makefile
 
 ```bash
-docker exec -it izykube-ollama ollama pull mistral
+make grafana-port-forward
 ```
 
-By default the backend connects to `http://localhost:11434` and requests the `mistral` model.
-Adjust `ai.local.base-url` or `ai.local.model` in `backend/src/main/resources/application.yaml` if you run Ollama
-elsewhere
-or want to use a different model. You can also tune the HTTP timeouts with `ai.local.connect-timeout-ms`
-and `ai.local.read-timeout-ms` when a heavier model needs longer to respond.
+This forwards Grafana to `http://localhost:3000`.
 
-## Architecture
+## Functional Notes
 
-IzyKube consists of:
+### Diagram link conventions
 
-1. **Frontend**: Angular application using interact.js + SVG for diagram editing
-2. **Backend**: Spring Boot application that interacts with the Kubernetes API
-3. **Database**: MongoDB for storing cluster templates and configurations
+- `Ingress -> Service -> Deployment`
+- `Service -> Deployment`
+- `ConfigMap/Secret/Volume -> Deployment`
+- `Job -> Deployment` or `Job -> Container` (when modeled that way)
 
-<p align="center">
-  <img src="./assets/architecture.png" alt="IzyKube Architecture" width="600"/>
-</p>
+### Namespace versions
 
-## Usage Guide
+- versions are stored and listed per namespace
+- each row can be opened in diagram view
+- rows can be deleted from the versions grid
 
-### Creating a New Cluster
-
-1. Navigate to the Clusters view
-2. Click "Add" to create a new cluster
-3. Provide a name and namespace
-4. Open the cluster diagram editor
-
-### Building a Deployment
-
-1. Drag and drop resources from the palette
-2. Connect resources by dragging from one node to another
-3. Configure each resource using the form editor
-4. Save your diagram
-
-### Deploying to Kubernetes
-
-1. Click "Create Template" to generate Kubernetes manifests
-2. Review the generated YAML
-3. Click "Deploy" to apply the resources to your cluster
-
-## Contributing
-
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and
-the process for submitting pull requests.
-
-### Makefile Reference
-
-The project includes a comprehensive Makefile to simplify development tasks:
+## Makefile Reference
 
 | Command                             | Description                                                             |
 |-------------------------------------|-------------------------------------------------------------------------|
-| `make run-spring-boot-server`       | Start the Spring Boot backend with debugging enabled                    |
-| `make run-angular-client`           | Start the Angular frontend (and kill any existing process on port 4200) |
-| `make run-chrome-dev`               | Open Chrome with flags for development and debugging                    |
-| `make create-docker-registry`       | Create a Docker registry container                                      |
-| `make create-k3d-registry`          | Create a k3d registry                                                   |
-| `make delete-docker-registry`       | Remove the Docker registry container                                    |
-| `make delete-k3d-registry`          | Delete the k3d registry                                                 |
-| `make create-k3d-cluster`           | Create a k3d cluster configured for use with IzyKube                    |
-| `make delete-k3d-cluster`           | Delete the k3d cluster                                                  |
-| `make start-k3d-cluster`            | Create registry and cluster in one command                              |
-| `make restart-k3d-cluster`          | Delete and recreate the k3d cluster                                     |
-| `make install-istio`                | Install Istio service mesh into the cluster                             |
-| `make start-k3d-cluster-with-istio` | Create cluster and install Istio                                        |
-| `make run-i18n-extract`             | Extract i18n messages from the Angular frontend                         |
-| `make run-i18n-build LOCALE=xx`     | Build the app with a specific locale                                    |
-| `make run-i18n-serve LOCALE=xx`     | Serve the app with a specific locale                                    |
+| `make run-spring-boot-server`       | Build and start backend jar with debug port                             |
+| `make run-angular-client`           | Start Angular dev server                                                 |
+| `make run-chrome-dev`               | Open Chrome dev profile                                                  |
+| `make create-k3d-registry`          | Create k3d registry                                                      |
+| `make create-k3d-cluster`           | Create k3d cluster                                                       |
+| `make start-k3d-cluster`            | Create registry and cluster                                              |
+| `make restart-k3d-cluster`          | Recreate k3d cluster                                                     |
+| `make install-istio`                | Install Istio                                                            |
+| `make start-k3d-cluster-with-istio` | Create cluster and install Istio                                         |
+| `make install-cluster-addons`       | Install OLM, cert-manager, Istio gateway, Prometheus, Grafana, Ollama   |
+| `make grafana-port-forward`         | Start Grafana port-forward on `localhost:3000`                          |
+| `make run-i18n-extract`             | Extract i18n messages                                                    |
+| `make run-i18n-build LOCALE=xx`     | Build with locale                                                        |
+| `make run-i18n-serve LOCALE=xx`     | Serve with locale                                                        |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+For code changes, use small PRs with:
+
+- clear problem statement
+- scope-limited diff
+- build/test evidence
 
 ## License
 
-This project is licensed under the [Apache License 2.0](LICENSE) - see the LICENSE file for details.
-
-## Acknowledgments
-
-- [interact.js](https://interactjs.io/) for drag/drop and node interactions in the diagram editor
-- [Kubernetes](https://kubernetes.io/) and [Spring Boot](https://spring.io/projects/spring-boot) communities
-- All [contributors](https://github.com/yourusername/izykube/contributors) who have helped shape IzyKube
+See [LICENSE.md](LICENSE.md).
