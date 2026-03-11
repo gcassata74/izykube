@@ -98,6 +98,30 @@
     </span>
   </div>
 
+  <div class="p-field">
+    <span class="p-float-label">
+      <textarea
+        id="command"
+        pInputTextarea
+        formControlName="command"
+        [autoResize]="true"
+        rows="2"></textarea>
+      <label for="command" i18n="@@deploymentCommand">Command (one per line)</label>
+    </span>
+  </div>
+
+  <div class="p-field">
+    <span class="p-float-label">
+      <textarea
+        id="args"
+        pInputTextarea
+        formControlName="args"
+        [autoResize]="true"
+        rows="3"></textarea>
+      <label for="args" i18n="@@deploymentArgs">Args (one per line)</label>
+    </span>
+  </div>
+
   <div class="p-field-checkbox">
     <div class="flex items-center" style="margin-bottom: 12px;">
       <p-checkbox id="addToMesh"

@@ -4,6 +4,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -18,6 +20,8 @@ public class DeploymentDTO extends NodeDTO {
     private String serviceAccountName;
     private boolean addToMesh;
     private DeploymentWorkloadType workloadType = DeploymentWorkloadType.DEPLOYMENT;
+    private List<String> command = new ArrayList<>();
+    private List<String> args = new ArrayList<>();
 
     public DeploymentDTO(String id, String name, int replicas, String strategyType, String assetId, Integer containerPort) {
         this(id, name, replicas, strategyType, assetId, containerPort, DeploymentWorkloadType.DEPLOYMENT, null);

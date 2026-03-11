@@ -75,6 +75,11 @@ public class NamespaceResourceService {
         }
 
         String namespace = resolveNamespaceName(namespaceIdentifier);
+        if (!namespaceExists(namespace)) {
+            String message = "Namespace " + namespace + " not found. Re-apply skipped.";
+            log.info(message);
+            return new ResourceSyncStatusDTO(resourceId, false, message);
+        }
         Cluster cluster = clusterRepository.findByNameSpaceIgnoreCase(namespace)
                 .orElseThrow(() -> new ObjectNotFoundException("Cluster not found for namespace: " + namespace));
 
@@ -87,6 +92,8 @@ public class NamespaceResourceService {
         boolean replaced = false;
         for (int i = 0; i < nodes.size(); i++) {
             if (resourceId.equals(nodes.get(i).getId())) {
+                NodeDTO existingNode = nodes.get(i);
+                preserveDeploymentRuntimeArgs(existingNode, sanitizedNode);
                 nodes.set(i, sanitizedNode);
                 replaced = true;
                 break;
@@ -133,6 +140,36 @@ public class NamespaceResourceService {
             message = syncOutcome.message();
         }
         return new ResourceSyncStatusDTO(resourceId, syncOutcome.synced(), message);
+    }
+
+    private boolean namespaceExists(String namespace) {
+        if (!StringUtils.hasText(namespace)) {
+            return false;
+        }
+        try {
+            KubernetesClient client = (KubernetesClient) clientFactory.getClient("kubernetes");
+            return client.namespaces().withName(namespace).get() != null;
+        } catch (Exception ex) {
+            log.warn("Unable to verify namespace {} existence: {}", namespace, ex.getMessage());
+            return false;
+        }
+    }
+
+    private void preserveDeploymentRuntimeArgs(NodeDTO existingNode, NodeDTO updatedNode) {
+        if (!(existingNode instanceof DeploymentDTO existingDeployment)
+                || !(updatedNode instanceof DeploymentDTO updatedDeployment)) {
+            return;
+        }
+        if ((updatedDeployment.getCommand() == null || updatedDeployment.getCommand().isEmpty())
+                && existingDeployment.getCommand() != null
+                && !existingDeployment.getCommand().isEmpty()) {
+            updatedDeployment.setCommand(new ArrayList<>(existingDeployment.getCommand()));
+        }
+        if ((updatedDeployment.getArgs() == null || updatedDeployment.getArgs().isEmpty())
+                && existingDeployment.getArgs() != null
+                && !existingDeployment.getArgs().isEmpty()) {
+            updatedDeployment.setArgs(new ArrayList<>(existingDeployment.getArgs()));
+        }
     }
 
     private void applyResourceYaml(NodeDTO node, String namespace) {

@@ -27,6 +27,7 @@ import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Event;
 import io.fabric8.kubernetes.api.model.EventList;
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -904,7 +905,13 @@ public class KubernetesExplorerService {
                 .stream()
                 .map(port -> {
                     String protocol = StringUtils.hasText(port.getProtocol()) ? port.getProtocol() : "";
-                    return port.getPort() + (StringUtils.hasText(protocol) ? "/" + protocol : "");
+                    String mapping = String.valueOf(port.getPort());
+                    IntOrString targetPort = port.getTargetPort();
+                    Integer targetInt = targetPort != null ? targetPort.getIntVal() : null;
+                    if (targetInt != null && targetInt > 0 && targetInt != port.getPort()) {
+                        mapping = mapping + "->" + targetInt;
+                    }
+                    return mapping + (StringUtils.hasText(protocol) ? "/" + protocol : "");
                 })
                 .collect(Collectors.joining(", "));
 

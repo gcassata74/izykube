@@ -11,6 +11,8 @@ export class Deployment extends Node {
   serviceAccountName?: string | null;
   addToMesh?: boolean;
   override workloadType: WorkloadType;
+  command: string[];
+  args: string[];
 
   constructor(
     id: string,
@@ -22,7 +24,9 @@ export class Deployment extends Node {
     workloadType: WorkloadType = 'DEPLOYMENT',
     serviceAccountRef: string | null = null,
     serviceAccountName: string | null = null,
-    addToMesh: boolean = false
+    addToMesh: boolean = false,
+    command: string[] = [],
+    args: string[] = []
   ) {
     super(id, name, 'deployment');
     this.replicas = replicas;
@@ -33,5 +37,7 @@ export class Deployment extends Node {
     this.serviceAccountRef = serviceAccountRef;
     this.serviceAccountName = serviceAccountName;
     this.addToMesh = addToMesh;
+    this.command = command;
+    this.args = args;
   }
 }

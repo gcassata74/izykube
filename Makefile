@@ -31,7 +31,8 @@ run-angular-client:
 	cd frontend && npx kill-port 4200 || true && npm start
 
 run-spring-boot-server:
-	cd backend && MAVEN_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005" mvn spring-boot:run
+	./mvnw -pl backend -am -DskipTests clean package
+	java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -jar backend/target/backend-0.0.1-SNAPSHOT.jar
 
 create-docker-registry:
 	docker run -d --name izyregistry -p 5000:5000 --restart=always registry:2
@@ -189,4 +190,5 @@ create-izykube-system:
 	kubectl create namespace izykube-system --dry-run=client -o yaml | kubectl apply -f -
 
 build-backend:
-	mvn -pl backend spring-boot:run -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+	./mvnw -pl backend -am -DskipTests clean package
+	java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -jar backend/target/backend-0.0.1-SNAPSHOT.jar

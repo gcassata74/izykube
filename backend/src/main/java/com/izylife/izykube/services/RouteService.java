@@ -9,6 +9,7 @@ import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.repositories.ClusterRepository;
 import com.izylife.izykube.web.request.RouteCreateRequest;
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
+import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -105,7 +106,7 @@ public class RouteService {
         String name = request.getName().trim();
         String tlsSecret = resolveTlsSecret(request, namespace, name);
 
-        validateServiceTarget(namespace, request.getServiceName().trim(), request.getServicePort());
+        ServicePort matchedServicePort = validateServiceTarget(namespace, request.getServiceName().trim(), request.getServicePort());
 
         if (StringUtils.hasText(tlsSecret)) {
             GenericKubernetesResource certificate = buildCertificate(request, SHARED_GATEWAY_NAMESPACE, buildCertificateName(namespace, name), tlsSecret);
@@ -115,7 +116,7 @@ public class RouteService {
             updateSharedGatewayTls(request, null);
         }
 
-        GenericKubernetesResource virtualService = buildVirtualService(request, namespace, name);
+        GenericKubernetesResource virtualService = buildVirtualService(request, namespace, name, matchedServicePort.getPort());
         createOrReplaceWithFallback(VIRTUALSERVICE_CONTEXT, VIRTUALSERVICE_CONTEXT_V1ALPHA3, namespace, virtualService);
 
         GenericKubernetesResource created = getWithFallback(VIRTUALSERVICE_CONTEXT, VIRTUALSERVICE_CONTEXT_V1ALPHA3, namespace, name);
@@ -166,7 +167,7 @@ public class RouteService {
         String trimmedNamespace = namespace.trim();
         String trimmedName = name.trim();
 
-        validateServiceTarget(trimmedNamespace, request.getServiceName().trim(), request.getServicePort());
+        ServicePort matchedServicePort = validateServiceTarget(trimmedNamespace, request.getServiceName().trim(), request.getServicePort());
 
         String tlsSecret = resolveTlsSecret(request, trimmedNamespace, trimmedName);
         if (StringUtils.hasText(tlsSecret)) {
@@ -178,7 +179,7 @@ public class RouteService {
             removeSharedGatewayTls(trimmedNamespace, trimmedName);
         }
 
-        GenericKubernetesResource virtualService = buildVirtualService(request, trimmedNamespace, trimmedName);
+        GenericKubernetesResource virtualService = buildVirtualService(request, trimmedNamespace, trimmedName, matchedServicePort.getPort());
 
         GenericKubernetesResource result = createOrReplaceWithFallback(VIRTUALSERVICE_CONTEXT, VIRTUALSERVICE_CONTEXT_V1ALPHA3, trimmedNamespace, virtualService);
 
@@ -235,11 +236,11 @@ public class RouteService {
         return gateway;
     }
 
-    private GenericKubernetesResource buildVirtualService(RouteCreateRequest request, String namespace, String name) {
+    private GenericKubernetesResource buildVirtualService(RouteCreateRequest request, String namespace, String name, int resolvedServicePort) {
         String host = StringUtils.hasText(request.getHost()) ? request.getHost().trim() : "*";
         String path = StringUtils.hasText(request.getPath()) ? request.getPath().trim() : "/";
         String serviceName = request.getServiceName().trim();
-        int servicePort = request.getServicePort();
+        int servicePort = resolvedServicePort;
 
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("name", name);
@@ -491,7 +492,7 @@ public class RouteService {
         }
     }
 
-    private void validateServiceTarget(String namespace, String serviceName, int servicePort) {
+    private ServicePort validateServiceTarget(String namespace, String serviceName, int servicePort) {
         io.fabric8.kubernetes.api.model.Service service = kubernetesClient.services()
                 .inNamespace(namespace)
                 .withName(serviceName)
@@ -499,20 +500,30 @@ public class RouteService {
         if (service == null) {
             throw new IllegalArgumentException("Service not found: " + serviceName);
         }
-        ServicePort matchedPort = Optional.ofNullable(service.getSpec())
+        List<ServicePort> ports = Optional.ofNullable(service.getSpec())
                 .map(spec -> spec.getPorts())
                 .orElse(List.of())
                 .stream()
                 .filter(Objects::nonNull)
+                .toList();
+        ServicePort matchedPort = ports.stream()
                 .filter(port -> port.getPort() == servicePort)
                 .findFirst()
-                .orElse(null);
+                .orElseGet(() -> ports.stream()
+                        .filter(port -> {
+                            IntOrString target = port.getTargetPort();
+                            Integer intVal = target != null ? target.getIntVal() : null;
+                            return intVal != null && intVal == servicePort;
+                        })
+                        .findFirst()
+                        .orElse(null));
         if (matchedPort == null) {
             throw new IllegalArgumentException("Service port " + servicePort + " not found on service " + serviceName);
         }
         if (!isHttpLikePort(matchedPort)) {
             throw new IllegalArgumentException("HTTP/HTTPS routes are allowed only for web service ports. Selected port: " + servicePort);
         }
+        return matchedPort;
     }
 
     private boolean isHttpLikePort(ServicePort port) {

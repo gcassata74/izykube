@@ -352,7 +352,6 @@ public class ClusterService {
 
             ensureNamespaceMaterialized(namespace);
             applyTemplate(template, namespace);
-            triggerDeploymentUpdates(clusterDTO);
 
             // Update the cluster entity with new data
             existingCluster.setName(clusterDTO.getName());
@@ -373,61 +372,6 @@ public class ClusterService {
             throw new RuntimeException("Failed to patch cluster: " + id, e);
         } catch (Exception e) {
             throw new RuntimeException("Unexpected error while patching cluster: " + id, e);
-        }
-    }
-
-    private void triggerDeploymentUpdates(ClusterDTO clusterDTO) {
-        String namespace = clusterDTO.getNameSpace();
-        if (namespace == null || namespace.isBlank()) {
-            namespace = sanitizeNamespace(clusterDTO.getName());
-        }
-        List<NodeDTO> configMaps = new ArrayList<>(ClusterUtil.findNodesByKind(clusterDTO, "configmap"));
-        configMaps.addAll(ClusterUtil.findNodesByKind(clusterDTO, "secret"));
-
-        for (NodeDTO configMap : configMaps) {
-            List<DeploymentDTO> connectedDeployments = ClusterUtil.findTargetNodesOf(clusterDTO, configMap.getId())
-                    .stream()
-                    .filter(DeploymentDTO.class::isInstance)
-                    .map(DeploymentDTO.class::cast)
-                    .collect(Collectors.toList());
-
-            for (DeploymentDTO deployment : connectedDeployments) {
-                restartWorkload(deployment, namespace);
-            }
-        }
-    }
-
-    private void restartWorkload(DeploymentDTO deployment, String namespace) {
-        KubernetesClient k8sClient = (KubernetesClient) clientFactory.getClient("kubernetes");
-        String resolvedNamespace = (namespace == null || namespace.isBlank()) ? "default" : namespace;
-        String timestamp = Instant.now().toString();
-
-        DeploymentWorkloadType workloadType = deployment.resolveWorkloadType();
-        switch (workloadType) {
-            case STATEFULSET -> k8sClient.apps().statefulSets()
-                    .inNamespace(resolvedNamespace)
-                    .withName(deployment.getName())
-                    .edit(s -> new StatefulSetBuilder(s)
-                            .editSpec().editTemplate().editMetadata()
-                            .addToAnnotations("kubectl.kubernetes.io/restartedAt", timestamp)
-                            .endMetadata().endTemplate().endSpec()
-                            .build());
-            case DAEMONSET -> k8sClient.apps().daemonSets()
-                    .inNamespace(resolvedNamespace)
-                    .withName(deployment.getName())
-                    .edit(ds -> new DaemonSetBuilder(ds)
-                            .editSpec().editTemplate().editMetadata()
-                            .addToAnnotations("kubectl.kubernetes.io/restartedAt", timestamp)
-                            .endMetadata().endTemplate().endSpec()
-                            .build());
-            default -> k8sClient.apps().deployments()
-                    .inNamespace(resolvedNamespace)
-                    .withName(deployment.getName())
-                    .edit(d -> new DeploymentBuilder(d)
-                            .editSpec().editTemplate().editMetadata()
-                            .addToAnnotations("kubectl.kubernetes.io/restartedAt", timestamp)
-                            .endMetadata().endTemplate().endSpec()
-                            .build());
         }
     }
 

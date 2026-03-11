@@ -417,9 +417,33 @@ public class ClusterYamlService {
         info.containerPorts.addAll(extractContainerPorts(podSpec));
 
         info.containerPorts.stream().findFirst().ifPresent(port -> deploymentNode.setContainerPort(port));
+        List<Map<String, Object>> containers = getList(podSpec, "containers");
+        if (containers != null && !containers.isEmpty()) {
+            Map<String, Object> primaryContainer = containers.get(0);
+            deploymentNode.setCommand(extractStringArray(primaryContainer, "command"));
+            deploymentNode.setArgs(extractStringArray(primaryContainer, "args"));
+        }
         resolveAssetIdFromPodSpec(podSpec).ifPresent(deploymentNode::setAssetId);
 
         return new DeploymentArtifacts(deploymentNode, info);
+    }
+
+    private List<String> extractStringArray(Map<String, Object> source, String key) {
+        List<Object> raw = getList(source, key);
+        if (raw == null || raw.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<String> values = new ArrayList<>();
+        for (Object item : raw) {
+            if (item == null) {
+                continue;
+            }
+            String value = String.valueOf(item).trim();
+            if (!value.isEmpty()) {
+                values.add(value);
+            }
+        }
+        return values;
     }
 
     private Optional<String> resolveAssetIdFromPodSpec(Map<String, Object> podSpec) {

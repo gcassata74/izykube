@@ -44,6 +44,8 @@ interface DiagramNode {
   height?: number;
   role?: ContainerRole;
   workloadType?: 'DEPLOYMENT' | 'STATEFULSET' | 'DAEMONSET';
+  command?: string[];
+  args?: string[];
   isAffected?: boolean;
   forwardActive?: boolean;
   element?: HTMLElement;
@@ -1393,6 +1395,11 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     if (type === 'deployment') {
       const workloadSource = (overrides?.workloadType || rawNode?.workloadType) as string | undefined;
       normalized.workloadType = workloadSource ? (workloadSource.toString().toUpperCase() as DiagramNode['workloadType']) : 'DEPLOYMENT';
+      normalized.command = this.normalizeStringArray(overrides?.command ?? rawNode?.command);
+      normalized.args = this.normalizeStringArray(overrides?.args ?? rawNode?.args);
+    } else {
+      delete normalized.command;
+      delete normalized.args;
     }
 
     if (type === 'container') {
@@ -1409,6 +1416,15 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     return normalized;
+  }
+
+  private normalizeStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map((entry) => String(entry ?? '').trim())
+      .filter((entry) => !!entry);
   }
 
   private createNodes(): DragDropData[] {
@@ -3246,7 +3262,9 @@ export class DiagramComponent implements OnInit, OnDestroy, AfterViewInit {
         isAffected: !!n.isAffected,
         ...(n.type === 'accesspolicy' && n.rbacNodeType ? { rbacNodeType: n.rbacNodeType } : {}),
         ...(n.type === 'container' && n.role ? { role: n.role } : {}),
-        ...(n.type === 'deployment' && n.workloadType ? { workloadType: n.workloadType } : {})
+        ...(n.type === 'deployment' && n.workloadType ? { workloadType: n.workloadType } : {}),
+        ...(n.type === 'deployment' && Array.isArray(n.command) ? { command: n.command } : {}),
+        ...(n.type === 'deployment' && Array.isArray(n.args) ? { args: n.args } : {})
       })),
       links: serializedLinks,
       rawManifests: this.rawManifests

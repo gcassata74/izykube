@@ -9,6 +9,7 @@ import io.fabric8.kubernetes.api.model.ContainerBuilder;
 import io.fabric8.kubernetes.api.model.VolumeMount;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 
@@ -51,13 +52,20 @@ public class ContainerProcessor implements TemplateProcessor<ContainerDTO> {
                 ? deployment.getContainerPort()
                 : 80;
 
-        return new ContainerBuilder()
+        ContainerBuilder builder = new ContainerBuilder()
                 .withName(deployment.getName())
                 .withImage(asset.getImage())
                 .withVolumeMounts(volumeMounts)
                 .addNewPort()
                 .withContainerPort(port)
                 .endPort()
-                .build();
+                ;
+        if (!CollectionUtils.isEmpty(deployment.getCommand())) {
+            builder.withCommand(deployment.getCommand());
+        }
+        if (!CollectionUtils.isEmpty(deployment.getArgs())) {
+            builder.withArgs(deployment.getArgs());
+        }
+        return builder.build();
     }
 }

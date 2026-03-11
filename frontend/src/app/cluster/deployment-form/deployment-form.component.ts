@@ -60,7 +60,9 @@ export class DeploymentFormComponent implements OnInit, OnChanges, OnDestroy {
       assetId: [this.selectedNode.assetId || '', Validators.required],
       containerPort: [this.selectedNode.containerPort ?? 80, [Validators.required, Validators.min(1)]],
       workloadType: [this.selectedNode.workloadType ?? 'DEPLOYMENT', Validators.required],
-      addToMesh: [this.selectedNode.addToMesh ?? false]
+      addToMesh: [this.selectedNode.addToMesh ?? false],
+      command: [this.stringifyRuntimeList(this.selectedNode.command)],
+      args: [this.stringifyRuntimeList(this.selectedNode.args)]
     });
     this.meshToggleReady = false;
     queueMicrotask(() => {
@@ -80,7 +82,9 @@ export class DeploymentFormComponent implements OnInit, OnChanges, OnDestroy {
       assetId: node.assetId || '',
       containerPort: node.containerPort ?? 80,
       workloadType: node.workloadType ?? 'DEPLOYMENT',
-      addToMesh: node.addToMesh ?? false
+      addToMesh: node.addToMesh ?? false,
+      command: this.stringifyRuntimeList(node.command),
+      args: this.stringifyRuntimeList(node.args)
     }, { emitEvent: false });
     queueMicrotask(() => {
       this.meshToggleReady = true;
@@ -99,7 +103,14 @@ export class DeploymentFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private setupAutoSave() {
-    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, this.form.valueChanges);
+    const runtimeAwareChanges$ = this.form.valueChanges.pipe(
+      map((value) => ({
+        ...value,
+        command: this.parseRuntimeList(value?.command),
+        args: this.parseRuntimeList(value?.args)
+      }))
+    );
+    this.autoSaveService.enableAutoSave(this.form, this.selectedNode.id, runtimeAwareChanges$);
     const workloadTypeControl = this.form.get('workloadType');
     if (workloadTypeControl) {
       this.subscription.add(
@@ -113,6 +124,23 @@ export class DeploymentFormComponent implements OnInit, OnChanges, OnDestroy {
         })
       );
     }
+  }
+
+  private stringifyRuntimeList(values?: string[] | null): string {
+    if (!values || values.length === 0) {
+      return '';
+    }
+    return values.join('\n');
+  }
+
+  private parseRuntimeList(raw: unknown): string[] {
+    if (typeof raw !== 'string') {
+      return [];
+    }
+    return raw
+      .split('\n')
+      .map((entry) => entry.trim())
+      .filter((entry) => !!entry);
   }
 
   private setupMeshToggleListener(): void {

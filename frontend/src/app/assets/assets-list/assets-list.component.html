@@ -6,11 +6,27 @@
       </div>
     </ng-template>
     <div class="card-content">
-      <div class="button-container">
+      <div class="toolbar-container">
+        <span class="p-input-icon-left search-input">
+          <i class="pi pi-search"></i>
+          <input
+            pInputText
+            type="text"
+            (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+            i18n-placeholder="@@assets.searchPlaceholder"
+            placeholder="Search assets..." />
+        </span>
         <button pButton type="button" label="Add" i18n-label="@@common.add" icon="pi pi-plus" class="p-button-outlined izy-primary-button"
                 (click)="addAsset()"></button>
       </div>
-      <p-table class="izy-table" [value]="(assets$ | async) || []" [paginator]="true" [rows]="10" styleClass="p-datatable-rounded">
+      <p-table
+        #dt
+        class="izy-table"
+        [value]="(assets$ | async) || []"
+        [globalFilterFields]="['name', 'type', 'version', 'port', 'image']"
+        [paginator]="true"
+        [rows]="10"
+        styleClass="p-datatable-rounded">
         <ng-template pTemplate="header">
           <tr>
             <th *ngFor="let col of cols">{{col.header}}</th>

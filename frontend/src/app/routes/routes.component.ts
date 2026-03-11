@@ -166,9 +166,11 @@ export class RoutesComponent implements OnInit {
     const service = this.services.find((svc) => svc.name === serviceName);
     const ports = this.parseServicePorts(service?.ports);
     this.servicePortOptions = ports;
-    if (ports.length === 1) {
+    const currentPort = Number(this.createForm.get('servicePort')?.value);
+    const hasCurrentPort = !Number.isNaN(currentPort) && ports.includes(currentPort);
+    if (!hasCurrentPort && ports.length === 1) {
       this.createForm.get('servicePort')?.setValue(ports[0]);
-    } else if (!ports.includes(this.createForm.get('servicePort')?.value)) {
+    } else if (!hasCurrentPort) {
       this.createForm.get('servicePort')?.setValue(null);
     }
     this.createForm.get('servicePort')?.markAsTouched();
@@ -401,12 +403,20 @@ export class RoutesComponent implements OnInit {
     if (!ports) {
       return [];
     }
-    return ports
+    const parsed = new Set<number>();
+    ports
       .split(',')
       .map((entry) => entry.trim())
-      .map((entry) => entry.split('/')[0])
-      .map((entry) => Number(entry))
-      .filter((entry) => !Number.isNaN(entry));
+      .forEach((entry) => {
+        const [portMapping] = entry.split('/');
+        const parts = portMapping.split('->').map((part) => part.trim()).filter((part) => !!part);
+        const preferredPort = parts.length > 1 ? parts[1] : parts[0];
+        const value = Number(preferredPort);
+        if (!Number.isNaN(value)) {
+          parsed.add(value);
+        }
+      });
+    return Array.from(parsed).sort((a, b) => a - b);
   }
 
   private extractPrimaryServiceName(services?: string): string {
