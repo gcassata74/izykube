@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { KubeExplorerComponent } from './kube-explorer.component';
 import { KubeExplorerService } from '../services/kube-explorer.service';
 import { NotificationService } from '../services/notification.service';
+import { PortForwardService } from '../services/port-forward.service';
 
 describe('KubeExplorerComponent (row actions)', () => {
   let fixture: ComponentFixture<KubeExplorerComponent>;
@@ -44,6 +45,7 @@ describe('KubeExplorerComponent (row actions)', () => {
       providers: [
         { provide: KubeExplorerService, useValue: kubeExplorerService },
         { provide: NotificationService, useValue: { error: () => {}, success: () => {}, warn: () => {} } },
+        { provide: PortForwardService, useValue: { listActiveForwards: () => of([]), stopForward: () => of({}) } },
         { provide: ChangeDetectorRef, useValue: { markForCheck: () => {} } },
       ],
     }).compileComponents();

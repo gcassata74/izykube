@@ -7,6 +7,7 @@ import { DeploymentFormComponent } from './deployment-form.component';
 import { AutoSaveService } from '../../services/auto-save.service';
 import { AssetService } from '../../services/asset.service';
 import { NotificationService } from '../../services/notification.service';
+import { KubeExplorerService } from '../../services/kube-explorer.service';
 
 describe('DeploymentFormComponent', () => {
   let component: DeploymentFormComponent;
@@ -21,6 +22,7 @@ describe('DeploymentFormComponent', () => {
       providers: [
         { provide: AssetService, useValue: { getAssets: () => of([]) } },
         { provide: NotificationService, useValue: { success: () => {}, warn: () => {}, error: () => {} } },
+        { provide: KubeExplorerService, useValue: { setDeploymentMesh: () => of({}) } },
       ],
       schemas: [NO_ERRORS_SCHEMA],
     });

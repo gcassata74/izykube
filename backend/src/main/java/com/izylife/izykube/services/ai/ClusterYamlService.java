@@ -139,13 +139,13 @@ public class ClusterYamlService {
                 metadata.put("name", name);
                 namespace = Optional.ofNullable(getString(metadata, "namespace", null)).orElse(namespace);
 
+                ManifestEntry manifestEntry = new ManifestEntry(kind, name, manifest);
+                manifests.add(manifestEntry);
+
                 if ("virtualservice".equals(kind) || "gateway".equals(kind) || "istio".equals(kind)) {
                     log.info("Skipping {} '{}' during import: routes must be configured manually", kind, name);
                     continue;
                 }
-
-                ManifestEntry manifestEntry = new ManifestEntry(kind, name, manifest);
-                manifests.add(manifestEntry);
 
                 switch (kind) {
                     case "configmap", "secret" -> nodes.add(buildConfigMapNode(name, manifest));
@@ -2295,18 +2295,69 @@ public class ClusterYamlService {
         manifests.entrySet().removeIf(entry ->
                 entry.getKey().equals(node.getId()) || entry.getKey().startsWith(node.getId() + ":"));
 
-        String gatewayName = trimName(node.getName()) + "-gateway";
-        updateGatewayManifestEntry(node.getId() + ":gateway", gatewayName, resolveNamespace(node), node.getHost(), node.getTls(), manifests);
+        String resourceName = trimName(node.getName());
+        ManifestEntry entry = manifests.get(resourceName);
+        if (entry == null || !"ingress".equals(entry.kind)) {
+            entry = new ManifestEntry("ingress", resourceName, createBaseIngressManifest(node));
+            manifests.put(resourceName, entry);
+        }
 
-        VirtualServiceDTO virtualService = new VirtualServiceDTO(
-                node.getId(),
-                node.getName(),
-                node.getHost(),
-                node.getPath(),
-                node.getServiceName(),
-                node.getServicePort()
-        );
-        updateVirtualServiceManifestEntry(virtualService, manifests);
+        Map<String, Object> manifest = entry.manifest;
+        manifest.put("apiVersion", "networking.k8s.io/v1");
+        manifest.put("kind", "Ingress");
+
+        Map<String, Object> metadata = Optional.ofNullable(getMap(manifest, "metadata")).orElseGet(LinkedHashMap::new);
+        metadata.put("name", resourceName);
+        metadata.putIfAbsent("namespace", resolveNamespace(node));
+        applyAnnotations(metadata, node.getAnnotations());
+        manifest.put("metadata", metadata);
+
+        updateIngressManifest(manifest, node);
+    }
+
+    private Map<String, Object> createBaseIngressManifest(IngressDTO node) {
+        Map<String, Object> manifest = new LinkedHashMap<>();
+        manifest.put("apiVersion", "networking.k8s.io/v1");
+        manifest.put("kind", "Ingress");
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("name", trimName(node.getName()));
+        metadata.put("namespace", resolveNamespace(node));
+        manifest.put("metadata", metadata);
+        manifest.put("spec", new LinkedHashMap<>());
+        return manifest;
+    }
+
+    private void updateIngressManifest(Map<String, Object> manifest, IngressDTO node) {
+        Map<String, Object> spec = Optional.ofNullable(getMap(manifest, "spec")).orElseGet(LinkedHashMap::new);
+        String host = StringUtils.hasText(node.getHost()) ? node.getHost().trim() : "example.com";
+        String path = StringUtils.hasText(node.getPath()) ? node.getPath().trim() : "/";
+        String serviceName = StringUtils.hasText(node.getServiceName()) ? node.getServiceName().trim() : trimName(node.getName()) + "-service";
+        int servicePort = node.getServicePort() > 0 ? node.getServicePort() : 80;
+
+        Map<String, Object> backendService = new LinkedHashMap<>();
+        backendService.put("name", serviceName);
+        backendService.put("port", Map.of("number", servicePort));
+
+        Map<String, Object> pathEntry = new LinkedHashMap<>();
+        pathEntry.put("path", path);
+        pathEntry.put("pathType", "Prefix");
+        pathEntry.put("backend", Map.of("service", backendService));
+
+        Map<String, Object> rule = new LinkedHashMap<>();
+        rule.put("host", host);
+        rule.put("http", Map.of("paths", List.of(pathEntry)));
+        spec.put("rules", List.of(rule));
+
+        if (StringUtils.hasText(node.getTls())) {
+            spec.put("tls", List.of(Map.of(
+                    "hosts", List.of(host),
+                    "secretName", node.getTls().trim()
+            )));
+        } else {
+            spec.remove("tls");
+        }
+
+        manifest.put("spec", spec);
     }
 
     private void updateVirtualServiceManifestEntry(VirtualServiceDTO node, Map<String, ManifestEntry> manifests) {

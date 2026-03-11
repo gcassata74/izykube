@@ -3,6 +3,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { of } from 'rxjs';
 import { provideMockStore } from '@ngrx/store/testing';
+import { ConfirmationService } from 'primeng/api';
 import { ClusterListComponent } from './cluster-list.component';
 import { ClusterService } from '../../services/cluster.service';
 import { TemplateService } from '../../services/template.service';
@@ -33,6 +34,7 @@ describe('ClusterListComponent', () => {
         { provide: TemplateService, useValue: { createTemplate: () => of({}), deleteTemplate: () => of({}) } },
         { provide: NotificationService, useValue: { success: () => {}, error: () => {}, warn: () => {} } },
         { provide: AiAssistantService, useValue: { exportHelmChart: () => of({}), exportYaml: () => of({}) } },
+        { provide: ConfirmationService, useValue: { confirm: () => {} } },
         provideMockStore({ selectors: [{ selector: getClusters, value: [] }] })
       ],
       schemas: [NO_ERRORS_SCHEMA]

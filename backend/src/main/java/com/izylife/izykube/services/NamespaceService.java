@@ -21,16 +21,21 @@ public class NamespaceService {
 
     public Namespace createNamespace(String name, String description) {
         String normalized = normalizeName(name);
-        Namespace namespace = namespaceRepository.findByNameIgnoreCase(normalized)
+        return namespaceRepository.findByNameIgnoreCase(normalized)
+                .map(existing -> {
+                    if (description != null) {
+                        existing.setDescription(description);
+                    }
+                    return existing;
+                })
                 .orElseGet(() -> {
-                    Namespace ns = new Namespace();
-                    ns.setName(normalized);
-                    return ns;
+                    Namespace namespace = new Namespace();
+                    namespace.setName(normalized);
+                    if (description != null) {
+                        namespace.setDescription(description);
+                    }
+                    return namespaceRepository.save(namespace);
                 });
-        if (description != null) {
-            namespace.setDescription(description);
-        }
-        return namespaceRepository.save(namespace);
     }
 
     public Namespace ensureNamespaceExists(String name) {

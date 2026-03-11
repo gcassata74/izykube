@@ -176,9 +176,12 @@ export class DeploymentFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    const selectedNodeId = this.selectedNode?.id;
     const workloadType = String(this.form?.get('workloadType')?.value ?? this.selectedNode?.workloadType ?? 'DEPLOYMENT').toUpperCase();
     if (workloadType === 'DEPLOYMENT' || workloadType === 'STATEFULSET' || workloadType === 'DAEMONSET') {
-      this.autoSaveService.flushPendingChanges(this.selectedNode.id, { workloadType });
+      if (selectedNodeId) {
+        this.autoSaveService.flushPendingChanges(selectedNodeId, { workloadType });
+      }
     }
     this.subscription.unsubscribe();
   }

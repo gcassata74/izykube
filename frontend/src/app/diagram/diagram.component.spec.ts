@@ -2,7 +2,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { of } from 'rxjs';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { EMPTY, of } from 'rxjs';
+import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
+import { DropdownModule } from 'primeng/dropdown';
+import { InputTextareaModule } from 'primeng/inputtextarea';
+import { OverlayPanelModule } from 'primeng/overlaypanel';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { DiagramComponent } from './diagram.component';
 import { IconService } from '../services/icon.service';
 import { DiagramService } from '../services/diagram.service';
@@ -13,6 +20,9 @@ import { PodShellService } from '../services/pod-shell.service';
 import { ClusterStatusEnum } from '../cluster/enum/cluster.-status-enum';
 import { ConfigurationChangeService } from '../services/configuration-change.service';
 import { ResourceSyncService } from '../services/resource-sync.service';
+import { KubeExplorerService } from '../services/kube-explorer.service';
+import { ClusterService } from '../services/cluster.service';
+import { LinkUpdateService } from '../services/link-update.service';
 
 class MockIconService {
   getIconPath(name: string) {
@@ -60,7 +70,17 @@ describe('DiagramComponent', () => {
     notificationService = jasmine.createSpyObj('NotificationService', ['success', 'warn', 'error']);
     TestBed.configureTestingModule({
       declarations: [DiagramComponent],
-      imports: [CommonModule, FormsModule],
+      imports: [
+        CommonModule,
+        FormsModule,
+        NoopAnimationsModule,
+        ButtonModule,
+        DialogModule,
+        DropdownModule,
+        InputTextareaModule,
+        OverlayPanelModule,
+        ProgressSpinnerModule
+      ],
       providers: [
         { provide: IconService, useClass: MockIconService },
         { provide: DiagramService, useClass: MockDiagramService },
@@ -68,6 +88,9 @@ describe('DiagramComponent', () => {
         { provide: AiAssistantService, useClass: MockAiAssistantService },
         { provide: NotificationService, useValue: notificationService },
         { provide: PodShellService, useValue: jasmine.createSpyObj('PodShellService', ['getPodsByDeployment', 'createShellSocket']) },
+        { provide: KubeExplorerService, useValue: { getWorkloadHealth: () => of([]) } },
+        { provide: ClusterService, useValue: { saveCluster: () => of({}) } },
+        { provide: LinkUpdateService, useValue: { redraw$: EMPTY } },
         { provide: ConfigurationChangeService, useValue: { emit: jasmine.createSpy('emit') } },
         { provide: ResourceSyncService, useValue: { isRestarting: () => false } }
       ],

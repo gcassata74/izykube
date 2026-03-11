@@ -5,6 +5,8 @@ import { of } from 'rxjs';
 
 import { NodeFormComponent } from './node-form.component';
 import { DiagramService } from '../../services/diagram.service';
+import { KubeExplorerService } from '../../services/kube-explorer.service';
+import { NotificationService } from '../../services/notification.service';
 
 describe('NodeFormComponent', () => {
   let component: NodeFormComponent;
@@ -16,6 +18,8 @@ describe('NodeFormComponent', () => {
       providers: [
         provideMockStore({ initialState: {} }),
         { provide: DiagramService, useValue: { selectedNodeId$: of(null) } },
+        { provide: KubeExplorerService, useValue: {} },
+        { provide: NotificationService, useValue: { success: () => {}, warn: () => {}, error: () => {} } },
       ],
       schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();

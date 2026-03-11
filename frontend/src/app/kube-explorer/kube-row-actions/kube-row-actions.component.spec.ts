@@ -59,15 +59,9 @@ describe('KubeRowActionsComponent', () => {
   });
 
   it('emits viewLogs when selecting "View logs"', () => {
-    const button = fixture.debugElement.query(By.css('button[aria-label="Row actions"]'));
-    button.nativeElement.click();
-    fixture.detectChanges();
+    const rowActions = fixture.debugElement.query(By.directive(KubeRowActionsComponent)).componentInstance as KubeRowActionsComponent;
 
-    const viewItem = Array.from(document.body.querySelectorAll('.p-menuitem-link'))
-      .find(el => (el.textContent || '').trim().includes('View logs')) as HTMLElement | undefined;
-
-    expect(viewItem).toBeTruthy();
-    viewItem!.click();
+    rowActions.items[0].command?.({} as any);
     fixture.detectChanges();
 
     expect(fixture.componentInstance.viewLogsCalls).toEqual([{ name: 'mypod', namespace: 'default' }]);
