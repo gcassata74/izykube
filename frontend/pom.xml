@@ -15,7 +15,7 @@
     <properties>
         <maven.compiler.source>19</maven.compiler.source>
         <maven.compiler.target>19</maven.compiler.target>
-        <skip.yarn.install>true</skip.yarn.install>
+        <skip.yarn.install>false</skip.yarn.install>
     </properties>
 
     <build>
