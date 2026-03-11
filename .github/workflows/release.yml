@@ -33,7 +33,7 @@ jobs:
       - name: Build backend
         run: |
           chmod +x mvnw
-          ./mvnw -B -ntp -pl backend -DskipTests package
+          ./mvnw -B -ntp -pl backend -am -DskipTests package
 
       - name: Build frontend
         working-directory: frontend

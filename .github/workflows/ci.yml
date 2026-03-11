@@ -28,10 +28,10 @@ jobs:
         run: chmod +x mvnw
 
       - name: Backend tests
-        run: ./mvnw -B -ntp -pl backend test
+        run: ./mvnw -B -ntp -pl backend -am test
 
       - name: Backend package
-        run: ./mvnw -B -ntp -pl backend -DskipTests package
+        run: ./mvnw -B -ntp -pl backend -am -DskipTests package
 
       - name: Upload backend jar
         uses: actions/upload-artifact@v4
