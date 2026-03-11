@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend Build/Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Make Maven wrapper executable
+        run: chmod +x mvnw
+
+      - name: Backend tests
+        run: ./mvnw -B -ntp -pl backend test
+
+      - name: Backend package
+        run: ./mvnw -B -ntp -pl backend -DskipTests package
+
+      - name: Upload backend jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target/*.jar
+          if-no-files-found: error
+
+  frontend:
+    name: Frontend Build/Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Frontend unit tests (headless)
+        run: npm test -- --watch=false --browsers=ChromeHeadless
+
+      - name: Frontend production build
+        run: npm run build -- --configuration production
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/**
+          if-no-files-found: error
+
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure no hardcoded warning toasts
+        run: |
+          if grep -RInE "notificationService\\.warn\\(\\s*['\"]" frontend/src/app; then
+            echo "Found hardcoded notificationService.warn strings."
+            exit 1
+          fi
+
+      - name: Ensure secrets are not exported with stringData in frontend manifest generator
+        run: |
+          if grep -n "stringData" frontend/src/app/services/config-bundle-manifest.service.ts; then
+            echo "Found forbidden stringData usage in manifest generator."
+            exit 1
+          fi

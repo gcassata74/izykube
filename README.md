@@ -164,7 +164,7 @@ and `ai.local.read-timeout-ms` when a heavier model needs longer to respond.
 
 IzyKube consists of:
 
-1. **Frontend**: Angular application with GoJS for diagram editing
+1. **Frontend**: Angular application using interact.js + SVG for diagram editing
 2. **Backend**: Spring Boot application that interacts with the Kubernetes API
 3. **Database**: MongoDB for storing cluster templates and configurations
 
@@ -228,6 +228,6 @@ This project is licensed under the [Apache License 2.0](LICENSE) - see the LICEN
 
 ## Acknowledgments
 
-- [GoJS](https://gojs.net/) for the diagram components
+- [interact.js](https://interactjs.io/) for drag/drop and node interactions in the diagram editor
 - [Kubernetes](https://kubernetes.io/) and [Spring Boot](https://spring.io/projects/spring-boot) communities
 - All [contributors](https://github.com/yourusername/izykube/contributors) who have helped shape IzyKube
