@@ -54,7 +54,6 @@ import { VolumeFormComponent } from './cluster/volume-form/volume-form.component
 import { AssetListComponent } from './assets/assets-list/assets-list.component';
 import { AssetFormComponent } from './assets/asset-form/asset-form.component';
 import { ClusterEffect } from './store/effects/effect';
-import { EditorModule } from 'primeng/editor';
 import { SharedModule } from './shared/shared.module';
 import { JobFormComponent } from './cluster/job-form/job-form.component';
 import { IstioFormComponent } from './cluster/istio-form/istio-form.component';
@@ -137,7 +136,6 @@ import { CustomResourceFormComponent } from './cluster/custom-resource-form/cust
     ConfirmDialogModule,
     ContextMenuModule,
     CheckboxModule,
-    EditorModule,
     ToastModule,
     MenuModule,
     CardModule,

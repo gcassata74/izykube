@@ -1,5 +1,4 @@
 import { NgModule } from '@angular/core';
-import { EditorModule } from 'primeng/editor';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
