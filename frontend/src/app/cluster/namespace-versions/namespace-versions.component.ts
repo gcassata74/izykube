@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription, switchMap } from 'rxjs';
+import { ConfirmationService } from 'primeng/api';
 import { ClusterVersion } from 'src/app/model/cluster-version.model';
 import { ClusterService } from 'src/app/services/cluster.service';
 import { NotificationService } from 'src/app/services/notification.service';
@@ -27,7 +28,8 @@ export class NamespaceVersionsComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private clusterService: ClusterService,
     private notificationService: NotificationService,
-    private router: Router
+    private router: Router,
+    private confirmationService: ConfirmationService
   ) {}
 
   ngOnInit(): void {
@@ -78,6 +80,46 @@ export class NamespaceVersionsComponent implements OnInit, OnDestroy {
       return value;
     }
     return date.toLocaleString();
+  }
+
+  confirmDeleteVersion(version: ClusterVersion): void {
+    const versionNumber = Number(version?.versionNumber);
+    if (!version?.id || !Number.isFinite(versionNumber)) {
+      return;
+    }
+    this.confirmationService.confirm({
+      header: $localize`:@@namespaceVersions.deleteConfirmTitle:Delete version`,
+      message: $localize`:@@namespaceVersions.deleteConfirmMessage:Delete version ${versionNumber}:version: from namespace "${this.namespace}:namespace:"?`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: $localize`:@@common.delete:Delete`,
+      rejectLabel: $localize`:@@common.cancel:Cancel`,
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => this.deleteVersion(version.id as string, versionNumber)
+    });
+  }
+
+  private deleteVersion(versionId: string, versionNumber: number): void {
+    this.loading = true;
+    this.subscription.add(
+      this.clusterService.deleteNamespaceVersionById(versionId).subscribe({
+        next: () => {
+          this.versions = this.versions.filter(v => v.id !== versionId);
+          this.loading = false;
+          this.notificationService.success(
+            $localize`:@@namespaceVersions.deleteSuccessTitle:Version deleted`,
+            $localize`:@@namespaceVersions.deleteSuccessDetail:Version ${versionNumber}:version: removed.`
+          );
+        },
+        error: (error) => {
+          this.loading = false;
+          const detail = error?.error || $localize`:@@namespaceVersions.deleteErrorDetail:Unable to delete selected version.`;
+          this.notificationService.error(
+            $localize`:@@namespaceVersions.deleteErrorTitle:Delete failed`,
+            typeof detail === 'string' ? detail : undefined
+          );
+        }
+      })
+    );
   }
 
   ngOnDestroy(): void {

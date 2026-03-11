@@ -61,4 +61,12 @@ export class ClusterService {
   getLatestNamespaceVersion(namespace: string): Observable<ClusterVersion> {
     return this.dataService.get<ClusterVersion>(`/cluster/namespace/${encodeURIComponent(namespace)}/versions/latest`);
   }
+
+  deleteNamespaceVersion(namespace: string, versionNumber: number): Observable<any> {
+    return this.dataService.delete(`/cluster/namespace/${encodeURIComponent(namespace)}/versions/${versionNumber}`);
+  }
+
+  deleteNamespaceVersionById(versionId: string): Observable<any> {
+    return this.dataService.delete(`/cluster/versions/${encodeURIComponent(versionId)}`);
+  }
 }

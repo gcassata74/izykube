@@ -1,4 +1,5 @@
 <div class="content">
+  <p-confirmDialog></p-confirmDialog>
   <p-card class="izy-card" [header]="namespace">
     <div class="card-content">
       <p-table class="izy-table" [value]="versions" [columns]="cols" [loading]="loading">
@@ -26,6 +27,15 @@
                 label="Open in diagram"
                 i18n-label="@@namespaceVersions.action.openDiagram"
                 (click)="openVersion(row)">
+              </button>
+              <button
+                pButton
+                type="button"
+                class="p-button-text p-button-sm p-button-danger"
+                icon="pi pi-trash"
+                label="Delete"
+                i18n-label="@@common.delete"
+                (click)="confirmDeleteVersion(row)">
               </button>
             </td>
           </tr>

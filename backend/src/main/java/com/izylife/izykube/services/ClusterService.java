@@ -697,6 +697,23 @@ public class ClusterService {
                 .orElseThrow(() -> new ObjectNotFoundException("Version not found"));
     }
 
+    public void deleteNamespaceVersion(String namespace, int versionNumber) throws ObjectNotFoundException {
+        ClusterVersion version = clusterVersionRepository
+                .findByNamespaceIgnoreCaseAndVersionNumber(namespace, versionNumber)
+                .orElseThrow(() -> new ObjectNotFoundException("Version not found"));
+        clusterVersionRepository.delete(version);
+    }
+
+    public void deleteNamespaceVersionById(String versionId) throws ObjectNotFoundException {
+        if (versionId == null || versionId.isBlank()) {
+            throw new ObjectNotFoundException("Version not found");
+        }
+        if (!clusterVersionRepository.existsById(versionId)) {
+            throw new ObjectNotFoundException("Version not found");
+        }
+        clusterVersionRepository.deleteById(versionId);
+    }
+
     private boolean isClusterScopedKind(String kind) {
         if (kind == null) {
             return false;

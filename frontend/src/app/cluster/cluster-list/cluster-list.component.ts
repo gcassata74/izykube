@@ -49,7 +49,8 @@ export class ClusterListComponent implements OnInit, OnDestroy {
   private readonly OPERATION_TIMEOUT_MS = 120000;
   private readonly MAX_NETWORK_ERRORS = 3;
   private readonly RESULT_VISIBILITY_MS = 5000;
-  private readonly grafanaBaseUrl = 'http://localhost:3000';
+  private readonly grafanaBaseUrlStorageKey = 'izykube.grafanaBaseUrl';
+  private readonly grafanaBaseUrlDefault = 'http://localhost:3000';
   private readonly grafanaNamespaceParam = 'var-namespace';
   private subscriptions = new Subscription();
   private cleanupTimers = new Map<string, number>();
@@ -189,7 +190,8 @@ export class ClusterListComponent implements OnInit, OnDestroy {
     const ns = cluster?.nameSpace || 'default';
     const params = new URLSearchParams();
     params.set(this.grafanaNamespaceParam, ns);
-    return `${this.grafanaBaseUrl}/?${params.toString()}`;
+    const baseUrl = this.resolveGrafanaBaseUrl();
+    return `${baseUrl}/?${params.toString()}`;
   }
 
   openGrafana(cluster: Cluster): void {
@@ -203,6 +205,26 @@ export class ClusterListComponent implements OnInit, OnDestroy {
     return this.hasMeshedResources(cluster)
       ? $localize`:@@clusterList.grafana.open:Open Grafana`
       : $localize`:@@clusterList.grafana.disabled:No meshed resources`;
+  }
+
+  private resolveGrafanaBaseUrl(): string {
+    const configured = this.readGrafanaBaseUrlOverride();
+    if (configured) {
+      return configured;
+    }
+    return this.grafanaBaseUrlDefault;
+  }
+
+  private readGrafanaBaseUrlOverride(): string | null {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return null;
+    }
+    const raw = window.localStorage.getItem(this.grafanaBaseUrlStorageKey);
+    if (!raw) {
+      return null;
+    }
+    const value = raw.trim().replace(/\/+$/, '');
+    return value.length > 0 ? value : null;
   }
 
   undeploy(selectedId: string): void {

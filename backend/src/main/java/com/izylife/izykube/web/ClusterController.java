@@ -150,6 +150,35 @@ public class ClusterController {
         }
     }
 
+    @DeleteMapping("/namespace/{namespace}/versions/{versionNumber}")
+    public ResponseEntity<?> deleteNamespaceVersion(
+            @PathVariable String namespace,
+            @PathVariable int versionNumber
+    ) {
+        try {
+            clusterService.deleteNamespaceVersion(namespace, versionNumber);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Version deleted successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error deleting version {} for namespace {}: {}", versionNumber, namespace, e.getMessage());
+            return ResponseEntity.badRequest().body("Error deleting version for namespace: " + namespace);
+        }
+    }
+
+    @DeleteMapping("/versions/{versionId}")
+    public ResponseEntity<?> deleteNamespaceVersionById(@PathVariable String versionId) {
+        try {
+            clusterService.deleteNamespaceVersionById(versionId);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Version deleted successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error deleting version {}: {}", versionId, e.getMessage());
+            return ResponseEntity.badRequest().body("Error deleting version: " + versionId);
+        }
+    }
+
     @PostMapping("/{id}/deploy")
     public ResponseEntity<GenericResponseDTO> deploy(@PathVariable String id) {
         GenericResponseDTO response = new GenericResponseDTO();
