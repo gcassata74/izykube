@@ -19,7 +19,7 @@
   height: 100%;
 }
 
- .container {
+ .diagram-layout {
   display: flex;
   height: 100%;
   width: 100%;
@@ -798,7 +798,7 @@ svg line {
 }
 
 @media (max-width: 768px) {
-  .container {
+  .diagram-layout {
     flex-direction: column;
     height: 70vh;
   }

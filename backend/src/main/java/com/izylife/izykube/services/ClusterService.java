@@ -146,8 +146,8 @@ public class ClusterService {
                     .build();
 
         } catch (Exception e) {
-            log.error("Error updating cluster: " + e.getMessage());
-            return null;
+            log.error("Error updating cluster", e);
+            throw e;
         }
     }
 
