@@ -15,7 +15,7 @@
     <properties>
         <maven.compiler.source>19</maven.compiler.source>
         <maven.compiler.target>19</maven.compiler.target>
-        <skip.npm.install>false</skip.npm.install>
+        <skip.yarn.install>false</skip.yarn.install>
     </properties>
 
     <build>
@@ -39,32 +39,34 @@
             <version>1.15.0</version>
             <configuration>
               <workingDirectory>./</workingDirectory>
+              <installDirectory>${project.build.directory}</installDirectory>
               <nodeVersion>v20.12.2</nodeVersion>
-                          </configuration>
+              <yarnVersion>v1.22.22</yarnVersion>
+            </configuration>
             <executions>
               <execution>
-                <id>install node</id>
+                <id>install node and yarn</id>
                 <goals>
-                  <goal>install-node-and-npm</goal>
+                  <goal>install-node-and-yarn</goal>
                 </goals>
               </execution>
               <execution>
-                <id>npm ci</id>
+                <id>yarn install</id>
                 <goals>
-                  <goal>npm</goal>
+                  <goal>yarn</goal>
                 </goals>
                 <configuration>
-                  <arguments>ci --no-optional</arguments>
-                  <skip>${skip.npm.install}</skip>
+                  <arguments>install --ignore-optional --non-interactive --network-timeout 300000</arguments>
+                  <skip>${skip.yarn.install}</skip>
                 </configuration>
               </execution>
               <execution>
-                <id>npm build</id>
+                <id>yarn build</id>
                 <goals>
-                  <goal>npm</goal>
+                  <goal>yarn</goal>
                 </goals>
                 <configuration>
-                  <arguments>run build</arguments>
+                  <arguments>build</arguments>
                 </configuration>
               </execution>
             </executions>

@@ -52,13 +52,13 @@ export class YamlDirective implements OnInit, ControlValueAccessor, OnDestroy {
     element.style.height = this.height;
     element.style.width = this.width;
 
-    ace.config.set("fontSize", "14px");
     ace.config.set(
       "basePath",
       "https://unpkg.com/ace-builds@1.4.12/src-noconflict"
     );
 
     this.editor = ace.edit(this.el.nativeElement);
+    this.editor.setFontSize("14px");
     this.editor.setTheme(this.theme);
     this.editor.session.setMode(this.mode);
     this.editor.setReadOnly(this.readOnly);
