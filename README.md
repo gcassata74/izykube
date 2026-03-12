@@ -167,4 +167,4 @@ For code changes, use small PRs with:
 
 ## License
 
-See [LICENSE.md](LICENSE.md).
+This project is licensed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later). See [LICENSE.md](LICENSE.md).
