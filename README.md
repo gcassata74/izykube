@@ -1,6 +1,6 @@
 # IzyKube
 
-IzyKube is a web application for modeling Kubernetes namespaces, generating manifests, and applying them to a target cluster.
+IzyKube is a Kubernetes architecture designer for modeling Kubernetes namespaces, generating manifests, and applying them to a target cluster.
 The UI is diagram-based and uses `interact.js` + SVG for node/link editing.
 
 ![IzyKube demo](docs/demo.png)
