@@ -2,7 +2,7 @@ import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ValidatorFn } from '@angular/forms';
 import { Subscription, Observable } from 'rxjs';
 import { map, skip } from 'rxjs/operators';
-import * as yaml from 'js-yaml';
+import { stringify } from 'yaml';
 
 import { Node } from '../../model/node.class';
 import {
@@ -513,7 +513,7 @@ export class ConfigBundleFormComponent implements OnInit, OnChanges, OnDestroy {
         return;
       }
       this.yamlPreview = manifests
-        .map(manifest => yaml.dump(manifest, { lineWidth: -1 }).trimEnd())
+        .map(manifest => stringify(manifest, { lineWidth: 0 }).trimEnd())
         .join('\n---\n');
       this.yamlError = null;
     } catch (error: any) {

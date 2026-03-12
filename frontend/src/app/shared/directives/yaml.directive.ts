@@ -1,7 +1,7 @@
 import { AfterViewInit, Directive, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { AbstractControl, ControlValueAccessor, NG_VALIDATORS, NG_VALUE_ACCESSOR, ValidationErrors } from '@angular/forms';
 import * as ace from "ace-builds";
-import * as yaml from 'js-yaml';
+import { parseAllDocuments } from 'yaml';
 
 @Directive({
   selector: '[appYaml]',
@@ -101,20 +101,25 @@ export class YamlDirective implements OnInit, ControlValueAccessor, OnDestroy {
       }
 
       try {
-        yaml.loadAll(control.value);
-        return null;
-      } catch (e: any) {
-        if (e instanceof yaml.YAMLException) {
-          return {
-            yamlError: {
-              line: e.mark?.line,
-              column: e.mark?.column,
-              reason: e.reason,
-              message: e.message
-            }
-          };
+        const documents = parseAllDocuments(control.value);
+        const firstError = documents.flatMap(document => document.errors)[0];
+
+        if (!firstError) {
+          return null;
         }
-        return { yamlError: { message: 'Invalid YAML' } };
+
+        const position = firstError.linePos?.[0];
+
+        return {
+          yamlError: {
+            line: position?.line != null ? position.line - 1 : undefined,
+            column: position?.col != null ? position.col - 1 : undefined,
+            reason: firstError.message,
+            message: firstError.message
+          }
+        };
+      } catch (e: any) {
+        return { yamlError: { message: e?.message || 'Invalid YAML' } };
       }
 
     }

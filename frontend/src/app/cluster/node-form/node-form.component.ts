@@ -2,7 +2,7 @@ import { Node } from './../../model/node.class';
 import { Store } from '@ngrx/store';
 import { Component, ComponentRef, OnDestroy, OnInit, Type, ViewChild, ViewContainerRef } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import * as yaml from 'js-yaml';
+import { stringify } from 'yaml';
 import { switchMap, filter, tap, Subscription, distinctUntilChanged, interval, of, map } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { DiagramService } from 'src/app/services/diagram.service';
@@ -483,7 +483,7 @@ export class NodeFormComponent implements OnInit, OnDestroy {
       if (!entry?.manifest) {
         return null;
       }
-      return yaml.dump(entry.manifest, { noRefs: true, lineWidth: 120 });
+      return stringify(entry.manifest, { aliasDuplicateObjects: false, lineWidth: 120 }).trimEnd();
     } catch {
       return null;
     }
