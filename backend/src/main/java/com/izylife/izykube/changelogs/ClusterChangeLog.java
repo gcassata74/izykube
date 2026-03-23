@@ -45,7 +45,7 @@ public class ClusterChangeLog {
 
             Document node2 = new Document("id", "node2")
                     .append("name", "Node Two")
-                    .append("kind", "Deploymrnent");
+                    .append("kind", "Deployment");
 
             // Example Link document
             Document link = new Document("id", "link1")

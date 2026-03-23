@@ -1,0 +1,52 @@
+# IzyKube
+# Copyright (c) 2026-present Izylife Solutions s.r.l.
+# Author: Giuseppe Cassata
+
+services:
+
+  izykube:
+    build: .
+    container_name: izykube
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/izykube
+      # Mount your kubeconfig to connect to a real cluster.
+      # Comment out if you don't need cluster access locally.
+      KUBECONFIG: /home/izykube/.kube/config
+    volumes:
+      - ./.kube:/home/izykube/.kube:ro
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  mongo:
+    image: mongo:4.4          # 4.4 is the last version that does not require AVX
+    container_name: izykube-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"   # remove this line if you don't need direct Mongo access
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]   # mongo not mongosh in 4.4
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: local Ollama for AI features.
+  # Uncomment to enable.
+  #
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: izykube-ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama-data:/root/.ollama
+
+volumes:
+  mongo-data:
+  # ollama-data:

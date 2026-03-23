@@ -57,3 +57,5 @@ node_modules/*
 izytool/
 .aider*
 venv/*
+.kube/
+oldDockerfile

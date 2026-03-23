@@ -248,6 +248,7 @@ public class KubernetesExplorerService {
     }
 
     private List<RouteSummaryDTO> fetchLiveRoutes(String namespace, boolean includeAll) {
+    try {
         ResourceDefinitionContext virtualServiceContext = resolveVirtualServiceContext(includeAll ? null : namespace);
         return (includeAll
                 ? kubernetesClient.genericKubernetesResources(virtualServiceContext).inAnyNamespace()
@@ -257,7 +258,11 @@ public class KubernetesExplorerService {
                 .stream()
                 .map(this::mapVirtualService)
                 .toList();
+    } catch (Exception e) {
+        log.debug("Istio VirtualService CRDs not available on this cluster, skipping live route fetch: {}", e.getMessage());
+        return List.of();
     }
+}
 
     private List<RouteSummaryDTO> reconcileRoutes(List<RouteSummaryDTO> persistedRoutes, List<RouteSummaryDTO> liveRoutes) {
         List<RouteSummaryDTO> canonicalPersisted = Optional.ofNullable(persistedRoutes).orElse(List.of()).stream()

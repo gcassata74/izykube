@@ -30,7 +30,15 @@ public class AssetChangeLog {
 
     @ChangeSet(order = "001", id = "createAssetsCollection", author = "gcassata")
     public void createAssetsCollection(MongoDatabase db) {
-        db.createCollection("assets");
+        // Guard against re-runs: only create if the collection does not exist yet.
+        // Without this check, a container restart after a partial migration causes
+        // Mongock to retry this changeset and MongoDB throws NamespaceExists (error 48).
+        boolean exists = db.listCollectionNames()
+                .into(new java.util.ArrayList<>())
+                .contains("assets");
+        if (!exists) {
+            db.createCollection("assets");
+        }
     }
 
     @ChangeSet(order = "002", id = "createIndexesForAssetsCollection", author = "gcassata")

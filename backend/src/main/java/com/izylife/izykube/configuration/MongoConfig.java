@@ -19,6 +19,7 @@
 
 package com.izylife.izykube.configuration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.izylife.izykube.model.AssetTypeReadConverter;
 import com.izylife.izykube.model.AssetTypeWriteConverter;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -31,7 +32,6 @@ import java.util.Arrays;
 
 @Configuration
 public class MongoConfig {
-
 
     @Bean
     public BeanPostProcessor mappingMongoConverterCustomizer() {
@@ -47,10 +47,14 @@ public class MongoConfig {
     }
 
     @Bean
-    public MongoCustomConversions mongoCustomConversions() {
+    public MongoCustomConversions mongoCustomConversions(ObjectMapper objectMapper) {
         return new MongoCustomConversions(Arrays.asList(
                 new AssetTypeReadConverter(),
-                new AssetTypeWriteConverter()
+                new AssetTypeWriteConverter(),
+                // Handles polymorphic deserialization of the abstract NodeDTO class.
+                // MappingMongoConverter cannot instantiate abstract types on its own —
+                // this converter delegates to Jackson which has the @JsonSubTypes mapping.
+                new NodeDTOReadConverter(objectMapper)
         ));
     }
 }
