@@ -53,6 +53,7 @@ frontend/node_modules/
 izytool/node_modules/
 node_modules/*
 *.yaml
+!yaml/*.yaml
 *.tpl
 izytool/
 .aider*

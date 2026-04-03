@@ -1,0 +1,660 @@
+# izykube showcase import
+#
+# Questo file è pensato per mostrare una topologia ricca in import:
+# - ConfigMap/Secret -> Deployment/StatefulSet/DaemonSet
+# - Service -> workload
+# - Ingress -> Service
+# - StatefulSet, DaemonSet e più workload collegati
+# - manifest aggiuntivi (HPA, NetworkPolicy, RBAC, Istio) preservati nel bundle raw
+#
+# Namespace consigliato: izykube-showcase
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: izykube-showcase
+  labels:
+    app.kubernetes.io/part-of: izykube-demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-shared-config
+  namespace: izykube-showcase
+  labels:
+    app.kubernetes.io/part-of: izykube-demo
+data:
+  LOG_LEVEL: info
+  FEATURE_FLAGS: "payments,search,analytics"
+  APP_THEME: dark
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://observability-agent:4317
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: izykube-showcase
+  labels:
+    app.kubernetes.io/component: backend
+data:
+  SERVER_PORT: "8080"
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: orders
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  CACHE_TTL_SECONDS: "300"
+  FEATURE_ORDER_APPROVALS: "true"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-config
+  namespace: izykube-showcase
+  labels:
+    app.kubernetes.io/component: frontend
+data:
+  PORT: "80"
+  API_BASE_URL: https://api.demo.izykube.local
+  PUBLIC_BRAND: IzyKube Showcase
+  ENABLE_DEMO_BANNER: "true"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: observability-agent-config
+  namespace: izykube-showcase
+  labels:
+    app.kubernetes.io/component: observability
+data:
+  agent.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+          http:
+    exporters:
+      logging:
+        loglevel: info
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [logging]
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: platform-secrets
+  namespace: izykube-showcase
+  labels:
+    app.kubernetes.io/part-of: izykube-demo
+type: Opaque
+stringData:
+  DB_USERNAME: izyuser
+  DB_PASSWORD: supersecret123
+  REDIS_PASSWORD: redis-secret-123
+  JWT_SIGNING_KEY: demo-signing-key-change-me
+  GRAFANA_API_KEY: demo-grafana-key
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-runtime
+  namespace: izykube-showcase
+  labels:
+    app.kubernetes.io/component: backend
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: api-runtime-readers
+  namespace: izykube-showcase
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets", "pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: api-runtime-readers-binding
+  namespace: izykube-showcase
+subjects:
+  - kind: ServiceAccount
+    name: api-runtime
+    namespace: izykube-showcase
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: api-runtime-readers
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: izykube-showcase
+  labels:
+    app: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: izykube-showcase
+  labels:
+    app: postgres
+    tier: data
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        tier: data
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: DB_NAME
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: DB_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: DB_PASSWORD
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: izykube-showcase
+  labels:
+    app: redis
+spec:
+  selector:
+    app: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: izykube-showcase
+  labels:
+    app: redis
+    tier: cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        tier: cache
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["redis-server", "--requirepass", "$(REDIS_PASSWORD)"]
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: REDIS_PASSWORD
+          ports:
+            - name: redis
+              containerPort: 6379
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-api
+  namespace: izykube-showcase
+  labels:
+    app: orders-api
+    tier: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: orders-api
+  template:
+    metadata:
+      labels:
+        app: orders-api
+        tier: backend
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      serviceAccountName: api-runtime
+      containers:
+        - name: api
+          image: ghcr.io/izylife/demo-orders-api:1.0.0
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: platform-shared-config
+            - configMapRef:
+                name: api-config
+            - secretRef:
+                name: platform-secrets
+          env:
+            - name: JWT_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: JWT_SIGNING_KEY
+            - name: SPRING_PROFILES_ACTIVE
+              value: demo
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+          volumeMounts:
+            - name: app-config
+              mountPath: /app/config
+            - name: shared-secret
+              mountPath: /app/secrets
+              readOnly: true
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "384Mi"
+            limits:
+              cpu: "1"
+              memory: "768Mi"
+      volumes:
+        - name: app-config
+          configMap:
+            name: api-config
+        - name: shared-secret
+          secret:
+            secretName: platform-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders-api
+  namespace: izykube-showcase
+  labels:
+    app: orders-api
+spec:
+  selector:
+    app: orders-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-frontend
+  namespace: izykube-showcase
+  labels:
+    app: web-frontend
+    tier: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web-frontend
+  template:
+    metadata:
+      labels:
+        app: web-frontend
+        tier: frontend
+    spec:
+      containers:
+        - name: web
+          image: ghcr.io/izylife/demo-web-frontend:1.0.0
+          ports:
+            - name: http
+              containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: platform-shared-config
+            - configMapRef:
+                name: web-config
+          env:
+            - name: API_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: web-config
+                  key: API_BASE_URL
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-frontend
+  namespace: izykube-showcase
+  labels:
+    app: web-frontend
+spec:
+  selector:
+    app: web-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-jobs
+  namespace: izykube-showcase
+  labels:
+    app: worker-jobs
+    tier: workers
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: worker-jobs
+  template:
+    metadata:
+      labels:
+        app: worker-jobs
+        tier: workers
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/izylife/demo-worker:1.0.0
+          args: ["node", "worker.js", "--queue=orders"]
+          envFrom:
+            - configMapRef:
+                name: platform-shared-config
+            - configMapRef:
+                name: api-config
+            - secretRef:
+                name: platform-secrets
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: REDIS_PASSWORD
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "192Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: observability-agent
+  namespace: izykube-showcase
+  labels:
+    app: observability-agent
+    tier: observability
+spec:
+  selector:
+    matchLabels:
+      app: observability-agent
+  template:
+    metadata:
+      labels:
+        app: observability-agent
+        tier: observability
+    spec:
+      containers:
+        - name: agent
+          image: otel/opentelemetry-collector-contrib:0.104.0
+          args: ["--config=/etc/otel/agent.yaml"]
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+          volumeMounts:
+            - name: agent-config
+              mountPath: /etc/otel
+          envFrom:
+            - configMapRef:
+                name: platform-shared-config
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+      volumes:
+        - name: agent-config
+          configMap:
+            name: observability-agent-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: observability-agent
+  namespace: izykube-showcase
+  labels:
+    app: observability-agent
+spec:
+  selector:
+    app: observability-agent
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-frontend
+  namespace: izykube-showcase
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: ["demo.izykube.local"]
+      secretName: web-demo-tls
+  rules:
+    - host: demo.izykube.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-frontend
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: orders-api
+  namespace: izykube-showcase
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: api.demo.izykube.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: orders-api
+                port:
+                  number: 80
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: orders-api
+  namespace: izykube-showcase
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: orders-api
+  minReplicas: 3
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: orders-api-restrict-ingress
+  namespace: izykube-showcase
+spec:
+  podSelector:
+    matchLabels:
+      app: orders-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: web-frontend
+        - podSelector:
+            matchLabels:
+              app: worker-jobs
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: orders-api
+  namespace: izykube-showcase
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: orders-api
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: public-gateway
+  namespace: izykube-showcase
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - demo.izykube.local
+        - api.demo.izykube.local
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: public-routing
+  namespace: izykube-showcase
+spec:
+  hosts:
+    - demo.izykube.local
+    - api.demo.izykube.local
+  gateways:
+    - public-gateway
+  http:
+    - match:
+        - authority:
+            exact: demo.izykube.local
+      route:
+        - destination:
+            host: web-frontend.izykube-showcase.svc.cluster.local
+            port:
+              number: 80
+    - match:
+        - authority:
+            exact: api.demo.izykube.local
+      route:
+        - destination:
+            host: orders-api.izykube-showcase.svc.cluster.local
+            port:
+              number: 80
