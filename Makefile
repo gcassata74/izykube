@@ -22,6 +22,11 @@ SHELL := /bin/bash
 LOCALE ?= en
 OLM_VERSION ?= v0.30.0
 OLM_BASE_URL ?= https://github.com/operator-framework/operator-lifecycle-manager/releases/download/$(OLM_VERSION)
+SUDO ?= sudo
+
+.PHONY: \
+	restart-k3d-cluster start-k3d-cluster-with-istio \
+	install-grafana install-cluster-addons bootstrap-k3d-cluster
 
 # e.g. make run-i18n-build LOCALE=fr
 run-i18n-build:
@@ -52,10 +57,18 @@ run-spring-boot-server:
 	java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -jar backend/target/backend-0.0.1-SNAPSHOT.jar
 
 create-docker-registry:
-	docker run -d --name izyregistry -p 5000:5000 --restart=always registry:2
+	@if docker ps -a --format '{{.Names}}' | grep -qx 'izyregistry'; then \
+		echo "Docker registry 'izyregistry' already exists, skipping."; \
+	else \
+		docker run -d --name izyregistry -p 5000:5000 --restart=always registry:2; \
+	fi
 
 create-k3d-registry:
-	k3d registry create izyregistry --port 5000
+	@if k3d registry list | awk 'NR>1 {print $$1}' | grep -Eq '^(k3d-)?izyregistry$$'; then \
+		echo "k3d registry 'izyregistry' already exists, skipping."; \
+	else \
+		k3d registry create izyregistry --port 5000; \
+	fi
 
 delete-docker-registry:
 	docker stop izyregistry && docker rm -v izyregistry
@@ -63,15 +76,17 @@ delete-docker-registry:
 delete-k3d-registry:
 	k3d registry delete izyregistry
 
-create-k3d-cluster:
-	k3d cluster create izycluster --registry-use izyregistry:5000  -p '80:80@loadbalancer' -p '443:443@loadbalancer' --k3s-arg '--disable=traefik@server:*'
+create-k3d-cluster: create-k3d-registry
+	@if k3d cluster list | awk 'NR>1 {print $$1}' | grep -qx 'izycluster'; then \
+		echo "k3d cluster 'izycluster' already exists, skipping."; \
+	else \
+		k3d cluster create izycluster --registry-use izyregistry:5000 -p '80:80@loadbalancer' -p '443:443@loadbalancer' --k3s-arg '--disable=traefik@server:*'; \
+	fi
 
 delete-k3d-cluster:
 	k3d cluster delete izycluster
 
-start-k3d-cluster: create-k3d-registry create-k3d-cluster
-
-restart-k3d-cluster: delete-k3d-cluster create-k3d-registry create-k3d-cluster
+restart-k3d-cluster: delete-k3d-cluster create-k3d-cluster
 
 # New target for installing Istio
 install-istio:
@@ -86,33 +101,34 @@ install-istio:
 	rm -rf istio-1.18.2
 
 # Updated target to include Istio installation
-start-k3d-cluster-with-istio: create-k3d-registry create-k3d-cluster install-istio
+start-k3d-cluster-with-istio: create-k3d-cluster install-istio
 
 # Create monitoring namespace
 create-istio-system-db:
 	kubectl create namespace istio-system-db --dry-run=client -o yaml | kubectl apply -f -
 
 # Install Prometheus stack into istio-system-db
-install-prometheus:
+install-prometheus: create-istio-system-db
 	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 	helm repo update
 	helm install prometheus prometheus-community/kube-prometheus-stack -n istio-system-db --create-namespace
 
 # Install Grafana into istio-system-db
-install-grafana:
+install-grafana: install-grafana-release grafana-port-forward
+
+install-grafana-release: create-istio-system-db
 	helm repo add grafana https://grafana.github.io/helm-charts
 	helm repo update
 	helm install grafana grafana/grafana -n istio-system-db --create-namespace
-	$(MAKE) grafana-port-forward
 
 # Start Grafana port-forward in background
-grafana-port-forward:
+grafana-port-forward: install-grafana-release
 	@nohup kubectl -n istio-system-db port-forward svc/grafana 3000:80 >/tmp/izykube-grafana-pf.log 2>&1 & \
 	echo $$! > /tmp/izykube-grafana-pf.pid; \
 	disown || true
 
 # Install Ollama in-cluster (lightweight model)
-install-ollama:
+install-ollama: create-izykube-system
 	kubectl apply -f yaml/ollama.yaml
 # temporary port-forward until izykube is not deployend into the cluster
 	kubectl -n izykube-system port-forward svc/ollama 11434:11434 >/tmp/ollama-pf.log 2>&1 &
@@ -162,7 +178,7 @@ uninstall-olm:
 	kubectl delete -f $(OLM_BASE_URL)/crds.yaml --ignore-not-found=true
 
 # Create internal CA and ClusterIssuer for HTTPS routes
-create-internal-ca:
+create-internal-ca: install-cert-manager
 	@mkdir -p .certs
 	@openssl req -x509 -newkey rsa:4096 -sha256 -nodes -days 3650 \
 		-keyout .certs/ca.key -out .certs/ca.crt \
@@ -175,32 +191,32 @@ create-internal-ca:
 	@rm -rf .certs
 
 # Install internal CA certificate locally (Ubuntu/Debian)
-install-ca-local:
-	sudo mkdir -p /usr/local/share/ca-certificates
-	kubectl -n cert-manager get secret izykube-ca -o jsonpath='{.data.tls\.crt}' | base64 -d | sudo tee /usr/local/share/ca-certificates/izykube-ca.crt >/dev/null
-	sudo update-ca-certificates
+install-ca-local: create-internal-ca
+	@set -e; \
+	if [ "$$(id -u)" -eq 0 ]; then SUDO_CMD=""; \
+	elif $(SUDO) -n true >/dev/null 2>&1; then SUDO_CMD="$(SUDO)"; \
+	elif [ -t 0 ]; then \
+		echo "sudo access is required to install the CA in the system trust store."; \
+		$(SUDO) -v; \
+		SUDO_CMD="$(SUDO)"; \
+	else \
+		echo "ERROR: sudo password is required but no interactive terminal is available."; \
+		echo "Run 'sudo -v && make install-ca-local' in a terminal, or run 'sudo make install-ca-local'."; \
+		exit 1; \
+	fi; \
+	$$SUDO_CMD mkdir -p /usr/local/share/ca-certificates; \
+	kubectl -n cert-manager get secret izykube-ca -o jsonpath='{.data.tls\.crt}' | base64 -d | $$SUDO_CMD tee /usr/local/share/ca-certificates/izykube-ca.crt >/dev/null; \
+	$$SUDO_CMD update-ca-certificates
 
 # Create shared Istio Gateway in istio-system
-install-istio-gateway:
+install-istio-gateway: install-istio
 	kubectl apply -f yaml/izykube-gateway.yaml
 
 # Install all cluster addons (istio, monitoring)
-install-cluster-addons:
-	$(MAKE) install-olm
-	$(MAKE) install-cert-manager
-	$(MAKE) create-internal-ca
-	$(MAKE) install-istio
-	$(MAKE) install-istio-gateway
-	$(MAKE) create-istio-system-db
-	$(MAKE) install-prometheus
-	$(MAKE) install-grafana
-	$(MAKE) create-izykube-system
-	$(MAKE) install-ollama
+install-cluster-addons: install-olm create-internal-ca install-istio-gateway install-prometheus install-grafana install-ollama
 
 # Bootstrap cluster with addons
-bootstrap-k3d-cluster:
-	$(MAKE) start-k3d-cluster
-	$(MAKE) install-cluster-addons
+bootstrap-k3d-cluster: create-k3d-cluster install-cluster-addons
 
 # Create izykube system namespace
 create-izykube-system:

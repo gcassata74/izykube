@@ -56,6 +56,10 @@ IzyKube supports:
 - Node.js 18+ (20 recommended)
 - npm
 - Docker
+- kubectl
+- helm
+- k3d
+- openssl
 - Kubernetes cluster access (k3d/minikube/remote)
 
 ## Local Development
@@ -93,17 +97,65 @@ npm -C frontend install --legacy-peer-deps
 npm -C frontend run build -- --configuration production
 ```
 
+## Install From Scratch (k3d, zero to running)
+
+### 1) Clone and install frontend dependencies
+
+```bash
+git clone https://github.com/izylife/izykube.git
+cd izykube
+npm -C frontend install --legacy-peer-deps
+```
+
+### 2) Create local k3d cluster
+
+`make` targets are idempotent for registry/cluster creation, so re-running is safe.
+
+```bash
+make create-k3d-cluster
+```
+
+### 3) Install all cluster addons
+
+This installs OLM, cert-manager, internal CA in cluster, Istio + gateway, Prometheus, Grafana, and Ollama.
+
+```bash
+make install-cluster-addons
+```
+
+### 4) Trust internal CA on your local machine (recommended for HTTPS routes)
+
+Run in an interactive terminal (sudo password may be required):
+
+```bash
+sudo -v && make install-ca-local
+```
+
+### 5) Start backend and frontend
+
+Terminal 1:
+
+```bash
+make run-spring-boot-server
+```
+
+Terminal 2:
+
+```bash
+make run-angular-client
+```
+
+### 6) Optional: open dedicated browser profile
+
+```bash
+make run-chrome-dev
+```
+
 ## Kubernetes Bootstrap (k3d)
 
 ```bash
 make create-k3d-registry
 make create-k3d-cluster
-```
-
-or:
-
-```bash
-make start-k3d-cluster
 ```
 
 with Istio:
@@ -157,22 +209,25 @@ This forwards Grafana to `http://localhost:3000`.
 
 ## Makefile Reference
 
-| Command                             | Description                                                             |
-|-------------------------------------|-------------------------------------------------------------------------|
-| `make run-spring-boot-server`       | Build and start backend jar with debug port                             |
-| `make run-angular-client`           | Start Angular dev server                                                 |
-| `make run-chrome-dev`               | Open Chrome dev profile                                                  |
-| `make create-k3d-registry`          | Create k3d registry                                                      |
-| `make create-k3d-cluster`           | Create k3d cluster                                                       |
-| `make start-k3d-cluster`            | Create registry and cluster                                              |
-| `make restart-k3d-cluster`          | Recreate k3d cluster                                                     |
-| `make install-istio`                | Install Istio                                                            |
-| `make start-k3d-cluster-with-istio` | Create cluster and install Istio                                         |
-| `make install-cluster-addons`       | Install OLM, cert-manager, Istio gateway, Prometheus, Grafana, Ollama   |
-| `make grafana-port-forward`         | Start Grafana port-forward on `localhost:3000`                          |
-| `make run-i18n-extract`             | Extract i18n messages                                                    |
-| `make run-i18n-build LOCALE=xx`     | Build with locale                                                        |
-| `make run-i18n-serve LOCALE=xx`     | Serve with locale                                                        |
+Main tasks with target dependencies and behavior:
+
+| Command | Depends on (Make targets) | What it does |
+|---|---|---|
+| `make run-spring-boot-server` | `-` | Builds backend with Maven and starts Spring Boot jar with JDWP debug on port `5005`. |
+| `make run-angular-client` | `-` | Kills process on port `4200` (if any) and starts Angular dev server from `frontend/`. |
+| `make run-chrome-dev` | `-` | Opens Chrome with a dedicated insecure dev profile for local UI testing. |
+| `make create-k3d-registry` | `-` | Creates k3d local registry `izyregistry` on port `5000` if it does not already exist. |
+| `make create-k3d-cluster` | `create-k3d-registry` | Creates k3d cluster `izycluster` only if missing, attaches local registry, exposes `80/443`, disables Traefik. |
+| `make restart-k3d-cluster` | `delete-k3d-cluster`, `create-k3d-cluster` | Recreates cluster from scratch. |
+| `make install-istio` | `-` | Installs Istio (downloads `istioctl` if missing), enables sidecar injection on `default` namespace. |
+| `make start-k3d-cluster-with-istio` | `create-k3d-cluster`, `install-istio` | Creates cluster and installs Istio in one command. |
+| `make create-internal-ca` | `install-cert-manager` | Generates internal CA cert/key, creates `izykube-ca` TLS secret, applies ClusterIssuer manifest. |
+| `make install-ca-local` | `create-internal-ca` | Installs cluster CA certificate in local OS trust store (`/usr/local/share/ca-certificates`). |
+| `make grafana-port-forward` | `install-grafana-release` | Starts background port-forward to Grafana service on `http://localhost:3000`. |
+| `make install-cluster-addons` | `install-olm`, `create-internal-ca`, `install-istio-gateway`, `install-prometheus`, `install-grafana`, `install-ollama` | Installs core platform addons: OLM, cert-manager/CA, Istio gateway, Prometheus, Grafana, Ollama. |
+| `make run-i18n-extract` | `-` | Extracts Angular i18n messages into `frontend/src/locale`. |
+| `make run-i18n-build LOCALE=xx` | `-` | Builds Angular app using the selected i18n configuration (`LOCALE`, default `en`). |
+| `make run-i18n-serve LOCALE=xx` | `-` | Serves Angular app using the selected i18n configuration (`LOCALE`, default `en`). |
 
 ## Contributing
 
