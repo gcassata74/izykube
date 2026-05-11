@@ -31,11 +31,11 @@ RUN mvn dependency:go-offline -pl backend -am -DskipTests -q 2>/dev/null || true
 # Copy source for both modules
 COPY backend/src backend/src
 COPY frontend/src frontend/src
-COPY frontend/package.json frontend/yarn.lock frontend/
+COPY frontend/package.json frontend/package-lock.json frontend/
 COPY frontend/angular.json frontend/tsconfig.json frontend/tsconfig.app.json \
      frontend/tsconfig.spec.json frontend/proxy.conf.json frontend/
 
-# Full build: frontend-maven-plugin handles yarn install + ng build,
+# Full build: frontend-maven-plugin handles npm install + ng build,
 # then packages Angular dist as static resources inside the backend jar.
 RUN mvn -DskipTests clean package -q
 
