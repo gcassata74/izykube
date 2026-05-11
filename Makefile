@@ -24,9 +24,7 @@ OLM_VERSION ?= v0.30.0
 OLM_BASE_URL ?= https://github.com/operator-framework/operator-lifecycle-manager/releases/download/$(OLM_VERSION)
 SUDO ?= sudo
 
-.PHONY: \
-	restart-k3d-cluster start-k3d-cluster-with-istio \
-	install-grafana install-cluster-addons bootstrap-k3d-cluster
+.PHONY: install-grafana install-cluster-addons
 
 # e.g. make run-i18n-build LOCALE=fr
 run-i18n-build:
@@ -52,42 +50,6 @@ run-chrome-dev:
 run-angular-client:
 	cd frontend && npx kill-port 4200 || true && npm start
 
-run-spring-boot-server:
-	./mvnw -pl backend -am -DskipTests clean package
-	java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -jar backend/target/backend-0.0.1-SNAPSHOT.jar
-
-create-docker-registry:
-	@if docker ps -a --format '{{.Names}}' | grep -qx 'izyregistry'; then \
-		echo "Docker registry 'izyregistry' already exists, skipping."; \
-	else \
-		docker run -d --name izyregistry -p 5000:5000 --restart=always registry:2; \
-	fi
-
-create-k3d-registry:
-	@if k3d registry list | awk 'NR>1 {print $$1}' | grep -Eq '^(k3d-)?izyregistry$$'; then \
-		echo "k3d registry 'izyregistry' already exists, skipping."; \
-	else \
-		k3d registry create izyregistry --port 5000; \
-	fi
-
-delete-docker-registry:
-	docker stop izyregistry && docker rm -v izyregistry
-
-delete-k3d-registry:
-	k3d registry delete izyregistry
-
-create-k3d-cluster: create-k3d-registry
-	@if k3d cluster list | awk 'NR>1 {print $$1}' | grep -qx 'izycluster'; then \
-		echo "k3d cluster 'izycluster' already exists, skipping."; \
-	else \
-		k3d cluster create izycluster --registry-use izyregistry:5000 -p '80:80@loadbalancer' -p '443:443@loadbalancer' --k3s-arg '--disable=traefik@server:*'; \
-	fi
-
-delete-k3d-cluster:
-	k3d cluster delete izycluster
-
-restart-k3d-cluster: delete-k3d-cluster create-k3d-cluster
-
 # New target for installing Istio
 install-istio:
 	@echo "Installing Istio..."
@@ -99,9 +61,6 @@ install-istio:
 	kubectl label namespace default istio-injection=enabled --overwrite
 	@echo "Istio installation complete."
 	rm -rf istio-1.18.2
-
-# Updated target to include Istio installation
-start-k3d-cluster-with-istio: create-k3d-cluster install-istio
 
 # Create monitoring namespace
 create-istio-system-db:
@@ -126,12 +85,6 @@ grafana-port-forward: install-grafana-release
 	@nohup kubectl -n istio-system-db port-forward svc/grafana 3000:80 >/tmp/izykube-grafana-pf.log 2>&1 & \
 	echo $$! > /tmp/izykube-grafana-pf.pid; \
 	disown || true
-
-# Install Ollama in-cluster (lightweight model)
-install-ollama: create-izykube-system
-	kubectl apply -f yaml/ollama.yaml
-# temporary port-forward until izykube is not deployend into the cluster
-	kubectl -n izykube-system port-forward svc/ollama 11434:11434 >/tmp/ollama-pf.log 2>&1 &
 
 # Install cert-manager (CRDs + controller)
 install-cert-manager:
@@ -213,15 +166,9 @@ install-istio-gateway: install-istio
 	kubectl apply -f yaml/izykube-gateway.yaml
 
 # Install all cluster addons (istio, monitoring)
-install-cluster-addons: install-olm create-internal-ca install-istio-gateway install-prometheus install-grafana install-ollama
-
-# Bootstrap cluster with addons
-bootstrap-k3d-cluster: create-k3d-cluster install-cluster-addons
+install-cluster-addons: install-olm create-internal-ca install-istio-gateway install-prometheus install-grafana
 
 # Create izykube system namespace
 create-izykube-system:
 	kubectl create namespace izykube-system --dry-run=client -o yaml | kubectl apply -f -
 
-build-backend:
-	./mvnw -pl backend -am -DskipTests clean package
-	java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -jar backend/target/backend-0.0.1-SNAPSHOT.jar
