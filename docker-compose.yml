@@ -1,0 +1,149 @@
+# IzyKube
+# Copyright (c) 2026-present Izylife Solutions s.r.l.
+# Author: Giuseppe Cassata
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+# ── Before first run ────────────────────────────────────────────────────────
+# MongoDB data lives in anonymous volumes from the pre-existing mongo-host
+# container. Stop it first so this compose can attach to the same volumes:
+#
+#   docker stop mongo-host
+#
+# Ollama models are already in the named volume izykube_ollama-data (created
+# by docker-compose.ollama.yaml) and are reused automatically via external:.
+# ────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── MongoDB ────────────────────────────────────────────────────────────────
+  # Attaches to the existing anonymous volumes from mongo-host so no data
+  # is lost. Run `docker stop mongo-host` before `docker compose up`.
+  mongo:
+    image: mongo:7
+    container_name: izykube-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+      - mongo-configdb:/data/configdb
+
+  # ── Docker Registry ────────────────────────────────────────────────────────
+  registry:
+    image: registry:2
+    container_name: izykube-registry
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+
+  # ── k3s (lightweight Kubernetes) ──────────────────────────────────────────
+  # Runs as a privileged container. A wrapper script patches the kubeconfig
+  # server URL from 127.0.0.1 to the compose service name so the backend can
+  # reach the API server via the internal network (https://k3s:6443).
+  k3s:
+    image: rancher/k3s:latest
+    container_name: izykube-k3s
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "6443:6443"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - k3s-server:/var/lib/rancher/k3s
+      - kubeconfig:/kubeconfig
+      - ./k3s-registries.yaml:/etc/rancher/k3s/registries.yaml:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        k3s server \
+          --disable=traefik \
+          --tls-san=k3s \
+          --write-kubeconfig=/kubeconfig/config \
+          --write-kubeconfig-mode=644 &
+        K3S_PID=$!
+        echo "Waiting for kubeconfig..."
+        until [ -f /kubeconfig/config ]; do sleep 2; done
+        sleep 3
+        sed -i 's|https://127.0.0.1:6443|https://k3s:6443|g' /kubeconfig/config
+        echo "kubeconfig ready"
+        wait $K3S_PID
+    healthcheck:
+      test: ["CMD", "sh", "-c", "[ -f /kubeconfig/config ]"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+  # ── Ollama ─────────────────────────────────────────────────────────────────
+  # Reuses the named volume izykube_ollama-data created by the previous
+  # docker-compose.ollama.yaml — models are preserved automatically.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: izykube-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+
+  # ── IzyKube ────────────────────────────────────────────────────────────────
+  # Spring Boot serves both the REST API and the Angular SPA (packaged as
+  # static resources in the jar by the frontend Maven module).
+  izykube:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: izykube
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+      - "5005:5005"
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/izykube
+      - KUBECONFIG=/kubeconfig/config
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - kubeconfig:/kubeconfig:ro
+    depends_on:
+      mongo:
+        condition: service_started
+      k3s:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+
+volumes:
+  # Existing MongoDB data (anonymous volumes from mongo-host) — preserved.
+  mongo-data:
+    external: true
+    name: c94117835a74f8b871186e00847f73ccf8a249d9c59eb60cb7299c2f1d1d6835
+  mongo-configdb:
+    external: true
+    name: e658cdac98000fd8502e4d89cf285d34150b81eac2f93ad58877a7d7d17fc5e5
+
+  # Existing Ollama models (named volume from docker-compose.ollama.yaml).
+  ollama-data:
+    external: true
+    name: izykube_ollama-data
+
+  # Fresh volumes for new services.
+  registry-data:
+  k3s-server:
+  kubeconfig:
