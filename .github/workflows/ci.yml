@@ -120,6 +120,7 @@ jobs:
     needs: [backend, frontend, quality-gates]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: izykube
     steps:
       - name: Checkout
         uses: actions/checkout@v4
