@@ -87,7 +87,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: gcassata74/izykube
+          images: gcassata/izykube
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
