@@ -48,7 +48,10 @@ IzyKube supports:
 - `backend/`: Spring Boot API and orchestration logic
 - `yaml/`: Kubernetes manifests used by setup flows
 - `docs/`: project documentation
-- `Makefile`: local development and cluster bootstrap commands
+- `Dockerfile`: multi-stage build — Maven compiles frontend + backend into a single self-contained jar; JRE runtime image
+- `docker-compose.yml`: full local stack (MongoDB, Docker registry, k3s, Ollama, izykube)
+- `.github/workflows/`: CI and release pipelines
+- `Makefile`: cluster addon bootstrap commands
 
 ## Prerequisites
 
@@ -58,6 +61,22 @@ IzyKube supports:
 - kubectl
 - helm
 - openssl
+
+## Docker Image
+
+Pre-built images are published to DockerHub at [`gcassata/izykube`](https://hub.docker.com/r/gcassata/izykube):
+
+| Tag | Published by |
+|---|---|
+| `latest` | Every merge to `main` (after CI passes) |
+| `<sha>` | Same push, short commit SHA |
+| `1.2.3`, `1.2` | Every `v*` tag / GitHub release |
+
+To run without building locally:
+
+```bash
+docker pull gcassata/izykube:latest
+```
 
 ## Local Development
 
@@ -131,6 +150,30 @@ sudo -v && make install-ca-local
 ```bash
 make run-chrome-dev
 ```
+
+## CI/CD
+
+### CI (`ci.yml`) — triggers on pull request and push to `main`
+
+| Job | What it does |
+|---|---|
+| `backend` | Runs tests, packages jar, uploads artifact |
+| `frontend` | Installs deps, runs headless unit tests, production build, uploads dist |
+| `quality-gates` | Checks no hardcoded warn toasts, no `stringData` in manifest generator |
+| `docker-publish` | Builds Docker image and pushes `gcassata/izykube:latest` + `:<sha>` — only on push to `main`, after all three jobs pass |
+
+### Release (`release.yml`) — triggers on `v*` tags
+
+Builds backend + frontend, creates a GitHub release with jar / frontend tarball / SHA256 checksums, then builds and pushes `gcassata/izykube:<version>`, `:<major.minor>`, and `:latest` to DockerHub.
+
+### GitHub environment
+
+Both Docker publish jobs use the `izykube` GitHub environment. Required secrets:
+
+| Secret | Value |
+|---|---|
+| `DOCKERHUB_USERNAME` | `gcassata` |
+| `DOCKERHUB_TOKEN` | DockerHub personal access token |
 
 ## Optional Services
 
