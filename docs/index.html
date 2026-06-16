@@ -3,758 +3,753 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IzyKube — Visual Kubernetes Architecture Designer</title>
-  <meta name="description" content="IzyKube is an open-source Kubernetes architecture designer for modeling namespaces, generating manifests, and deploying to a target cluster." />
-  <meta property="og:title" content="IzyKube — Visual Kubernetes Architecture Designer" />
-  <meta property="og:description" content="Model Kubernetes namespaces visually, generate YAML manifests, and deploy — all from a single diagram-based UI." />
+  <title>IzyKube | Design Kubernetes Faster, Ship with Confidence</title>
+  <meta name="description" content="IzyKube turns Kubernetes architecture into a visual workflow: model namespaces, generate manifests, and deploy from one interface." />
+  <meta property="og:title" content="IzyKube | Design Kubernetes Faster, Ship with Confidence" />
+  <meta property="og:description" content="From whiteboard chaos to deployable Kubernetes manifests in minutes." />
   <meta property="og:image" content="https://izylife.github.io/izykube/demo.png" />
   <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0d1117;
-      --bg2: #161b22;
-      --bg3: #1c2128;
-      --border: #30363d;
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --accent: #326ce5;
-      --accent-light: #4f8ef7;
-      --accent-glow: rgba(50, 108, 229, 0.25);
-      --green: #3fb950;
-      --radius: 8px;
+      --sand: #f7f3eb;
+      --card: #fffdfa;
+      --ink: #111420;
+      --muted: #586073;
+      --line: #d9d9d4;
+      --brand: #0e7f67;
+      --brand-2: #0d4d9a;
+      --brand-soft: #e2f5ef;
+      --cta: #f97316;
+      --cta-2: #ea580c;
+      --radius: 14px;
+      --shadow: 0 20px 45px rgba(17, 20, 32, 0.12);
+      --max: 1140px;
     }
 
     html { scroll-behavior: smooth; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      font-family: "Manrope", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 88% 8%, rgba(14, 127, 103, 0.18), transparent 32%),
+        radial-gradient(circle at 10% 18%, rgba(13, 77, 154, 0.12), transparent 36%),
+        var(--sand);
+      color: var(--ink);
       line-height: 1.6;
     }
 
-    a { color: var(--accent-light); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    a { color: inherit; }
 
-    /* ── NAV ── */
+    .container {
+      width: min(100% - 2.5rem, var(--max));
+      margin: 0 auto;
+    }
+
     nav {
       position: sticky;
       top: 0;
-      z-index: 100;
+      z-index: 20;
+      background: rgba(247, 243, 235, 0.9);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .nav-inner {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 2rem;
-      height: 60px;
-      background: rgba(13, 17, 23, 0.85);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--border);
+      height: 76px;
     }
 
-    .nav-logo {
-      display: flex;
+    .logo {
+      display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      font-weight: 700;
-      font-size: 1.15rem;
-      color: var(--text);
+      gap: 0.65rem;
       text-decoration: none;
+      font-weight: 800;
+      color: var(--ink);
+      font-family: "Space Grotesk", sans-serif;
+      letter-spacing: -0.02em;
+      font-size: 1.15rem;
     }
 
-    .nav-logo .k8s-icon {
+    .k8s {
       width: 28px;
       height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      display: grid;
+      place-items: center;
+      color: white;
+      font-size: 0.85rem;
+      box-shadow: 0 6px 20px rgba(13, 77, 154, 0.35);
     }
 
     .nav-links {
       display: flex;
-      gap: 1.5rem;
+      gap: 1.2rem;
       list-style: none;
-    }
-
-    .nav-links a {
+      font-weight: 600;
       color: var(--muted);
-      font-size: 0.9rem;
-      transition: color 0.2s;
+      font-size: 0.92rem;
     }
 
-    .nav-links a:hover {
-      color: var(--text);
-      text-decoration: none;
-    }
-
-    /* ── HERO ── */
-    .hero {
-      text-align: center;
-      padding: 6rem 1.5rem 4rem;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hero::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse 80% 50% at 50% -10%, var(--accent-glow), transparent 70%);
-      pointer-events: none;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.3rem 0.8rem;
-      background: rgba(50, 108, 229, 0.15);
-      border: 1px solid rgba(50, 108, 229, 0.4);
-      border-radius: 999px;
-      font-size: 0.78rem;
-      color: var(--accent-light);
-      margin-bottom: 1.5rem;
-    }
-
-    .badge .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--green);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    h1 {
-      font-size: clamp(2.2rem, 5vw, 3.6rem);
-      font-weight: 800;
-      line-height: 1.15;
-      letter-spacing: -0.03em;
-      margin-bottom: 1.2rem;
-    }
-
-    h1 span {
-      background: linear-gradient(135deg, var(--accent-light) 0%, #7c9ef8 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .hero-sub {
-      max-width: 580px;
-      margin: 0 auto 2.5rem;
-      font-size: 1.15rem;
-      color: var(--muted);
-    }
-
-    .cta-group {
-      display: flex;
-      gap: 1rem;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
+    .nav-links a { text-decoration: none; }
+    .nav-links a:hover { color: var(--ink); }
 
     .btn {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.65rem 1.4rem;
-      border-radius: var(--radius);
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
+      justify-content: center;
+      border-radius: 12px;
+      padding: 0.7rem 1.1rem;
+      font-weight: 700;
       text-decoration: none;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      border: 1px solid transparent;
+      font-size: 0.92rem;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(17, 20, 32, 0.18);
     }
 
     .btn-primary {
-      background: var(--accent);
+      background: var(--cta);
       color: #fff;
-      border: 1px solid transparent;
     }
 
-    .btn-primary:hover {
-      background: var(--accent-light);
-      text-decoration: none;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 20px var(--accent-glow);
+    .btn-primary:hover { background: var(--cta-2); }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: var(--line);
+      color: var(--ink);
     }
 
-    .btn-secondary {
-      background: var(--bg2);
-      color: var(--text);
-      border: 1px solid var(--border);
+    .btn-ghost:hover {
+      background: #fff;
+      box-shadow: none;
     }
 
-    .btn-secondary:hover {
-      background: var(--bg3);
-      border-color: var(--muted);
-      text-decoration: none;
-      transform: translateY(-1px);
+    .hero {
+      padding: 4.8rem 0 3.6rem;
     }
 
-    /* ── DEMO SCREENSHOT ── */
-    .screenshot-wrap {
-      max-width: 1000px;
-      margin: 3.5rem auto 0;
-      padding: 0 1.5rem;
-      position: relative;
-    }
-
-    .screenshot-wrap::before {
-      content: "";
-      position: absolute;
-      inset: -1px;
-      border-radius: calc(var(--radius) + 4px);
-      background: linear-gradient(135deg, rgba(50, 108, 229, 0.5), rgba(124, 158, 248, 0.15));
-      z-index: 0;
-    }
-
-    .screenshot-inner {
-      position: relative;
-      z-index: 1;
-      background: var(--bg2);
-      border-radius: var(--radius);
-      overflow: hidden;
-      border: 1px solid var(--border);
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
-    }
-
-    .screenshot-bar {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 0.6rem 1rem;
-      background: var(--bg3);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .screenshot-bar .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-    }
-
-    .screenshot-bar .dot:nth-child(1) { background: #ff5f57; }
-    .screenshot-bar .dot:nth-child(2) { background: #ffbd2e; }
-    .screenshot-bar .dot:nth-child(3) { background: #28c840; }
-
-    .screenshot-bar .url-bar {
-      flex: 1;
-      text-align: center;
-      font-size: 0.78rem;
-      color: var(--muted);
-      background: var(--bg);
-      border-radius: 4px;
-      padding: 0.2rem 0.6rem;
-      max-width: 280px;
-      margin: 0 auto;
-    }
-
-    .screenshot-inner img {
-      display: block;
-      width: 100%;
-      height: auto;
-    }
-
-    /* ── FEATURES ── */
-    section { padding: 5rem 1.5rem; }
-
-    .section-label {
-      text-align: center;
-      font-size: 0.8rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--accent-light);
-      margin-bottom: 0.75rem;
-    }
-
-    h2 {
-      text-align: center;
-      font-size: clamp(1.6rem, 3vw, 2.2rem);
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.75rem;
-    }
-
-    .section-sub {
-      text-align: center;
-      color: var(--muted);
-      max-width: 520px;
-      margin: 0 auto 3rem;
-      font-size: 1rem;
-    }
-
-    .features-grid {
+    .hero-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1.25rem;
-      max-width: 1000px;
-      margin: 0 auto;
-    }
-
-    .feature-card {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      transition: border-color 0.2s, transform 0.2s;
-    }
-
-    .feature-card:hover {
-      border-color: var(--accent);
-      transform: translateY(-2px);
-    }
-
-    .feature-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 8px;
-      background: rgba(50, 108, 229, 0.15);
-      display: flex;
+      gap: 2rem;
+      grid-template-columns: 1.05fr 0.95fr;
       align-items: center;
-      justify-content: center;
-      margin-bottom: 1rem;
-      font-size: 1.3rem;
     }
 
-    .feature-card h3 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 0.4rem;
-    }
-
-    .feature-card p {
-      font-size: 0.88rem;
-      color: var(--muted);
-      line-height: 1.55;
-    }
-
-    /* ── STACK ── */
-    .stack-section { background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-
-    .stack-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      justify-content: center;
-      max-width: 700px;
-      margin: 0 auto;
-    }
-
-    .stack-pill {
-      display: flex;
+    .pill {
+      display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      background: var(--bg3);
-      border: 1px solid var(--border);
+      background: var(--brand-soft);
+      border: 1px solid rgba(14, 127, 103, 0.35);
+      color: #075445;
       border-radius: 999px;
-      font-size: 0.88rem;
-    }
-
-    .stack-pill img {
-      width: 20px;
-      height: 20px;
-      object-fit: contain;
-    }
-
-    /* ── QUICKSTART ── */
-    .quickstart-wrap {
-      max-width: 780px;
-      margin: 0 auto;
-    }
-
-    .step {
-      display: flex;
-      gap: 1.25rem;
-      margin-bottom: 2rem;
-    }
-
-    .step-num {
-      flex-shrink: 0;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--accent);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 700;
-      margin-top: 0.1rem;
+      letter-spacing: 0.02em;
+      padding: 0.36rem 0.85rem;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
     }
 
-    .step-content h3 {
-      font-size: 1rem;
+    h1 {
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(2rem, 5vw, 3.9rem);
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.1rem;
+    }
+
+    h1 span {
+      color: var(--brand-2);
+      position: relative;
+      display: inline-block;
+    }
+
+    h1 span::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0.12em;
+      height: 0.22em;
+      background: rgba(249, 115, 22, 0.35);
+      z-index: -1;
+      border-radius: 6px;
+    }
+
+    .hero-sub {
+      color: var(--muted);
+      font-size: 1.08rem;
+      max-width: 58ch;
+      margin-bottom: 1.55rem;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .meta {
+      display: flex;
+      gap: 0.9rem;
+      flex-wrap: wrap;
+      font-size: 0.86rem;
+      color: var(--muted);
       font-weight: 600;
-      margin-bottom: 0.5rem;
     }
 
-    pre {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1rem 1.25rem;
-      font-size: 0.85rem;
-      overflow-x: auto;
-      color: #c9d1d9;
-      font-family: "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
-      line-height: 1.55;
+    .meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.24rem 0.56rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.7);
     }
 
-    code {
-      font-family: "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
-      font-size: 0.85em;
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 0.1em 0.35em;
-    }
-
-    /* ── DOCKER ── */
-    .docker-section {
-      background: var(--bg2);
-      border-top: 1px solid var(--border);
-    }
-
-    .docker-card {
-      max-width: 780px;
-      margin: 0 auto;
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
+    .hero-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
       overflow: hidden;
+      box-shadow: var(--shadow);
+      transform: rotate(-0.8deg);
     }
 
-    .docker-card-header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--border);
+    .hero-head {
       display: flex;
       align-items: center;
       gap: 0.6rem;
+      border-bottom: 1px solid var(--line);
+      padding: 0.8rem 1rem;
+      background: #fff;
     }
 
-    .docker-card-header svg {
-      width: 20px;
-      height: 20px;
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #fecaca;
     }
 
-    .docker-card-header span {
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
+    .dot:nth-child(2) { background: #fde68a; }
+    .dot:nth-child(3) { background: #bbf7d0; }
 
-    .tag-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.88rem;
-    }
-
-    .tag-table th {
-      padding: 0.6rem 1.5rem;
-      text-align: left;
-      font-weight: 600;
+    .bar {
+      margin-left: auto;
+      font-size: 0.76rem;
       color: var(--muted);
-      font-size: 0.78rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.16rem 0.5rem;
+      font-weight: 600;
+    }
+
+    .hero-card img {
+      width: 100%;
+      display: block;
+      background: #f3f4f6;
+    }
+
+    .proof {
+      padding: 0.5rem 0 4.2rem;
+    }
+
+    .proof-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .proof-card {
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+
+    .proof-card h3 {
+      font-size: 0.98rem;
+      margin-bottom: 0.32rem;
+    }
+
+    .proof-card p {
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    section {
+      padding: 4.8rem 0;
+      border-top: 1px solid rgba(17, 20, 32, 0.06);
+    }
+
+    .label {
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.1em;
+      font-size: 0.77rem;
+      color: var(--brand-2);
+      font-weight: 800;
+      margin-bottom: 0.5rem;
     }
 
-    .tag-table td {
-      padding: 0.65rem 1.5rem;
-      border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+    h2 {
+      font-family: "Space Grotesk", sans-serif;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      font-size: clamp(1.6rem, 4vw, 2.5rem);
+      margin-bottom: 0.8rem;
     }
 
-    .tag-table tr:last-child td { border-bottom: none; }
-
-    .tag-badge {
-      display: inline-block;
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
-      background: rgba(50, 108, 229, 0.15);
-      border: 1px solid rgba(50, 108, 229, 0.3);
-      color: var(--accent-light);
-      font-family: monospace;
-      font-size: 0.82rem;
+    .sub {
+      max-width: 68ch;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      font-size: 1rem;
     }
 
-    /* ── FOOTER ── */
+    .outcome-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .outcome {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      box-shadow: 0 8px 18px rgba(17, 20, 32, 0.06);
+    }
+
+    .outcome b {
+      display: block;
+      margin-bottom: 0.36rem;
+      color: var(--ink);
+      font-size: 1rem;
+    }
+
+    .outcome span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .compare {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .box {
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      padding: 1.25rem;
+      background: var(--card);
+    }
+
+    .box h3 {
+      margin-bottom: 0.8rem;
+      font-size: 1.03rem;
+    }
+
+    .box ul {
+      list-style: none;
+      display: grid;
+      gap: 0.55rem;
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    .bad { background: #fff7f7; border-color: #f4cfcf; }
+    .good { background: #f3fcf9; border-color: #c8ede2; }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .feature {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+    }
+
+    .feature h3 {
+      font-size: 1rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .feature p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .steps {
+      display: grid;
+      gap: 0.9rem;
+      max-width: 860px;
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.8);
+      padding: 1rem 1.1rem;
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .step b {
+      font-size: 0.96rem;
+    }
+
+    pre {
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.84rem;
+      background: #111827;
+      color: #dbeafe;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      overflow-x: auto;
+      border: 1px solid #1f2937;
+    }
+
+    .faq {
+      display: grid;
+      gap: 0.85rem;
+      max-width: 860px;
+    }
+
+    details {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+    }
+
+    summary {
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    details p {
+      margin-top: 0.56rem;
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    .final-cta {
+      background: linear-gradient(140deg, #0d4d9a, #0e7f67);
+      border-radius: 22px;
+      color: #fff;
+      padding: 2.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      box-shadow: var(--shadow);
+    }
+
+    .final-cta h3 {
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(1.4rem, 3vw, 2.1rem);
+      line-height: 1.2;
+      margin-bottom: 0.4rem;
+    }
+
+    .final-cta p {
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.9);
+      max-width: 50ch;
+    }
+
+    .final-cta .btn-primary {
+      background: #fff;
+      color: #0d4d9a;
+    }
+
+    .final-cta .btn-primary:hover { background: #f3f4f6; }
+
     footer {
       text-align: center;
-      padding: 3rem 1.5rem;
-      border-top: 1px solid var(--border);
       color: var(--muted);
-      font-size: 0.85rem;
+      border-top: 1px solid var(--line);
+      padding: 2.1rem 1rem 3rem;
+      font-size: 0.87rem;
     }
 
-    footer .footer-links {
+    .footer-links {
       display: flex;
-      gap: 1.5rem;
       justify-content: center;
-      margin-bottom: 1.2rem;
       flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 0.85rem;
+      font-weight: 600;
     }
 
-    footer .footer-links a {
-      color: var(--muted);
+    .footer-links a { text-decoration: none; }
+
+    @media (max-width: 1024px) {
+      .hero-grid,
+      .proof-grid,
+      .outcome-grid,
+      .compare,
+      .features {
+        grid-template-columns: 1fr 1fr;
+      }
     }
 
-    footer .footer-links a:hover {
-      color: var(--text);
-    }
-
-    /* ── RESPONSIVE ── */
-    @media (max-width: 600px) {
-      nav { padding: 0 1rem; }
+    @media (max-width: 760px) {
       .nav-links { display: none; }
-      .hero { padding: 4rem 1rem 2.5rem; }
+      .hero-grid,
+      .proof-grid,
+      .outcome-grid,
+      .compare,
+      .features,
+      .final-cta {
+        grid-template-columns: 1fr;
+        display: grid;
+      }
+      .hero { padding-top: 3.2rem; }
+      .final-cta { padding: 1.5rem; }
     }
   </style>
 </head>
 <body>
+  <nav>
+    <div class="container nav-inner">
+      <a class="logo" href="#top" aria-label="IzyKube home">
+        <span class="k8s">K8</span>
+        IzyKube
+      </a>
+      <ul class="nav-links">
+        <li><a href="#value">Value</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#quickstart">Quickstart</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+      <a class="btn btn-ghost" href="https://github.com/izylife/izykube" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+    </div>
+  </nav>
 
-<!-- NAV -->
-<nav>
-  <a class="nav-logo" href="#">
-    <svg class="k8s-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="48" fill="#326CE5" stroke="#1a3d8f" stroke-width="2"/>
-      <path d="M50 18 L74 33 L74 67 L50 82 L26 67 L26 33 Z" fill="none" stroke="white" stroke-width="4" stroke-linejoin="round"/>
-      <circle cx="50" cy="50" r="9" fill="white"/>
-      <line x1="50" y1="18" x2="50" y2="41" stroke="white" stroke-width="3.5"/>
-      <line x1="50" y1="59" x2="50" y2="82" stroke="white" stroke-width="3.5"/>
-      <line x1="74" y1="33" x2="63.5" y2="39.5" stroke="white" stroke-width="3.5"/>
-      <line x1="36.5" y1="60.5" x2="26" y2="67" stroke="white" stroke-width="3.5"/>
-      <line x1="26" y1="33" x2="36.5" y2="39.5" stroke="white" stroke-width="3.5"/>
-      <line x1="63.5" y1="60.5" x2="74" y2="67" stroke="white" stroke-width="3.5"/>
-    </svg>
-    IzyKube
-  </a>
-  <ul class="nav-links">
-    <li><a href="#features">Features</a></li>
-    <li><a href="#quickstart">Quickstart</a></li>
-    <li><a href="#docker">Docker</a></li>
-    <li><a href="https://github.com/izylife/izykube" target="_blank">GitHub</a></li>
-  </ul>
-</nav>
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <div class="pill">Open Source · AGPL-3.0 · Self-hosted</div>
+          <h1>Stop explaining Kubernetes on slides. <span>Ship architecture people can execute.</span></h1>
+          <p class="hero-sub">
+            IzyKube turns cluster design into a visual workflow. Model namespaces, generate YAML or Helm artifacts,
+            then deploy directly from the same interface.
+          </p>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="#quickstart">Start in 5 Minutes</a>
+            <a class="btn btn-ghost" href="https://hub.docker.com/r/gcassata/izykube" target="_blank" rel="noopener noreferrer">Pull Docker Image</a>
+          </div>
+          <div class="meta">
+            <span>No SaaS lock-in</span>
+            <span>Works locally with Docker Compose</span>
+            <span>Ideal for platform and DevOps teams</span>
+          </div>
+        </div>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="badge"><span class="dot"></span> Open Source · AGPL-3.0</div>
-  <h1>Visual <span>Kubernetes</span><br/>Architecture Designer</h1>
-  <p class="hero-sub">
-    Model namespaces as diagrams, generate YAML manifests, and deploy to your cluster — all from a single browser-based UI.
-  </p>
-  <div class="cta-group">
-    <a class="btn btn-primary" href="https://github.com/izylife/izykube" target="_blank">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-      View on GitHub
-    </a>
-    <a class="btn btn-secondary" href="#quickstart">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M10.5 8a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"/></svg>
-      Get Started
-    </a>
-  </div>
-
-  <div class="screenshot-wrap">
-    <div class="screenshot-inner">
-      <div class="screenshot-bar">
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="url-bar">localhost:8090</div>
+        <div class="hero-card">
+          <div class="hero-head">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="bar">localhost:8090</span>
+          </div>
+          <img src="demo.png" alt="IzyKube visual Kubernetes architecture editor" loading="lazy" />
+        </div>
       </div>
-      <img src="demo.png" alt="IzyKube diagram editor showing Kubernetes namespace design" loading="lazy" />
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- FEATURES -->
-<section id="features">
-  <p class="section-label">What you can do</p>
-  <h2>Everything you need to design Kubernetes</h2>
-  <p class="section-sub">From drawing a namespace to shipping manifests — IzyKube covers the full design-to-deploy loop.</p>
+    <section class="proof">
+      <div class="container proof-grid">
+        <article class="proof-card">
+          <h3>Designed for real delivery</h3>
+          <p>Bridge product, backend, and platform teams with a shared, executable architecture view.</p>
+        </article>
+        <article class="proof-card">
+          <h3>From diagram to deploy</h3>
+          <p>Move from idea to cluster manifests without hand-translating every object.</p>
+        </article>
+        <article class="proof-card">
+          <h3>Own your stack</h3>
+          <p>Run fully in your infrastructure with open standards and no proprietary dependencies.</p>
+        </article>
+      </div>
+    </section>
 
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feature-icon">🗺️</div>
-      <h3>Visual Namespace Modeler</h3>
-      <p>Drag-and-drop workloads, services, config maps, secrets, ingresses, and volumes directly on an SVG canvas.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">📸</div>
-      <h3>Version Snapshots</h3>
-      <p>Save and restore multiple versions of each namespace. Explore history without losing your current design.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">📄</div>
-      <h3>YAML Manifest Generation</h3>
-      <p>Generate production-ready Kubernetes YAML from your diagram. Export as plain manifests or Helm charts.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🚀</div>
-      <h3>One-click Deploy & Undeploy</h3>
-      <p>Apply or delete generated manifests directly to a connected Kubernetes cluster from inside the UI.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🔍</div>
-      <h3>Runtime Inspection</h3>
-      <p>Overlay live cluster state on your diagram — see what's running, what's missing, and what's drifted.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">📦</div>
-      <h3>Helm Export</h3>
-      <p>Export your namespace as a Helm chart, ready to parameterize and publish to any chart repository.</p>
-    </div>
-  </div>
-</section>
+    <section id="value">
+      <div class="container">
+        <p class="label">Why teams switch</p>
+        <h2>Replace architecture drift with one source of truth</h2>
+        <p class="sub">Most teams design in one tool and deploy in another. IzyKube keeps intent, manifests, and deployment flow connected.</p>
 
-<!-- TECH STACK -->
-<section class="stack-section">
-  <p class="section-label">Technology Stack</p>
-  <h2>Built on proven open-source</h2>
-  <p class="section-sub" style="margin-bottom: 2rem;">No vendor lock-in. Every component is replaceable and self-hostable.</p>
-  <div class="stack-grid">
-    <div class="stack-pill">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="#DD0031"><path d="M9.931 12.645h4.138l-2.07-4.908m0-7.737L.68 3.982l1.726 14.771L12 24l9.596-5.242L23.32 3.982 12 .001zm7.064 18.31h-2.638l-1.422-3.503H8.996L7.574 18.31H4.936L12 2.407z"/></svg>
-      Angular
-    </div>
-    <div class="stack-pill">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="#6DB33F"><path d="M14.131.047C14.063.014 13.009 0 12 0S9.937.014 9.869.047L.19 5.24a.621.621 0 00-.095.038L.047 5.316A.621.621 0 000 5.899v12.202c0 .236.127.455.335.573l9.831 5.228c.037.02.075.036.115.05L10.328 24a.621.621 0 00.344.047L12 24.094l1.328-.047a.621.621 0 00.344-.047l.047-.047c.04-.014.078-.03.115-.05l9.831-5.228A.654.654 0 0024 18.101V5.899a.621.621 0 00-.047-.583l-.048-.038a.621.621 0 00-.095-.038L14.131.047z"/></svg>
-      Spring Boot
-    </div>
-    <div class="stack-pill">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="#47A248"><path d="M17.193 9.555c-1.264-5.58-4.252-7.414-4.573-8.115-.28-.394-.53-.954-.735-1.44-.036.495-.055.685-.523 1.184-.723.566-4.438 3.682-4.74 10.02-.282 5.912 4.27 9.435 4.888 9.884l.07.05A73.49 73.49 0 0111.91 24h.481c.114-1.032.284-2.056.51-3.07.417-.296.604-.463.85-.693a11.342 11.342 0 003.639-8.464c.01-.814-.076-1.63-.197-2.218zm-5.336 8.195s0-8.291.275-8.29c.213 0 .49 10.695.49 10.695-.381-.045-.765-1.76-.765-2.405z"/></svg>
-      MongoDB
-    </div>
-    <div class="stack-pill">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="#326CE5"><path d="M10.204 14.35l.007.01-.999 2.413a5.171 5.171 0 01-2.075-2.443l2.578-.373.49.394zm-.24-8.398a5.171 5.171 0 012.07-2.444l-1 2.413.14.012-.49.395-2.578-.374a5.172 5.172 0 011.858-1.002zm5.658-.76c.026-.015.052-.03.079-.044l.076-.042a5.171 5.171 0 012.63.82l-2.578.373-.49.394.999-2.413-.716-.088zm3.218 4.42l-2.578-.374-.49.394.499 2.413a5.172 5.172 0 01-2.069 2.444l1-2.413-.14-.012.49-.394 2.578.373a5.171 5.171 0 01-1.29 2.33 5.17 5.17 0 003-5.762zm-5.32 1.92a.86.86 0 00-.96-.754.86.86 0 00-.754.96.86.86 0 00.96.754.86.86 0 00.754-.96z"/></svg>
-      Kubernetes
-    </div>
-    <div class="stack-pill">
-      🐳 Docker
-    </div>
-    <div class="stack-pill">
-      🎯 interact.js
-    </div>
-  </div>
-</section>
+        <div class="compare">
+          <article class="box bad">
+            <h3>Without IzyKube</h3>
+            <ul>
+              <li>Design docs get stale after the first sprint</li>
+              <li>YAML handoffs are slow and error-prone</li>
+              <li>Platform reviews happen too late</li>
+              <li>Runtime drift is discovered in production</li>
+            </ul>
+          </article>
+          <article class="box good">
+            <h3>With IzyKube</h3>
+            <ul>
+              <li>Visual model stays aligned with deployable artifacts</li>
+              <li>Manifest and Helm generation is built-in</li>
+              <li>Deployment and undeploy happen from one UI</li>
+              <li>Cluster state can be inspected against design intent</li>
+            </ul>
+          </article>
+        </div>
 
-<!-- QUICKSTART -->
-<section id="quickstart">
-  <p class="section-label">Getting started</p>
-  <h2>Up and running in minutes</h2>
-  <p class="section-sub">One command starts the full stack: MongoDB, k3s, Ollama, and IzyKube.</p>
+        <div class="outcome-grid" style="margin-top: 1rem;">
+          <article class="outcome">
+            <b>Faster onboarding</b>
+            <span>New engineers understand services and boundaries from a single visual map.</span>
+          </article>
+          <article class="outcome">
+            <b>Cleaner collaboration</b>
+            <span>Dev, DevOps, and architects discuss the same concrete model, not separate files.</span>
+          </article>
+          <article class="outcome">
+            <b>Lower deployment risk</b>
+            <span>Review generated manifests before apply and reduce late-stage surprises.</span>
+          </article>
+        </div>
+      </div>
+    </section>
 
-  <div class="quickstart-wrap">
-    <div class="step">
-      <div class="step-num">1</div>
-      <div class="step-content">
-        <h3>Clone the repository</h3>
-        <pre>git clone https://github.com/izylife/izykube.git
+    <section id="features">
+      <div class="container">
+        <p class="label">Core features</p>
+        <h2>Everything needed to design and run Kubernetes architecture</h2>
+        <p class="sub">IzyKube supports the full design-to-deploy loop while staying compatible with standard Kubernetes workflows.</p>
+
+        <div class="features">
+          <article class="feature">
+            <h3>Visual Namespace Modeler</h3>
+            <p>Place workloads, services, config maps, ingresses, secrets, and volumes on a shared canvas.</p>
+          </article>
+          <article class="feature">
+            <h3>Version Snapshots</h3>
+            <p>Save alternative versions of the same namespace and roll back quickly during exploration.</p>
+          </article>
+          <article class="feature">
+            <h3>YAML and Helm Export</h3>
+            <p>Generate deployment-ready Kubernetes manifests or package the same model as a Helm chart.</p>
+          </article>
+          <article class="feature">
+            <h3>Deploy and Undeploy</h3>
+            <p>Apply generated resources directly to a connected cluster and remove them when needed.</p>
+          </article>
+          <article class="feature">
+            <h3>Runtime Inspection</h3>
+            <p>Overlay live cluster information to detect missing resources and drift from intended design.</p>
+          </article>
+          <article class="feature">
+            <h3>Open Architecture</h3>
+            <p>Built with Angular, Spring Boot, MongoDB, and Kubernetes-friendly infrastructure.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="quickstart">
+      <div class="container">
+        <p class="label">Quickstart</p>
+        <h2>Run IzyKube locally in minutes</h2>
+        <p class="sub">Spin up MongoDB, k3s, registry, and IzyKube using Docker Compose.</p>
+
+        <div class="steps">
+          <article class="step">
+            <b>1) Clone the repository</b>
+            <pre>git clone https://github.com/izylife/izykube.git
 cd izykube</pre>
+          </article>
+          <article class="step">
+            <b>2) Start the full stack</b>
+            <pre>docker compose up</pre>
+          </article>
+          <article class="step">
+            <b>3) Open the UI and model your first namespace</b>
+            <pre>http://localhost:8090</pre>
+          </article>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-content">
-        <h3>Start the full stack</h3>
-        <pre>docker compose up</pre>
-        <p style="margin-top: 0.6rem; font-size: 0.88rem; color: var(--muted);">
-          Starts MongoDB, a private Docker registry, k3s, Ollama, and IzyKube at <code>http://localhost:8090</code>.
-          The first run builds the image (Maven + Angular).
-        </p>
+    <section id="faq">
+      <div class="container">
+        <p class="label">FAQ</p>
+        <h2>Common questions before adoption</h2>
+        <div class="faq">
+          <details>
+            <summary>Is IzyKube a hosted SaaS?</summary>
+            <p>No. IzyKube is open-source and self-hostable. You can run it locally or in your own infrastructure.</p>
+          </details>
+          <details>
+            <summary>Does it replace kubectl or Helm?</summary>
+            <p>No. It complements your existing tooling by generating manifests and charts from a visual architecture model.</p>
+          </details>
+          <details>
+            <summary>Who is it for?</summary>
+            <p>Platform teams, DevOps engineers, architects, and backend teams that need faster and clearer Kubernetes delivery.</p>
+          </details>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-content">
-        <h3>Install cluster addons</h3>
-        <pre>export KUBECONFIG=$(docker volume inspect izykube_kubeconfig \
-  --format '{{.Mountpoint}}')/config
-make install-cluster-addons</pre>
-        <p style="margin-top: 0.6rem; font-size: 0.88rem; color: var(--muted);">
-          Installs OLM, cert-manager, Istio + gateway, Prometheus, and Grafana into k3s.
-        </p>
+    <section>
+      <div class="container">
+        <div class="final-cta">
+          <div>
+            <h3>Turn Kubernetes design into a deployable asset</h3>
+            <p>Start with the open-source version now, then adapt it to your delivery workflow.</p>
+          </div>
+          <a class="btn btn-primary" href="https://github.com/izylife/izykube" target="_blank" rel="noopener noreferrer">Get IzyKube on GitHub</a>
+        </div>
       </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-links">
+      <a href="https://github.com/izylife/izykube" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://github.com/izylife/izykube/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+      <a href="https://hub.docker.com/r/gcassata/izykube" target="_blank" rel="noopener noreferrer">DockerHub</a>
+      <a href="https://github.com/izylife/izykube/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a>
+      <a href="https://github.com/izylife/izykube/blob/main/LICENSE.md" target="_blank" rel="noopener noreferrer">License</a>
     </div>
-
-    <div class="step">
-      <div class="step-num">4</div>
-      <div class="step-content">
-        <h3>Open the UI</h3>
-        <p style="font-size: 0.88rem; color: var(--muted);">
-          Visit <a href="http://localhost:8090" target="_blank">http://localhost:8090</a> to start modeling your Kubernetes architecture.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- DOCKER -->
-<section id="docker" class="docker-section">
-  <p class="section-label">Docker Image</p>
-  <h2>Pre-built and ready to pull</h2>
-  <p class="section-sub" style="margin-bottom: 2rem;">Images are published to DockerHub on every merge and release.</p>
-
-  <div class="docker-card">
-    <div class="docker-card-header">
-      <svg viewBox="0 0 24 24" fill="#2496ED" xmlns="http://www.w3.org/2000/svg">
-        <path d="M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.954-5.43h2.118a.186.186 0 00.186-.186V3.574a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m0 2.716h2.118a.187.187 0 00.186-.186V6.29a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.887c0 .102.082.185.185.186m-2.93 0h2.12a.186.186 0 00.184-.186V6.29a.185.185 0 00-.185-.185H8.1a.185.185 0 00-.185.185v1.887c0 .102.083.185.185.186m-2.964 0h2.119a.186.186 0 00.185-.186V6.29a.185.185 0 00-.185-.185H5.136a.186.186 0 00-.186.185v1.887c0 .102.084.185.186.186m5.893 2.715h2.118a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.93 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.083.185.185.185m-2.964 0h2.119a.185.185 0 00.185-.185V9.006a.185.185 0 00-.184-.186h-2.12a.186.186 0 00-.186.186v1.887c0 .102.084.185.186.185m-2.92 0h2.12a.186.186 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.082.185.184.185m2.92 2.716h2.12a.185.185 0 00.184-.186v-1.887a.185.185 0 00-.184-.185h-2.12a.186.186 0 00-.184.185v1.887c0 .102.082.186.184.186m2.964 0h2.119a.185.185 0 00.185-.186v-1.887a.185.185 0 00-.185-.185H8.1a.185.185 0 00-.185.185v1.887c0 .102.083.186.185.186m2.93 0h2.12a.186.186 0 00.184-.186v-1.887a.185.185 0 00-.184-.185h-2.12a.185.185 0 00-.184.185v1.887c0 .102.082.186.184.186m2.964 0h2.119a.186.186 0 00.186-.186v-1.887a.186.186 0 00-.186-.185h-2.119a.185.185 0 00-.185.185v1.887c0 .102.083.186.185.186m.001 2.715h2.119a.186.186 0 00.186-.185v-1.888a.186.186 0 00-.186-.185h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185"/>
-        <path d="M22.992 11.032a3.13 3.13 0 00-2.257-1.29c-.073-.622-.262-1.23-.56-1.79-.663-1.24-1.874-2.016-3.248-2.095a3.997 3.997 0 00-3.133 1.484 3.11 3.11 0 00-1.893-.654c-1.615 0-3.016 1.214-3.255 2.838-.8.286-1.47.833-1.913 1.557a3.44 3.44 0 00-.45 2.656c.364 1.686 1.87 2.87 3.6 2.87h11.28c1.55 0 2.84-1.093 3.107-2.617.234-1.32-.283-2.65-1.278-3.46"/>
-      </svg>
-      <span>gcassata/izykube</span>
-    </div>
-    <table class="tag-table">
-      <thead>
-        <tr>
-          <th>Tag</th>
-          <th>Published by</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><span class="tag-badge">latest</span></td>
-          <td style="color: var(--muted);">Every merge to <code>main</code> (after CI passes)</td>
-        </tr>
-        <tr>
-          <td><span class="tag-badge">&lt;sha&gt;</span></td>
-          <td style="color: var(--muted);">Same push, short commit SHA</td>
-        </tr>
-        <tr>
-          <td><span class="tag-badge">1.2.3</span> <span class="tag-badge">1.2</span></td>
-          <td style="color: var(--muted);">Every <code>v*</code> tag / GitHub release</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div style="text-align:center; margin-top: 2rem;">
-    <pre style="display:inline-block; text-align:left;">docker pull gcassata/izykube:latest</pre>
-  </div>
-</section>
-
-<!-- FOOTER -->
-<footer>
-  <div class="footer-links">
-    <a href="https://github.com/izylife/izykube" target="_blank">GitHub</a>
-    <a href="https://github.com/izylife/izykube/releases" target="_blank">Releases</a>
-    <a href="https://hub.docker.com/r/gcassata/izykube" target="_blank">DockerHub</a>
-    <a href="https://github.com/izylife/izykube/blob/main/CONTRIBUTING.md" target="_blank">Contributing</a>
-    <a href="https://github.com/izylife/izykube/blob/main/LICENSE.md" target="_blank">License</a>
-  </div>
-  <p>
-    IzyKube &copy; 2026-present <a href="https://github.com/izylife" target="_blank">Izylife Solutions s.r.l.</a>
-    &nbsp;&middot;&nbsp; Licensed under <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank">AGPL-3.0</a>
-  </p>
-</footer>
-
+    <p>
+      IzyKube &copy; 2026-present <a href="https://github.com/izylife" target="_blank" rel="noopener noreferrer">Izylife Solutions s.r.l.</a>
+      · Licensed under <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener noreferrer">AGPL-3.0</a>
+    </p>
+  </footer>
 </body>
 </html>
