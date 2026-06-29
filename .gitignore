@@ -58,4 +58,8 @@ node_modules/*
 izytool/
 .aider*
 venv/*
+.venv/
+__pycache__/
 .codex/
+.secrets/
+.certs/

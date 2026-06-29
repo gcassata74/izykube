@@ -58,6 +58,7 @@ IzyKube supports:
 - Java 21 (for local frontend dev only)
 - Node.js 18+ / npm (for local frontend dev only)
 - Docker (with Compose v2)
+- Python 3.10+
 - kubectl
 - helm
 - openssl
@@ -137,6 +138,22 @@ make install-cluster-addons
 
 This installs OLM, cert-manager, internal CA, Istio + gateway, Prometheus, and Grafana.
 
+If you want the one-shot flow (addons + Ollama model pull), run:
+
+```bash
+make install
+```
+
+`make install` asks interactively for the Ollama model (default comes from `backend/src/main/resources/application.yaml`).
+
+For the interactive installer with progress bar and retry/resume support, run:
+
+```bash
+make install
+```
+
+`make install` uses a PySide6 GUI (installed via `requirements.txt`).
+
 ### 4) Trust internal CA on your local machine (recommended for HTTPS routes)
 
 Run in an interactive terminal (sudo password may be required):
@@ -185,6 +202,14 @@ make grafana-port-forward
 
 This forwards Grafana to `http://localhost:3000`.
 
+### Uninstall cluster addons
+
+```bash
+make uninstall
+```
+
+`make uninstall` opens the same PySide6 GUI flow and removes addons installed by the installer (`OLM`, `cert-manager`, `Istio`, `Prometheus`, `Grafana`, internal gateway/CA resources).
+
 ## Functional Notes
 
 ### Diagram link conventions
@@ -208,6 +233,8 @@ Main tasks with target dependencies and behavior:
 |---|---|---|
 | `make run-angular-client` | `-` | Kills process on port `4200` (if any) and starts Angular dev server from `frontend/`. |
 | `make run-chrome-dev` | `-` | Opens Chrome with a dedicated insecure dev profile for local UI testing. |
+| `make install` | `install-python-deps` | Runs Python GUI installer (`scripts/installer.py install`) with progress bar, live logs, retry, and resume support. |
+| `make uninstall` | `install-python-deps` | Runs Python GUI uninstaller (`scripts/installer.py uninstall`) with progress bar and live logs. |
 | `make install-istio` | `-` | Installs Istio (downloads `istioctl` if missing), enables sidecar injection on `default` namespace. |
 | `make create-internal-ca` | `install-cert-manager` | Generates internal CA cert/key, creates `izykube-ca` TLS secret, applies ClusterIssuer manifest. |
 | `make install-ca-local` | `create-internal-ca` | Installs cluster CA certificate in local OS trust store (`/usr/local/share/ca-certificates`). |
