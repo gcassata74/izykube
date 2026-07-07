@@ -7,7 +7,7 @@
   <meta name="description" content="IzyKube turns Kubernetes architecture into a visual workflow: model namespaces, generate manifests, and deploy from one interface." />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="author" content="Izylife Solutions s.r.l." />
-  <meta name="theme-color" content="#0e7f67" />
+  <meta name="theme-color" content="#141c31" />
   <link rel="canonical" href="https://gcassata74.github.io/izykube/" />
   <meta property="og:title" content="IzyKube | Design Kubernetes Faster, Ship with Confidence" />
   <meta property="og:description" content="From whiteboard chaos to deployable Kubernetes manifests in minutes." />
@@ -38,7 +38,7 @@
           "publisher": {
             "@type": "Organization",
             "name": "Izylife Solutions s.r.l.",
-            "url": "https://github.com/izylife"
+            "url": "https://izylifesolutions.com"
           },
           "offers": {
             "@type": "Offer",
@@ -80,39 +80,43 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --sand: #f7f3eb;
-      --card: #fffdfa;
-      --ink: #111420;
-      --muted: #586073;
-      --line: #d9d9d4;
-      --brand: #0e7f67;
-      --brand-2: #0d4d9a;
-      --brand-soft: #e2f5ef;
-      --cta: #f97316;
-      --cta-2: #ea580c;
+      --bg: #0c1221;
+      --bg-2: #141c31;
+      --bg-3: #1a2440;
+      --surface: rgba(255, 255, 255, 0.06);
+      --surface-strong: rgba(255, 255, 255, 0.1);
+      --line: rgba(255, 255, 255, 0.15);
+      --text: #f2f6ff;
+      --muted: rgba(242, 246, 255, 0.75);
+      --primary: #21d9b3;
+      --accent: #66adff;
       --radius: 14px;
-      --shadow: 0 20px 45px rgba(17, 20, 32, 0.12);
+      --shadow: 0 14px 32px rgba(0, 0, 0, 0.35);
       --max: 1140px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
     html { scroll-behavior: smooth; }
 
     body {
-      font-family: "Manrope", "Segoe UI", sans-serif;
-      background:
-        radial-gradient(circle at 88% 8%, rgba(14, 127, 103, 0.18), transparent 32%),
-        radial-gradient(circle at 10% 18%, rgba(13, 77, 154, 0.12), transparent 36%),
-        var(--sand);
-      color: var(--ink);
+      font-family: "Work Sans", "Segoe UI", sans-serif;
+      color: var(--text);
       line-height: 1.6;
+      background:
+        radial-gradient(circle at 88% 0%, rgba(102, 173, 255, 0.21), transparent 30%),
+        radial-gradient(circle at 12% 14%, rgba(33, 217, 179, 0.2), transparent 34%),
+        linear-gradient(160deg, var(--bg) 0%, var(--bg-2) 50%, #090f1d 100%);
     }
 
-    a { color: inherit; }
+    a { color: inherit; text-decoration: none; }
 
     .container {
       width: min(100% - 2.5rem, var(--max));
@@ -123,149 +127,126 @@
       position: sticky;
       top: 0;
       z-index: 20;
-      background: rgba(247, 243, 235, 0.9);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--line);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(7, 11, 20, 0.82);
+      backdrop-filter: blur(10px);
     }
 
     .nav-inner {
+      height: 78px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 76px;
+      gap: 1rem;
     }
 
     .logo {
       display: inline-flex;
       align-items: center;
       gap: 0.65rem;
-      text-decoration: none;
-      font-weight: 800;
-      color: var(--ink);
-      font-family: "Space Grotesk", sans-serif;
-      letter-spacing: -0.02em;
-      font-size: 1.15rem;
+    }
+
+    .logo img {
+      height: 42px;
+      width: auto;
+      display: block;
+    }
+
+    .logo-label {
+      font-family: "Rubik", sans-serif;
+      letter-spacing: 0.01em;
+      font-size: 1.02rem;
+      font-weight: 600;
+      color: var(--text);
     }
 
     .k8s {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
       display: grid;
       place-items: center;
-      color: white;
-      font-size: 0.85rem;
-      box-shadow: 0 6px 20px rgba(13, 77, 154, 0.35);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #08131d;
+      background: linear-gradient(130deg, var(--primary), var(--accent));
+      box-shadow: 0 8px 24px rgba(33, 217, 179, 0.35);
     }
 
     .nav-links {
-      display: flex;
-      gap: 1.2rem;
       list-style: none;
-      font-weight: 600;
+      display: flex;
+      gap: 1.25rem;
       color: var(--muted);
+      font-family: "Rubik", sans-serif;
       font-size: 0.92rem;
     }
 
-    .nav-links a { text-decoration: none; }
-    .nav-links a:hover { color: var(--ink); }
+    .nav-links a:hover { color: var(--text); }
 
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border-radius: 12px;
-      padding: 0.7rem 1.1rem;
-      font-weight: 700;
-      text-decoration: none;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-      border: 1px solid transparent;
+      border-radius: 11px;
+      padding: 0.68rem 1.08rem;
+      font-weight: 600;
       font-size: 0.92rem;
+      border: 1px solid transparent;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
       cursor: pointer;
     }
 
-    .btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 20px rgba(17, 20, 32, 0.18);
-    }
+    .btn:hover { transform: translateY(-1px); }
 
     .btn-primary {
-      background: var(--cta);
-      color: #fff;
+      background: linear-gradient(110deg, var(--primary), #3ee8bf 70%, #77f6c8);
+      color: #08131d;
+      box-shadow: 0 12px 25px rgba(33, 217, 179, 0.35);
     }
-
-    .btn-primary:hover { background: var(--cta-2); }
 
     .btn-ghost {
-      background: transparent;
+      background: rgba(255, 255, 255, 0.03);
       border-color: var(--line);
-      color: var(--ink);
+      color: var(--text);
     }
 
-    .btn-ghost:hover {
-      background: #fff;
-      box-shadow: none;
-    }
-
-    .hero {
-      padding: 4.8rem 0 3.6rem;
-    }
-
-    .hero-grid {
-      display: grid;
-      gap: 2rem;
-      grid-template-columns: 1.05fr 0.95fr;
-      align-items: center;
+    .intro {
+      padding: 3.6rem 0 2.7rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(140deg, #111a31 0%, #151f38 100%);
     }
 
     .pill {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      background: var(--brand-soft);
-      border: 1px solid rgba(14, 127, 103, 0.35);
-      color: #075445;
+      gap: 0.45rem;
+      border: 1px solid rgba(33, 217, 179, 0.42);
       border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      padding: 0.36rem 0.85rem;
-      margin-bottom: 1rem;
+      color: #95f5dd;
+      background: rgba(33, 217, 179, 0.13);
+      font-size: 0.78rem;
+      font-family: "Rubik", sans-serif;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
+      padding: 0.35rem 0.8rem;
+      margin-bottom: 1rem;
     }
 
     h1 {
-      font-family: "Space Grotesk", sans-serif;
-      font-size: clamp(2rem, 5vw, 3.9rem);
-      line-height: 1.06;
-      letter-spacing: -0.03em;
-      margin-bottom: 1.1rem;
+      font-family: "Rubik", sans-serif;
+      font-size: clamp(1.9rem, 4.2vw, 3.2rem);
+      letter-spacing: -0.02em;
+      line-height: 1.08;
+      margin-bottom: 1rem;
+      max-width: 22ch;
     }
 
-    h1 span {
-      color: var(--brand-2);
-      position: relative;
-      display: inline-block;
-    }
-
-    h1 span::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0.12em;
-      height: 0.22em;
-      background: rgba(249, 115, 22, 0.35);
-      z-index: -1;
-      border-radius: 6px;
-    }
-
-    .hero-sub {
+    .intro-sub {
+      max-width: 66ch;
       color: var(--muted);
-      font-size: 1.08rem;
-      max-width: 58ch;
-      margin-bottom: 1.55rem;
+      margin-bottom: 1.4rem;
+      font-size: 1rem;
     }
 
     .hero-cta {
@@ -277,69 +258,22 @@
 
     .meta {
       display: flex;
-      gap: 0.9rem;
+      gap: 0.8rem;
       flex-wrap: wrap;
-      font-size: 0.86rem;
+      font-size: 0.85rem;
       color: var(--muted);
       font-weight: 600;
     }
 
     .meta span {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.24rem 0.56rem;
       border: 1px solid var(--line);
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.7);
-    }
-
-    .hero-card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      overflow: hidden;
-      box-shadow: var(--shadow);
-      transform: rotate(-0.8deg);
-    }
-
-    .hero-head {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      border-bottom: 1px solid var(--line);
-      padding: 0.8rem 1rem;
-      background: #fff;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #fecaca;
-    }
-
-    .dot:nth-child(2) { background: #fde68a; }
-    .dot:nth-child(3) { background: #bbf7d0; }
-
-    .bar {
-      margin-left: auto;
-      font-size: 0.76rem;
-      color: var(--muted);
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 0.16rem 0.5rem;
-      font-weight: 600;
-    }
-
-    .hero-card img {
-      width: 100%;
-      display: block;
-      background: #f3f4f6;
+      padding: 0.22rem 0.56rem;
+      background: rgba(255, 255, 255, 0.04);
     }
 
     .proof {
-      padding: 0.5rem 0 4.2rem;
+      padding: 1.3rem 0 3.9rem;
     }
 
     .proof-grid {
@@ -349,41 +283,40 @@
     }
 
     .proof-card {
-      background: rgba(255, 255, 255, 0.74);
+      background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 1rem;
+      box-shadow: var(--shadow);
     }
 
-    .proof-card h3 {
-      font-size: 0.98rem;
-      margin-bottom: 0.32rem;
-    }
-
-    .proof-card p {
-      font-size: 0.88rem;
-      color: var(--muted);
-    }
+    .proof-card h3 { font-size: 0.98rem; margin-bottom: 0.3rem; font-family: "Rubik", sans-serif; }
+    .proof-card p { font-size: 0.9rem; color: var(--muted); }
 
     section {
-      padding: 4.8rem 0;
-      border-top: 1px solid rgba(17, 20, 32, 0.06);
+      padding: 4.4rem 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .section-dark {
+      background: linear-gradient(145deg, #0f172a 0%, #15203a 100%);
     }
 
     .label {
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      font-size: 0.77rem;
-      color: var(--brand-2);
-      font-weight: 800;
-      margin-bottom: 0.5rem;
+      font-size: 0.76rem;
+      color: #95f5dd;
+      font-family: "Rubik", sans-serif;
+      font-weight: 700;
+      margin-bottom: 0.55rem;
     }
 
     h2 {
-      font-family: "Space Grotesk", sans-serif;
-      letter-spacing: -0.02em;
+      font-family: "Rubik", sans-serif;
+      letter-spacing: -0.015em;
       line-height: 1.2;
-      font-size: clamp(1.6rem, 4vw, 2.5rem);
+      font-size: clamp(1.5rem, 3.6vw, 2.35rem);
       margin-bottom: 0.8rem;
     }
 
@@ -401,24 +334,15 @@
     }
 
     .outcome {
-      background: var(--card);
+      background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 1.1rem;
-      box-shadow: 0 8px 18px rgba(17, 20, 32, 0.06);
+      box-shadow: var(--shadow);
     }
 
-    .outcome b {
-      display: block;
-      margin-bottom: 0.36rem;
-      color: var(--ink);
-      font-size: 1rem;
-    }
-
-    .outcome span {
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
+    .outcome b { display: block; margin-bottom: 0.35rem; font-size: 1rem; }
+    .outcome span { color: var(--muted); font-size: 0.9rem; }
 
     .compare {
       display: grid;
@@ -429,14 +353,12 @@
     .box {
       border-radius: var(--radius);
       border: 1px solid var(--line);
-      padding: 1.25rem;
-      background: var(--card);
+      padding: 1.2rem;
+      background: var(--surface);
+      box-shadow: var(--shadow);
     }
 
-    .box h3 {
-      margin-bottom: 0.8rem;
-      font-size: 1.03rem;
-    }
+    .box h3 { margin-bottom: 0.8rem; font-size: 1.03rem; font-family: "Rubik", sans-serif; }
 
     .box ul {
       list-style: none;
@@ -446,8 +368,8 @@
       color: var(--muted);
     }
 
-    .bad { background: #fff7f7; border-color: #f4cfcf; }
-    .good { background: #f3fcf9; border-color: #c8ede2; }
+    .bad { background: linear-gradient(160deg, rgba(255, 101, 101, 0.08), rgba(255, 255, 255, 0.05)); }
+    .good { background: linear-gradient(160deg, rgba(33, 217, 179, 0.13), rgba(255, 255, 255, 0.05)); }
 
     .features {
       display: grid;
@@ -456,21 +378,15 @@
     }
 
     .feature {
-      background: var(--card);
+      background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 1.1rem;
+      box-shadow: var(--shadow);
     }
 
-    .feature h3 {
-      font-size: 1rem;
-      margin-bottom: 0.45rem;
-    }
-
-    .feature p {
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
+    .feature h3 { font-size: 1rem; margin-bottom: 0.42rem; font-family: "Rubik", sans-serif; }
+    .feature p { color: var(--muted); font-size: 0.9rem; }
 
     .steps {
       display: grid;
@@ -481,25 +397,24 @@
     .step {
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      background: rgba(255, 255, 255, 0.8);
+      background: var(--surface);
       padding: 1rem 1.1rem;
       display: grid;
       gap: 0.6rem;
+      box-shadow: var(--shadow);
     }
 
-    .step b {
-      font-size: 0.96rem;
-    }
+    .step b { font-size: 0.96rem; font-family: "Rubik", sans-serif; }
 
     pre {
       font-family: "SF Mono", Menlo, Consolas, monospace;
       font-size: 0.84rem;
-      background: #111827;
-      color: #dbeafe;
+      background: #090d18;
+      color: #dffcff;
       padding: 0.9rem 1rem;
       border-radius: 10px;
       overflow-x: auto;
-      border: 1px solid #1f2937;
+      border: 1px solid #1f2b4b;
     }
 
     .faq {
@@ -509,14 +424,15 @@
     }
 
     details {
-      background: rgba(255, 255, 255, 0.82);
+      background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 12px;
       padding: 0.9rem 1rem;
     }
 
     summary {
-      font-weight: 700;
+      font-family: "Rubik", sans-serif;
+      font-weight: 600;
       cursor: pointer;
     }
 
@@ -527,7 +443,8 @@
     }
 
     .final-cta {
-      background: linear-gradient(140deg, #0d4d9a, #0e7f67);
+      background: linear-gradient(140deg, #15284f, #127f66);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 22px;
       color: #fff;
       padding: 2.2rem;
@@ -539,8 +456,8 @@
     }
 
     .final-cta h3 {
-      font-family: "Space Grotesk", sans-serif;
-      font-size: clamp(1.4rem, 3vw, 2.1rem);
+      font-family: "Rubik", sans-serif;
+      font-size: clamp(1.35rem, 3vw, 2.05rem);
       line-height: 1.2;
       margin-bottom: 0.4rem;
     }
@@ -552,18 +469,28 @@
     }
 
     .final-cta .btn-primary {
-      background: #fff;
-      color: #0d4d9a;
+      background: #ffffff;
+      color: #0f3564;
+      box-shadow: none;
     }
-
-    .final-cta .btn-primary:hover { background: #f3f4f6; }
 
     footer {
       text-align: center;
       color: var(--muted);
-      border-top: 1px solid var(--line);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
       padding: 2.1rem 1rem 3rem;
       font-size: 0.87rem;
+      background: #090e1c;
+    }
+
+    .footer-brand {
+      margin-bottom: 0.9rem;
+    }
+
+    .footer-brand img {
+      height: 46px;
+      width: auto;
+      opacity: 0.95;
     }
 
     .footer-links {
@@ -575,21 +502,15 @@
       font-weight: 600;
     }
 
-    .footer-links a { text-decoration: none; }
-
     @media (max-width: 1024px) {
-      .hero-grid,
       .proof-grid,
       .outcome-grid,
       .compare,
-      .features {
-        grid-template-columns: 1fr 1fr;
-      }
+      .features { grid-template-columns: 1fr 1fr; }
     }
 
     @media (max-width: 760px) {
       .nav-links { display: none; }
-      .hero-grid,
       .proof-grid,
       .outcome-grid,
       .compare,
@@ -598,7 +519,7 @@
         grid-template-columns: 1fr;
         display: grid;
       }
-      .hero { padding-top: 3.2rem; }
+      .intro { padding-top: 2.8rem; }
       .final-cta { padding: 1.5rem; }
     }
   </style>
@@ -607,8 +528,8 @@
   <nav>
     <div class="container nav-inner">
       <a class="logo" href="#top" aria-label="IzyKube home">
-        <span class="k8s">K8</span>
-        IzyKube
+        <img src="izylife.png" alt="Izylife Solutions" loading="lazy" />
+        <span class="logo-label">IzyKube</span>
       </a>
       <ul class="nav-links">
         <li><a href="#value">Value</a></li>
@@ -621,39 +542,27 @@
   </nav>
 
   <main id="top">
-    <section class="hero">
-      <div class="container hero-grid">
-        <div>
-          <div class="pill">Open Source · AGPL-3.0 · Self-hosted</div>
-          <h1>Stop explaining Kubernetes on slides. <span>Ship architecture people can execute.</span></h1>
-          <p class="hero-sub">
-            IzyKube turns cluster design into a visual workflow. Model namespaces, generate YAML or Helm artifacts,
-            then deploy directly from the same interface.
-          </p>
-          <div class="hero-cta">
-            <a class="btn btn-primary" href="#quickstart">Start in 5 Minutes</a>
-            <a class="btn btn-ghost" href="https://hub.docker.com/r/gcassata/izykube" target="_blank" rel="noopener noreferrer">Pull Docker Image</a>
-          </div>
-          <div class="meta">
-            <span>No SaaS lock-in</span>
-            <span>Works locally with Docker Compose</span>
-            <span>Ideal for platform and DevOps teams</span>
-          </div>
+    <section class="intro">
+      <div class="container">
+        <div class="pill">Open Source · AGPL-3.0 · Self-hosted</div>
+        <h1>Design Kubernetes visually. Generate deployable artifacts. Ship with confidence.</h1>
+        <p class="intro-sub">
+          IzyKube turns cluster design into a visual workflow. Model namespaces, generate YAML or Helm artifacts,
+          then deploy directly from the same interface.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#quickstart">Start in 5 Minutes</a>
+          <a class="btn btn-ghost" href="https://hub.docker.com/r/gcassata/izykube" target="_blank" rel="noopener noreferrer">Pull Docker Image</a>
         </div>
-
-        <div class="hero-card">
-          <div class="hero-head">
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="bar">localhost:8090</span>
-          </div>
-          <img src="demo.png" alt="IzyKube visual Kubernetes architecture editor" loading="lazy" />
+        <div class="meta">
+          <span>No SaaS lock-in</span>
+          <span>Works locally with Docker Compose</span>
+          <span>Ideal for platform and DevOps teams</span>
         </div>
       </div>
     </section>
 
-    <section class="proof">
+    <section class="proof section-dark">
       <div class="container proof-grid">
         <article class="proof-card">
           <h3>Designed for real delivery</h3>
@@ -714,7 +623,7 @@
       </div>
     </section>
 
-    <section id="features">
+    <section id="features" class="section-dark">
       <div class="container">
         <p class="label">Core features</p>
         <h2>Everything needed to design and run Kubernetes architecture</h2>
@@ -773,7 +682,7 @@ cd izykube</pre>
       </div>
     </section>
 
-    <section id="faq">
+    <section id="faq" class="section-dark">
       <div class="container">
         <p class="label">FAQ</p>
         <h2>Common questions before adoption</h2>
@@ -808,6 +717,9 @@ cd izykube</pre>
   </main>
 
   <footer>
+    <div class="footer-brand">
+      <img src="izylife.png" alt="Izylife Solutions" loading="lazy" />
+    </div>
     <div class="footer-links">
       <a href="https://github.com/izylife/izykube" target="_blank" rel="noopener noreferrer">GitHub</a>
       <a href="https://github.com/izylife/izykube/releases" target="_blank" rel="noopener noreferrer">Releases</a>
