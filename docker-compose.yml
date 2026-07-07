@@ -75,13 +75,13 @@ services:
           --tls-san=k3s \
           --write-kubeconfig=/kubeconfig/config \
           --write-kubeconfig-mode=644 &
-        K3S_PID=$!
+        K3S_PID=$$!
         echo "Waiting for kubeconfig..."
         until [ -f /kubeconfig/config ]; do sleep 2; done
         sleep 3
         sed -i 's|https://127.0.0.1:6443|https://k3s:6443|g' /kubeconfig/config
         echo "kubeconfig ready"
-        wait $K3S_PID
+        wait $$K3S_PID
     healthcheck:
       test: ["CMD", "sh", "-c", "[ -f /kubeconfig/config ]"]
       interval: 5s
@@ -103,6 +103,25 @@ services:
     environment:
       - OLLAMA_KEEP_ALIVE=24h
 
+  # ── Gitea (local Git server for GitOps) ────────────────────────────────────
+  gitea:
+    image: gitea/gitea:1.22-rootless
+    container_name: izykube-gitea
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+      - "2222:2222"
+    environment:
+      - GITEA__database__DB_TYPE=sqlite3
+      - GITEA__server__ROOT_URL=http://localhost:3001
+      - GITEA__server__SSH_DOMAIN=localhost
+      - GITEA__server__START_SSH_SERVER=true
+      - GITEA__service__DISABLE_REGISTRATION=false
+      - GITEA__security__INSTALL_LOCK=true
+      - GITEA__repository__DEFAULT_PRIVATE=false
+    volumes:
+      - gitea-data:/var/lib/gitea
+
   # ── IzyKube ────────────────────────────────────────────────────────────────
   # Spring Boot serves both the REST API and the Angular SPA (packaged as
   # static resources in the jar by the frontend Maven module).
@@ -119,6 +138,9 @@ services:
       - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/izykube
       - KUBECONFIG=/kubeconfig/config
       - OLLAMA_BASE_URL=http://ollama:11434
+      - GITOPS_REPO_URL=${GITOPS_REPO_URL:-http://gitea:3000/izykube/izykube-gitops.git}
+      - GITOPS_USERNAME=${GITOPS_USERNAME:-}
+      - GITOPS_PASSWORD=${GITOPS_PASSWORD:-}
     volumes:
       - kubeconfig:/kubeconfig:ro
     depends_on:
@@ -127,6 +149,8 @@ services:
       k3s:
         condition: service_healthy
       ollama:
+        condition: service_started
+      gitea:
         condition: service_started
 
 volumes:
@@ -147,3 +171,4 @@ volumes:
   registry-data:
   k3s-server:
   kubeconfig:
+  gitea-data:

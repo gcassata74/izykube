@@ -81,6 +81,15 @@ docker pull gcassata/izykube:latest
 
 ## Local Development
 
+### One-time local credentials setup
+
+```bash
+cp .env.example .env
+```
+
+Update `GITEA_PASSWORD`/`GITOPS_PASSWORD` in `.env` if you do not want defaults.
+If you run Argo CD in `k3d`, also set `GITOPS_ARGOCD_REPO_URL=http://host.k3d.internal:3001/izykube/izykube-gitops.git`.
+
 ### Start the full stack
 
 ```bash

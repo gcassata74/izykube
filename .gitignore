@@ -63,3 +63,6 @@ __pycache__/
 .codex/
 .secrets/
 .certs/
+.env
+.env.*
+!.env.example

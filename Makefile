@@ -19,6 +19,12 @@
 
 # Define default shell to be used
 SHELL := /bin/bash
+
+ifneq (,$(wildcard .env))
+include .env
+export
+endif
+
 LOCALE ?= en
 OLM_VERSION ?= v0.30.0
 OLM_BASE_URL ?= https://github.com/operator-framework/operator-lifecycle-manager/releases/download/$(OLM_VERSION)
@@ -34,8 +40,16 @@ REQUIREMENTS_FILE ?= requirements.txt
 VENV_DIR ?= .venv
 VENV_PYTHON ?= $(VENV_DIR)/bin/python
 VENV_PIP ?= $(VENV_PYTHON) -m pip
+GITEA_CONTAINER ?= izykube-gitea
+GITEA_USER ?= izykube
+GITEA_PASSWORD ?=
+GITEA_EMAIL ?= izykube@local
+GITEA_REPO ?= izykube-gitops
+GITEA_HTTP_URL ?= http://localhost:3001
+GITOPS_USERNAME ?= $(GITEA_USER)
+GITOPS_PASSWORD ?= $(GITEA_PASSWORD)
 
-.PHONY: install uninstall install-core install-python-deps \
+.PHONY: install uninstall install-core install-python-deps bootstrap-gitea \
 	check-kube-connection \
 	install-olm install-cert-manager create-internal-ca \
 	install-istio install-istio-gateway \
@@ -65,6 +79,25 @@ install-python-deps:
 	@test -d $(VENV_DIR) || $(PYTHON) -m venv $(VENV_DIR)
 	@$(VENV_PIP) install --upgrade pip
 	@$(VENV_PIP) install -r $(REQUIREMENTS_FILE)
+
+bootstrap-gitea:
+	@if [ -z "$(GITEA_PASSWORD)" ]; then echo "ERROR: set GITEA_PASSWORD in .env (see .env.example)"; exit 1; fi
+	@echo "Starting local Gitea service..."
+	@docker compose up -d gitea
+	@echo "Waiting for Gitea API..."
+	@for i in $$(seq 1 40); do \
+		if curl -fsS $(GITEA_HTTP_URL)/api/healthz >/dev/null 2>&1; then break; fi; \
+		sleep 2; \
+		if [ $$i -eq 40 ]; then echo "ERROR: Gitea is not ready"; exit 1; fi; \
+	done
+	@echo "Ensuring Gitea user $(GITEA_USER) exists..."
+	@docker exec $(GITEA_CONTAINER) sh -c 'gitea admin user create --username "$(GITEA_USER)" --password "$(GITEA_PASSWORD)" --email "$(GITEA_EMAIL)" --must-change-password=false >/dev/null 2>&1 || true'
+	@echo "Ensuring Gitea repo $(GITEA_REPO) exists..."
+	@curl -fsS -u "$(GITEA_USER):$(GITEA_PASSWORD)" \
+		-X POST "$(GITEA_HTTP_URL)/api/v1/user/repos" \
+		-H "Content-Type: application/json" \
+		-d '{"name":"$(GITEA_REPO)","private":false,"auto_init":true}' >/dev/null 2>&1 || true
+	@echo "Local GitOps repository ready: $(GITEA_HTTP_URL)/$(GITEA_USER)/$(GITEA_REPO).git"
 
 # ============================================================
 #  Cluster connectivity check

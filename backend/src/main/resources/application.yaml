@@ -16,6 +16,9 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 spring:
+  config:
+    # Allow local runs to pick credentials from repo-level .env without manual export.
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
   mvc:
     pathmatch:
       matching-strategy: ANT_PATH_MATCHER
@@ -89,3 +92,23 @@ operatorhub:
     repo: k8s-operatorhub/community-operators
     path: operators
     token: ""
+
+gitops:
+  enabled: true
+  # Default local GitOps repository for backend running on host machine.
+  # When backend runs in docker-compose, this is overridden to http://gitea:3000/...
+  repo-url: http://localhost:3001/izykube/izykube-gitops.git
+  # Optional repo URL used only by Argo CD Application source (defaults to repo-url).
+  argo-cd-repo-url: ${GITOPS_ARGOCD_REPO_URL:}
+  branch: main
+  base-path: apps
+  username: ${GITOPS_USERNAME:${GITEA_USER:}}
+  password: ${GITOPS_PASSWORD:${GITEA_PASSWORD:}}
+  commit-author-name: IzyKube
+  commit-author-email: noreply@izylife.local
+  argo-cd-namespace: argocd
+  argo-cd-project: default
+  auto-sync: true
+  prune: true
+  self-heal: true
+

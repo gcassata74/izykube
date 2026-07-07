@@ -20,32 +20,23 @@
 package com.izylife.izykube.services;
 
 import com.izylife.izykube.collections.ClusterStatusEnum;
-import com.izylife.izykube.dto.cluster.ClusterDTO;
-import com.izylife.izykube.dto.cluster.DeploymentDTO;
-import com.izylife.izykube.dto.cluster.DeploymentWorkloadType;
-import com.izylife.izykube.dto.cluster.LinkDTO;
-import com.izylife.izykube.dto.cluster.NodeDTO;
-import com.izylife.izykube.dto.cluster.PodDTO;
+import com.izylife.izykube.dto.cluster.*;
 import com.izylife.izykube.factory.ClientFactory;
 import com.izylife.izykube.factory.NodeFactory;
 import com.izylife.izykube.factory.TemplateFactory;
 import com.izylife.izykube.model.Cluster;
 import com.izylife.izykube.model.ClusterTemplate;
 import com.izylife.izykube.model.ClusterVersion;
-import com.izylife.izykube.repositories.ClusterTemplateRepository;
 import com.izylife.izykube.repositories.ClusterRepository;
+import com.izylife.izykube.repositories.ClusterTemplateRepository;
 import com.izylife.izykube.repositories.ClusterVersionRepository;
 import com.izylife.izykube.services.ai.ClusterYamlService;
-import com.izylife.izykube.utils.ClusterUtil;
 import io.fabric8.istio.api.networking.v1beta1.Gateway;
 import io.fabric8.istio.api.networking.v1beta1.VirtualService;
 import io.fabric8.istio.client.IstioClient;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.NamespaceBuilder;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
-import io.fabric8.kubernetes.api.model.apps.DaemonSetBuilder;
-import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
-import io.fabric8.kubernetes.api.model.apps.StatefulSetBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.Resource;
@@ -58,14 +49,7 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -96,6 +80,7 @@ public class ClusterService {
     private final TemplateService templateService;
     private final ClusterYamlService clusterYamlService;
     private final NamespaceService namespaceService;
+    private final GitOpsDeploymentService gitOpsDeploymentService;
 
 
     public ClusterDTO createCluster(ClusterDTO clusterDTO) {
@@ -251,6 +236,13 @@ public class ClusterService {
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
 
+        if (gitOpsDeploymentService.isEnabled()) {
+            gitOpsDeploymentService.deployCluster(clusterId, namespace, template.getYamlList());
+            cluster.setStatus(ClusterStatusEnum.DEPLOYED);
+            clusterRepository.save(cluster);
+            return;
+        }
+
         ensureNamespaceMaterialized(namespace);
 
         for (String yaml : template.getYamlList()) {
@@ -327,6 +319,14 @@ public class ClusterService {
         ClusterTemplate template = clusterTemplateRepository.findByClusterId(clusterId)
                 .orElseThrow(() -> new ObjectNotFoundException("Template not found for cluster ID: " + clusterId));
 
+        if (gitOpsDeploymentService.isEnabled()) {
+            gitOpsDeploymentService.undeployCluster(clusterId, namespace);
+            cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
+            clusterRepository.save(cluster);
+            namespaceService.deleteNamespaceRecord(namespace);
+            return;
+        }
+
         deleteResourcesFromTemplate(template, namespace);
 
         cluster.setStatus(ClusterStatusEnum.READY_FOR_DEPLOYMENT);
@@ -369,8 +369,12 @@ public class ClusterService {
             clusterDTO.setNodes(sanitized.nodes());
             clusterDTO.setLinks(sanitized.links());
 
-            ensureNamespaceMaterialized(namespace);
-            applyTemplate(template, namespace);
+            if (gitOpsDeploymentService.isEnabled()) {
+                gitOpsDeploymentService.deployCluster(id, namespace, template.getYamlList());
+            } else {
+                ensureNamespaceMaterialized(namespace);
+                applyTemplate(template, namespace);
+            }
 
             // Update the cluster entity with new data
             existingCluster.setName(clusterDTO.getName());
