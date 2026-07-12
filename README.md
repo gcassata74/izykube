@@ -46,6 +46,7 @@ IzyKube supports:
 
 - `frontend/`: Angular client
 - `backend/`: Spring Boot API and orchestration logic
+- `installer/`: standalone Python/Tkinter GUI installer that drives Compose and Makefile tasks from outside the Java app
 - `yaml/`: Kubernetes manifests used by setup flows
 - `docs/`: project documentation
 - `Dockerfile`: multi-stage build — Maven compiles frontend + backend into a single self-contained jar; JRE runtime image
@@ -76,6 +77,19 @@ To run without building locally:
 
 ```bash
 docker pull gcassata/izykube:latest
+```
+
+## Standalone Installer
+
+The graphical installer lives in [`installer/README.md`](installer/README.md) and is intentionally separate from the Java backend and Angular frontend.
+
+It is packaged with PyInstaller and includes Python/Tcl/Tk inside the executable, so the target machine only needs Docker Engine and Docker Compose.
+
+Typical entry point:
+
+```bash
+make setup-gui-build
+./dist/IzyKubeSetup
 ```
 
 ## Local Development
@@ -110,6 +124,8 @@ npm -C frontend run build -- --configuration production
 ```
 
 ## Install From Scratch (zero to running)
+
+If you want the manual route, the same stack can be started directly with Compose. For the graphical route, use the standalone installer above.
 
 ### 1) Clone
 
@@ -206,6 +222,8 @@ Main tasks with target dependencies and behavior:
 
 | Command | Depends on (Make targets) | What it does |
 |---|---|---|
+| `make setup-gui` | `-` | Starts the standalone installer in development mode from the `installer/` directory. |
+| `make setup-gui-build` | `-` | Builds the standalone installer executable with PyInstaller inside Docker. |
 | `make run-angular-client` | `-` | Kills process on port `4200` (if any) and starts Angular dev server from `frontend/`. |
 | `make run-chrome-dev` | `-` | Opens Chrome with a dedicated insecure dev profile for local UI testing. |
 | `make install-istio` | `-` | Installs Istio (downloads `istioctl` if missing), enables sidecar injection on `default` namespace. |

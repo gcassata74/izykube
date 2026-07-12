@@ -55,9 +55,10 @@ services:
   # server URL from 127.0.0.1 to the compose service name so the backend can
   # reach the API server via the internal network (https://k3s:6443).
   k3s:
-    image: rancher/k3s:latest
+    image: rancher/k3s:v1.34.1-k3s1
     container_name: izykube-k3s
     privileged: true
+    cgroup: host
     restart: unless-stopped
     ports:
       - "6443:6443"
@@ -70,20 +71,22 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
+        rm -f /kubeconfig/config /kubeconfig/config.tmp
         k3s server \
           --disable=traefik \
-          --tls-san=k3s \
-          --write-kubeconfig=/kubeconfig/config \
-          --write-kubeconfig-mode=644 &
+          --node-name=izykube-k3s \
+          --tls-san=k3s &
         K3S_PID=$!
         echo "Waiting for kubeconfig..."
-        until [ -f /kubeconfig/config ]; do sleep 2; done
-        sleep 3
-        sed -i 's|https://127.0.0.1:6443|https://k3s:6443|g' /kubeconfig/config
+        until [ -s /etc/rancher/k3s/k3s.yaml ]; do sleep 2; done
+        sed 's|https://127.0.0.1:6443|https://k3s:6443|g' \
+          /etc/rancher/k3s/k3s.yaml > /kubeconfig/config.tmp
+        chmod 644 /kubeconfig/config.tmp
+        mv /kubeconfig/config.tmp /kubeconfig/config
         echo "kubeconfig ready"
-        wait $K3S_PID
+        wait $$K3S_PID
     healthcheck:
-      test: ["CMD", "sh", "-c", "[ -f /kubeconfig/config ]"]
+      test: ["CMD", "sh", "-c", "[ -f /kubeconfig/config ] && kubectl --kubeconfig /kubeconfig/config get --raw=/readyz >/dev/null"]
       interval: 5s
       timeout: 5s
       retries: 60
@@ -128,6 +131,22 @@ services:
         condition: service_healthy
       ollama:
         condition: service_started
+
+  # ── Setup tools ────────────────────────────────────────────────────────────
+  # One-shot toolbox used only by the standalone desktop installer.
+  setup-tools:
+    profiles: ["setup"]
+    build:
+      context: .
+      dockerfile: installer/Dockerfile.setup
+    image: izykube-setup-tools:local
+    environment:
+      - KUBECONFIG=/kubeconfig/config
+    volumes:
+      - kubeconfig:/kubeconfig:ro
+    depends_on:
+      k3s:
+        condition: service_healthy
 
 volumes:
   # Existing MongoDB data (anonymous volumes from mongo-host) — preserved.

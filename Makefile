@@ -22,9 +22,24 @@ SHELL := /bin/bash
 LOCALE ?= en
 OLM_VERSION ?= v0.30.0
 OLM_BASE_URL ?= https://github.com/operator-framework/operator-lifecycle-manager/releases/download/$(OLM_VERSION)
+ISTIO_VERSION ?= 1.18.2
+ISTIO_DIR ?= /tmp/istio-$(ISTIO_VERSION)
+ISTIOCTL ?= $(ISTIO_DIR)/bin/istioctl
 SUDO ?= sudo
 
-.PHONY: install-grafana install-cluster-addons
+.PHONY: setup-gui setup-gui-build prepare-istioctl install-istio uninstall-istio check-istio \
+	create-istio-system-db delete-istio-system-db install-prometheus uninstall-prometheus check-prometheus \
+	install-grafana install-grafana-release uninstall-grafana check-grafana grafana-port-forward \
+	install-cert-manager uninstall-cert-manager check-cert-manager install-olm check-olm uninstall-olm \
+	create-internal-ca uninstall-internal-ca check-internal-ca install-ca-local \
+	install-istio-gateway uninstall-istio-gateway check-istio-gateway \
+	install-cluster-addons uninstall-cluster-addons check-cluster-addons create-izykube-system
+
+setup-gui:
+	python3 -m installer.main
+
+setup-gui-build:
+	docker build --file installer/Dockerfile.pyinstaller --target artifact --output type=local,dest=dist .
 
 # e.g. make run-i18n-build LOCALE=fr
 run-i18n-build:
@@ -50,27 +65,43 @@ run-chrome-dev:
 run-angular-client:
 	cd frontend && npx kill-port 4200 || true && npm start
 
-# New target for installing Istio
-install-istio:
-	@echo "Installing Istio..."
-	@if ! command -v istioctl &> /dev/null; then \
-		echo "istioctl not found. Downloading..."; \
-		curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.18.2 sh -; \
+prepare-istioctl:
+	@if [ ! -x "$(ISTIOCTL)" ]; then \
+		echo "Downloading Istio $(ISTIO_VERSION)..."; \
+		cd /tmp && curl -fsSL https://istio.io/downloadIstio | ISTIO_VERSION=$(ISTIO_VERSION) TARGET_ARCH=$$(uname -m) sh -; \
 	fi
-	./istio-1.18.2/bin/istioctl install --set profile=default -y
+
+install-istio: prepare-istioctl
+	@echo "Installing Istio..."
+	$(ISTIOCTL) install --set profile=default -y
 	kubectl label namespace default istio-injection=enabled --overwrite
 	@echo "Istio installation complete."
-	rm -rf istio-1.18.2
+
+uninstall-istio: uninstall-istio-gateway prepare-istioctl
+	$(ISTIOCTL) uninstall --purge -y
+	kubectl label namespace default istio-injection- --overwrite || true
+
+check-istio:
+	kubectl -n istio-system get deployment istiod
 
 # Create monitoring namespace
 create-istio-system-db:
 	kubectl create namespace istio-system-db --dry-run=client -o yaml | kubectl apply -f -
 
+delete-istio-system-db:
+	kubectl delete namespace istio-system-db --ignore-not-found=true
+
 # Install Prometheus stack into istio-system-db
 install-prometheus: create-istio-system-db
 	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 	helm repo update
-	helm install prometheus prometheus-community/kube-prometheus-stack -n istio-system-db --create-namespace
+	helm upgrade --install prometheus prometheus-community/kube-prometheus-stack -n istio-system-db --create-namespace
+
+uninstall-prometheus:
+	helm uninstall prometheus -n istio-system-db --ignore-not-found
+
+check-prometheus:
+	helm status prometheus -n istio-system-db
 
 # Install Grafana into istio-system-db
 install-grafana: install-grafana-release grafana-port-forward
@@ -78,7 +109,13 @@ install-grafana: install-grafana-release grafana-port-forward
 install-grafana-release: create-istio-system-db
 	helm repo add grafana https://grafana.github.io/helm-charts
 	helm repo update
-	helm install grafana grafana/grafana -n istio-system-db --create-namespace
+	helm upgrade --install grafana grafana/grafana -n istio-system-db --create-namespace
+
+uninstall-grafana:
+	helm uninstall grafana -n istio-system-db --ignore-not-found
+
+check-grafana:
+	helm status grafana -n istio-system-db
 
 # Start Grafana port-forward in background
 grafana-port-forward: install-grafana-release
@@ -90,23 +127,30 @@ grafana-port-forward: install-grafana-release
 install-cert-manager:
 	helm repo add jetstack https://charts.jetstack.io
 	helm repo update
-	helm install cert-manager jetstack/cert-manager -n cert-manager --create-namespace --set crds.enabled=true
+	helm upgrade --install cert-manager jetstack/cert-manager -n cert-manager --create-namespace --set crds.enabled=true
+
+uninstall-cert-manager: uninstall-internal-ca
+	helm uninstall cert-manager -n cert-manager --ignore-not-found
+	kubectl delete namespace cert-manager --ignore-not-found=true
+
+check-cert-manager:
+	helm status cert-manager -n cert-manager
 
 # Install OLM (required for OperatorHub Subscriptions/CSVs)
 install-olm:
 	@echo "Installing OLM $(OLM_VERSION)..."
-	kubectl apply --server-side --force-conflicts -f $(OLM_BASE_URL)/crds.yaml
+	kubectl apply --server-side --force-conflicts --validate=false -f $(OLM_BASE_URL)/crds.yaml
 	@if ! kubectl get crd clusterserviceversions.operators.coreos.com >/dev/null 2>&1; then \
 		echo "clusterserviceversions CRD missing, applying it explicitly..."; \
 		curl -fsSL $(OLM_BASE_URL)/crds.yaml \
 		| awk 'BEGIN{RS="---"; ORS="---\n"} /name: clusterserviceversions\.operators\.coreos\.com/' \
-		| kubectl apply --server-side --force-conflicts -f -; \
+		| kubectl apply --server-side --force-conflicts --validate=false -f -; \
 	fi
 	@echo "Waiting for OLM CRDs..."
 	kubectl wait --for=condition=Established --timeout=120s crd/clusterserviceversions.operators.coreos.com
 	kubectl wait --for=condition=Established --timeout=120s crd/subscriptions.operators.coreos.com
 	kubectl wait --for=condition=Established --timeout=120s crd/installplans.operators.coreos.com
-	kubectl apply --server-side --force-conflicts -f $(OLM_BASE_URL)/olm.yaml
+	kubectl apply --server-side --force-conflicts --validate=false -f $(OLM_BASE_URL)/olm.yaml
 	@echo "Waiting for OLM deployments..."
 	kubectl -n olm wait --for=condition=Available deployment/olm-operator --timeout=300s
 	kubectl -n olm wait --for=condition=Available deployment/catalog-operator --timeout=300s
@@ -132,16 +176,27 @@ uninstall-olm:
 
 # Create internal CA and ClusterIssuer for HTTPS routes
 create-internal-ca: install-cert-manager
-	@mkdir -p .certs
-	@openssl req -x509 -newkey rsa:4096 -sha256 -nodes -days 3650 \
-		-keyout .certs/ca.key -out .certs/ca.crt \
-		-subj "/CN=izykube-internal-ca"
-	kubectl -n cert-manager create secret tls izykube-ca \
-		--cert=.certs/ca.crt \
-		--key=.certs/ca.key \
-		--dry-run=client -o yaml | kubectl apply -f -
+	@if kubectl -n cert-manager get secret izykube-ca >/dev/null 2>&1; then \
+		echo "Internal CA already exists; keeping the current certificate."; \
+	else \
+		cert_dir=$$(mktemp -d); \
+		trap 'rm -rf "$$cert_dir"' EXIT; \
+		openssl req -x509 -newkey rsa:4096 -sha256 -nodes -days 3650 \
+			-keyout "$$cert_dir/ca.key" -out "$$cert_dir/ca.crt" \
+			-subj "/CN=izykube-internal-ca"; \
+		kubectl -n cert-manager create secret tls izykube-ca \
+			--cert="$$cert_dir/ca.crt" \
+			--key="$$cert_dir/ca.key"; \
+	fi
 	kubectl apply -f yaml/izykube-ca-issuer.yaml
-	@rm -rf .certs
+
+uninstall-internal-ca:
+	kubectl delete -f yaml/izykube-ca-issuer.yaml --ignore-not-found=true
+	kubectl -n cert-manager delete secret izykube-ca --ignore-not-found=true
+
+check-internal-ca:
+	kubectl -n cert-manager get secret izykube-ca
+	kubectl get clusterissuer izykube-ca-issuer
 
 # Install internal CA certificate locally (Ubuntu/Debian)
 install-ca-local: create-internal-ca
@@ -165,10 +220,25 @@ install-ca-local: create-internal-ca
 install-istio-gateway: install-istio
 	kubectl apply -f yaml/izykube-gateway.yaml
 
+uninstall-istio-gateway:
+	kubectl delete -f yaml/izykube-gateway.yaml --ignore-not-found=true
+
+check-istio-gateway:
+	kubectl -n istio-system get gateway izykube-gateway
+
 # Install all cluster addons (istio, monitoring)
-install-cluster-addons: install-olm create-internal-ca install-istio-gateway install-prometheus install-grafana
+install-cluster-addons: install-olm create-internal-ca install-istio-gateway install-prometheus install-grafana-release
+
+uninstall-cluster-addons:
+	$(MAKE) uninstall-grafana
+	$(MAKE) uninstall-prometheus
+	$(MAKE) delete-istio-system-db
+	$(MAKE) uninstall-istio
+	$(MAKE) uninstall-cert-manager
+	$(MAKE) uninstall-olm
+
+check-cluster-addons: check-olm check-cert-manager check-internal-ca check-istio check-istio-gateway check-prometheus check-grafana
 
 # Create izykube system namespace
 create-izykube-system:
 	kubectl create namespace izykube-system --dry-run=client -o yaml | kubectl apply -f -
-

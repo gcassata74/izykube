@@ -1,0 +1,22 @@
+FROM rancher/k3s:v1.34.1-k3s1 AS k3s-tools
+
+FROM ubuntu:24.04
+
+ARG TARGETARCH=amd64
+ARG HELM_VERSION=v3.17.3
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends bash ca-certificates curl gawk gzip make openssl tar \
+    && curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz" -o /tmp/helm.tar.gz \
+    && tar -xzf /tmp/helm.tar.gz -C /tmp \
+    && mv "/tmp/linux-${TARGETARCH}/helm" /usr/local/bin/helm \
+    && rm -rf /var/lib/apt/lists/* /tmp/helm.tar.gz "/tmp/linux-${TARGETARCH}"
+
+COPY --from=k3s-tools /bin/k3s /usr/local/bin/k3s
+RUN ln -s /usr/local/bin/k3s /usr/local/bin/kubectl
+
+WORKDIR /workspace
+COPY Makefile /workspace/Makefile
+COPY yaml /workspace/yaml
+
+CMD ["make", "--help"]

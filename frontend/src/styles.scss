@@ -39,28 +39,28 @@
 //-----------------------------------------------------------------------------
 
 :root {
-  --izy-header-bg: #ffffff;
-  --izy-header-border: rgba(15, 23, 42, 0.08);
-  --izy-sidebar-bg: #0f172a;
-  --izy-primary: #2563eb;
-  --izy-accent: #38bdf8;
-  --izy-text-muted: #64748b;
-  --izy-app-surface: #e2e8f0;
-  --izy-content-bg: #ffffff;
-  --izy-header-text: #0f172a;
-  --izy-surface-highlight: #f8fafc;
-  --izy-surface-accent: #eef2ff;
-  --izy-ink: #0b1224;
-  --izy-table-glow: rgba(37, 99, 235, 0.08);
-  --izy-table-border: #e2e8f0;
-  --izy-button-radius: 8px;
+  --izy-header-bg: #090e1c;
+  --izy-header-border: rgba(255, 255, 255, 0.08);
+  --izy-sidebar-bg: #0c1221;
+  --izy-primary: #21d9b3;
+  --izy-accent: #66adff;
+  --izy-text-muted: rgba(242, 246, 255, 0.72);
+  --izy-app-surface: #0c1221;
+  --izy-content-bg: #111a31;
+  --izy-header-text: #f2f6ff;
+  --izy-surface-highlight: #1a2440;
+  --izy-surface-accent: #15284f;
+  --izy-ink: #f2f6ff;
+  --izy-table-glow: rgba(33, 217, 179, 0.1);
+  --izy-table-border: rgba(255, 255, 255, 0.12);
+  --izy-button-radius: 11px;
   --izy-button-height: 2.25rem;
   --izy-dialog-footer-gap: 10px;
 }
 
 // Color Palette
-$izy-blue: #021c3fee;
-$izy-green: #4CAF50;
+$izy-blue: #66adff;
+$izy-green: #21d9b3;
 $izy-light-blue: #4169E1;
 $izy-white: #FFFFFF;
 $izy-black: #000000;
@@ -74,7 +74,7 @@ $izy-green-light: lighten($izy-green, 10%);
 $izy-green-dark: darken($izy-green, 10%);
 
 // Functional Colors
-$primary-color: $izy-blue;
+$primary-color: $izy-green;
 $secondary-color: $izy-green;
 $background-color: $izy-white;
 $text-color: $izy-black;
@@ -119,6 +119,14 @@ $sidebar-width: 200px;
 // Base Form Styles
 //-----------------------------------------------------------------------------
 
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+  background: #0c1221;
+  font-family: "Work Sans", "Segoe UI", sans-serif;
+}
+
 body {
   .p-button {
     border-radius: var(--izy-button-radius);
@@ -135,7 +143,7 @@ body {
   }
 
   .p-button:enabled:focus {
-    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.2);
+    box-shadow: 0 0 0 0.2rem rgba(33, 217, 179, 0.22);
   }
 
   .p-dialog .p-dialog-footer {
@@ -1095,7 +1103,7 @@ body {
 
     .p-progressbar-value {
       border-radius: 999px;
-      background: linear-gradient(90deg, #22d3ee 0%, #2563eb 100%);
+      background: linear-gradient(90deg, #21d9b3 0%, #66adff 100%);
     }
   }
 
@@ -1130,9 +1138,9 @@ body {
   height: 2.5rem;
   padding: 0 1rem;
   border-radius: 8px;
-  border: 1px solid #2563eb !important;
-  background: #f5f7ff !important;
-  color: #2563eb !important;
+  border: 1px solid #21d9b3 !important;
+  background: #21d9b3 !important;
+  color: #08131d !important;
   font-weight: 600;
   box-shadow: none;
   width: auto;
@@ -1141,9 +1149,9 @@ body {
   font-size: 1rem;
 
   &:hover {
-    background: #e8edff !important;
-    border-color: #1d4ed8 !important;
-    color: #1d4ed8 !important;
+    background: #3ee8bf !important;
+    border-color: #3ee8bf !important;
+    color: #08131d !important;
   }
 
   .pi {

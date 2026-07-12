@@ -4,13 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IzyKube | Design Kubernetes Faster, Ship with Confidence</title>
-  <meta name="description" content="IzyKube turns Kubernetes architecture into a visual workflow: model namespaces, generate manifests, and deploy from one interface." />
+  <meta name="description" content="IzyKube turns Kubernetes architecture into a visual workflow: model namespaces, generate manifests, deploy from one interface, and install the stack with a separate GUI installer." />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="author" content="Izylife Solutions s.r.l." />
   <meta name="theme-color" content="#141c31" />
   <link rel="canonical" href="https://gcassata74.github.io/izykube/" />
   <meta property="og:title" content="IzyKube | Design Kubernetes Faster, Ship with Confidence" />
-  <meta property="og:description" content="From whiteboard chaos to deployable Kubernetes manifests in minutes." />
+  <meta property="og:description" content="From whiteboard chaos to deployable Kubernetes manifests in minutes, with a standalone installer for the full stack." />
   <meta property="og:image" content="https://gcassata74.github.io/izykube/demo.png" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://gcassata74.github.io/izykube/" />
@@ -18,7 +18,7 @@
   <meta property="og:locale" content="en_US" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="IzyKube | Design Kubernetes Faster, Ship with Confidence" />
-  <meta name="twitter:description" content="From whiteboard chaos to deployable Kubernetes manifests in minutes." />
+  <meta name="twitter:description" content="From whiteboard chaos to deployable Kubernetes manifests in minutes, with a standalone installer for the full stack." />
   <meta name="twitter:image" content="https://gcassata74.github.io/izykube/demo.png" />
   <script type="application/ld+json">
     {
@@ -32,7 +32,7 @@
           "operatingSystem": "Linux, macOS, Windows",
           "license": "https://www.gnu.org/licenses/agpl-3.0.html",
           "url": "https://gcassata74.github.io/izykube/",
-          "downloadUrl": "https://github.com/gcassata74/izykube",
+          "downloadUrl": "https://github.com/gcassata74/izykube/releases",
           "image": "https://gcassata74.github.io/izykube/demo.png",
           "description": "IzyKube turns Kubernetes architecture into a visual workflow: model namespaces, generate YAML or Helm artifacts, and deploy from one interface.",
           "publisher": {
@@ -534,6 +534,7 @@
       <ul class="nav-links">
         <li><a href="#value">Value</a></li>
         <li><a href="#features">Features</a></li>
+        <li><a href="#installer">Installer</a></li>
         <li><a href="#quickstart">Quickstart</a></li>
         <li><a href="#faq">FAQ</a></li>
       </ul>
@@ -548,15 +549,16 @@
         <h1>Design Kubernetes visually. Generate deployable artifacts. Ship with confidence.</h1>
         <p class="intro-sub">
           IzyKube turns cluster design into a visual workflow. Model namespaces, generate YAML or Helm artifacts,
-          then deploy directly from the same interface.
+          then deploy directly from the same interface. A separate graphical installer handles setup and removal.
         </p>
         <div class="hero-cta">
-          <a class="btn btn-primary" href="#quickstart">Start in 5 Minutes</a>
+          <a class="btn btn-primary" href="#installer">Open Installer Flow</a>
           <a class="btn btn-ghost" href="https://hub.docker.com/r/gcassata/izykube" target="_blank" rel="noopener noreferrer">Pull Docker Image</a>
         </div>
         <div class="meta">
           <span>No SaaS lock-in</span>
           <span>Works locally with Docker Compose</span>
+          <span>Standalone GUI installer included</span>
           <span>Ideal for platform and DevOps teams</span>
         </div>
       </div>
@@ -658,11 +660,48 @@
       </div>
     </section>
 
+    <section id="installer">
+      <div class="container">
+        <p class="label">Standalone installer</p>
+        <h2>Install and remove the stack from a separate GUI</h2>
+        <p class="sub">
+          The installer is external to the Java app. It runs Docker Compose and Makefile tasks from a dedicated
+          setup toolchain, ships with Python and Tkinter inside the executable, and supports Italian and English.
+        </p>
+
+        <div class="compare">
+          <article class="box good">
+            <h3>What the installer does</h3>
+            <ul>
+              <li>Guides full installation and uninstall flows</li>
+              <li>Shows phase progress instead of raw logs</li>
+              <li>Orchestrates Compose and addon tasks from outside the app</li>
+              <li>Uses a compact Izylife-themed interface</li>
+            </ul>
+          </article>
+          <article class="box">
+            <h3>What the host needs</h3>
+            <ul>
+              <li>Docker Engine with Compose</li>
+              <li>No local Python installation</li>
+              <li>No local Tcl/Tk installation</li>
+              <li>Optional release build from GitHub</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="hero-cta" style="margin-top: 1rem;">
+          <a class="btn btn-primary" href="https://github.com/gcassata74/izykube/tree/main/installer" target="_blank" rel="noopener noreferrer">Read Installer Docs</a>
+          <a class="btn btn-ghost" href="https://github.com/gcassata74/izykube/releases" target="_blank" rel="noopener noreferrer">Get a Release Build</a>
+        </div>
+      </div>
+    </section>
+
     <section id="quickstart">
       <div class="container">
         <p class="label">Quickstart</p>
-        <h2>Run IzyKube locally in minutes</h2>
-        <p class="sub">Spin up MongoDB, k3s, registry, and IzyKube using Docker Compose.</p>
+        <h2>Run IzyKube locally with Compose</h2>
+        <p class="sub">Use the manual path if you want direct control over the stack. The installer above is the faster route for first-time setup.</p>
 
         <div class="steps">
           <article class="step">
@@ -699,6 +738,10 @@ cd izykube</pre>
             <summary>Who is it for?</summary>
             <p>Platform teams, DevOps engineers, architects, and backend teams that need faster and clearer Kubernetes delivery.</p>
           </details>
+          <details>
+            <summary>Is there a separate graphical installer?</summary>
+            <p>Yes. IzyKube ships a standalone GUI installer that orchestrates Compose and Makefile tasks without using the Java backend UI.</p>
+          </details>
         </div>
       </div>
     </section>
@@ -708,9 +751,9 @@ cd izykube</pre>
         <div class="final-cta">
           <div>
             <h3>Turn Kubernetes design into a deployable asset</h3>
-            <p>Start with the open-source version now, then adapt it to your delivery workflow.</p>
+            <p>Use the standalone installer for the fastest setup, or go direct with Compose if you want manual control.</p>
           </div>
-          <a class="btn btn-primary" href="https://github.com/gcassata74/izykube" target="_blank" rel="noopener noreferrer">Get IzyKube on GitHub</a>
+          <a class="btn btn-primary" href="https://github.com/gcassata74/izykube/tree/main/installer" target="_blank" rel="noopener noreferrer">Open Installer</a>
         </div>
       </div>
     </section>

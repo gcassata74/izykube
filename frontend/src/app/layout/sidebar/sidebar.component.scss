@@ -24,14 +24,14 @@
 
 .app-sidebar {
   width: var(--izy-sidebar-width, 96px);
-  background: var(--izy-sidebar-bg, #0f172a);
-  color: #f8fafc;
+  background: linear-gradient(180deg, var(--izy-sidebar-bg, #0c1221) 0%, #090e1c 100%);
+  color: #f2f6ff;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 1.25rem 0.75rem;
   gap: 1rem;
-  border-right: 1px solid rgba(15, 23, 42, 0.5);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   min-height: 0;
 }
 
@@ -76,15 +76,15 @@
   text-align: center;
 
   &:hover {
-    background: rgba(148, 163, 184, 0.15);
+    background: rgba(255, 255, 255, 0.07);
   }
 
   &--active {
-    background: rgba(56, 189, 248, 0.16);
-    color: #e0f2fe;
+    background: rgba(33, 217, 179, 0.12);
+    color: #f2f6ff;
 
     .sidebar-item__icon {
-      color: var(--izy-accent, #38bdf8);
+      color: var(--izy-primary, #21d9b3);
     }
 
     .sidebar-item__accent {
@@ -95,13 +95,13 @@
 
 .sidebar-item__icon {
   font-size: 1.15rem;
-  color: rgba(248, 250, 252, 0.85);
+  color: rgba(242, 246, 255, 0.82);
 }
 
 .sidebar-item__label {
   font-weight: 600;
   font-size: 0.7rem;
-  color: rgba(248, 250, 252, 0.8);
+  color: rgba(242, 246, 255, 0.78);
 }
 
 .sidebar-item__accent {
@@ -111,29 +111,29 @@
   bottom: 0.75rem;
   width: 3px;
   border-radius: 999px;
-  background: var(--izy-accent, #38bdf8);
+  background: linear-gradient(180deg, var(--izy-primary, #21d9b3), var(--izy-accent, #66adff));
   opacity: 0;
   transition: opacity 0.2s ease;
 }
 
 .sidebar-item--muted {
   background: transparent;
-  color: rgba(248, 250, 252, 0.65);
+  color: rgba(242, 246, 255, 0.64);
   font-weight: 500;
 
   &:hover {
-    background: rgba(148, 163, 184, 0.1);
+    background: rgba(102, 173, 255, 0.08);
   }
 }
 
 .sidebar-item--collapse {
-  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   margin-top: 0.5rem;
   padding-top: 1rem;
 }
 
 .sidebar-submenu {
-  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   margin-top: 0.5rem;
   padding-top: 0.5rem;
 }
@@ -141,7 +141,7 @@
 .sidebar-submenu__title {
   font-size: 0.68rem;
   font-weight: 700;
-  color: rgba(248, 250, 252, 0.8);
+  color: rgba(242, 246, 255, 0.78);
   padding: 0.35rem 0.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
