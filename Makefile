@@ -77,8 +77,13 @@ install-istio: prepare-istioctl
 	kubectl label namespace default istio-injection=enabled --overwrite
 	@echo "Istio installation complete."
 
-uninstall-istio: uninstall-istio-gateway prepare-istioctl
-	$(ISTIOCTL) uninstall --purge -y
+uninstall-istio: uninstall-istio-gateway
+	@if kubectl get crd istiooperators.install.istio.io >/dev/null 2>&1; then \
+		$(MAKE) prepare-istioctl; \
+		$(ISTIOCTL) uninstall --purge -y; \
+	else \
+		echo "Istio CRD not present; skipping istioctl uninstall."; \
+	fi
 	kubectl label namespace default istio-injection- --overwrite || true
 
 check-istio:
@@ -89,7 +94,7 @@ create-istio-system-db:
 	kubectl create namespace istio-system-db --dry-run=client -o yaml | kubectl apply -f -
 
 delete-istio-system-db:
-	kubectl delete namespace istio-system-db --ignore-not-found=true
+	kubectl delete namespace istio-system-db --ignore-not-found=true --wait=false
 
 # Install Prometheus stack into istio-system-db
 install-prometheus: create-istio-system-db
@@ -131,7 +136,7 @@ install-cert-manager:
 
 uninstall-cert-manager: uninstall-internal-ca
 	helm uninstall cert-manager -n cert-manager --ignore-not-found
-	kubectl delete namespace cert-manager --ignore-not-found=true
+	kubectl delete namespace cert-manager --ignore-not-found=true --wait=false
 
 check-cert-manager:
 	helm status cert-manager -n cert-manager
@@ -171,8 +176,13 @@ check-olm:
 # Uninstall OLM
 uninstall-olm:
 	@echo "Uninstalling OLM $(OLM_VERSION)..."
-	kubectl delete -f $(OLM_BASE_URL)/olm.yaml --ignore-not-found=true
-	kubectl delete -f $(OLM_BASE_URL)/crds.yaml --ignore-not-found=true
+	@if kubectl get crd clusterserviceversions.operators.coreos.com >/dev/null 2>&1; then \
+		kubectl delete -f $(OLM_BASE_URL)/olm.yaml --ignore-not-found=true --wait=false; \
+		kubectl delete -f $(OLM_BASE_URL)/crds.yaml --ignore-not-found=true --wait=false; \
+		kubectl delete namespace olm --ignore-not-found=true --wait=false; \
+	else \
+		echo "OLM CRDs not present; skipping OLM deletion."; \
+	fi
 
 # Create internal CA and ClusterIssuer for HTTPS routes
 create-internal-ca: install-cert-manager
@@ -191,7 +201,11 @@ create-internal-ca: install-cert-manager
 	kubectl apply -f yaml/izykube-ca-issuer.yaml
 
 uninstall-internal-ca:
-	kubectl delete -f yaml/izykube-ca-issuer.yaml --ignore-not-found=true
+	@if kubectl api-resources --api-group=cert-manager.io 2>/dev/null | awk '$$1 == "clusterissuers" { found = 1 } END { exit found ? 0 : 1 }'; then \
+		kubectl delete -f yaml/izykube-ca-issuer.yaml --ignore-not-found=true; \
+	else \
+		echo "ClusterIssuer CRD not present; skipping internal CA deletion."; \
+	fi
 	kubectl -n cert-manager delete secret izykube-ca --ignore-not-found=true
 
 check-internal-ca:
@@ -221,7 +235,11 @@ install-istio-gateway: install-istio
 	kubectl apply -f yaml/izykube-gateway.yaml
 
 uninstall-istio-gateway:
-	kubectl delete -f yaml/izykube-gateway.yaml --ignore-not-found=true
+	@if kubectl api-resources --api-group=networking.istio.io 2>/dev/null | awk '$$1 == "gateways" { found = 1 } END { exit found ? 0 : 1 }'; then \
+		kubectl delete -f yaml/izykube-gateway.yaml --ignore-not-found=true; \
+	else \
+		echo "Istio Gateway CRD not present; skipping gateway deletion."; \
+	fi
 
 check-istio-gateway:
 	kubectl -n istio-system get gateway izykube-gateway
