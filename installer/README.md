@@ -2,6 +2,8 @@
 
 Standalone Python/Tkinter desktop installer. It orchestrates Docker Compose and an ephemeral `setup-tools` container; it does not call the IzyKube Java backend or Angular frontend.
 
+This installer is IzyKube orchestration code. Docker, Compose, Kubernetes, Helm, kubectl, Istio, cert-manager, OLM, Prometheus, Grafana, Python/Tk, and ttkbootstrap are external components rather than IzyKube-owned implementations. See the [capability evidence matrix](../docs/product/capability-evidence-matrix.md) for the audited classification.
+
 The interface supports Italian and English. It initially follows the operating system locale and can be changed at any time from the language selector in the toolbar.
 
 The desktop UI uses the MIT-licensed `ttkbootstrap` toolkit. Long procedures are displayed as individual phases with a determinate progress bar, current activity, and a technical log hidden by default.
@@ -57,7 +59,7 @@ The destination machine does not need Python or Tcl/Tk. The executable must rema
 
 | Group | Task | Install | Uninstall | Verify |
 |---|---|---|---|---|
-| Complete | Full installation | Compose up + `install-cluster-addons` | `uninstall-cluster-addons` + Compose down | Compose ps + `check-cluster-addons` |
+| Complete | Configured orchestration workflow | Compose up + `install-cluster-addons` | `uninstall-cluster-addons` + Compose down | Compose ps + `check-cluster-addons` |
 | Infrastructure | Docker stack | Compose up | Compose down | Compose ps |
 | Platform | Kubernetes addons | `install-cluster-addons` | `uninstall-cluster-addons` | `check-cluster-addons` |
 | Components | OLM | `install-olm` | `uninstall-olm` | `check-olm` |

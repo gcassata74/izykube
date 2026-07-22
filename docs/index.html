@@ -3,22 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IzyKube | Design Kubernetes Faster, Ship with Confidence</title>
-  <meta name="description" content="IzyKube turns Kubernetes architecture into a visual workflow: model namespaces, generate manifests, deploy from one interface, and install the stack with a separate GUI installer." />
+  <title>IzyKube | Visual Kubernetes Modeling and Artifact Generation</title>
+  <meta name="description" content="IzyKube is a self-hosted visual Kubernetes modeler with tested YAML and Helm generation for supported resource types and a documented capability evidence matrix." />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="author" content="Izylife Solutions s.r.l." />
   <meta name="theme-color" content="#141c31" />
   <link rel="canonical" href="https://gcassata74.github.io/izykube/" />
-  <meta property="og:title" content="IzyKube | Design Kubernetes Faster, Ship with Confidence" />
-  <meta property="og:description" content="From whiteboard chaos to deployable Kubernetes manifests in minutes, with a standalone installer for the full stack." />
+  <meta property="og:title" content="IzyKube | Visual Kubernetes Modeling and Artifact Generation" />
+  <meta property="og:description" content="Model supported Kubernetes resources visually and generate YAML or Helm artifacts, with implementation status documented in a public evidence matrix." />
   <meta property="og:image" content="https://gcassata74.github.io/izykube/demo.png" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://gcassata74.github.io/izykube/" />
   <meta property="og:site_name" content="IzyKube" />
   <meta property="og:locale" content="en_US" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="IzyKube | Design Kubernetes Faster, Ship with Confidence" />
-  <meta name="twitter:description" content="From whiteboard chaos to deployable Kubernetes manifests in minutes, with a standalone installer for the full stack." />
+  <meta name="twitter:title" content="IzyKube | Visual Kubernetes Modeling and Artifact Generation" />
+  <meta name="twitter:description" content="Model supported Kubernetes resources visually and generate YAML or Helm artifacts, with implementation status documented in a public evidence matrix." />
   <meta name="twitter:image" content="https://gcassata74.github.io/izykube/demo.png" />
   <script type="application/ld+json">
     {
@@ -28,13 +28,13 @@
           "@type": "SoftwareApplication",
           "name": "IzyKube",
           "applicationCategory": "DeveloperApplication",
-          "applicationSubCategory": "Kubernetes Architecture and Deployment Tool",
+          "applicationSubCategory": "Kubernetes Modeling and Artifact Generation Tool",
           "operatingSystem": "Linux, macOS, Windows",
           "license": "https://www.gnu.org/licenses/agpl-3.0.html",
           "url": "https://gcassata74.github.io/izykube/",
           "downloadUrl": "https://github.com/gcassata74/izykube/releases",
           "image": "https://gcassata74.github.io/izykube/demo.png",
-          "description": "IzyKube turns Kubernetes architecture into a visual workflow: model namespaces, generate YAML or Helm artifacts, and deploy from one interface.",
+          "description": "IzyKube provides visual Kubernetes namespace modeling and tested YAML or Helm generation for supported resource types. Cluster operations and inspection have partial end-to-end verification.",
           "publisher": {
             "@type": "Organization",
             "name": "Izylife Solutions s.r.l.",
@@ -70,7 +70,7 @@
               "name": "Who is it for?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Platform teams, DevOps engineers, architects, and backend teams that need faster and clearer Kubernetes delivery."
+                "text": "The project is intended for platform teams, DevOps engineers, architects, and backend teams evaluating a visual Kubernetes modeling workflow."
               }
             }
           ]
@@ -534,6 +534,7 @@
       <ul class="nav-links">
         <li><a href="#value">Value</a></li>
         <li><a href="#features">Features</a></li>
+        <li><a href="#evidence">Evidence</a></li>
         <li><a href="#installer">Installer</a></li>
         <li><a href="#quickstart">Quickstart</a></li>
         <li><a href="#faq">FAQ</a></li>
@@ -546,20 +547,20 @@
     <section class="intro">
       <div class="container">
         <div class="pill">Open Source · AGPL-3.0 · Self-hosted</div>
-        <h1>Design Kubernetes visually. Generate deployable artifacts. Ship with confidence.</h1>
+        <h1>Model Kubernetes visually. Generate artifacts for supported resources.</h1>
         <p class="intro-sub">
-          IzyKube turns cluster design into a visual workflow. Model namespaces, generate YAML or Helm artifacts,
-          then deploy directly from the same interface. A separate graphical installer handles setup and removal.
+          IzyKube provides a visual namespace modeler with tested YAML and Helm export paths. The repository also
+          contains cluster operations, inspection, and local-AI integrations with the limits recorded in its evidence matrix.
         </p>
         <div class="hero-cta">
           <a class="btn btn-primary" href="#installer">Open Installer Flow</a>
           <a class="btn btn-ghost" href="https://hub.docker.com/r/gcassata/izykube" target="_blank" rel="noopener noreferrer">Pull Docker Image</a>
         </div>
         <div class="meta">
-          <span>No SaaS lock-in</span>
+          <span>Self-hosted; no hosted service required</span>
           <span>Works locally with Docker Compose</span>
           <span>Standalone GUI installer included</span>
-          <span>Ideal for platform and DevOps teams</span>
+          <span>Capability status documented publicly</span>
         </div>
       </div>
     </section>
@@ -567,59 +568,59 @@
     <section class="proof section-dark">
       <div class="container proof-grid">
         <article class="proof-card">
-          <h3>Designed for real delivery</h3>
-          <p>Bridge product, backend, and platform teams with a shared, executable architecture view.</p>
+          <h3>Repository-backed model</h3>
+          <p>The visual editor and supported artifact generators are traceable to code and automated tests.</p>
         </article>
         <article class="proof-card">
-          <h3>From diagram to deploy</h3>
-          <p>Move from idea to cluster manifests without hand-translating every object.</p>
+          <h3>From diagram to artifacts</h3>
+          <p>Generate YAML or a Helm archive for resource types covered by the current model and tests.</p>
         </article>
         <article class="proof-card">
-          <h3>Own your stack</h3>
-          <p>Run fully in your infrastructure with open standards and no proprietary dependencies.</p>
+          <h3>Self-hosted integration</h3>
+          <p>Run the application locally and connect it to third-party components such as Kubernetes, MongoDB, and Ollama.</p>
         </article>
       </div>
     </section>
 
     <section id="value">
       <div class="container">
-        <p class="label">Why teams switch</p>
-        <h2>Replace architecture drift with one source of truth</h2>
-        <p class="sub">Most teams design in one tool and deploy in another. IzyKube keeps intent, manifests, and deployment flow connected.</p>
+        <p class="label">What is present today</p>
+        <h2>Keep the visual model and generated artifacts in one application</h2>
+        <p class="sub">The repository implements a model-to-artifact workflow. Live-cluster apply/delete and inspection paths exist, but their end-to-end verification is partial.</p>
 
         <div class="compare">
           <article class="box bad">
-            <h3>Without IzyKube</h3>
+            <h3>Common split workflow</h3>
             <ul>
-              <li>Design docs get stale after the first sprint</li>
-              <li>YAML handoffs are slow and error-prone</li>
-              <li>Platform reviews happen too late</li>
-              <li>Runtime drift is discovered in production</li>
+              <li>Architecture diagrams are maintained separately</li>
+              <li>Kubernetes manifests are authored in another tool</li>
+              <li>Cluster inspection happens through separate commands</li>
+              <li>Evidence for feature claims may be scattered</li>
             </ul>
           </article>
           <article class="box good">
             <h3>With IzyKube</h3>
             <ul>
-              <li>Visual model stays aligned with deployable artifacts</li>
-              <li>Manifest and Helm generation is built-in</li>
-              <li>Deployment and undeploy happen from one UI</li>
-              <li>Cluster state can be inspected against design intent</li>
+              <li>A visual model feeds supported artifact generators</li>
+              <li>YAML and Helm export paths have automated tests</li>
+              <li>Apply/delete operations are available with partial integration coverage</li>
+              <li>Implemented, partial, planned, and external items are separated</li>
             </ul>
           </article>
         </div>
 
         <div class="outcome-grid" style="margin-top: 1rem;">
           <article class="outcome">
-            <b>Faster onboarding</b>
-            <span>New engineers understand services and boundaries from a single visual map.</span>
+            <b>Visible architecture</b>
+            <span>Supported workloads and relationships can be represented on one canvas.</span>
           </article>
           <article class="outcome">
-            <b>Cleaner collaboration</b>
-            <span>Dev, DevOps, and architects discuss the same concrete model, not separate files.</span>
+            <b>Exportable model</b>
+            <span>The current model can generate tested YAML and Helm artifacts for supported resource types.</span>
           </article>
           <article class="outcome">
-            <b>Lower deployment risk</b>
-            <span>Review generated manifests before apply and reduce late-stage surprises.</span>
+            <b>Auditable claims</b>
+            <span>Each material capability is linked to implementation and verification evidence.</span>
           </article>
         </div>
       </div>
@@ -628,8 +629,8 @@
     <section id="features" class="section-dark">
       <div class="container">
         <p class="label">Core features</p>
-        <h2>Everything needed to design and run Kubernetes architecture</h2>
-        <p class="sub">IzyKube supports the full design-to-deploy loop while staying compatible with standard Kubernetes workflows.</p>
+        <h2>Implemented and partially verified product paths</h2>
+        <p class="sub">The labels below are deliberately scoped. Full status, dependencies, and verification commands are in the evidence matrix.</p>
 
         <div class="features">
           <article class="feature">
@@ -638,24 +639,39 @@
           </article>
           <article class="feature">
             <h3>Version Snapshots</h3>
-            <p>Save alternative versions of the same namespace and roll back quickly during exploration.</p>
+            <p>Save, list, open, and delete namespace version records. A tested one-click rollback flow is not established.</p>
           </article>
           <article class="feature">
             <h3>YAML and Helm Export</h3>
-            <p>Generate deployment-ready Kubernetes manifests or package the same model as a Helm chart.</p>
+            <p>Generate Kubernetes YAML or a Helm archive for the resource types covered by current code and tests.</p>
           </article>
           <article class="feature">
             <h3>Deploy and Undeploy</h3>
-            <p>Apply generated resources directly to a connected cluster and remove them when needed.</p>
+            <p>Use the available apply/delete paths with a connected cluster; automated live-cluster coverage is still partial.</p>
           </article>
           <article class="feature">
             <h3>Runtime Inspection</h3>
-            <p>Overlay live cluster information to detect missing resources and drift from intended design.</p>
+            <p>Inspect implemented cluster resource views and sync indicators; comprehensive drift detection is not established.</p>
           </article>
           <article class="feature">
             <h3>Open Architecture</h3>
-            <p>Built with Angular, Spring Boot, MongoDB, and Kubernetes-friendly infrastructure.</p>
+            <p>Built with repository code plus external Angular, Spring Boot, MongoDB, Fabric8, Kubernetes, and related components.</p>
           </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <div class="container">
+        <p class="label">Evidence and roadmap</p>
+        <h2>Current claims are classified and reproducible</h2>
+        <p class="sub">
+          The audit separates implemented, partial, planned, and external-dependency items. OPA/Rego,
+          SPIFFE/SPIRE, MCP, OpenTelemetry, first-party SBOM publication, and Sigstore/SLSA provenance are roadmap only.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="https://github.com/gcassata74/izykube/blob/main/docs/product/capability-evidence-matrix.md" target="_blank" rel="noopener noreferrer">Read Capability Evidence</a>
+          <a class="btn btn-ghost" href="https://github.com/gcassata74/izykube/blob/main/docs/product/background-ip.md" target="_blank" rel="noopener noreferrer">Read Background-IP Record</a>
         </div>
       </div>
     </section>
@@ -673,7 +689,7 @@
           <article class="box good">
             <h3>What the installer does</h3>
             <ul>
-              <li>Guides full installation and uninstall flows</li>
+              <li>Guides the configured installation and uninstall tasks</li>
               <li>Shows phase progress instead of raw logs</li>
               <li>Orchestrates Compose and addon tasks from outside the app</li>
               <li>Uses a compact Izylife-themed interface</li>
@@ -685,14 +701,14 @@
               <li>Docker Engine with Compose</li>
               <li>No local Python installation</li>
               <li>No local Tcl/Tk installation</li>
-              <li>Optional release build from GitHub</li>
+              <li>Installer executable can be built locally with the documented Docker build</li>
             </ul>
           </article>
         </div>
 
         <div class="hero-cta" style="margin-top: 1rem;">
           <a class="btn btn-primary" href="https://github.com/gcassata74/izykube/tree/main/installer" target="_blank" rel="noopener noreferrer">Read Installer Docs</a>
-          <a class="btn btn-ghost" href="https://github.com/gcassata74/izykube/releases" target="_blank" rel="noopener noreferrer">Get a Release Build</a>
+          <a class="btn btn-ghost" href="https://github.com/gcassata74/izykube/blob/main/installer/README.md#standalone-build" target="_blank" rel="noopener noreferrer">Build the Installer</a>
         </div>
       </div>
     </section>
@@ -701,7 +717,7 @@
       <div class="container">
         <p class="label">Quickstart</p>
         <h2>Run IzyKube locally with Compose</h2>
-        <p class="sub">Use the manual path if you want direct control over the stack. The installer above is the faster route for first-time setup.</p>
+        <p class="sub">Use the manual path for direct control over the configured services, or use the installer to run the same orchestration through a GUI.</p>
 
         <div class="steps">
           <article class="step">
@@ -710,7 +726,7 @@
 cd izykube</pre>
           </article>
           <article class="step">
-            <b>2) Start the full stack</b>
+            <b>2) Start the configured services</b>
             <pre>docker compose up</pre>
           </article>
           <article class="step">
@@ -736,7 +752,7 @@ cd izykube</pre>
           </details>
           <details>
             <summary>Who is it for?</summary>
-            <p>Platform teams, DevOps engineers, architects, and backend teams that need faster and clearer Kubernetes delivery.</p>
+            <p>The project is intended for platform teams, DevOps engineers, architects, and backend teams evaluating a visual Kubernetes modeling workflow.</p>
           </details>
           <details>
             <summary>Is there a separate graphical installer?</summary>
@@ -750,8 +766,8 @@ cd izykube</pre>
       <div class="container">
         <div class="final-cta">
           <div>
-            <h3>Turn Kubernetes design into a deployable asset</h3>
-            <p>Use the standalone installer for the fastest setup, or go direct with Compose if you want manual control.</p>
+            <h3>Evaluate the model-to-artifact workflow</h3>
+            <p>Read the evidence matrix first, then use the installer or Compose path that fits your local evaluation.</p>
           </div>
           <a class="btn btn-primary" href="https://github.com/gcassata74/izykube/tree/main/installer" target="_blank" rel="noopener noreferrer">Open Installer</a>
         </div>
