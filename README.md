@@ -23,6 +23,8 @@ IzyKube is a self-hosted Kubernetes architecture designer. Its tested paths cove
 
 The UI is diagram-based and uses `interact.js` + SVG for node/link editing. See the [capability evidence matrix](docs/product/capability-evidence-matrix.md) for code references, verification commands, and status definitions, and the [background-IP engineering record](docs/product/background-ip.md) for the repository-history cutoff and limitations.
 
+For the proposed STARK and AIssure work, the target product boundary is a headless Kubernetes policy, verified workload-identity, admission-enforcement, and assurance-evidence layer. Vulnerability and software-supply-chain scanning remains NocScan's responsibility; IzyKube will consume authenticated, digest-bound findings rather than duplicate the scanner. This is a roadmap boundary, not a claim that those capabilities are implemented or contractually assigned. The [requirements traceability matrix](docs/eu/requirements-traceability.md) records the provisional mappings, proposed KPIs, missing authoritative sources, and approval gates.
+
 ![IzyKube demo](docs/demo.png)
 
 ## Current, Partial, External, and Roadmap Scope
