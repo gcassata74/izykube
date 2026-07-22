@@ -19,20 +19,37 @@
 
 # IzyKube
 
-IzyKube is a Kubernetes architecture designer for modeling Kubernetes namespaces, generating manifests, and applying them to a target cluster.
-The UI is diagram-based and uses `interact.js` + SVG for node/link editing.
+IzyKube is a self-hosted Kubernetes architecture designer. Its tested paths cover visual namespace modeling plus YAML and Helm generation for supported resource types. The repository also contains cluster apply/delete, inspection, and local-AI integration paths whose end-to-end coverage is still partial.
+
+The UI is diagram-based and uses `interact.js` + SVG for node/link editing. See the [capability evidence matrix](docs/product/capability-evidence-matrix.md) for code references, verification commands, and status definitions, and the [background-IP engineering record](docs/product/background-ip.md) for the repository-history cutoff and limitations.
 
 ![IzyKube demo](docs/demo.png)
 
-## Scope
+## Current, Partial, External, and Roadmap Scope
 
-IzyKube supports:
+### Verified current capabilities
 
-- namespace modeling with version snapshots
-- visual editing of workloads and related resources
-- template generation and deployment/undeployment
-- runtime inspection from Kubernetes
-- optional YAML import/export and Helm export
+- visual editing of Kubernetes workloads and related resources;
+- YAML import/export and Helm chart export for the supported model types;
+- Kubernetes RBAC policy modeling and manifest generation; and
+- Istio VirtualService modeling and manifest export.
+
+“Verified” is limited to the automated tests cited in the evidence matrix; it is not a production-readiness or completeness claim.
+
+### Partially verified capabilities
+
+- namespace version records can be saved, listed, opened, and deleted, but a tested one-click rollback flow is not established;
+- apply/undeploy code paths use a connected Kubernetes API, but the repository has no automated live-cluster end-to-end test;
+- runtime resource inspection and sync indicators exist for implemented views, but comprehensive drift detection is not established; and
+- the local-AI adapter calls Ollama for generation/chat, but no automated Ollama contract or model-quality test is present.
+
+### Externally supplied runtime components
+
+The repository can orchestrate or connect to k3s, Istio, cert-manager, OLM, Prometheus, Grafana, and Ollama. These are third-party dependencies, not IzyKube-owned implementations. MongoDB, Kubernetes, Docker, Helm, Fabric8, Angular, Spring, and the selected AI models are external as well.
+
+### Roadmap only
+
+OPA/Rego, SPIFFE/SPIRE, Model Context Protocol (MCP), OpenTelemetry, first-party SBOM publication, and Sigstore/SLSA signing or provenance are not implemented capabilities. They remain roadmap candidates unless and until code plus reproducible verification is added.
 
 ## Technology Stack
 
@@ -50,14 +67,14 @@ IzyKube supports:
 - `yaml/`: Kubernetes manifests used by setup flows
 - `docs/`: project documentation
 - `Dockerfile`: multi-stage build — Maven compiles frontend + backend into a single self-contained jar; JRE runtime image
-- `docker-compose.yml`: full local stack (MongoDB, Docker registry, k3s, Ollama, izykube)
+- `docker-compose.yml`: configured local services (MongoDB, Docker registry, k3s, Ollama, IzyKube)
 - `.github/workflows/`: CI and release pipelines
 - `Makefile`: cluster addon bootstrap commands
 
 ## Prerequisites
 
-- Java 21 (for local frontend dev only)
-- Node.js 18+ / npm (for local frontend dev only)
+- Java 21 (for backend development and Maven builds)
+- Node.js 18+ / npm (for frontend development and builds)
 - Docker (with Compose v2)
 - kubectl
 - helm
@@ -94,13 +111,13 @@ make setup-gui-build
 
 ## Local Development
 
-### Start the full stack
+### Start the configured Compose services
 
 ```bash
 docker compose up
 ```
 
-This builds the izykube image and starts MongoDB, registry, k3s, Ollama, and the app on `http://localhost:8090`.
+This builds the IzyKube image and starts the app plus the configured third-party MongoDB, registry, k3s, and Ollama services on the local Compose network. The app is exposed on `http://localhost:8090`.
 
 ### Start frontend in dev mode (hot-reload)
 
@@ -123,7 +140,7 @@ npm -C frontend install --legacy-peer-deps
 npm -C frontend run build -- --configuration production
 ```
 
-## Install From Scratch (zero to running)
+## Manual Installation Path
 
 If you want the manual route, the same stack can be started directly with Compose. For the graphical route, use the standalone installer above.
 
@@ -151,7 +168,7 @@ export KUBECONFIG=$(docker volume inspect izykube_kubeconfig --format '{{.Mountp
 make install-cluster-addons
 ```
 
-This installs OLM, cert-manager, internal CA, Istio + gateway, Prometheus, and Grafana.
+This runs repository orchestration that installs the third-party OLM, cert-manager, Istio, Prometheus, and Grafana components plus repository-supplied CA/Gateway configuration.
 
 ### 4) Trust internal CA on your local machine (recommended for HTTPS routes)
 
