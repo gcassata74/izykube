@@ -60,3 +60,13 @@ izytool/
 venv/*
 .codex/
 .izykube/
+
+# Local secrets and environment overrides
+.env
+.env.*
+.secrets/
+
+# Local Python environments and bytecode
+.venv/
+__pycache__/
+*.py[cod]
