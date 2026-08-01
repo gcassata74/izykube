@@ -47,6 +47,21 @@ class TaskCatalogTest(unittest.TestCase):
         self.assertEqual("uninstall-grafana", commands[0][-1])
         self.assertEqual(("make", "--no-print-directory", "stop-stack"), commands[-1])
 
+    def test_stack_task_uses_canonical_make_lifecycle(self) -> None:
+        stack = task_by_id("stack")
+        self.assertEqual(
+            (("make", "--no-print-directory", "start-stack"),),
+            command_plan(stack, Action.INSTALL),
+        )
+        self.assertEqual(
+            (("make", "--no-print-directory", "stop-stack"),),
+            command_plan(stack, Action.UNINSTALL),
+        )
+        self.assertEqual(
+            (("make", "--no-print-directory", "check-stack"),),
+            command_plan(stack, Action.VERIFY),
+        )
+
     def test_addon_plan_exposes_visible_progress_steps(self) -> None:
         steps = operation_plan(task_by_id("addons"), Action.VERIFY)
         self.assertEqual(8, len(steps))
