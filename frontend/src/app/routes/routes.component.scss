@@ -48,6 +48,10 @@
   gap: 16px;
   align-items: flex-end;
   flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(9, 14, 28, 0.72);
 }
 
 .routes-page__field {
@@ -55,7 +59,17 @@
   flex-direction: column;
   gap: 6px;
   font-size: 13px;
-  color: #4b5563;
+  color: var(--izy-header-text);
+}
+
+.routes-page__field > label {
+  margin: 0;
+  color: var(--izy-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .routes-page__field--filter {
@@ -66,6 +80,48 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.routes-page__filter > input {
+  min-width: 220px;
+}
+
+:host ::ng-deep .routes-page__actions .p-inputtext,
+:host ::ng-deep .routes-page__actions .p-dropdown {
+  min-height: 42px;
+  color: var(--izy-header-text) !important;
+  background: #141c31 !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+:host ::ng-deep .routes-page__actions .p-inputtext {
+  padding: 0.65rem 0.8rem !important;
+}
+
+:host ::ng-deep .routes-page__actions .p-inputtext::placeholder {
+  color: rgba(242, 246, 255, 0.56) !important;
+}
+
+:host ::ng-deep .routes-page__actions .p-dropdown .p-dropdown-label {
+  padding: 0.65rem 0.8rem !important;
+  color: var(--izy-header-text) !important;
+}
+
+:host ::ng-deep .routes-page__actions .p-dropdown .p-dropdown-label.p-placeholder {
+  color: rgba(242, 246, 255, 0.56) !important;
+}
+
+:host ::ng-deep .routes-page__actions .p-dropdown .p-dropdown-trigger,
+:host ::ng-deep .routes-page__actions .p-dropdown .p-dropdown-trigger-icon {
+  color: var(--izy-header-text) !important;
+}
+
+:host ::ng-deep .routes-page__actions .p-inputtext:focus,
+:host ::ng-deep .routes-page__actions .p-dropdown.p-focus {
+  border-color: var(--izy-primary) !important;
+  box-shadow: 0 0 0 3px rgba(33, 217, 179, 0.16) !important;
 }
 
 .routes-page__table {
@@ -143,5 +199,17 @@
   .routes-page__actions {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .routes-page__field,
+  .routes-page__field--filter {
+    min-width: min(100%, 260px);
+    flex: 1 1 240px;
+  }
+
+  :host ::ng-deep .routes-page__actions .p-dropdown,
+  .routes-page__filter,
+  .routes-page__filter > input {
+    width: 100% !important;
   }
 }

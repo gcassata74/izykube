@@ -26,7 +26,7 @@
     </div>
     <div class="routes-page__actions">
       <div class="routes-page__field">
-        <span i18n="@@common.namespace">Namespace</span>
+        <label for="routesNamespaceSelect" i18n="@@common.namespace">Namespace</label>
         <p-dropdown
           inputId="routesNamespaceSelect"
           [options]="namespaces"
@@ -40,9 +40,10 @@
         ></p-dropdown>
       </div>
       <div class="routes-page__field routes-page__field--filter">
-        <span i18n="@@common.filter">Filter</span>
+        <label for="routesFilterInput" i18n="@@common.filter">Filter</label>
         <div class="routes-page__filter">
           <input
+            id="routesFilterInput"
             pInputText
             type="text"
             [value]="filterValue"

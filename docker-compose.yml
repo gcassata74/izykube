@@ -50,48 +50,6 @@ services:
     volumes:
       - registry-data:/var/lib/registry
 
-  # ── k3s (lightweight Kubernetes) ──────────────────────────────────────────
-  # Runs as a privileged container. A wrapper script patches the kubeconfig
-  # server URL from 127.0.0.1 to the compose service name so the backend can
-  # reach the API server via the internal network (https://k3s:6443).
-  k3s:
-    image: rancher/k3s:v1.34.1-k3s1
-    container_name: izykube-k3s
-    privileged: true
-    cgroup: host
-    restart: unless-stopped
-    ports:
-      - "6443:6443"
-      - "80:80"
-      - "443:443"
-    volumes:
-      - k3s-server:/var/lib/rancher/k3s
-      - kubeconfig:/kubeconfig
-      - ./k3s-registries.yaml:/etc/rancher/k3s/registries.yaml:ro
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        rm -f /kubeconfig/config /kubeconfig/config.tmp
-        k3s server \
-          --disable=traefik \
-          --node-name=izykube-k3s \
-          --tls-san=k3s &
-        K3S_PID=$!
-        echo "Waiting for kubeconfig..."
-        until [ -s /etc/rancher/k3s/k3s.yaml ]; do sleep 2; done
-        sed 's|https://127.0.0.1:6443|https://k3s:6443|g' \
-          /etc/rancher/k3s/k3s.yaml > /kubeconfig/config.tmp
-        chmod 644 /kubeconfig/config.tmp
-        mv /kubeconfig/config.tmp /kubeconfig/config
-        echo "kubeconfig ready"
-        wait $$K3S_PID
-    healthcheck:
-      test: ["CMD", "sh", "-c", "[ -f /kubeconfig/config ] && kubectl --kubeconfig /kubeconfig/config get --raw=/readyz >/dev/null"]
-      interval: 5s
-      timeout: 5s
-      retries: 60
-      start_period: 20s
-
   # ── Ollama ─────────────────────────────────────────────────────────────────
   # Reuses the named volume izykube_ollama-data created by the previous
   # docker-compose.ollama.yaml — models are preserved automatically.
@@ -123,12 +81,13 @@ services:
       - KUBECONFIG=/kubeconfig/config
       - OLLAMA_BASE_URL=http://ollama:11434
     volumes:
-      - kubeconfig:/kubeconfig:ro
+      - ./.izykube/kubeconfig:/kubeconfig/config:ro
+    networks:
+      - default
+      - k3d
     depends_on:
       mongo:
         condition: service_started
-      k3s:
-        condition: service_healthy
       ollama:
         condition: service_started
 
@@ -143,10 +102,10 @@ services:
     environment:
       - KUBECONFIG=/kubeconfig/config
     volumes:
-      - kubeconfig:/kubeconfig:ro
-    depends_on:
-      k3s:
-        condition: service_healthy
+      - ./.izykube/kubeconfig:/kubeconfig/config:ro
+    networks:
+      - default
+      - k3d
 
 volumes:
   # Existing MongoDB data (anonymous volumes from mongo-host) — preserved.
@@ -164,5 +123,8 @@ volumes:
 
   # Fresh volumes for new services.
   registry-data:
-  k3s-server:
-  kubeconfig:
+
+networks:
+  k3d:
+    external: true
+    name: k3d-izycluster

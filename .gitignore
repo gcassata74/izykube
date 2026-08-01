@@ -59,3 +59,4 @@ izytool/
 .aider*
 venv/*
 .codex/
+.izykube/

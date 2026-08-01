@@ -22,15 +22,25 @@ SHELL := /bin/bash
 LOCALE ?= en
 OLM_VERSION ?= v0.30.0
 OLM_BASE_URL ?= https://github.com/operator-framework/operator-lifecycle-manager/releases/download/$(OLM_VERSION)
+ARGOCD_VERSION ?= v3.4.2
+ARGOCD_INSTALL_URL ?= https://raw.githubusercontent.com/argoproj/argo-cd/$(ARGOCD_VERSION)/manifests/install.yaml
 ISTIO_VERSION ?= 1.18.2
 ISTIO_DIR ?= /tmp/istio-$(ISTIO_VERSION)
 ISTIOCTL ?= $(ISTIO_DIR)/bin/istioctl
 SUDO ?= sudo
+K3D_CLUSTER ?= izycluster
+K3D_CONTEXT ?= k3d-$(K3D_CLUSTER)
+K3D_HOST_KUBECONFIG ?= $(CURDIR)/.izykube/kubeconfig-host
+K3D_CONTAINER_KUBECONFIG ?= $(CURDIR)/.izykube/kubeconfig
+K3D_KUBECONFIG ?= $(if $(wildcard /kubeconfig/config),/kubeconfig/config,$(K3D_HOST_KUBECONFIG))
+export KUBECONFIG := $(K3D_KUBECONFIG)
 
-.PHONY: setup-gui setup-gui-build prepare-istioctl install-istio uninstall-istio check-istio \
+.PHONY: setup-gui setup-gui-build retire-embedded-k3s create-k3d-cluster start-k3d-cluster prepare-k3d-kubeconfig \
+	check-k3d-context start-stack stop-stack check-stack prepare-istioctl install-istio uninstall-istio check-istio \
 	create-istio-system-db delete-istio-system-db install-prometheus uninstall-prometheus check-prometheus \
 	install-grafana install-grafana-release uninstall-grafana check-grafana grafana-port-forward \
 	install-cert-manager uninstall-cert-manager check-cert-manager install-olm check-olm uninstall-olm \
+	install-argocd uninstall-argocd check-argocd \
 	create-internal-ca uninstall-internal-ca check-internal-ca install-ca-local \
 	install-istio-gateway uninstall-istio-gateway check-istio-gateway \
 	install-cluster-addons uninstall-cluster-addons check-cluster-addons create-izykube-system
@@ -40,6 +50,49 @@ setup-gui:
 
 setup-gui-build:
 	docker build --file installer/Dockerfile.pyinstaller --target artifact --output type=local,dest=dist .
+
+retire-embedded-k3s:
+	@if docker ps -a --format '{{.Names}}' | grep -qx 'izykube-k3s'; then \
+		echo "Removing obsolete embedded cluster container 'izykube-k3s' (volumes are preserved)..."; \
+		docker rm -f izykube-k3s >/dev/null; \
+	fi
+
+create-k3d-cluster: retire-embedded-k3s
+	@command -v k3d >/dev/null || { echo "ERROR: k3d is required."; exit 1; }
+	@if k3d cluster list --no-headers 2>/dev/null | awk '{print $$1}' | grep -qx '$(K3D_CLUSTER)'; then \
+		echo "k3d cluster '$(K3D_CLUSTER)' already exists."; \
+	else \
+		k3d cluster create $(K3D_CLUSTER) \
+			-p '80:80@loadbalancer' -p '443:443@loadbalancer' \
+			--k3s-arg '--disable=traefik@server:*'; \
+	fi
+
+start-k3d-cluster: create-k3d-cluster
+	k3d cluster start $(K3D_CLUSTER)
+
+prepare-k3d-kubeconfig: start-k3d-cluster
+	@mkdir -p "$(dir $(K3D_HOST_KUBECONFIG))"
+	@k3d kubeconfig get $(K3D_CLUSTER) > "$(K3D_HOST_KUBECONFIG).tmp"
+	@server_container=$$(docker inspect k3d-$(K3D_CLUSTER)-server-0 --format '{{.Name}}' | sed 's#^/##'); \
+	sed -E "s#server: https://[^:]+:[0-9]+#server: https://$$server_container:6443#" \
+		"$(K3D_HOST_KUBECONFIG).tmp" > "$(K3D_CONTAINER_KUBECONFIG)"; \
+	mv "$(K3D_HOST_KUBECONFIG).tmp" "$(K3D_HOST_KUBECONFIG)"; \
+	chmod 600 "$(K3D_HOST_KUBECONFIG)" "$(K3D_CONTAINER_KUBECONFIG)"
+
+check-k3d-context:
+	@test "$$(kubectl config current-context 2>/dev/null)" = "$(K3D_CONTEXT)" || { \
+		echo "ERROR: expected Kubernetes context '$(K3D_CONTEXT)'."; exit 1; \
+	}
+	@kubectl get --raw=/readyz >/dev/null
+
+start-stack: prepare-k3d-kubeconfig
+	docker compose -p izykube up -d --build --remove-orphans
+
+stop-stack:
+	docker compose -p izykube down
+
+check-stack:
+	docker compose -p izykube ps
 
 # e.g. make run-i18n-build LOCALE=fr
 run-i18n-build:
@@ -71,7 +124,7 @@ prepare-istioctl:
 		cd /tmp && curl -fsSL https://istio.io/downloadIstio | ISTIO_VERSION=$(ISTIO_VERSION) TARGET_ARCH=$$(uname -m) sh -; \
 	fi
 
-install-istio: prepare-istioctl
+install-istio: check-k3d-context prepare-istioctl
 	@echo "Installing Istio..."
 	$(ISTIOCTL) install --set profile=default -y
 	kubectl label namespace default istio-injection=enabled --overwrite
@@ -173,6 +226,23 @@ check-olm:
 	kubectl -n olm get deploy,pods
 	kubectl get apiservice v1.packages.operators.coreos.com
 
+# Install Argo CD from a pinned upstream release.
+install-argocd:
+	kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+	kubectl apply -n argocd --server-side --force-conflicts -f $(ARGOCD_INSTALL_URL)
+	kubectl -n argocd wait --for=condition=Available deployment --all --timeout=600s
+	kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=600s
+
+uninstall-argocd:
+	kubectl delete -f $(ARGOCD_INSTALL_URL) --ignore-not-found=true --wait=false
+	kubectl delete namespace argocd --ignore-not-found=true --wait=false
+
+check-argocd:
+	kubectl get namespace argocd
+	kubectl -n argocd get deployment,statefulset,pods,service
+	kubectl -n argocd wait --for=condition=Available deployment --all --timeout=120s
+	kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=120s
+
 # Uninstall OLM
 uninstall-olm:
 	@echo "Uninstalling OLM $(OLM_VERSION)..."
@@ -244,8 +314,8 @@ uninstall-istio-gateway:
 check-istio-gateway:
 	kubectl -n istio-system get gateway izykube-gateway
 
-# Install all cluster addons (istio, monitoring)
-install-cluster-addons: install-olm create-internal-ca install-istio-gateway install-prometheus install-grafana-release
+# Install all cluster addons (GitOps, operators, mesh, monitoring)
+install-cluster-addons: install-argocd install-olm create-internal-ca install-istio-gateway install-prometheus install-grafana-release
 
 uninstall-cluster-addons:
 	$(MAKE) uninstall-grafana
@@ -254,8 +324,9 @@ uninstall-cluster-addons:
 	$(MAKE) uninstall-istio
 	$(MAKE) uninstall-cert-manager
 	$(MAKE) uninstall-olm
+	$(MAKE) uninstall-argocd
 
-check-cluster-addons: check-olm check-cert-manager check-internal-ca check-istio check-istio-gateway check-prometheus check-grafana
+check-cluster-addons: check-argocd check-olm check-cert-manager check-internal-ca check-istio check-istio-gateway check-prometheus check-grafana
 
 # Create izykube system namespace
 create-izykube-system:

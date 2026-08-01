@@ -62,6 +62,7 @@ import io.fabric8.kubernetes.api.model.batch.v1.CronJobStatus;
 import io.fabric8.kubernetes.api.model.batch.v1.Job;
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.PodResource;
 import io.fabric8.kubernetes.client.dsl.base.ResourceDefinitionContext;
 import io.fabric8.kubernetes.client.utils.Serialization;
@@ -248,15 +249,23 @@ public class KubernetesExplorerService {
     }
 
     private List<RouteSummaryDTO> fetchLiveRoutes(String namespace, boolean includeAll) {
-        ResourceDefinitionContext virtualServiceContext = resolveVirtualServiceContext(includeAll ? null : namespace);
-        return (includeAll
-                ? kubernetesClient.genericKubernetesResources(virtualServiceContext).inAnyNamespace()
-                : kubernetesClient.genericKubernetesResources(virtualServiceContext).inNamespace(namespace))
-                .list()
-                .getItems()
-                .stream()
-                .map(this::mapVirtualService)
-                .toList();
+        try {
+            ResourceDefinitionContext virtualServiceContext = resolveVirtualServiceContext(includeAll ? null : namespace);
+            return (includeAll
+                    ? kubernetesClient.genericKubernetesResources(virtualServiceContext).inAnyNamespace()
+                    : kubernetesClient.genericKubernetesResources(virtualServiceContext).inNamespace(namespace))
+                    .list()
+                    .getItems()
+                    .stream()
+                    .map(this::mapVirtualService)
+                    .toList();
+        } catch (KubernetesClientException ex) {
+            if (ex.getCode() == 404) {
+                log.info("Istio VirtualService CRD is not installed; omitting live routes from Kube Explorer");
+                return List.of();
+            }
+            throw ex;
+        }
     }
 
     private List<RouteSummaryDTO> reconcileRoutes(List<RouteSummaryDTO> persistedRoutes, List<RouteSummaryDTO> liveRoutes) {
