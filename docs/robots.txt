@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://gcassata74.github.io/izykube/sitemap.xml
+Sitemap: https://izykube.izylifesolutions.com/sitemap.xml
