@@ -50,6 +50,13 @@ TASKS: tuple[Task, ...] = (
         verify_target="check-cluster-addons",
     ),
     Task(
+        id="argocd",
+        group="components",
+        install_target="install-argocd",
+        uninstall_target="uninstall-argocd",
+        verify_target="check-argocd",
+    ),
+    Task(
         id="olm",
         group="components",
         install_target="install-olm",
@@ -133,6 +140,7 @@ def _make_step(target: str, verb: str, component: str) -> OperationStep:
 def _addon_steps(action: Action) -> tuple[OperationStep, ...]:
     if action is Action.INSTALL:
         targets = (
+            ("install-argocd", "argocd"),
             ("install-olm", "olm"),
             ("create-internal-ca", "cert-ca"),
             ("install-istio-gateway", "istio-gateway"),
@@ -148,9 +156,11 @@ def _addon_steps(action: Action) -> tuple[OperationStep, ...]:
             ("uninstall-istio", "istio-gateway"),
             ("uninstall-cert-manager", "cert-ca"),
             ("uninstall-olm", "olm"),
+            ("uninstall-argocd", "argocd"),
         )
         return tuple(_make_step(target, "remove", component) for target, component in targets)
     targets = (
+        ("check-argocd", "argocd"),
         ("check-olm", "olm"),
         ("check-cert-manager", "cert-manager"),
         ("check-internal-ca", "internal-ca"),
@@ -165,20 +175,20 @@ def _addon_steps(action: Action) -> tuple[OperationStep, ...]:
 def operation_plan(task: Task, action: Action) -> tuple[OperationStep, ...]:
     if task.kind == "complete":
         if action is Action.INSTALL:
-            stack = OperationStep(compose_command("up", "-d", "--build"), "start", "task.stack.title")
+            stack = OperationStep(("make", "--no-print-directory", "start-stack"), "start", "task.stack.title")
             return (stack, *_addon_steps(action))
         if action is Action.UNINSTALL:
-            stack = OperationStep(compose_command("down"), "stop", "task.stack.title")
+            stack = OperationStep(("make", "--no-print-directory", "stop-stack"), "stop", "task.stack.title")
             return (*_addon_steps(action), stack)
-        stack = OperationStep(compose_command("ps"), "verify", "task.stack.title")
+        stack = OperationStep(("make", "--no-print-directory", "check-stack"), "verify", "task.stack.title")
         return (stack, *_addon_steps(action))
 
     if task.kind == "stack":
         if action is Action.INSTALL:
-            return (OperationStep(compose_command("up", "-d", "--build"), "start", "task.stack.title"),)
+            return (OperationStep(("make", "--no-print-directory", "start-stack"), "start", "task.stack.title"),)
         if action is Action.UNINSTALL:
-            return (OperationStep(compose_command("down"), "stop", "task.stack.title"),)
-        return (OperationStep(compose_command("ps"), "verify", "task.stack.title"),)
+            return (OperationStep(("make", "--no-print-directory", "stop-stack"), "stop", "task.stack.title"),)
+        return (OperationStep(("make", "--no-print-directory", "check-stack"), "verify", "task.stack.title"),)
 
     if task.id == "addons":
         return _addon_steps(action)

@@ -47,7 +47,7 @@ For the proposed STARK and AIssure work, the target product boundary is a headle
 
 ### Externally supplied runtime components
 
-The repository can orchestrate or connect to k3s, Istio, cert-manager, OLM, Prometheus, Grafana, and Ollama. These are third-party dependencies, not IzyKube-owned implementations. MongoDB, Kubernetes, Docker, Helm, Fabric8, Angular, Spring, and the selected AI models are external as well.
+The repository can orchestrate or connect to k3s, Argo CD, Istio, cert-manager, OLM, Prometheus, Grafana, and Ollama. These are third-party dependencies, not IzyKube-owned implementations. MongoDB, Kubernetes, Docker, Helm, Fabric8, Angular, Spring, and the selected AI models are external as well.
 
 ### Roadmap only
 
@@ -116,10 +116,10 @@ make setup-gui-build
 ### Start the configured Compose services
 
 ```bash
-docker compose up
+make start-stack
 ```
 
-This builds the IzyKube image and starts the app plus the configured third-party MongoDB, registry, k3s, and Ollama services on the local Compose network. The app is exposed on `http://localhost:8090`.
+This starts the single `k3d-izycluster`, builds IzyKube, and starts MongoDB, registry, Ollama, and the application. The app is exposed on `http://localhost:8090`.
 
 ### Start frontend in dev mode (hot-reload)
 
@@ -156,21 +156,20 @@ cd izykube
 ### 2) Start the stack
 
 ```bash
-docker compose up
+make start-stack
 ```
 
-MongoDB, registry, k3s, Ollama, and izykube start together. The first run builds the image (Maven + frontend).
+The single `k3d-izycluster`, MongoDB, registry, Ollama, and IzyKube start together. The first run builds the image (Maven + frontend).
 
-### 3) Install cluster addons into k3s
+### 3) Install cluster addons into k3d
 
-Once k3s is healthy (`docker compose ps` shows `izykube-k3s` healthy), point kubectl at the compose kubeconfig and install addons:
+Make targets automatically use the kubeconfig generated from `k3d-izycluster`; no manual context selection is required:
 
 ```bash
-export KUBECONFIG=$(docker volume inspect izykube_kubeconfig --format '{{.Mountpoint}}')/config
 make install-cluster-addons
 ```
 
-This runs repository orchestration that installs the third-party OLM, cert-manager, Istio, Prometheus, and Grafana components plus repository-supplied CA/Gateway configuration.
+This runs repository orchestration that installs the third-party Argo CD, OLM, cert-manager, Istio, Prometheus, and Grafana components plus repository-supplied CA/Gateway configuration.
 
 ### 4) Trust internal CA on your local machine (recommended for HTTPS routes)
 
@@ -245,11 +244,12 @@ Main tasks with target dependencies and behavior:
 | `make setup-gui-build` | `-` | Builds the standalone installer executable with PyInstaller inside Docker. |
 | `make run-angular-client` | `-` | Kills process on port `4200` (if any) and starts Angular dev server from `frontend/`. |
 | `make run-chrome-dev` | `-` | Opens Chrome with a dedicated insecure dev profile for local UI testing. |
+| `make install-argocd` | `-` | Installs the pinned Argo CD release and waits for its controllers to become available. |
 | `make install-istio` | `-` | Installs Istio (downloads `istioctl` if missing), enables sidecar injection on `default` namespace. |
 | `make create-internal-ca` | `install-cert-manager` | Generates internal CA cert/key, creates `izykube-ca` TLS secret, applies ClusterIssuer manifest. |
 | `make install-ca-local` | `create-internal-ca` | Installs cluster CA certificate in local OS trust store (`/usr/local/share/ca-certificates`). |
 | `make grafana-port-forward` | `install-grafana-release` | Starts background port-forward to Grafana service on `http://localhost:3000`. |
-| `make install-cluster-addons` | `install-olm`, `create-internal-ca`, `install-istio-gateway`, `install-prometheus`, `install-grafana` | Installs core platform addons: OLM, cert-manager/CA, Istio gateway, Prometheus, Grafana. |
+| `make install-cluster-addons` | `install-argocd`, `install-olm`, `create-internal-ca`, `install-istio-gateway`, `install-prometheus`, `install-grafana-release` | Installs core platform addons: Argo CD, OLM, cert-manager/CA, Istio gateway, Prometheus, Grafana. |
 | `make run-i18n-extract` | `-` | Extracts Angular i18n messages into `frontend/src/locale`. |
 | `make run-i18n-build LOCALE=xx` | `-` | Builds Angular app using the selected i18n configuration (`LOCALE`, default `en`). |
 | `make run-i18n-serve LOCALE=xx` | `-` | Serves Angular app using the selected i18n configuration (`LOCALE`, default `en`). |

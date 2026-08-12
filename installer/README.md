@@ -59,9 +59,10 @@ The destination machine does not need Python or Tcl/Tk. The executable must rema
 
 | Group | Task | Install | Uninstall | Verify |
 |---|---|---|---|---|
-| Complete | Configured orchestration workflow | Compose up + `install-cluster-addons` | `uninstall-cluster-addons` + Compose down | Compose ps + `check-cluster-addons` |
-| Infrastructure | Docker stack | Compose up | Compose down | Compose ps |
+| Complete | Configured orchestration workflow | `make start-stack` + `install-cluster-addons` | `uninstall-cluster-addons` + `make stop-stack` | `make check-stack` + `check-cluster-addons` |
+| Infrastructure | Docker stack | `make start-stack` | `make stop-stack` | `make check-stack` |
 | Platform | Kubernetes addons | `install-cluster-addons` | `uninstall-cluster-addons` | `check-cluster-addons` |
+| Components | Argo CD | `install-argocd` | `uninstall-argocd` | `check-argocd` |
 | Components | OLM | `install-olm` | `uninstall-olm` | `check-olm` |
 | Components | cert-manager | `install-cert-manager` | `uninstall-cert-manager` | `check-cert-manager` |
 | Components | Internal CA | `create-internal-ca` | `uninstall-internal-ca` | `check-internal-ca` |
@@ -70,7 +71,7 @@ The destination machine does not need Python or Tcl/Tk. The executable must rema
 | Components | Prometheus | `install-prometheus` | `uninstall-prometheus` | `check-prometheus` |
 | Components | Grafana | `install-grafana-release` | `uninstall-grafana` | `check-grafana` |
 
-Uninstall operations require confirmation. Compose down preserves volumes; destructive volume deletion is intentionally not exposed.
+Uninstall operations require confirmation. `make stop-stack` preserves volumes; destructive volume deletion is intentionally not exposed.
 
 ## Tests
 

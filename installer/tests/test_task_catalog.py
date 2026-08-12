@@ -36,22 +36,37 @@ class TaskCatalogTest(unittest.TestCase):
 
     def test_complete_install_starts_compose_then_addons(self) -> None:
         commands = command_plan(task_by_id("complete"), Action.INSTALL)
-        self.assertEqual("up", commands[0][4])
+        self.assertEqual(("make", "--no-print-directory", "start-stack"), commands[0])
         self.assertEqual(
-            ["install-olm", "create-internal-ca", "install-istio-gateway", "install-prometheus", "install-grafana-release"],
+            ["install-argocd", "install-olm", "create-internal-ca", "install-istio-gateway", "install-prometheus", "install-grafana-release"],
             [command[-1] for command in commands[1:]],
         )
 
     def test_complete_uninstall_keeps_volumes(self) -> None:
         commands = command_plan(task_by_id("complete"), Action.UNINSTALL)
         self.assertEqual("uninstall-grafana", commands[0][-1])
-        self.assertEqual(("docker", "compose", "-p", "izykube", "down"), commands[-1])
+        self.assertEqual(("make", "--no-print-directory", "stop-stack"), commands[-1])
+
+    def test_stack_task_uses_canonical_make_lifecycle(self) -> None:
+        stack = task_by_id("stack")
+        self.assertEqual(
+            (("make", "--no-print-directory", "start-stack"),),
+            command_plan(stack, Action.INSTALL),
+        )
+        self.assertEqual(
+            (("make", "--no-print-directory", "stop-stack"),),
+            command_plan(stack, Action.UNINSTALL),
+        )
+        self.assertEqual(
+            (("make", "--no-print-directory", "check-stack"),),
+            command_plan(stack, Action.VERIFY),
+        )
 
     def test_addon_plan_exposes_visible_progress_steps(self) -> None:
         steps = operation_plan(task_by_id("addons"), Action.VERIFY)
-        self.assertEqual(7, len(steps))
+        self.assertEqual(8, len(steps))
         self.assertEqual("verify", steps[0].verb)
-        self.assertEqual("task.olm.title", steps[0].component_key)
+        self.assertEqual("task.argocd.title", steps[0].component_key)
 
 
 if __name__ == "__main__":
