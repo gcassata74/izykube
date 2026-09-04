@@ -16,6 +16,12 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 # ── Before first run ────────────────────────────────────────────────────────
+# Terraform must create the Docker network, registry, k3s cluster, and the
+# local kubeconfig before Compose starts the application services:
+#
+#   terraform -chdir=terraform/cluster init
+#   terraform -chdir=terraform/cluster apply
+#
 # MongoDB data lives in anonymous volumes from the pre-existing mongo-host
 # container. Stop it first so this compose can attach to the same volumes:
 #
@@ -39,58 +45,6 @@ services:
     volumes:
       - mongo-data:/data/db
       - mongo-configdb:/data/configdb
-
-  # ── Docker Registry ────────────────────────────────────────────────────────
-  registry:
-    image: registry:2
-    container_name: izykube-registry
-    restart: unless-stopped
-    ports:
-      - "5000:5000"
-    volumes:
-      - registry-data:/var/lib/registry
-
-  # ── k3s (lightweight Kubernetes) ──────────────────────────────────────────
-  # Runs as a privileged container. A wrapper script patches the kubeconfig
-  # server URL from 127.0.0.1 to the compose service name so the backend can
-  # reach the API server via the internal network (https://k3s:6443).
-  k3s:
-    image: rancher/k3s:v1.34.1-k3s1
-    container_name: izykube-k3s
-    privileged: true
-    cgroup: host
-    restart: unless-stopped
-    ports:
-      - "6443:6443"
-      - "80:80"
-      - "443:443"
-    volumes:
-      - k3s-server:/var/lib/rancher/k3s
-      - kubeconfig:/kubeconfig
-      - ./k3s-registries.yaml:/etc/rancher/k3s/registries.yaml:ro
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        rm -f /kubeconfig/config /kubeconfig/config.tmp
-        k3s server \
-          --disable=traefik \
-          --node-name=izykube-k3s \
-          --tls-san=k3s &
-        K3S_PID=$!
-        echo "Waiting for kubeconfig..."
-        until [ -s /etc/rancher/k3s/k3s.yaml ]; do sleep 2; done
-        sed 's|https://127.0.0.1:6443|https://k3s:6443|g' \
-          /etc/rancher/k3s/k3s.yaml > /kubeconfig/config.tmp
-        chmod 644 /kubeconfig/config.tmp
-        mv /kubeconfig/config.tmp /kubeconfig/config
-        echo "kubeconfig ready"
-        wait $$K3S_PID
-    healthcheck:
-      test: ["CMD", "sh", "-c", "[ -f /kubeconfig/config ] && kubectl --kubeconfig /kubeconfig/config get --raw=/readyz >/dev/null"]
-      interval: 5s
-      timeout: 5s
-      retries: 60
-      start_period: 20s
 
   # ── Ollama ─────────────────────────────────────────────────────────────────
   # Reuses the named volume izykube_ollama-data created by the previous
@@ -121,32 +75,15 @@ services:
     environment:
       - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/izykube
       - KUBECONFIG=/kubeconfig/config
-      - OLLAMA_BASE_URL=http://ollama:11434
+      - AI_LOCAL_BASE_URL=http://ollama:11434
+      - AI_LOCAL_READ_TIMEOUT_MS=600000
     volumes:
-      - kubeconfig:/kubeconfig:ro
+      - ./.izykube:/kubeconfig:ro
     depends_on:
       mongo:
         condition: service_started
-      k3s:
-        condition: service_healthy
       ollama:
         condition: service_started
-
-  # ── Setup tools ────────────────────────────────────────────────────────────
-  # One-shot toolbox used only by the standalone desktop installer.
-  setup-tools:
-    profiles: ["setup"]
-    build:
-      context: .
-      dockerfile: installer/Dockerfile.setup
-    image: izykube-setup-tools:local
-    environment:
-      - KUBECONFIG=/kubeconfig/config
-    volumes:
-      - kubeconfig:/kubeconfig:ro
-    depends_on:
-      k3s:
-        condition: service_healthy
 
 volumes:
   # Existing MongoDB data (anonymous volumes from mongo-host) — preserved.
@@ -162,7 +99,7 @@ volumes:
     external: true
     name: izykube_ollama-data
 
-  # Fresh volumes for new services.
-  registry-data:
-  k3s-server:
-  kubeconfig:
+networks:
+  default:
+    name: ${IZYKUBE_NETWORK_NAME:-izykube}
+    external: true

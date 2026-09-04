@@ -1,1 +1,0 @@
-"""Standalone IzyKube desktop installer."""

@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars only when overriding defaults.
+# The default values match docker-compose.yml and k3s-registries.yaml.
+
+# network_name = "izykube"
+# registry_port = 5000
+# kubernetes_api_port = 6443
+# http_port = 80
+# https_port = 443
+# kubeconfig_directory = "../../.izykube"

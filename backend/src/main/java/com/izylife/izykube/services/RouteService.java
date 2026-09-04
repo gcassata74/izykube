@@ -300,7 +300,7 @@ public class RouteService {
         }
         GenericKubernetesResource gateway = getWithFallback(GATEWAY_CONTEXT, GATEWAY_CONTEXT_V1ALPHA3, SHARED_GATEWAY_NAMESPACE, SHARED_GATEWAY_NAME);
         if (gateway == null) {
-            throw new IllegalStateException("Shared gateway not found. Run make install-istio-gateway.");
+            throw new IllegalStateException("Shared gateway not found. Run terraform -chdir=terraform/addons apply.");
         }
         Map<String, Object> spec = getSpecMap(gateway);
         List<Map<String, Object>> servers = new ArrayList<>(getMapList(spec.get("servers")));
