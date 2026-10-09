@@ -19,253 +19,104 @@
 
 # IzyKube
 
-IzyKube is a self-hosted Kubernetes architecture designer. Its tested paths cover visual namespace modeling plus YAML and Helm generation for supported resource types. The repository also contains cluster apply/delete, inspection, and local-AI integration paths whose end-to-end coverage is still partial.
+**Design supported Kubernetes namespace resources visually. Export YAML or Helm artifacts for review in your existing Git workflow.**
 
-The UI is diagram-based and uses `interact.js` + SVG for node/link editing. See the [capability evidence matrix](docs/product/capability-evidence-matrix.md) for code references, verification commands, and status definitions, and the [background-IP engineering record](docs/product/background-ip.md) for the repository-history cutoff and limitations.
+IzyKube is a self-hosted visual modeler for small platform teams and Kubernetes consultancies. It complements kubectl, Helm, and existing delivery tools; it is not a replacement for them.
 
-For the proposed STARK and AIssure work, the target product boundary is a headless Kubernetes policy, verified workload-identity, admission-enforcement, and assurance-evidence layer. Vulnerability and software-supply-chain scanning remains NocScan's responsibility; IzyKube will consume authenticated, digest-bound findings rather than duplicate the scanner. This is a roadmap boundary, not a claim that those capabilities are implemented or contractually assigned. The [requirements traceability matrix](docs/eu/requirements-traceability.md) records the provisional mappings, proposed KPIs, missing authoritative sources, and approval gates.
+[Product page](https://izykube.izylifesolutions.com/) · [Capability evidence matrix](docs/product/capability-evidence-matrix.md) · [Releases](https://github.com/gcassata74/izykube/releases) · [Docker image](https://hub.docker.com/r/gcassata/izykube)
 
 ![IzyKube demo](docs/demo.png)
 
-## Current, Partial, External, and Roadmap Scope
+## What it helps with
 
-### Verified current capabilities
+- Model supported Kubernetes workloads and their relationships visually.
+- Generate YAML or a Helm archive for supported resource types.
+- Model supported Kubernetes RBAC policies and Istio VirtualService resources.
+- Carry the generated artifacts into your team's existing Git review and deployment process.
 
-- visual editing of Kubernetes workloads and related resources;
-- YAML import/export and Helm chart export for the supported model types;
-- Kubernetes RBAC policy modeling and manifest generation; and
-- Istio VirtualService modeling and manifest export.
+## Capability scope
 
-“Verified” is limited to the automated tests cited in the evidence matrix; it is not a production-readiness or completeness claim.
+The repository's [capability evidence matrix](docs/product/capability-evidence-matrix.md) distinguishes implemented, partial, planned, and external capabilities. Its audit identifies a 2026-07-12 repository baseline; check that date before treating it as a current assessment.
 
-### Partially verified capabilities
+At that baseline, automated tests cover visual namespace modeling, YAML and Helm export for supported resource types, RBAC manifest generation, and Istio VirtualService export. Cluster apply/undeploy, runtime inspection, and local-AI integration are partial. Comprehensive drift detection, one-click rollback, and production readiness are not established by the cited evidence.
 
-- namespace version records can be saved, listed, opened, and deleted, but a tested one-click rollback flow is not established;
-- apply/undeploy code paths use a connected Kubernetes API, but the repository has no automated live-cluster end-to-end test;
-- runtime resource inspection and sync indicators exist for implemented views, but comprehensive drift detection is not established; and
-- the local-AI adapter calls Ollama for generation/chat, but no automated Ollama contract or model-quality test is present.
+## Development environment
 
-### Externally supplied runtime components
+Clone the repository:
 
-The repository can orchestrate or connect to k3s, Istio, cert-manager, OLM, Prometheus, Grafana, and Ollama. These are third-party dependencies, not IzyKube-owned implementations. MongoDB, Kubernetes, Docker, Helm, Fabric8, Angular, Spring, and the selected AI models are external as well.
-
-### Roadmap only
-
-OPA/Rego, SPIFFE/SPIRE, Model Context Protocol (MCP), OpenTelemetry, first-party SBOM publication, and Sigstore/SLSA signing or provenance are not implemented capabilities. They remain roadmap candidates unless and until code plus reproducible verification is added.
-
-## Technology Stack
-
-- Frontend: Angular
-- Backend: Spring Boot
-- Persistence: MongoDB
-- Cluster API: Kubernetes (Fabric8 client)
-- Diagram interactions: interact.js
-
-## Repository Layout
-
-- `frontend/`: Angular client
-- `backend/`: Spring Boot API and orchestration logic
-- `terraform/`: Docker/k3s infrastructure and Kubernetes addon Terraform roots
-- `yaml/`: Kubernetes manifests used by setup flows
-- `docs/`: project documentation
-- `Dockerfile`: multi-stage build — Maven compiles frontend + backend into a single self-contained jar; JRE runtime image
-- `docker-compose.yml`: MongoDB, Ollama, and IzyKube application services on the Terraform-managed network
-- `.github/workflows/`: CI and release pipelines
-
-
-## Prerequisites
-
-- Java 21 (for backend development and Maven builds)
-- Node.js 18+ / npm (for frontend development and builds)
-- Docker (with Compose v2)
-- kubectl
-- helm
-- `timeout` and `rg` (used by the Makefile)
-- Terraform 1.6+ (providers are downloaded during init)
-
-## Docker Image
-
-Pre-built images are published to DockerHub at [`gcassata/izykube`](https://hub.docker.com/r/gcassata/izykube):
-
-| Tag | Published by |
-|---|---|
-| `latest` | Every merge to `main` (after CI passes) |
-| `<sha>` | Same push, short commit SHA |
-| `1.2.3`, `1.2` | Every `v*` tag / GitHub release |
-
-To run without building locally:
-
-```bash
-docker pull gcassata/izykube:latest
-```
-
-## Local Development
-
-### Start the local stack
-
-```bash
-make init
-make apply
-make app
-```
-
-`make apply` provisions the local registry and single-node k3s cluster, waits for the k3s health probe and generated kubeconfigs, and then applies the Kubernetes addons. `make app` starts MongoDB, Ollama, and IzyKube on the shared Docker network. The app is exposed on http://localhost:8090.
-
-The first run should use `make apply` before `make plan`, because the addons root needs the host-side kubeconfig generated by the cluster root. On an existing cluster, `make plan` plans both roots.
-
-The two generated kubeconfigs have different purposes:
-
-- `.izykube/host-config`: use this from the host for `kubectl` and the addons Terraform root;
-- `.izykube/config`: use this inside the IzyKube container, where the Kubernetes API is reachable as `https://k3s:6443`.
-
-For example:
-
-```bash
-kubectl --kubeconfig .izykube/host-config get nodes
-```
-
-### Start frontend in dev mode (hot-reload)
-
-```bash
-npm -C frontend start
-```
-
-### Optional: open a dev browser profile
-
-```bash
-google-chrome --new-window http://localhost:4200
-```
-
-## Build Commands
-
-### Frontend only
-
-```bash
-npm -C frontend install --legacy-peer-deps
-npm -C frontend run build -- --configuration production
-```
-
-## Terraform infrastructure and Make targets
-
-The infrastructure is managed from two Terraform roots under `terraform/`. The Makefile runs them in the required order: cluster first, addons second.
-
-### 1) Clone and bootstrap
-
-```bash
-git clone https://github.com/izylife/izykube.git
+~~~bash
+git clone https://github.com/gcassata74/izykube.git
 cd izykube
+~~~
+
+### Prerequisites
+
+- Docker Engine with Docker Compose v2
+- Terraform 1.6+
+- Java 21
+- Node.js 18+ and npm
+- kubectl and Helm
+
+### Configured local stack
+
+From the repository root:
+
+~~~bash
 make init
 make apply
 make app
-```
+~~~
 
-This provisions the local registry, k3s, OLM/operators, cert-manager and the internal CA, Istio ingress, Prometheus, and Grafana. Both kubeconfigs are generated under `.izykube/`.
+The apply target provisions the local k3s cluster and configured addons. The current Compose file also expects the generated .izykube kubeconfig, an external Docker network, and pre-existing external MongoDB and Ollama data volumes. The Compose file uses fixed external volume names, and Terraform does not create those data volumes. Therefore a fresh Docker host may require adapting the Compose volume definitions or creating the expected volumes before the app target can start. This sequence describes the configured development environment; it is not yet plug-and-play on a fresh Docker host.
 
-### 2) Plan changes
+To tear down the configured cluster and addons:
 
-```bash
-make plan
-```
-
-This plans the cluster root and then the addons root. The cluster must already have been applied so that `.izykube/host-config` exists.
-
-### 3) Local CA trust (optional)
-
-The CA certificate is stored in the cert-manager/izykube-ca Secret. Export or install it using your platform trust-store tooling when HTTPS browser trust is needed.
-
-### 4) Teardown
-
-`make destroy` first stops Compose services and removes the legacy registry container, then destroys addons before the cluster. Compose volumes are preserved.
-
-```bash
+~~~bash
 make destroy
-```
+~~~
 
-Use `TF_APPLY_ARGS` and `TF_DESTROY_ARGS` to pass Terraform flags:
+### Frontend development
 
-```bash
-make apply TF_APPLY_ARGS=-auto-approve
-make destroy TF_DESTROY_ARGS=-auto-approve
-```
+~~~bash
+npm -C frontend install --legacy-peer-deps
+npm -C frontend start
+~~~
 
-## CI/CD
+The Angular development server is available at http://localhost:4200.
 
-### CI (`ci.yml`) — triggers on pull request and push to `main`
+## Build
 
-| Job | What it does |
-|---|---|
-| `backend` | Runs tests, packages jar, uploads artifact |
-| `frontend` | Installs deps, runs headless unit tests, production build, uploads dist |
-| `quality-gates` | Checks no hardcoded warn toasts, no `stringData` in manifest generator |
-| `docker-publish` | Builds Docker image and pushes `gcassata/izykube:latest` + `:<sha>` — only on push to `main`, after all three jobs pass |
+Build the packaged application from the repository root:
 
-### Release (`release.yml`) — triggers on `v*` tags
+~~~bash
+./mvnw -B -ntp package
+~~~
 
-Builds backend + frontend, creates a GitHub release with jar / frontend tarball / SHA256 checksums, then builds and pushes `gcassata/izykube:<version>`, `:<major.minor>`, and `:latest` to DockerHub.
+Build only the frontend:
 
-### GitHub environment
+~~~bash
+npm -C frontend run build -- --configuration production
+~~~
 
-Both Docker publish jobs use the `izykube` GitHub environment. Required secrets:
+## Repository layout
 
-| Secret | Value |
-|---|---|
-| `DOCKERHUB_USERNAME` | `gcassata` |
-| `DOCKERHUB_TOKEN` | DockerHub personal access token |
+- frontend/ — Angular application
+- backend/ — Spring Boot API and Kubernetes integrations
+- terraform/ — local Docker network, registry, k3s cluster, and configured addons
+- yaml/ — Kubernetes manifests used by setup flows
+- docs/ — GitHub Pages product site and product evidence
+- .github/workflows/ — CI and release pipelines
 
-## Optional Services
+## Docker image
 
-### Grafana port-forward
+Pull the published image:
 
-```bash
-kubectl --kubeconfig .izykube/host-config -n istio-system-db port-forward svc/grafana 3000:80
-```
+~~~bash
+docker pull gcassata/izykube:latest
+~~~
 
-This forwards Grafana to http://localhost:3000.
-
-## Functional Notes
-
-### Diagram link conventions
-
-- `Ingress -> Service -> Deployment`
-- `Service -> Deployment`
-- `ConfigMap/Secret/Volume -> Deployment`
-- `Job -> Deployment` or `Job -> Container` (when modeled that way)
-
-### Namespace versions
-
-- versions are stored and listed per namespace
-- each row can be opened in diagram view
-- rows can be deleted from the versions grid
-
-## Makefile Reference
-
-| Target | What it does |
-|---|---|---|
-| `make init` | Initializes both Terraform roots and downloads providers. |
-| `make plan` | Plans cluster and addons; requires an existing generated kubeconfig. |
-| `make apply` | Applies cluster, waits for k3s readiness, then applies addons. |
-| `make app` | Builds and starts MongoDB, Ollama, and IzyKube with Docker Compose. |
-| `make destroy` | Stops Compose, removes legacy Docker resources, then destroys addons and cluster. |
-
-The roots can also be run directly when needed:
-
-| Root | Scope | Main command |
-|---|---|---|
-| `terraform/cluster` | Docker network, registry, k3s, persistent volumes, kubeconfig | `terraform -chdir=terraform/cluster apply` |
-| `terraform/addons` | OLM/operators, cert-manager/CA, Istio ingress, Prometheus, Grafana | `terraform -chdir=terraform/addons apply` |
-
-Frontend development uses the native npm commands documented above. Terraform state contains the generated CA private key, so use protected remote state for shared or production environments.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-For code changes, use small PRs with:
-
-- clear problem statement
-- scope-limited diff
-- build/test evidence
+The latest and commit-SHA tags are published from successful pushes to main. Versioned tags are published for GitHub releases.
 
 ## License
 
-This project is licensed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later). See [LICENSE.md](LICENSE.md).
+IzyKube is distributed under the GNU Affero General Public License v3.0 or later. See [LICENSE.md](LICENSE.md).
